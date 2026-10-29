@@ -106,8 +106,20 @@ def finding_to_world(finding: InvariantFinding | dict) -> WorldInvariantFinding:
         "unit": "minor_units" if valued else None, "recorded_at": data["recorded_at"]})
 
 
+class CapsuleChecksumError(ValueError):
+    """The capsule's payload does not match its checksum; it is never converted."""
+
+
+def _verified_payload(capsule) -> dict:
+    data = _dump(capsule)
+    if capsule_digest(data["payload"]) != data["sha256"]:
+        raise CapsuleChecksumError("Capsule checksum mismatch")
+    return data["payload"]
+
+
 def capsule_v1_to_v2(capsule: CapsuleV1 | dict) -> CapsuleV2:
-    payload = _dump(CapsuleV1.model_validate(capsule))["payload"]
+    """Convert only a capsule whose checksum verifies (accidental-change detection)."""
+    payload = _verified_payload(CapsuleV1.model_validate(capsule))
     v2 = {"schema_version": 2, "world_version": REFUND, "fixture": payload["fixture"],
           "scenario": _dump(scenario_to_world(payload["scenario"])),
           "actor_id": payload["actor_id"], "source": payload["source"], "seed": payload["seed"],
@@ -117,7 +129,7 @@ def capsule_v1_to_v2(capsule: CapsuleV1 | dict) -> CapsuleV2:
 
 
 def capsule_v2_to_v1(capsule: CapsuleV2 | dict) -> CapsuleV1:
-    payload = _dump(CapsuleV2.model_validate(capsule))["payload"]
+    payload = _verified_payload(CapsuleV2.model_validate(capsule))
     if payload["world_version"] != REFUND:
         raise ValueError("only refund-world/1 capsules map to v1")
     v1 = {"schema_version": 1, "world_version": REFUND, "fixture": payload["fixture"],

@@ -20,6 +20,7 @@ from ghostlab.contracts.world import (CapsuleV2, WorldCampaignSpec, WorldExperim
                                       WorldInvariantFinding, WorldMemoryQuery, WorldMemoryRecord,
                                       WorldRealityDiff, WorldRunResult, WorldScenario,
                                       WorldToolDefinition, WorldToolInvocation, WorldTrustedScope)
+from ghostlab.contracts.tools import GetOrderArgs, GetRefundStatusArgs, IssueRefundArgs
 from ghostlab.contracts.world_packs import PACKS, check_arguments, is_executable, pack
 from ghostlab.core import (Fixture, RefundWorld, Scenario, ToolError, experiment, run,
                            run_agent, verify)
@@ -309,3 +310,101 @@ def test_pack_manifests_are_published_and_fixed():
         published = json.loads((EXAMPLES / "core" / f"world_pack.{name}.json")
                                .read_text(encoding="utf-8"))
         assert published == world.model_dump(mode="json")
+
+
+# --- re-review: checksums are verified, never silently replaced --------------------
+
+def _tampered_v1(**changes):
+    capsule = copy.deepcopy(ex("capsule_v1.refund_failure"))
+    capsule["payload"].update(changes)
+    return capsule
+
+
+def test_v1_capsule_with_a_stale_checksum_is_not_converted():
+    with pytest.raises(refund.CapsuleChecksumError):
+        refund.capsule_v1_to_v2(_tampered_v1(seed=7))  # payload changed, checksum not
+    bad_sum = copy.deepcopy(ex("capsule_v1.refund_failure"))
+    bad_sum["sha256"] = "0" * 64
+    with pytest.raises(refund.CapsuleChecksumError):
+        refund.capsule_v1_to_v2(bad_sum)
+
+
+@pytest.mark.parametrize("name", ["capsule_v2.refund_failure", "capsule_v2.journey_fixture"])
+def test_v2_capsule_checksum_is_verified_on_load(name):
+    CapsuleV2.model_validate(ex(name))  # published examples carry real checksums
+    zeroed = copy.deepcopy(ex(name))
+    zeroed["sha256"] = "0" * 64
+    rejects(CapsuleV2, zeroed)
+    edited = copy.deepcopy(ex(name))
+    edited["payload"]["seed"] = edited["payload"]["seed"] + 1
+    rejects(CapsuleV2, edited)
+
+
+def test_v2_to_v1_never_launders_a_corrupted_capsule(tmp_path):
+    v2 = copy.deepcopy(ex("capsule_v2.refund_failure"))
+    v2["payload"]["seed"] = 7  # corrupt the payload, keep the old checksum
+    with pytest.raises((ValidationError, refund.CapsuleChecksumError)):
+        refund.capsule_v2_to_v1(v2)
+    with pytest.raises((ValidationError, refund.CapsuleChecksumError)):
+        refund.capsule_v2_to_v1({**ex("capsule_v2.refund_failure"), "sha256": "0" * 64})
+    good = refund.capsule_v2_to_v1(ex("capsule_v2.refund_failure"))
+    path = tmp_path / "capsule.json"
+    path.write_text(good.model_dump_json(indent=2), encoding="utf-8")
+    assert replay(path)["reproduced"]
+
+
+# --- re-review: pack arguments keep the set-1 static bounds -------------------------
+
+ARG_MODELS = {"get_order": GetOrderArgs, "get_refund_status": GetRefundStatusArgs,
+              "issue_refund": IssueRefundArgs}
+BOUNDS = ("minLength", "maxLength", "minimum", "maximum")
+
+
+def test_refund_pack_bounds_equal_the_set_1_argument_contracts():
+    for tool in pack("refund-world/1").tools:
+        published = ARG_MODELS[tool.name].model_json_schema()["properties"]
+        for name, spec in tool.parameters["properties"].items():
+            assert {k: spec.get(k) for k in BOUNDS} == \
+                {k: published[name].get(k) for k in BOUNDS}, (tool.name, name)
+
+
+def _refund_call(**changes):
+    arguments = {"order_id": "synthetic-order-1", "customer_id": "synthetic-customer-1",
+                 "amount_minor": 250_000, "idempotency_key": "intent-1", **changes}
+    return {"schema_version": 1, "invocation_id": "invocation-1", "run_id": "run-1",
+            "provider_call_id": None, "world_version": "refund-world/1",
+            "tool": "issue_refund", "arguments": arguments}
+
+
+@pytest.mark.parametrize("changes", [
+    {"amount_minor": 0}, {"amount_minor": -5}, {"amount_minor": 10**15 + 1},
+    {"amount_minor": True}, {"amount_minor": 2500.0},
+    {"order_id": ""}, {"order_id": "x" * 101}, {"customer_id": ""},
+    {"idempotency_key": "k" * 101},
+], ids=str)
+def test_refund_invocations_reject_what_set_1_rejects(changes):
+    rejects(WorldToolInvocation, _refund_call(**changes))
+    # ...and the set-1 refund invocation contract rejects the same arguments.
+    set1 = {"schema_version": 1, "invocation_id": "invocation-1", "run_id": "run-1",
+            "provider_call_id": None,
+            "call": {"tool": "issue_refund", "arguments": _refund_call(**changes)["arguments"]}}
+    rejects(BY_NAME["tool_invocation"].model, set1)
+
+
+def test_refund_invocation_bounds_admit_the_edges():
+    WorldToolInvocation.model_validate(_refund_call(amount_minor=1, order_id="o" * 100))
+    WorldToolInvocation.model_validate(_refund_call(amount_minor=10**15))
+    # Payment-dependent ceilings stay an engine check: the contract does not know the order.
+    WorldToolInvocation.model_validate(_refund_call(amount_minor=999_999))
+
+
+def test_every_pack_tool_parameter_is_bounded():
+    for world in PACKS.values():
+        for tool in world.tools:
+            for name, spec in tool.parameters["properties"].items():
+                if spec["type"] == "string":
+                    assert spec["minLength"] >= 1 and spec["maxLength"] <= 100, (tool.name, name)
+                if spec["type"] == "integer":
+                    assert "minimum" in spec and "maximum" in spec, (tool.name, name)
+    assert check_arguments(pack(J).tool("deliver_message").parameters,
+                           {"message_id": ""}) == ["argument 'message_id' length is out of bounds"]

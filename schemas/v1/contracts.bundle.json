@@ -857,6 +857,7 @@
     },
     "CapsuleV2": {
       "additionalProperties": false,
+      "description": "v2 has no separate loader yet, so the contract itself verifies the checksum.\n\nThe checksum detects accidental change; it does not establish authorship.",
       "properties": {
         "payload": {
           "$ref": "#/$defs/CapsulePayloadV2"

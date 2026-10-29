@@ -2514,6 +2514,11 @@ export interface WorldInvariantFinding {
   verifier_version: string;
   world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
 }
+/**
+ * v2 has no separate loader yet, so the contract itself verifies the checksum.
+ *
+ * The checksum detects accidental change; it does not establish authorship.
+ */
 export interface CapsuleV2 {
   payload: CapsulePayloadV2;
   sha256: string;

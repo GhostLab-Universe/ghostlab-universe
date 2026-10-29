@@ -336,6 +336,7 @@
   "$id": "urn:ghostlab:contract:capsule_v2:1",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
+  "description": "v2 has no separate loader yet, so the contract itself verifies the checksum.\n\nThe checksum detects accidental change; it does not establish authorship.",
   "properties": {
     "payload": {
       "$ref": "#/$defs/CapsulePayloadV2"

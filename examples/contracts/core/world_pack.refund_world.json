@@ -65,9 +65,13 @@
         "additionalProperties": false,
         "properties": {
           "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -86,15 +90,23 @@
         "additionalProperties": false,
         "properties": {
           "amount_minor": {
+            "maximum": 1000000000000000,
+            "minimum": 1,
             "type": "integer"
           },
           "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "idempotency_key": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -115,12 +127,18 @@
         "additionalProperties": false,
         "properties": {
           "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "idempotency_key": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },

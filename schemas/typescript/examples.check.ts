@@ -357,7 +357,7 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
     "source": "specified journey pack fixture (not executable yet)",
     "world_version": "group-journey/1"
   },
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  "sha256": "e5550b8ef6f1d946f7cabb1ace04100cd2d8abcdd8ab3f963a3f44ed5af0541b"
 };
 
 export const context_bundle__explorer: C.ContextBundle = {
@@ -1632,6 +1632,8 @@ export const world_pack__group_journey: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "journey_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -1649,12 +1651,18 @@ export const world_pack__group_journey: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "intent_version": {
+            "maximum": 1000000,
+            "minimum": 1,
             "type": "integer"
           },
           "journey_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "option_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -1674,6 +1682,8 @@ export const world_pack__group_journey: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "hold_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -1691,9 +1701,13 @@ export const world_pack__group_journey: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "hold_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "intent_version": {
+            "maximum": 1000000,
+            "minimum": 1,
             "type": "integer"
           }
         },
@@ -1712,12 +1726,18 @@ export const world_pack__group_journey: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "event_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "intent_version": {
+            "maximum": 1000000,
+            "minimum": 1,
             "type": "integer"
           },
           "participant_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -1737,9 +1757,13 @@ export const world_pack__group_journey: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "recipient_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "template_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -1758,6 +1782,8 @@ export const world_pack__group_journey: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "message_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -1838,9 +1864,13 @@ export const world_pack__refund_world: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -1859,15 +1889,23 @@ export const world_pack__refund_world: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "amount_minor": {
+            "maximum": 1000000000000000,
+            "minimum": 1,
             "type": "integer"
           },
           "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "idempotency_key": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -1888,12 +1926,18 @@ export const world_pack__refund_world: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "idempotency_key": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -1990,6 +2034,8 @@ export const world_pack__service_relay: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "job_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -2007,12 +2053,18 @@ export const world_pack__service_relay: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "job_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "request_key": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "resource_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -2032,6 +2084,8 @@ export const world_pack__service_relay: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "lease_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -2049,9 +2103,13 @@ export const world_pack__service_relay: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "job_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "promise_version": {
+            "maximum": 1000000,
+            "minimum": 1,
             "type": "integer"
           }
         },
@@ -2070,6 +2128,8 @@ export const world_pack__service_relay: C.WorldPack = {
         "additionalProperties": false,
         "properties": {
           "conversation_id": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -3176,6 +3236,8 @@ export const world_tool_definition__journey_deliver_message: C.WorldToolDefiniti
     "additionalProperties": false,
     "properties": {
       "message_id": {
+        "maxLength": 100,
+        "minLength": 1,
         "type": "string"
       }
     },

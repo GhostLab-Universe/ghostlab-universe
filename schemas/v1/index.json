@@ -625,7 +625,7 @@
       "name": "capsule_v2",
       "producer": "M02",
       "schema": "v1/capsule_v2.schema.json",
-      "sha256": "93c14b5b2594c8f8b82a9162a7d26322ba65ecc1a13870e3d2fad8df2a15d584",
+      "sha256": "8ae8554ea2f4454345d5cecb95a73ec2f441cdadf36b7698a5353bac6da1502d",
       "type": "CapsuleV2",
       "version": 1
     },

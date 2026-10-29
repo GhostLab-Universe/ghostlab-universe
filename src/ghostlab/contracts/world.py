@@ -9,6 +9,8 @@ against the registered pack for the record's ``world_version``. World state
 stays opaque JSON here: its schema belongs to the pack implementation (M02).
 """
 
+import hashlib
+import json
 from typing import Annotated, Literal
 
 from pydantic import Field, JsonValue, StringConstraints, model_validator
@@ -299,8 +301,21 @@ class CapsulePayloadV2(StrictModel):
 
 
 class CapsuleV2(StrictModel):
+    """v2 has no separate loader yet, so the contract itself verifies the checksum.
+
+    The checksum detects accidental change; it does not establish authorship.
+    """
+
     payload: CapsulePayloadV2
     sha256: Sha256Hex
+
+    @model_validator(mode="after")
+    def _check_checksum(self):
+        payload = self.payload.model_dump(mode="json")
+        digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"),
+                                           ensure_ascii=True, allow_nan=False).encode())
+        _require(digest.hexdigest() == self.sha256, "Capsule checksum mismatch")
+        return self
 
 
 # --- memory (siblings of refund-only v1 contracts) ------------------------------------

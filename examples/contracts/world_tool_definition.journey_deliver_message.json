@@ -5,6 +5,8 @@
     "additionalProperties": false,
     "properties": {
       "message_id": {
+        "maxLength": 100,
+        "minLength": 1,
         "type": "string"
       }
     },

@@ -109,14 +109,23 @@ class WorldPack(StrictModel):
         return frozenset(i.name for i in self.invariants)
 
 
-def _object(**fields: str) -> dict:
-    """Flat tool parameter schema: every field required, no extras."""
+# Static argument bounds. The refund ones equal the set-1 refund argument contracts
+# (ToolArg: 1-100 characters; amount_minor: 1..10**15); payment-dependent ceilings and
+# customer authorization remain engine checks.
+ID = {"type": "string", "minLength": 1, "maxLength": 100}
+AMOUNT = {"type": "integer", "minimum": 1, "maximum": 10**15}
+VERSION = {"type": "integer", "minimum": 1, "maximum": 1_000_000}
+COUNT = {"type": "integer", "minimum": 0, "maximum": 1_000}
+
+
+def _object(**fields: dict) -> dict:
+    """Flat tool parameter schema: every field required, no extras, bounded values."""
     return {"type": "object", "additionalProperties": False, "required": sorted(fields),
-            "properties": {name: {"type": kind} for name, kind in sorted(fields.items())}}
+            "properties": {name: dict(spec) for name, spec in sorted(fields.items())}}
 
 
 def check_arguments(parameters: Mapping, arguments: Mapping) -> list[str]:
-    """Structural check of tool arguments against a flat pack parameter schema."""
+    """Check tool arguments against a flat pack parameter schema, including bounds."""
     problems = []
     properties = parameters.get("properties", {})
     for key in arguments:
@@ -127,16 +136,23 @@ def check_arguments(parameters: Mapping, arguments: Mapping) -> list[str]:
             problems.append(f"missing argument {key!r}")
     expected = {"string": str, "integer": int, "boolean": bool}
     for key, value in arguments.items():
-        kind = properties.get(key, {}).get("type")
-        python = expected.get(kind)
+        spec = properties.get(key, {})
+        python = expected.get(spec.get("type"))
         if python is None:
             continue
         if type(value) is not python:  # bool is not accepted as integer, and vice versa
-            problems.append(f"argument {key!r} must be {kind}")
+            problems.append(f"argument {key!r} must be {spec['type']}")
+            continue
+        if python is str and not spec.get("minLength", 0) <= len(value) <= spec.get(
+                "maxLength", len(value)):
+            problems.append(f"argument {key!r} length is out of bounds")
+        if python is int and not spec.get("minimum", value) <= value <= spec.get(
+                "maximum", value):
+            problems.append(f"argument {key!r} is out of bounds")
     return problems
 
 
-REFUND_IDS = {"order_id": "string", "customer_id": "string"}
+REFUND_IDS = {"order_id": ID, "customer_id": ID}
 
 _PACK_DATA = [
     {
@@ -149,11 +165,10 @@ _PACK_DATA = [
             {"name": "get_order", "effect": "read", "parameters": _object(**REFUND_IDS),
              "description": "Read the synthetic order for the bound customer"},
             {"name": "issue_refund", "effect": "mutate",
-             "parameters": _object(**REFUND_IDS, amount_minor="integer",
-                                   idempotency_key="string"),
+             "parameters": _object(**REFUND_IDS, amount_minor=AMOUNT, idempotency_key=ID),
              "description": "Issue a refund with an idempotency key"},
             {"name": "get_refund_status", "effect": "read",
-             "parameters": _object(**REFUND_IDS, idempotency_key="string"),
+             "parameters": _object(**REFUND_IDS, idempotency_key=ID),
              "description": "Look up a refund by idempotency key"}],
         "faults": [{"fault_id": "timeout_after_commit", "fault_pack": "lost_acknowledgement",
                     "parameters": [],
@@ -183,27 +198,25 @@ _PACK_DATA = [
         "roles": ["planner", "calendar_coordinator", "communications"],
         "tools": [
             {"name": "inspect_constraints", "effect": "read",
-             "parameters": _object(journey_id="string"),
+             "parameters": _object(journey_id=ID),
              "description": "Read the current intent version, participants and permissions"},
             {"name": "hold_availability", "effect": "mutate",
-             "parameters": _object(journey_id="string", option_id="string",
-                                   intent_version="integer"),
+             "parameters": _object(journey_id=ID, option_id=ID, intent_version=VERSION),
              "description": "Place a hold on a transport or lodging option"},
             {"name": "release_availability", "effect": "mutate",
-             "parameters": _object(hold_id="string"),
+             "parameters": _object(hold_id=ID),
              "description": "Release a previously placed hold"},
             {"name": "confirm_reservation", "effect": "mutate",
-             "parameters": _object(hold_id="string", intent_version="integer"),
+             "parameters": _object(hold_id=ID, intent_version=VERSION),
              "description": "Confirm a held reservation under a stated intent version"},
             {"name": "update_calendar_event", "effect": "mutate",
-             "parameters": _object(participant_id="string", event_id="string",
-                                   intent_version="integer"),
+             "parameters": _object(participant_id=ID, event_id=ID, intent_version=VERSION),
              "description": "Update one participant's calendar commitment"},
             {"name": "queue_message", "effect": "mutate",
-             "parameters": _object(recipient_id="string", template_id="string"),
+             "parameters": _object(recipient_id=ID, template_id=ID),
              "description": "Queue a synthetic itinerary message"},
             {"name": "deliver_message", "effect": "deliver",
-             "parameters": _object(message_id="string"),
+             "parameters": _object(message_id=ID),
              "description": "Deliver a queued synthetic message (exposure is irreversible)"}],
         "faults": [
             {"fault_id": "stale_preference_memory", "fault_pack": "stale_or_contaminated_memory",
@@ -244,20 +257,19 @@ _PACK_DATA = [
         "roles": ["front_desk", "inventory", "dispatch"],
         "tools": [
             {"name": "inspect_availability", "effect": "read",
-             "parameters": _object(job_id="string"),
+             "parameters": _object(job_id=ID),
              "description": "Read technician slots, parts and current leases"},
             {"name": "reserve_resource", "effect": "mutate",
-             "parameters": _object(job_id="string", resource_id="string",
-                                   request_key="string"),
+             "parameters": _object(job_id=ID, resource_id=ID, request_key=ID),
              "description": "Lease a technician slot or part with an idempotency key"},
             {"name": "release_resource", "effect": "mutate",
-             "parameters": _object(lease_id="string"),
+             "parameters": _object(lease_id=ID),
              "description": "Release a lease"},
             {"name": "confirm_service", "effect": "mutate",
-             "parameters": _object(job_id="string", promise_version="integer"),
+             "parameters": _object(job_id=ID, promise_version=VERSION),
              "description": "Confirm an appointment to the synthetic customer"},
             {"name": "hand_off_to_owner", "effect": "handoff",
-             "parameters": _object(conversation_id="string"),
+             "parameters": _object(conversation_id=ID),
              "description": "Transfer conversation ownership to the business owner"}],
         "faults": [
             {"fault_id": "stale_availability_competition", "fault_pack": "stale_availability",

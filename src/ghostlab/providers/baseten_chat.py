@@ -143,7 +143,8 @@ class BasetenChatAdapter:
         assistant = {"role": "assistant", "content": content}
         if wire_calls:
             assistant["tool_calls"] = wire_calls
-        continuation = encode_continuation(PREFIX, {"messages": [*history, assistant]})
+        continuation = encode_continuation(PREFIX, {"messages": [*history, assistant]},
+                                           secrets=(self.config.credential.reveal(),))
         if len(continuation) > MAX_CONTINUATION:
             raise InvalidOutput("Conversation history exceeds the continuation limit")
         return build(self.config, request, status=status, text=text, tool_calls=calls,

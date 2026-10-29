@@ -100,7 +100,25 @@ def structured_output(text, schema):
     return value
 
 
-def encode_continuation(prefix: str, state: dict) -> str:
+def redact_state(value, secrets: tuple[str, ...]):
+    """Recursively mask secrets in every string (keys and values) of JSON-like state."""
+    if isinstance(value, str):
+        for secret in secrets:
+            if secret:
+                value = value.replace(secret, "***")
+        return value
+    if isinstance(value, list):
+        return [redact_state(item, secrets) for item in value]
+    if isinstance(value, dict):
+        return {redact_state(key, secrets): redact_state(item, secrets)
+                for key, item in value.items()}
+    return value
+
+
+def encode_continuation(prefix: str, state: dict, *, secrets: tuple[str, ...]) -> str:
+    """Encode adapter state. Secrets are masked first: the token is opaque, so the
+    reply-level ``scrub`` cannot see inside it, and its history is resent later."""
+    state = redact_state(state, secrets)
     raw = json.dumps(state, separators=(",", ":"), sort_keys=True).encode()
     return prefix + base64.urlsafe_b64encode(raw).decode().rstrip("=")
 

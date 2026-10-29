@@ -134,7 +134,8 @@ class MetaResponsesAdapter:
                 text, render.resolve_output_schema(request.output_schema))
         continuation = encode_continuation(PREFIX, {
             "response_id": response_id,
-            "pending_call_ids": [call["provider_call_id"] for call in calls]})
+            "pending_call_ids": [call["provider_call_id"] for call in calls]},
+            secrets=(self.config.credential.reveal(),))
         return build(self.config, request, status=reply_status, text=text, tool_calls=calls,
                      usage=usage, continuation=continuation, structured=structured,
                      received_at=received_at)

@@ -196,3 +196,50 @@ def test_normal_sized_streamed_body_still_parses():
     reply = meta.complete(request(), bundle())
     assert reply.status == "completed" and reply.structured_output == json.loads(PROPOSAL)
     assert reply.model == MODEL  # fixture model id only; no real model is involved
+
+
+# --- re-review: credentials must not survive inside the opaque continuation ---------------
+
+from ghostlab.providers.baseten_chat import PREFIX as CHAT_PREFIX  # noqa: E402
+from ghostlab.providers.meta_responses import PREFIX as META_PREFIX  # noqa: E402
+from ghostlab.providers.replies import decode_continuation  # noqa: E402
+
+
+def _no_secret(value):
+    text = json.dumps(value)
+    assert SECRET not in text and json.dumps(SECRET)[1:-1] not in text
+    return text
+
+
+@pytest.mark.parametrize("echo", ["text", "arguments"])
+def test_baseten_echoed_credential_never_enters_history_or_next_request(echo):
+    if echo == "text":
+        first = chat_response(f"the key is {SECRET}")
+    else:
+        first = chat_response(tool_calls=[chat_call("call_echo", arguments=json.dumps(
+            {"order_id": "synthetic-order-1", "note": SECRET}))], finish="tool_calls")
+    follow = chat_response("done")
+    baseten, recorder, _ = adapter(BASETEN, (200, first), (200, follow))
+    plain = {"output_schema": None}  # free-text turns, so the echoed text is a valid reply
+    reply = baseten.complete(request(BASETEN, **plain), bundle())
+    assert reply.status == ("completed" if echo == "text" else "tool_calls")
+    _clean(reply)
+    history = decode_continuation(CHAT_PREFIX, reply.continuation)
+    _no_secret(history)
+    assert "***" in json.dumps(history)  # masked, not silently dropped
+    results = ([{"provider_call_id": "call_echo", "output_json": "{}", "is_error": False}]
+               if echo == "arguments" else [])
+    second = baseten.complete(request(BASETEN, continuation=reply.continuation,
+                                      tool_results=results, **plain), bundle())
+    assert second.status == "completed"
+    sent = json.loads(recorder.requests[1].content)  # body only; the auth header carries the key
+    _no_secret(sent)
+    assert any("***" in json.dumps(m) for m in sent["messages"])
+
+
+def test_meta_continuation_state_is_masked_too():
+    meta, _, _ = adapter("meta_responses",
+                         (200, meta_response([meta_call(f"call_{SECRET}"[:64])])))
+    reply = meta.complete(request(), bundle())
+    _clean(reply)
+    _no_secret(decode_continuation(META_PREFIX, reply.continuation))

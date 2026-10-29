@@ -2,17 +2,20 @@
 
 A request binds the exact action (sha256 of its canonical JSON), scope, policy
 version and expiry. Only a session principal of kind ``human`` (or
-``local_dev`` while local-dev mode is active) can decide; model roles are not
-principals and never approve. Consumption is single use through
+``local_dev`` while local-dev mode is active) that an injected
+``ApproverAuthority`` authorizes for the approval's project can decide; model
+roles are not principals and never approve. Knowing an approval id or action
+digest is not authority. Consumption is single use through
 ``ApprovalStore.consume``. A changed action has a different digest and needs a
 new request. M04 persists, M05 pauses/resumes, M07 exposes, M08 displays.
 """
 
 import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from datetime import datetime, timedelta, timezone
-from typing import Literal
+from types import MappingProxyType
+from typing import Literal, Protocol, runtime_checkable
 
 from ghostlab.contracts import (ApprovalDecision, ApprovalRequest, ApprovalSubmission, Principal,
                                 TrustedScope)
@@ -24,13 +27,34 @@ MAX_APPROVAL_TTL = timedelta(hours=24)
 
 ApprovalDenial = Literal["capability_denied", "not_found", "not_pending", "not_approved",
                          "expired", "digest_mismatch", "policy_changed", "approver_not_allowed",
-                         "invalid_ttl", "conflict"]
+                         "approver_not_authorized", "invalid_ttl", "conflict"]
 
 
 class ApprovalDenied(Exception):
     def __init__(self, code: ApprovalDenial, reason: str):
         super().__init__(f"{code}: {reason}")
         self.code = code
+
+
+@runtime_checkable
+class ApproverAuthority(Protocol):
+    """Who may decide approvals in a project. Supplied by the trusted host (M07)."""
+
+    def may_approve(self, principal: Principal, project_id: str) -> bool: ...
+
+
+class ProjectApproverAllowlist:
+    """Explicit local-MVP authority: project id -> principal ids allowed to approve.
+
+    Deny by default: an unlisted project or principal has no approval authority.
+    """
+
+    def __init__(self, approvers: Mapping[str, Iterable[str]]):
+        self._approvers = MappingProxyType(
+            {project: frozenset(ids) for project, ids in approvers.items()})
+
+    def may_approve(self, principal: Principal, project_id: str) -> bool:
+        return principal.principal_id in self._approvers.get(project_id, frozenset())
 
 
 def action_digest(action: Mapping) -> str:
@@ -51,9 +75,12 @@ def _parse(value: str) -> datetime:
 
 
 class ApprovalService:
-    def __init__(self, store: ApprovalStore, *, local_dev_mode: bool = False,
-                 policy_version: str = POLICY_VERSION):
+    def __init__(self, store: ApprovalStore, *, approvers: ApproverAuthority,
+                 local_dev_mode: bool = False, policy_version: str = POLICY_VERSION):
+        if not isinstance(approvers, ApproverAuthority):
+            raise TypeError("approvers must implement ApproverAuthority")
         self._store = store
+        self._approvers = approvers
         self._local_dev_mode = local_dev_mode
         self._policy_version = policy_version
 
@@ -90,11 +117,20 @@ class ApprovalService:
     def decide(self, *, session_principal: Principal, project_id: str,
                submission: ApprovalSubmission, decision_id: str,
                now: datetime) -> ApprovalDecision:
-        """Record a human decision. ``session_principal`` comes from M07's session."""
+        """Record a human decision.
+
+        ``session_principal`` and ``project_id`` come from M07's authenticated
+        session, never from the request body. Authority is checked before the
+        approval is looked up, so an unauthorized caller learns nothing about
+        which approvals exist.
+        """
         if session_principal.kind == "service" or (
                 session_principal.kind == "local_dev" and not self._local_dev_mode):
             raise ApprovalDenied("approver_not_allowed",
                                  f"{session_principal.kind} principals cannot approve here")
+        if not self._approvers.may_approve(session_principal, project_id):
+            raise ApprovalDenied("approver_not_authorized",
+                                 "principal has no approval authority in this project")
         request = self._get(project_id, submission.approval_id)
         if request.status != "pending":
             raise ApprovalDenied("not_pending", f"approval is {request.status}")

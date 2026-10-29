@@ -51,7 +51,10 @@ from ghostlab.storage.interfaces import ApprovalStore, Conflict, MemoryStore
 
 from . import tasks as board
 from .engine import derive_findings, execute_run
-from .inference import ExplorerClient, LiveInferenceAuthorization, require_inference_allowed
+from .inference import (ExplorerClient, LiveInferenceAuthorization, LiveInferenceRefused,
+                        require_inference_allowed)
+
+MODEL_RESOURCES = ("model_calls", "output_tokens", "input_tokens")
 
 ORCHESTRATION_VERSION = "ghostlab-orchestration/1"
 TARGET_TOOLS = {"get_order", "issue_refund", "get_refund_status"}
@@ -117,6 +120,8 @@ class CampaignState(TypedDict, total=False):
     events: list
     errors: list
     next: str
+    provider: dict          # provider, endpoint and model pinned at start
+    task_baselines: dict    # ledger totals when each model task was planned
 
 
 class CampaignController:
@@ -141,8 +146,7 @@ class CampaignController:
         if not within.allowed:
             raise PolicyDenied(within)
         config = self.s.adapter_factory(self.s.runtime).config
-        limits = require_inference_allowed(self.s.runtime, config.model, spec.budget,
-                                           self.s.live, credential_source=config.credential.source)
+        limits = require_inference_allowed(self.s.runtime, config, spec.budget, self.s.live)
         now = utc_timestamp(self.s.clock())
         state: CampaignState = {
             "campaign_id": campaign_id, "project_id": self.session.project_id,
@@ -153,7 +157,9 @@ class CampaignController:
             "max_iterations": self.max_iterations, "started_at": now, "tasks": [],
             "proposal": None, "experiment_id": None, "experiments": {}, "findings": [],
             "memory_ids": [], "approval": None, "repair": None, "events": [], "errors": [],
-            "next": "plan"}
+            "next": "plan", "task_baselines": {},
+            "provider": {"provider": config.provider, "endpoint": config.base_url,
+                         "model": config.model}}
         state["events"] = self._event(state, "campaign_created", "Campaign created")
         return self._invoke(state, campaign_id)
 
@@ -162,6 +168,7 @@ class CampaignController:
         self._check_owner(campaign_id)
         if not self.graph.get_state(self._config(campaign_id)).next:
             return self._snapshot(campaign_id)  # finished: nothing to resume
+        self._inference_limits(self._snapshot(campaign_id))  # re-authorize before any call
         return self._invoke(Command(resume="check"), campaign_id)
 
     def recover(self, campaign_id: str) -> dict:
@@ -170,6 +177,7 @@ class CampaignController:
         Completed nodes are not re-run; the interrupted node runs again.
         """
         self._check_owner(campaign_id)
+        self._inference_limits(self._snapshot(campaign_id))  # re-authorize before any call
         return self._invoke(None, campaign_id)
 
     def state(self, campaign_id: str) -> dict:
@@ -237,11 +245,31 @@ class CampaignController:
     def _limits(self, state) -> BudgetLimits:
         return BudgetLimits.model_validate(state["limits"])
 
-    def _accountant(self, state) -> BudgetAccountant:
+    def _inference_limits(self, state) -> BudgetLimits:
+        """Re-run the inference gate for the current runtime; return effective limits.
+
+        Called by ``resume``/``recover`` and by every node before inference, so a
+        restart can never swap in an unauthorized transport, another provider,
+        endpoint or model, or a larger call cap than the one in force.
+        """
+        config = self.s.adapter_factory(self.s.runtime).config
+        current = {"provider": config.provider, "endpoint": config.base_url,
+                   "model": config.model}
+        if state.get("provider") != current:
+            raise LiveInferenceRefused("provider, endpoint or model changed since start")
+        stored = self._limits(state)
+        allowed = require_inference_allowed(self.s.runtime, config, stored, self.s.live)
+        return stored.model_validate({**stored.model_dump(), "max_model_calls": min(
+            stored.max_model_calls, allowed.max_model_calls)})
+
+    def _accountant(self, state, limits: BudgetLimits | None = None) -> BudgetAccountant:
         # Ledger rows are namespaced by project too (M04's ledger has no project column).
         return BudgetAccountant(self.s.ledger,
                                 ledger_key(state["project_id"], state["campaign_id"]),
-                                self._limits(state), clock=self.s.clock)
+                                limits or self._limits(state), clock=self.s.clock)
+
+    def _deadline_passed(self, state) -> bool:
+        return self._elapsed_ms(state) >= self._limits(state).max_wall_clock_ms
 
     def _event(self, state, kind, summary, *, task_id=None, run_id=None, refs=()):
         event = ExperimentEvent.model_validate({
@@ -362,8 +390,11 @@ class CampaignController:
                  board.new_task(cid, names["remember"], "record_memory", "supervisor",
                                 depends_on=[names["verify"]],
                                 exit_condition="Verified findings stored in memory")]
+        accountant = self._accountant(state)
+        baselines = {**state.get("task_baselines", {}),
+                     names["propose"]: {r: accountant.committed(r) for r in MODEL_RESOURCES}}
         return {"iteration": iteration, "tasks": tasks, "proposal": None,
-                "experiment_id": None, "next": "propose",
+                "experiment_id": None, "next": "propose", "task_baselines": baselines,
                 "events": self._event(state, "campaign_status_changed",
                                       f"Iteration {iteration} planned")}
 
@@ -379,13 +410,23 @@ class CampaignController:
                     for e in state["experiments"].values()]
         questions = (("Already explored: " + "; ".join(explored) + ". Propose something new.",)
                      if explored else ())
+        limits = self._inference_limits(state)  # refuses an unauthorized runtime
+        accountant = self._accountant(state, limits)
+        baseline = state.get("task_baselines", {}).get(task_id, {})
+        # Task usage continues across task retries and crash recovery: everything the
+        # ledger committed since the task was planned belongs to this task (it is the
+        # only model caller between plan and execute).
+        accountant.seed_task_usage(task_id, {r: accountant.committed(r) - baseline.get(r, 0)
+                                             for r in MODEL_RESOURCES} if baseline else {})
+        remaining_ms = limits.max_wall_clock_ms - self._elapsed_ms(state)
         try:
             outcome = self.explorer.propose(
                 scope=delegate(self.root, "explorer", set()), campaign_id=state["campaign_id"],
                 task_id=task_id, request_id=f"{task_id}-a{attempt}", objective=spec.objective,
                 success_criteria=tuple(spec.success_criteria), as_of=self._now(),
-                questions=questions, accountant=self._accountant(state),
-                task_limits=ceiling_for("explorer"), cancel=self.cancel)
+                questions=questions, accountant=accountant,
+                task_limits=ceiling_for("explorer"), remaining_ms=remaining_ms,
+                deadline_passed=lambda: self._deadline_passed(state), cancel=self.cancel)
         except ContextError as error:
             tasks = board.fail_dependents(board.finish(tasks, task_id, "failed"))
             return self._stop(state, "failed", "context_error", tasks=tasks,

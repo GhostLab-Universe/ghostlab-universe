@@ -4,10 +4,11 @@ from .controller import (ORCHESTRATION_VERSION, CampaignController, CampaignExis
                          CampaignState, Services, TrustedSession, ledger_key)
 from .engine import (PolicyEnforcedWorld, RunOutcome, ToolDenied, derive_findings, execute_run,
                      ledger_change_events)
-from .inference import (ExplorerClient, LiveInferenceAuthorization, LiveInferenceRefused,
+from .inference import (REQUIRED_COMPATIBILITY_CHECKS, ExplorerClient,
+                        LiveInferenceAuthorization, LiveInferenceRefused,
                         require_inference_allowed)
 
-__all__ = ["ORCHESTRATION_VERSION", "CampaignController", "CampaignExists", "CampaignState",
+__all__ = ["ORCHESTRATION_VERSION", "REQUIRED_COMPATIBILITY_CHECKS", "CampaignController", "CampaignExists", "CampaignState",
            "ExplorerClient",
            "LiveInferenceAuthorization", "LiveInferenceRefused", "PolicyEnforcedWorld",
            "RunOutcome", "Services", "ToolDenied", "TrustedSession", "derive_findings",

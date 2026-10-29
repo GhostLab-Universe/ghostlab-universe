@@ -41,10 +41,11 @@ def utc_timestamp(moment: datetime) -> str:
 
 
 class BudgetAccountant:
-    """Campaign-level limits via the atomic ledger; per-task role ceilings in process.
+    """Campaign-level limits via the atomic ledger; per-task role ceilings on top.
 
-    Per-task counters live in this object: after a restart a task starts a fresh
-    counter, while the campaign ledger still holds every earlier reservation.
+    Per-task usage is seeded by the caller from durable data (the controller
+    derives it from the ledger against a checkpointed baseline), so task retries
+    and crash recovery continue the same count instead of starting over.
     """
 
     def __init__(self, ledger: BudgetLedger, campaign_id: str, limits: BudgetLimits, *,
@@ -75,6 +76,15 @@ class BudgetAccountant:
             self._task_used[(task_id, resource)] = used + amount
             return reservation
 
+    def seed_task_usage(self, task_id: str, used: dict[str, int]):
+        """Start a task's counters from usage already committed for it."""
+        with self._lock:
+            for resource, amount in used.items():
+                self._task_used[(task_id, resource)] = max(0, int(amount))
+
+    def committed(self, resource: str) -> int:
+        return self.ledger.committed(self.campaign_id, resource)[0]
+
     def reconcile(self, reservation: BudgetReservation, actual: int | None):
         self.ledger.reconcile(reservation.reservation_id, actual)
 
@@ -82,8 +92,10 @@ class BudgetAccountant:
         self.ledger.release(reservation.reservation_id)
 
     def model_attempt_gate(self, task_id: str, *, max_output_tokens: int, input_tokens: int,
-                           task_limits: BudgetLimits) -> "AttemptGate":
-        return AttemptGate(self, task_id, max_output_tokens, input_tokens, task_limits)
+                           task_limits: BudgetLimits,
+                           deadline_passed: Callable[[], bool] | None = None) -> "AttemptGate":
+        return AttemptGate(self, task_id, max_output_tokens, input_tokens, task_limits,
+                           deadline_passed=deadline_passed)
 
     def usage(self, *, wall_clock_ms: int) -> BudgetUsage:
         values, unknown = {}, 0
@@ -107,6 +119,7 @@ class AttemptGate:
     max_output_tokens: int
     input_tokens: int
     task_limits: BudgetLimits
+    deadline_passed: Callable[[], bool] | None = None
     attempts: list[dict[str, BudgetReservation]] = field(default_factory=list)
     exhausted: BudgetExhausted | None = None
 
@@ -115,6 +128,13 @@ class AttemptGate:
         return f"{self.task_id}-attempts"
 
     def __call__(self) -> bool:
+        try:
+            if self.deadline_passed is not None and self.deadline_passed():
+                self.exhausted = BudgetExhausted("wall_clock_ms", "campaign")
+                return False  # the campaign deadline passed: send no further attempt
+        except Exception as error:  # never let a clock failure escape the transport
+            self.exhausted = BudgetExhausted(type(error).__name__, "deadline")
+            return False
         wanted = (("model_calls", 1, self.task_limits.max_model_calls),
                   ("output_tokens", self.max_output_tokens, self.task_limits.max_output_tokens),
                   ("input_tokens", max(1, self.input_tokens), self.task_limits.max_input_tokens))

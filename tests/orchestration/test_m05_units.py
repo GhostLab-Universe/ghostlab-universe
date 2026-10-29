@@ -147,9 +147,11 @@ def test_attempts_are_bounded():
 # --- live-inference gate ------------------------------------------------------------
 
 def report(path: Path, **changes) -> Path:
-    data = {"live": True, "transport": "network", "model": MODEL,
-            "checks": [{"check": "auth_minimal", "status": "passed"},
-                       {"check": "structured_proposal", "status": "passed"}], **changes}
+    from ghostlab.orchestration import REQUIRED_COMPATIBILITY_CHECKS
+    data = {"live": True, "mode": "live", "transport": "network", "model": MODEL,
+            "provider": "meta_responses", "endpoint": "https://api.meta.ai/v1",
+            "checks": [{"check": name, "status": "passed"}
+                       for name in sorted(REQUIRED_COMPATIBILITY_CHECKS)], **changes}
     path.write_text(json.dumps(data), encoding="utf-8")
     return path
 
@@ -178,17 +180,24 @@ def test_live_authorization_requires_every_gate(tmp_path, changes, auth):
         controller.start("campaign-1", spec())
 
 
+def _config(source):
+    from ghostlab.providers import Credential, ProviderConfig
+    return ProviderConfig(provider="meta_responses", model=MODEL,
+                          base_url="https://api.meta.ai/v1",
+                          credential=Credential("sk-fixture-unit-000", source))
+
+
 def test_valid_live_authorization_caps_model_calls_without_sending(tmp_path):
     from ghostlab.orchestration import require_inference_allowed
     from ghostlab.providers import Runtime
     live = LiveInferenceAuthorization(model=MODEL, max_model_calls=3, confirm_paid_calls=True,
                                       compatibility_report=report(tmp_path / "r.json"))
-    limits = require_inference_allowed(Runtime(transport=None), MODEL, spec().budget, live,
-                                       credential_source="env:MODEL_API_KEY")
+    limits = require_inference_allowed(Runtime(transport=None), _config("env:MODEL_API_KEY"),
+                                       spec().budget, live)
     assert limits.max_model_calls == 3  # the explicit cap replaces the campaign value
     with pytest.raises(LiveInferenceRefused, match="environment"):
-        require_inference_allowed(Runtime(transport=None), MODEL, spec().budget, live,
-                                  credential_source="test-fixture")
+        require_inference_allowed(Runtime(transport=None), _config("test-fixture"),
+                                  spec().budget, live)
 
 
 

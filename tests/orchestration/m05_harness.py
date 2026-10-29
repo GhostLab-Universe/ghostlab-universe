@@ -74,7 +74,12 @@ class Script:
         self.requests.append(request)
         if not self.responses:
             raise AssertionError("Unexpected extra provider request")
-        status, body = self.responses.pop(0)
+        item = self.responses.pop(0)
+        if isinstance(item, BaseException):
+            raise item  # simulates a process crash in the middle of a model call
+        if callable(item):
+            item = item(request)
+        status, body = item
         content = body if isinstance(body, bytes) else json.dumps(body).encode()
         return httpx.Response(status, content=content)
 

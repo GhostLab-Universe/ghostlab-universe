@@ -17,9 +17,13 @@ import httpx
 from ghostlab.budgets import AttemptGate, BudgetAccountant
 from ghostlab.context import ContextCompiler, ContextRequest, MemorySelection
 from ghostlab.contracts import BudgetLimits, ExperimentProposal, ModelReply, ModelRequest
-from ghostlab.providers import ProviderAdapter, Runtime
+from ghostlab.providers import ProviderAdapter, ProviderConfig, Runtime
 
 PASSING = {"passed"}
+# Every check M01's probe (scripts/probe_provider.py) runs live; all must be present and pass.
+REQUIRED_COMPATIBILITY_CHECKS = frozenset({
+    "auth_minimal", "tool_roundtrip", "continuation_after_tool_result",
+    "structured_proposal", "usage_capture"})
 
 
 class LiveInferenceRefused(Exception):
@@ -35,10 +39,10 @@ class LiveInferenceAuthorization:
     compatibility_report: Path    # M01 probe report from a live run
     confirm_paid_calls: bool
 
-    def check(self, provider_model: str, campaign_limits: BudgetLimits):
+    def check(self, config: ProviderConfig, campaign_limits: BudgetLimits):
         if not self.confirm_paid_calls:
             raise LiveInferenceRefused("paid calls were not confirmed")
-        if self.model != provider_model:
+        if self.model != config.model:
             raise LiveInferenceRefused("authorization names a different model")
         if not 1 <= self.max_model_calls <= campaign_limits.max_model_calls:
             raise LiveInferenceRefused("spending cap must be 1..campaign max_model_calls")
@@ -46,18 +50,27 @@ class LiveInferenceAuthorization:
             report = json.loads(self.compatibility_report.read_text(encoding="utf-8"))
         except (OSError, ValueError) as error:
             raise LiveInferenceRefused("compatibility report is missing or unreadable") from error
-        if report.get("live") is not True or report.get("transport") != "network":
+        if (report.get("live") is not True or report.get("transport") != "network"
+                or report.get("mode") != "live"):
             raise LiveInferenceRefused("compatibility report is not from a live run")
-        if report.get("model") != self.model:
-            raise LiveInferenceRefused("compatibility report is for a different model")
-        checks = report.get("checks") or []
-        if not checks or any(c.get("status") not in PASSING for c in checks):
+        bound = {"provider": config.provider, "endpoint": config.base_url,
+                 "model": config.model}
+        for key, expected in bound.items():
+            if report.get(key) != expected:
+                raise LiveInferenceRefused(f"compatibility report is for a different {key}")
+        checks = report.get("checks")
+        if not isinstance(checks, list) or not all(isinstance(c, dict) for c in checks):
+            raise LiveInferenceRefused("compatibility report has no check list")
+        if any(c.get("status") not in PASSING for c in checks):
             raise LiveInferenceRefused("compatibility report has failing or skipped checks")
+        missing = REQUIRED_COMPATIBILITY_CHECKS - {c.get("check") for c in checks}
+        if missing:
+            raise LiveInferenceRefused(
+                f"compatibility report lacks required checks: {sorted(missing)}")
 
 
-def require_inference_allowed(runtime: Runtime, provider_model: str, limits: BudgetLimits,
-                              live: LiveInferenceAuthorization | None, *,
-                              credential_source: str = "") -> BudgetLimits:
+def require_inference_allowed(runtime: Runtime, config: ProviderConfig, limits: BudgetLimits,
+                              live: LiveInferenceAuthorization | None) -> BudgetLimits:
     """Return the effective limits; refuse any non-mock runtime without authorization.
 
     Only an ``httpx.MockTransport`` keeps requests in-process. ``None`` (the
@@ -68,9 +81,9 @@ def require_inference_allowed(runtime: Runtime, provider_model: str, limits: Bud
         return limits  # mocked transport: no request leaves the process
     if live is None:
         raise LiveInferenceRefused("a network runtime needs LiveInferenceAuthorization")
-    if not credential_source.startswith("env:"):
+    if not config.credential.source.startswith("env:"):
         raise LiveInferenceRefused("live calls need a key read from the environment")
-    live.check(provider_model, limits)
+    live.check(config, limits)
     return limits.model_validate({**limits.model_dump(),
                                   "max_model_calls": live.max_model_calls})
 
@@ -99,7 +112,8 @@ class ExplorerClient:
     def propose(self, *, scope, campaign_id: str, task_id: str, request_id: str,
                 objective: str, success_criteria: tuple[str, ...], as_of: str,
                 questions: tuple[str, ...], accountant: BudgetAccountant,
-                task_limits: BudgetLimits, cancel=None) -> ProposalOutcome:
+                task_limits: BudgetLimits, remaining_ms: int,
+                deadline_passed: Callable[[], bool], cancel=None) -> ProposalOutcome:
         compiled = self.compiler.compile(ContextRequest(
             bundle_id=f"bundle-{task_id}", campaign_id=campaign_id, task_id=task_id,
             role="explorer", scope=scope, objective=objective,
@@ -108,9 +122,13 @@ class ExplorerClient:
             questions=questions, memory=MemorySelection(campaign_id=None, limit=10)))
         bundle = compiled.bundle
         probe = self.adapter_factory(self.runtime)
+        if remaining_ms < 1 or deadline_passed():
+            return ProposalOutcome(None, {"status": "failed", "error": None}, {}, compiled.sha256,
+                                   0, "wall_clock_ms")
         gate: AttemptGate = accountant.model_attempt_gate(
             task_id, max_output_tokens=self.max_output_tokens,
-            input_tokens=bundle.estimated_tokens, task_limits=task_limits)
+            input_tokens=bundle.estimated_tokens, task_limits=task_limits,
+            deadline_passed=deadline_passed)
         request = ModelRequest.model_validate({
             "schema_version": 1, "request_id": request_id, "campaign_id": campaign_id,
             "task_id": task_id, "role": "explorer", "provider": probe.config.provider,
@@ -119,7 +137,9 @@ class ExplorerClient:
                                "sha256": compiled.sha256},
             "tools": [], "tool_results": [], "output_schema": bundle.output_schema.model_dump(),
             "continuation": None, "max_output_tokens": self.max_output_tokens,
-            "timeout_ms": self.timeout_ms, "budget_reservation_id": gate.group_id,
+            # The provider deadline never outlives the campaign's remaining wall clock.
+            "timeout_ms": max(1, min(self.timeout_ms, remaining_ms)),
+            "budget_reservation_id": gate.group_id,
             "stream": False})
         # A fresh runtime and adapter per call, so no gate is shared between calls.
         adapter = self.adapter_factory(dataclasses.replace(self.runtime, attempt_gate=gate))

@@ -6,7 +6,7 @@ Consider a refund agent handling a synthetic INR 2,500 order. The payment succee
 
 ## Project status
 
-Planning scaffold. The runtime, dashboard and model integrations are not implemented yet. No benchmark results are claimed.
+The first executable core is implemented: a trusted synthetic refund world, baseline/fault branches, vulnerable and repaired adapters, deterministic invariant checks, Reality Diff and recorded-action capsule replay. The dashboard, LangGraph workflow, live model adapters, database persistence and hosted isolation remain planned. No benchmark superiority is claimed.
 
 ## MVP
 
@@ -21,25 +21,54 @@ Start with a timeout after payment commit. Add stale data and malicious tool-res
 
 ## Planned stack
 
-React interface, FastAPI service, Python simulation engine and SQLite storage. Keep model access behind a provider interface. The earlier project discussion proposed Meta model access through Baseten and optional isolated execution through Modal; provider availability and model identifiers must be verified before integration.
+React, Vite and TypeScript interface; FastAPI/Pydantic service boundary; LangGraph StateGraph with custom provider nodes; dependency-free Python simulation engine; SQLite for serial local work and Postgres for a hosted multiworker service. Direct Meta Responses is the planned primary inference adapter. Baseten Chat Completions is a conditional fallback with a separate adapter. Provider/model access and feature compatibility must pass authenticated probes before live exploration; no live integration is claimed by this core.
 
 ## Documentation
 
 - [Architecture](architecture.md)
+- [Architecture decisions and verified sources](docs/architecture-decisions.md)
 - [MVP plan](mvp-plan.md)
 - [Working together](CONTRIBUTING.md)
 - [Setup status](setup-status.md)
 
 ## Team
 
-- Sairishwanth89: requested organization owner.
-- Abhiram-0910: requested repository collaborator with Write access.
+- Sairishwanth89: confirmed organization owner.
+- Abhiram-0910: repository Write invitation sent; awaiting acceptance.
 
-These are intended roles. Invitation and acceptance status are recorded separately in the setup status document.
+Invitation and acceptance status are recorded separately in the setup status document.
 
 ## Getting started
 
-Choose a task from the MVP plan and agree on the experiment schema before implementing the engine and interface in parallel. There are no installation or run commands yet because application code has not been added.
+Run from this repository using Python 3.11 or later. The core uses only the standard library, so no dependency installation or API key is needed.
+
+PowerShell:
+
+```powershell
+$env:PYTHONPATH = 'src'
+python -m unittest discover -s tests -v
+python -m ghostlab demo
+python -m ghostlab replay artifacts/local/refund-failure.json
+```
+
+Linux/macOS:
+
+```sh
+export PYTHONPATH=src
+python -m unittest discover -s tests -v
+python -m ghostlab demo
+python -m ghostlab replay artifacts/local/refund-failure.json
+```
+
+The demo executes real state transitions over an explicitly synthetic INR 2,500 order. The baseline refunds 250,000 minor units; a timeout after commit causes the vulnerable retry to refund 500,000; the repaired adapter checks status and refunds 250,000. The first divergent event is event 2. The exported failure capsule reproduces the recorded actions, trace, state and checks with zero model calls. A reproduced failing check remains a reproduced failure, not a passing business outcome.
+
+Fourteen standard-library tests cover authorization, principal spoofing, tool schemas, idempotency, branch independence, call budgets, invariant detection, capsule replay, tampering and malformed capsule rejection. Run them on your checkout before changing the engine.
+
+This core accepts trusted checked-in adapters only. It does not execute uploaded programs. The synthetic payment service deliberately permits cumulative over-refunds so the independent verifier can detect the vulnerable adapter; host/tool authorization remains enforced. The current execution budget limits tool calls; hard CPU, memory and wall-clock isolation belongs to the later worker backend. Capsules contain data only. Their checksums detect accidental changes and do not establish trusted authorship.
+
+The controller binds an actor principal to each world; tool-supplied customer IDs cannot change it. Demo runs default to the synthetic order owner, and capsules retain that principal for replay. This identity binding is not production authentication. The future API must obtain the principal from an authenticated session and enforce project access before accepting experiments.
+
+Next implementation steps are the provider capability probes, LangGraph controller, FastAPI contracts and React Reality Diff view in the architecture decision document. No model outputs are fabricated by this demo.
 
 Use synthetic data and keep API credentials outside the repository. A successful regression run establishes that the defined checks passed; it does not establish that an agent is safe in every environment.
 

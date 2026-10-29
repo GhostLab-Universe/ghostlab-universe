@@ -1,0 +1,23 @@
+{
+  "allowed_tools": [],
+  "output_schema": {"name": "evidence_interpretation", "version": 1},
+  "preconditions": [
+    "The deterministic verifier has produced invariant findings for the run",
+    "The Reality Diff for the run is available by reference"
+  ],
+  "prompt_version": "analyst-evidence-prompt-1",
+  "purpose": "Explain verifier findings using cited trace events without changing any verdict",
+  "schema_version": 1,
+  "skill_id": "interpret-evidence",
+  "steps": [
+    "Read each invariant finding and the events it cites",
+    "Relate the first divergence to the failed invariants",
+    "Explain the likely cause, citing event and finding identifiers",
+    "Return the interpretation; verdicts stay exactly as the verifier reported them"
+  ],
+  "stop_conditions": [
+    "Every failed invariant has a cited explanation",
+    "The evidence is insufficient and an unresolved question is recorded"
+  ],
+  "version": 1
+}

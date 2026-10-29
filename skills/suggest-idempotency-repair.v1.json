@@ -1,0 +1,23 @@
+{
+  "allowed_tools": [],
+  "output_schema": {"name": "repair_suggestion", "version": 1},
+  "preconditions": [
+    "A reproduced duplicate-refund failure capsule exists",
+    "The failing invariant and first divergent event are identified"
+  ],
+  "prompt_version": "analyst-repair-prompt-1",
+  "purpose": "Suggest an idempotency repair for human review; the suggestion is never executed by this skill",
+  "schema_version": 1,
+  "skill_id": "suggest-idempotency-repair",
+  "steps": [
+    "Identify where the retry reissues a committed refund",
+    "Describe a repair that checks refund status by idempotency key before retrying",
+    "List the regression check the repair must pass against the failure capsule",
+    "Return the suggestion as data for review; it requires explicit approval before any use"
+  ],
+  "stop_conditions": [
+    "One repair suggestion returned",
+    "No repair is supported by the cited evidence"
+  ],
+  "version": 1
+}

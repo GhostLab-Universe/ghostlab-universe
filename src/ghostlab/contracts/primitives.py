@@ -31,7 +31,9 @@ Currency = Annotated[str, StringConstraints(pattern=r"^[A-Z]{3}$")]
 MediaType = Annotated[str, StringConstraints(pattern=r"^[a-z]+/[a-z0-9.+-]{1,100}$")]
 UtcTimestamp = Annotated[
     str,
-    StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$"),
+    # ASCII digits only: \d means Unicode digits in some regex engines.
+    StringConstraints(
+        pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z$"),
     AfterValidator(_utc_timestamp),
 ]
 

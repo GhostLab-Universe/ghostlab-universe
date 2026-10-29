@@ -5,7 +5,7 @@
   "description": "project_id is filled by the controller from TrustedScope, not by a model.",
   "properties": {
     "as_of": {
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
       "type": "string"
     },
     "campaign_id": {

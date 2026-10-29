@@ -11,7 +11,7 @@
       "name": "agent_envelope",
       "producer": "M05",
       "schema": "v1/agent_envelope.schema.json",
-      "sha256": "7ad29a2b9b4897b97bb335d4d01e5ef8bddbfe276a04e651d6e6cad3321ea207",
+      "sha256": "c3a7963349fedbd13809b958cc998669a660bef2253ae46dc526d44527bc971b",
       "type": "AgentEnvelope",
       "version": 1
     },
@@ -40,7 +40,7 @@
       "name": "campaign_record",
       "producer": "M05",
       "schema": "v1/campaign_record.schema.json",
-      "sha256": "5473edd5ac0cb6a802aad8ff6d30c5c4deb51ca553e2977bf80eb6ef46521bf1",
+      "sha256": "60742845f923c37a2644608e1d4a2fa8016b5712888df1655d544c4e80b610c2",
       "type": "CampaignRecord",
       "version": 1
     },
@@ -69,7 +69,7 @@
       "name": "context_bundle",
       "producer": "M03",
       "schema": "v1/context_bundle.schema.json",
-      "sha256": "5fdcb771e218ee4ef9e8a36589448ba2b862ef903a3a37ed1e83a793d3203d7a",
+      "sha256": "d794c6c618034e460297e56e000bd7d96826c616c290f3dde0eb98fb32dddd6d",
       "type": "ContextBundle",
       "version": 1
     },
@@ -110,7 +110,7 @@
       "name": "model_reply",
       "producer": "M01",
       "schema": "v1/model_reply.schema.json",
-      "sha256": "506491a4e4a4d46dbfd4d75bb57ffb89f949740982e2d71ca793bc9fcaed447a",
+      "sha256": "a7da660fff90ce04e8af686293314b45f2528b38c88e2337f9a40e8f2500a73e",
       "type": "ModelReply",
       "version": 1
     },
@@ -245,7 +245,7 @@
       "name": "invariant_finding",
       "producer": "M02",
       "schema": "v1/invariant_finding.schema.json",
-      "sha256": "d670c876528da1b82542145a3e2415159f3dcd7c556094748d831aa756e73666",
+      "sha256": "04969f3012a54c6a5d04822ccef295b080e39b9bb2be2cede4f793bc954c622f",
       "type": "InvariantFinding",
       "version": 1
     },
@@ -260,7 +260,7 @@
       "name": "experiment_event",
       "producer": "M05",
       "schema": "v1/experiment_event.schema.json",
-      "sha256": "235a8b934fae9be69bf9ecff3c2d98dfd11be4f2da1c49410077c6f8198921be",
+      "sha256": "9b92684a4d4da1f6b48e050d9e6e4dede9228e9a14d6ef942ac94bbd4ae3a54a",
       "type": "ExperimentEvent",
       "version": 1
     },
@@ -274,7 +274,7 @@
       "name": "memory_record",
       "producer": "M04",
       "schema": "v1/memory_record.schema.json",
-      "sha256": "a4c85facfbdd0d6f9636bb28a705faf060eff22e4af3d9cfe95d563a6c16091a",
+      "sha256": "ddafcd95fdb9bb7a0be44928176368ebbe8f19d383f29f1150a8cffca1d1a7a9",
       "type": "MemoryRecord",
       "version": 1
     },
@@ -287,7 +287,7 @@
       "name": "memory_query",
       "producer": "M03",
       "schema": "v1/memory_query.schema.json",
-      "sha256": "00c2080069ca7a63ebcd326003a58bbe697492d0a207ed7a3352d97b1fecb6a8",
+      "sha256": "f0b4baa4bbf98c2a788279b3f6c2fec521e12e271374686892c6d81bf9f21d9a",
       "type": "MemoryQuery",
       "version": 1
     },
@@ -303,7 +303,7 @@
       "name": "approval_request",
       "producer": "M06",
       "schema": "v1/approval_request.schema.json",
-      "sha256": "4b6e15d0431dc7465a6c0e1a3421a14e290a6c7159b50aa4c1a8619d2d098717",
+      "sha256": "ec5860dbf7fc7417154fd272e6844182bebb4450c95cb7472cc7eed4a7914cd7",
       "type": "ApprovalRequest",
       "version": 1
     },
@@ -333,7 +333,7 @@
       "name": "approval_decision",
       "producer": "M06",
       "schema": "v1/approval_decision.schema.json",
-      "sha256": "b6b0718979b403c0bec107235aaa7307051171e8874e1fc0bc6c9d9479cd2df3",
+      "sha256": "52746b1ad5f30a1d8d73e937985d4f69ee6af99dc50b54beb6149933ac9fe372",
       "type": "ApprovalDecision",
       "version": 1
     },
@@ -377,7 +377,7 @@
       "name": "budget_reservation",
       "producer": "M05",
       "schema": "v1/budget_reservation.schema.json",
-      "sha256": "c1d7c1f5f8020893a3e1927c2063aecbd49c3161599dfa503f14c157e45a5960",
+      "sha256": "7508ade1119307012be8c5741afb298fd51095908f4318f525335ddfe5c8ab7e",
       "type": "BudgetReservation",
       "version": 1
     },
@@ -432,7 +432,7 @@
       "name": "artifact_ref",
       "producer": "M04",
       "schema": "v1/artifact_ref.schema.json",
-      "sha256": "f6c49c02d9e0312407e13f7ce28a6a06fcfb3f1fc1a03bcee9f01b38001dfab6",
+      "sha256": "0ae6145c79ad4a46c7dea974e52ac295b375a7fe1030d9b0a4b200b1409fc7fa",
       "type": "ArtifactRef",
       "version": 1
     }

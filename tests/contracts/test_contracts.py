@@ -224,6 +224,7 @@ def test_malformed_references_rejected(ref):
     ("agent_envelope", lambda p: p.update(created_at="2026-10-29T10:00:00+05:30")),
     ("agent_envelope", lambda p: p.update(created_at="2026-02-30T10:00:00Z")),
     ("agent_envelope", lambda p: p.update(created_at=1761732000)),
+    ("agent_envelope", lambda p: p.update(created_at="２０２６-10-29T10:00:00Z")),
     ("model_request", lambda p: p.update(context_bundle={"kind": "run", "id": "r", "sha256": None})),
     ("artifact_ref", lambda p: p.update(sha256="0" * 63)),
     ("artifact_ref", lambda p: p.update(media_type="application json")),

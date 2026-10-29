@@ -200,13 +200,25 @@ def test_compilation_is_deterministic_and_versioned(skills, tmp_path):
     assert changed.invocation.prompt_sha256 != first.invocation.prompt_sha256
 
 
-def test_unpublished_output_schema_is_refused_by_default(skills):
+def test_unpublished_output_schema_is_refused_by_default(tmp_path):
+    # A skill copy whose output schema M00 will never publish, so this test does not
+    # depend on whether the Analyst contracts have been published yet.
+    import json
+    import shutil
+    from ghostlab.skills.registry import ROOT
+    shutil.copytree(ROOT / "skills", tmp_path / "skills")
+    shutil.copytree(ROOT / "prompts", tmp_path / "prompts")
+    path = tmp_path / "skills" / "interpret-evidence.v1.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["output_schema"] = {"name": "never_published_output", "version": 1}
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    copied = SkillRegistry.load(tmp_path / "skills", tmp_path / "prompts")
     analyst = dict(role="analyst", scope=scope(role="analyst"), skill_id="interpret-evidence")
-    with pytest.raises(ContextError, match="evidence_interpretation/1 is not published"):
-        compile_with(skills, FakeMemoryStore(), **analyst)
-    compiled = ContextCompiler(skills, FakeMemoryStore(), allow_unpublished_output_schema=True
+    with pytest.raises(ContextError, match="never_published_output/1 is not published"):
+        compile_with(copied, FakeMemoryStore(), **analyst)
+    compiled = ContextCompiler(copied, FakeMemoryStore(), allow_unpublished_output_schema=True
                                ).compile(request(**analyst))
-    assert compiled.bundle.output_schema.name == "evidence_interpretation"
+    assert compiled.bundle.output_schema.name == "never_published_output"
 
 
 def test_scope_must_match_role(skills):

@@ -36,10 +36,16 @@ def test_initial_procedures_load_and_validate():
 
 
 def test_output_contract_publication_is_reported():
+    # Holds before and after M00 publishes the Analyst output contracts: a skill is
+    # registered exactly when M00's index has its output schema name and version.
+    from ghostlab.contracts import BY_NAME
     registry = SkillRegistry.load()
-    published = {s.spec.skill_id: s.output_contract_registered for s in registry.all()}
-    assert published == {"propose-refund-scenario": True, "interpret-evidence": False,
-                         "suggest-idempotency-repair": False}
+    for skill in registry.all():
+        wanted = skill.spec.output_schema
+        contract = BY_NAME.get(wanted.name)
+        expected = contract is not None and contract.version == wanted.version
+        assert skill.output_contract_registered is expected, skill.spec.skill_id
+    assert registry.get("propose-refund-scenario").output_contract_registered
 
 
 def test_skill_cannot_grant_tools_beyond_scope(copied):

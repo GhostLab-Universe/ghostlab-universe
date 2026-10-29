@@ -1,0 +1,354 @@
+{
+  "$defs": {
+    "CapsulePayloadV2": {
+      "additionalProperties": false,
+      "description": "Failure Capsule for any registered world. v1 capsules stay valid and replayable.",
+      "properties": {
+        "actor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "fixture": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "recorded_model_outputs": {
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "run": {
+          "$ref": "#/$defs/WorldRunResult"
+        },
+        "scenario": {
+          "$ref": "#/$defs/WorldScenario"
+        },
+        "schema_version": {
+          "const": 2,
+          "type": "integer"
+        },
+        "seed": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "fixture",
+        "scenario",
+        "actor_id",
+        "source",
+        "seed",
+        "recorded_model_outputs",
+        "run"
+      ],
+      "title": "CapsulePayloadV2",
+      "type": "object"
+    },
+    "FaultInjection": {
+      "additionalProperties": false,
+      "properties": {
+        "after_event": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fault_id": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "parameters": {
+          "items": {
+            "$ref": "#/$defs/FaultParameter"
+          },
+          "maxItems": 8,
+          "type": "array"
+        }
+      },
+      "required": [
+        "fault_id",
+        "after_event",
+        "parameters"
+      ],
+      "title": "FaultInjection",
+      "type": "object"
+    },
+    "FaultParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "title": "FaultParameter",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "WorldOutcomeError": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "message"
+      ],
+      "title": "WorldOutcomeError",
+      "type": "object"
+    },
+    "WorldOutcomeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "WorldOutcomeResult",
+      "type": "object"
+    },
+    "WorldRecordedRequest": {
+      "additionalProperties": false,
+      "description": "What the target attempted, recorded even when the world rejected it.",
+      "properties": {
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "tool": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "WorldRecordedRequest",
+      "type": "object"
+    },
+    "WorldRunResult": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "adapter_id": {
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "type": "string"
+        },
+        "adapter_version": {
+          "pattern": "^[a-z0-9][a-z0-9._/-]{0,99}$",
+          "type": "string"
+        },
+        "checks": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "type": "object"
+        },
+        "final_state": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "budget_exhausted"
+          ],
+          "type": "string"
+        },
+        "trace": {
+          "items": {
+            "$ref": "#/$defs/WorldTraceEvent"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "adapter_id",
+        "adapter_version",
+        "actor_id",
+        "status",
+        "trace",
+        "final_state",
+        "checks"
+      ],
+      "title": "WorldRunResult",
+      "type": "object"
+    },
+    "WorldScenario": {
+      "additionalProperties": false,
+      "description": "A fault schedule for one world. Model-facing (inside proposals): no free dicts.",
+      "properties": {
+        "faults": {
+          "items": {
+            "$ref": "#/$defs/FaultInjection"
+          },
+          "maxItems": 8,
+          "type": "array"
+        },
+        "max_tool_calls": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "faults",
+        "max_tool_calls"
+      ],
+      "title": "WorldScenario",
+      "type": "object"
+    },
+    "WorldTraceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldOutcomeResult"
+            },
+            {
+              "$ref": "#/$defs/WorldOutcomeError"
+            }
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/WorldRecordedRequest"
+        },
+        "state": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "event_id",
+        "request",
+        "outcome",
+        "state"
+      ],
+      "title": "WorldTraceEvent",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:capsule_v2:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "payload": {
+      "$ref": "#/$defs/CapsulePayloadV2"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "payload",
+    "sha256"
+  ],
+  "title": "CapsuleV2",
+  "type": "object"
+}

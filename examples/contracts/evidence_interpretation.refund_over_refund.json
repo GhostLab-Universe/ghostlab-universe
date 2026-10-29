@@ -1,0 +1,32 @@
+{
+  "claims": [
+    {
+      "cited": [
+        {
+          "id": "run-faulted-1:3",
+          "kind": "event",
+          "sha256": null
+        }
+      ],
+      "invariant": "unique_idempotency_keys",
+      "statement": "The second issue_refund at event 3 used a new key"
+    },
+    {
+      "cited": [
+        {
+          "id": "finding-1",
+          "kind": "finding",
+          "sha256": null
+        }
+      ],
+      "invariant": "total_refund_within_payment",
+      "statement": "Total refunded is 500000 against 250000 paid"
+    }
+  ],
+  "hypothesis_assessment": "supported",
+  "open_questions": [],
+  "run_id": "run-faulted-1",
+  "schema_version": 1,
+  "summary": "The retry used a new idempotency key after the committed refund timed out, so the ledger holds two full refunds.",
+  "world_version": "refund-world/1"
+}

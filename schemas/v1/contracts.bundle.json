@@ -771,6 +771,71 @@
       "title": "CapsulePayloadV1",
       "type": "object"
     },
+    "CapsulePayloadV2": {
+      "additionalProperties": false,
+      "description": "Failure Capsule for any registered world. v1 capsules stay valid and replayable.",
+      "properties": {
+        "actor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "fixture": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "recorded_model_outputs": {
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "run": {
+          "$ref": "#/$defs/WorldRunResult"
+        },
+        "scenario": {
+          "$ref": "#/$defs/WorldScenario"
+        },
+        "schema_version": {
+          "const": 2,
+          "type": "integer"
+        },
+        "seed": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "fixture",
+        "scenario",
+        "actor_id",
+        "source",
+        "seed",
+        "recorded_model_outputs",
+        "run"
+      ],
+      "title": "CapsulePayloadV2",
+      "type": "object"
+    },
     "CapsuleV1": {
       "additionalProperties": false,
       "description": "On-disk v1 envelope. sha256 is accidental-change detection, not authorship.",
@@ -788,6 +853,24 @@
         "sha256"
       ],
       "title": "CapsuleV1",
+      "type": "object"
+    },
+    "CapsuleV2": {
+      "additionalProperties": false,
+      "properties": {
+        "payload": {
+          "$ref": "#/$defs/CapsulePayloadV2"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "payload",
+        "sha256"
+      ],
+      "title": "CapsuleV2",
       "type": "object"
     },
     "ContextBundle": {
@@ -1050,6 +1133,105 @@
       "title": "ErrorInfo",
       "type": "object"
     },
+    "EvidenceClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "cited": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "invariant": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "statement": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "statement",
+        "invariant",
+        "cited"
+      ],
+      "title": "EvidenceClaim",
+      "type": "object"
+    },
+    "EvidenceInterpretation": {
+      "additionalProperties": false,
+      "description": "``interpret-evidence`` output. ``hypothesis_assessment`` is commentary, not a verdict.",
+      "properties": {
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/EvidenceClaim"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "hypothesis_assessment": {
+          "enum": [
+            "supported",
+            "not_supported",
+            "inconclusive"
+          ],
+          "type": "string"
+        },
+        "open_questions": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "type": "array"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "summary": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "run_id",
+        "summary",
+        "claims",
+        "hypothesis_assessment",
+        "open_questions"
+      ],
+      "title": "EvidenceInterpretation",
+      "type": "object"
+    },
     "ExperimentEvent": {
       "additionalProperties": false,
       "description": "Ordered application event for status streams; not model-token streaming.",
@@ -1205,6 +1387,70 @@
         "diff"
       ],
       "title": "ExperimentResult",
+      "type": "object"
+    },
+    "FaultInjection": {
+      "additionalProperties": false,
+      "properties": {
+        "after_event": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fault_id": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "parameters": {
+          "items": {
+            "$ref": "#/$defs/FaultParameter"
+          },
+          "maxItems": 8,
+          "type": "array"
+        }
+      },
+      "required": [
+        "fault_id",
+        "after_event",
+        "parameters"
+      ],
+      "title": "FaultInjection",
+      "type": "object"
+    },
+    "FaultParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "title": "FaultParameter",
       "type": "object"
     },
     "FixtureV1": {
@@ -2273,6 +2519,98 @@
       "title": "RefundStatus",
       "type": "object"
     },
+    "RepairSuggestion": {
+      "additionalProperties": false,
+      "description": "``suggest-idempotency-repair`` output: a reviewable proposal, never executable code.",
+      "properties": {
+        "adapter_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_kind": {
+          "enum": [
+            "use_checked_in_adapter",
+            "describe_change_for_review"
+          ],
+          "type": "string"
+        },
+        "cited": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "risks": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "target_invariants": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "title",
+        "target_invariants",
+        "change_kind",
+        "adapter_id",
+        "description",
+        "rationale",
+        "risks",
+        "cited"
+      ],
+      "title": "RepairSuggestion",
+      "type": "object"
+    },
     "RetentionPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -2975,6 +3313,990 @@
       "title": "Usage",
       "type": "object"
     },
+    "WorldAdapterSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter_id": {
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "vulnerable",
+            "repaired"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "adapter_id",
+        "kind",
+        "description"
+      ],
+      "title": "WorldAdapterSpec",
+      "type": "object"
+    },
+    "WorldCampaignRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "created_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/Principal"
+        },
+        "project_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "spec": {
+          "$ref": "#/$defs/WorldCampaignSpec"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "awaiting_approval",
+            "completed",
+            "failed",
+            "cancelled",
+            "budget_exhausted"
+          ],
+          "type": "string"
+        },
+        "trace_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "updated_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/BudgetUsage"
+        }
+      },
+      "required": [
+        "schema_version",
+        "campaign_id",
+        "project_id",
+        "created_by",
+        "spec",
+        "status",
+        "usage",
+        "trace_id",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "WorldCampaignRecord",
+      "type": "object"
+    },
+    "WorldCampaignSpec": {
+      "additionalProperties": false,
+      "description": "``campaign_spec`` for any registered world. Still carries no identity.",
+      "properties": {
+        "budget": {
+          "$ref": "#/$defs/BudgetLimits"
+        },
+        "objective": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "success_criteria": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "objective",
+        "success_criteria",
+        "world_version",
+        "budget"
+      ],
+      "title": "WorldCampaignSpec",
+      "type": "object"
+    },
+    "WorldDivergence": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldTraceEvent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event_id": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "faulted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldTraceEvent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "event_id",
+        "baseline",
+        "faulted"
+      ],
+      "title": "WorldDivergence",
+      "type": "object"
+    },
+    "WorldExperimentProposal": {
+      "additionalProperties": false,
+      "description": "Explorer structured output for any registered world. Identity-free.",
+      "properties": {
+        "adapter_id": {
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "type": "string"
+        },
+        "expected_signal": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "hypothesis": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scenario": {
+          "$ref": "#/$defs/WorldScenario"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "hypothesis",
+        "adapter_id",
+        "scenario",
+        "expected_signal"
+      ],
+      "title": "WorldExperimentProposal",
+      "type": "object"
+    },
+    "WorldFaultParameterSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "boolean"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "description"
+      ],
+      "title": "WorldFaultParameterSpec",
+      "type": "object"
+    },
+    "WorldFaultSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "fault_id": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "fault_pack": {
+          "enum": [
+            "lost_acknowledgement",
+            "stale_or_contaminated_memory",
+            "late_conflicting_update",
+            "permission_revocation",
+            "stale_availability",
+            "owner_takeover"
+          ],
+          "type": "string"
+        },
+        "parameters": {
+          "items": {
+            "$ref": "#/$defs/WorldFaultParameterSpec"
+          },
+          "maxItems": 8,
+          "type": "array"
+        }
+      },
+      "required": [
+        "fault_id",
+        "fault_pack",
+        "description",
+        "parameters"
+      ],
+      "title": "WorldFaultSpec",
+      "type": "object"
+    },
+    "WorldInvariantFinding": {
+      "additionalProperties": false,
+      "description": "A verifier verdict from world evidence, never model confidence.",
+      "properties": {
+        "evidence_event_ids": {
+          "items": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "finding_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "invariant": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "limit_value": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_value": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recorded_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verdict": {
+          "enum": [
+            "passed",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "verifier_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "finding_id",
+        "run_id",
+        "world_version",
+        "invariant",
+        "verifier_version",
+        "verdict",
+        "evidence_event_ids",
+        "observed_value",
+        "limit_value",
+        "unit",
+        "recorded_at"
+      ],
+      "title": "WorldInvariantFinding",
+      "type": "object"
+    },
+    "WorldInvariantSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence": {
+          "enum": [
+            "ledger",
+            "reservations",
+            "calendar",
+            "delivery_log",
+            "resource_leases",
+            "conversation_ownership"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "evidence"
+      ],
+      "title": "WorldInvariantSpec",
+      "type": "object"
+    },
+    "WorldMemoryQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "as_of": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kinds": {
+          "items": {
+            "enum": [
+              "episodic_event",
+              "finding",
+              "preference",
+              "procedure_ref"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "type": "array"
+        },
+        "limit": {
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "project_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "statuses": {
+          "items": {
+            "enum": [
+              "unverified",
+              "verified",
+              "contradicted",
+              "superseded",
+              "expired"
+            ],
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "type": "array"
+        },
+        "world_version": {
+          "anyOf": [
+            {
+              "enum": [
+                "refund-world/1",
+                "group-journey/1",
+                "service-relay/1"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "campaign_id",
+        "world_version",
+        "kinds",
+        "statuses",
+        "as_of",
+        "limit"
+      ],
+      "title": "WorldMemoryQuery",
+      "type": "object"
+    },
+    "WorldMemoryRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effective_from": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "effective_until": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "episodic_event",
+            "finding",
+            "preference",
+            "procedure_ref"
+          ],
+          "type": "string"
+        },
+        "observed_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "record_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "retention": {
+          "$ref": "#/$defs/RetentionPolicy"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "unverified",
+            "verified",
+            "contradicted",
+            "superseded",
+            "expired"
+          ],
+          "type": "string"
+        },
+        "supersedes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_id",
+        "project_id",
+        "campaign_id",
+        "world_version",
+        "kind",
+        "content",
+        "evidence",
+        "provenance",
+        "status",
+        "observed_at",
+        "effective_from",
+        "effective_until",
+        "supersedes",
+        "retention"
+      ],
+      "title": "WorldMemoryRecord",
+      "type": "object"
+    },
+    "WorldOutcomeError": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "message"
+      ],
+      "title": "WorldOutcomeError",
+      "type": "object"
+    },
+    "WorldOutcomeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "WorldOutcomeResult",
+      "type": "object"
+    },
+    "WorldPack": {
+      "additionalProperties": false,
+      "properties": {
+        "adapters": {
+          "items": {
+            "$ref": "#/$defs/WorldAdapterSpec"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array"
+        },
+        "faults": {
+          "items": {
+            "$ref": "#/$defs/WorldFaultSpec"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "invariants": {
+          "items": {
+            "$ref": "#/$defs/WorldInvariantSpec"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "replay": {
+          "$ref": "#/$defs/WorldReplaySpec"
+        },
+        "roles": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "source": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "implemented",
+            "specified"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tools": {
+          "items": {
+            "$ref": "#/$defs/WorldToolSpec"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "title",
+        "status",
+        "summary",
+        "roles",
+        "tools",
+        "faults",
+        "invariants",
+        "adapters",
+        "replay",
+        "source"
+      ],
+      "title": "WorldPack",
+      "type": "object"
+    },
+    "WorldRealityDiff": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_metrics": {
+          "additionalProperties": {
+            "maximum": 1000000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "object"
+        },
+        "faulted_metrics": {
+          "additionalProperties": {
+            "maximum": 1000000000000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "object"
+        },
+        "first_divergence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldDivergence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "violated_invariants": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "first_divergence",
+        "baseline_metrics",
+        "faulted_metrics",
+        "violated_invariants"
+      ],
+      "title": "WorldRealityDiff",
+      "type": "object"
+    },
+    "WorldRecordedRequest": {
+      "additionalProperties": false,
+      "description": "What the target attempted, recorded even when the world rejected it.",
+      "properties": {
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "tool": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "WorldRecordedRequest",
+      "type": "object"
+    },
+    "WorldReplaySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "capsule_schema_versions": {
+          "items": {
+            "maximum": 2,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "dispatch": {
+          "const": "recorded_actions",
+          "type": "string"
+        }
+      },
+      "required": [
+        "capsule_schema_versions",
+        "dispatch"
+      ],
+      "title": "WorldReplaySpec",
+      "type": "object"
+    },
+    "WorldRunResult": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "adapter_id": {
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "type": "string"
+        },
+        "adapter_version": {
+          "pattern": "^[a-z0-9][a-z0-9._/-]{0,99}$",
+          "type": "string"
+        },
+        "checks": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "type": "object"
+        },
+        "final_state": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "budget_exhausted"
+          ],
+          "type": "string"
+        },
+        "trace": {
+          "items": {
+            "$ref": "#/$defs/WorldTraceEvent"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "adapter_id",
+        "adapter_version",
+        "actor_id",
+        "status",
+        "trace",
+        "final_state",
+        "checks"
+      ],
+      "title": "WorldRunResult",
+      "type": "object"
+    },
+    "WorldScenario": {
+      "additionalProperties": false,
+      "description": "A fault schedule for one world. Model-facing (inside proposals): no free dicts.",
+      "properties": {
+        "faults": {
+          "items": {
+            "$ref": "#/$defs/FaultInjection"
+          },
+          "maxItems": 8,
+          "type": "array"
+        },
+        "max_tool_calls": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "faults",
+        "max_tool_calls"
+      ],
+      "title": "WorldScenario",
+      "type": "object"
+    },
     "WorldSnapshot": {
       "additionalProperties": false,
       "properties": {
@@ -3001,9 +4323,335 @@
       ],
       "title": "WorldSnapshot",
       "type": "object"
+    },
+    "WorldToolDefinition": {
+      "additionalProperties": false,
+      "description": "A tool offered to a target, exactly as the reviewed pack declares it.",
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "world_version",
+        "name",
+        "description",
+        "parameters"
+      ],
+      "title": "WorldToolDefinition",
+      "type": "object"
+    },
+    "WorldToolInvocation": {
+      "additionalProperties": false,
+      "description": "A validated call the controller may dispatch into a world.",
+      "properties": {
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "invocation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "provider_call_id": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "tool": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "invocation_id",
+        "run_id",
+        "provider_call_id",
+        "world_version",
+        "tool",
+        "arguments"
+      ],
+      "title": "WorldToolInvocation",
+      "type": "object"
+    },
+    "WorldToolResult": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event_id": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "invocation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider_call_id": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "error"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "invocation_id",
+        "provider_call_id",
+        "event_id",
+        "status",
+        "output",
+        "error"
+      ],
+      "title": "WorldToolResult",
+      "type": "object"
+    },
+    "WorldToolSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effect": {
+          "enum": [
+            "read",
+            "mutate",
+            "deliver",
+            "handoff"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "effect",
+        "parameters"
+      ],
+      "title": "WorldToolSpec",
+      "type": "object"
+    },
+    "WorldTraceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldOutcomeResult"
+            },
+            {
+              "$ref": "#/$defs/WorldOutcomeError"
+            }
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/WorldRecordedRequest"
+        },
+        "state": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "event_id",
+        "request",
+        "outcome",
+        "state"
+      ],
+      "title": "WorldTraceEvent",
+      "type": "object"
+    },
+    "WorldTrustedScope": {
+      "additionalProperties": false,
+      "description": "``trusted_scope`` whose tools come from a registered world pack.",
+      "properties": {
+        "allowed_tools": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "delegated_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "supervisor",
+                "worldsmith",
+                "explorer",
+                "analyst",
+                "target",
+                "verifier"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issued_by": {
+          "const": "controller",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/Principal"
+        },
+        "project_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "supervisor",
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target",
+            "verifier"
+          ],
+          "type": "string"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "principal",
+        "role",
+        "delegated_by",
+        "allowed_tools",
+        "policy_version",
+        "issued_by",
+        "world_version"
+      ],
+      "title": "WorldTrustedScope",
+      "type": "object"
     }
   },
-  "$id": "urn:ghostlab:ghostlab-contracts/1",
+  "$id": "urn:ghostlab:ghostlab-contracts/1.1",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "anyOf": [
     {
@@ -3095,6 +4743,57 @@
     },
     {
       "$ref": "#/$defs/ArtifactRef"
+    },
+    {
+      "$ref": "#/$defs/WorldPack"
+    },
+    {
+      "$ref": "#/$defs/WorldCampaignSpec"
+    },
+    {
+      "$ref": "#/$defs/WorldCampaignRecord"
+    },
+    {
+      "$ref": "#/$defs/WorldTrustedScope"
+    },
+    {
+      "$ref": "#/$defs/WorldToolDefinition"
+    },
+    {
+      "$ref": "#/$defs/WorldToolInvocation"
+    },
+    {
+      "$ref": "#/$defs/WorldToolResult"
+    },
+    {
+      "$ref": "#/$defs/WorldScenario"
+    },
+    {
+      "$ref": "#/$defs/WorldExperimentProposal"
+    },
+    {
+      "$ref": "#/$defs/WorldRunResult"
+    },
+    {
+      "$ref": "#/$defs/WorldRealityDiff"
+    },
+    {
+      "$ref": "#/$defs/WorldInvariantFinding"
+    },
+    {
+      "$ref": "#/$defs/CapsuleV2"
+    },
+    {
+      "$ref": "#/$defs/WorldMemoryRecord"
+    },
+    {
+      "$ref": "#/$defs/WorldMemoryQuery"
+    },
+    {
+      "$ref": "#/$defs/EvidenceInterpretation"
+    },
+    {
+      "$ref": "#/$defs/RepairSuggestion"
     }
   ],
   "description": "Generated by `python -m ghostlab.contracts.export`. Do not edit.",

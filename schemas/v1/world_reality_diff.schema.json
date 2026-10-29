@@ -1,0 +1,198 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "WorldDivergence": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldTraceEvent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event_id": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "faulted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldTraceEvent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "event_id",
+        "baseline",
+        "faulted"
+      ],
+      "title": "WorldDivergence",
+      "type": "object"
+    },
+    "WorldOutcomeError": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "message"
+      ],
+      "title": "WorldOutcomeError",
+      "type": "object"
+    },
+    "WorldOutcomeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "WorldOutcomeResult",
+      "type": "object"
+    },
+    "WorldRecordedRequest": {
+      "additionalProperties": false,
+      "description": "What the target attempted, recorded even when the world rejected it.",
+      "properties": {
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "tool": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "WorldRecordedRequest",
+      "type": "object"
+    },
+    "WorldTraceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldOutcomeResult"
+            },
+            {
+              "$ref": "#/$defs/WorldOutcomeError"
+            }
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/WorldRecordedRequest"
+        },
+        "state": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "event_id",
+        "request",
+        "outcome",
+        "state"
+      ],
+      "title": "WorldTraceEvent",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:world_reality_diff:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "baseline_metrics": {
+      "additionalProperties": {
+        "maximum": 1000000000000000,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "type": "object"
+    },
+    "faulted_metrics": {
+      "additionalProperties": {
+        "maximum": 1000000000000000,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "type": "object"
+    },
+    "first_divergence": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorldDivergence"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "violated_invariants": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{1,63}$",
+        "type": "string"
+      },
+      "maxItems": 16,
+      "type": "array"
+    },
+    "world_version": {
+      "enum": [
+        "refund-world/1",
+        "group-journey/1",
+        "service-relay/1"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "world_version",
+    "first_divergence",
+    "baseline_metrics",
+    "faulted_metrics",
+    "violated_invariants"
+  ],
+  "title": "WorldRealityDiff",
+  "type": "object"
+}

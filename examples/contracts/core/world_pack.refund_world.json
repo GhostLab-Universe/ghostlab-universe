@@ -1,0 +1,137 @@
+{
+  "adapters": [
+    {
+      "adapter_id": "vulnerable",
+      "description": "Retries a timed-out refund with a new idempotency key",
+      "kind": "vulnerable"
+    },
+    {
+      "adapter_id": "repaired",
+      "description": "Checks refund status before any retry",
+      "kind": "repaired"
+    }
+  ],
+  "faults": [
+    {
+      "description": "The first refund commits, then its response times out",
+      "fault_id": "timeout_after_commit",
+      "fault_pack": "lost_acknowledgement",
+      "parameters": []
+    }
+  ],
+  "invariants": [
+    {
+      "description": "Every refund row belongs to the order's customer and order",
+      "evidence": "ledger",
+      "name": "authorized_refunds"
+    },
+    {
+      "description": "At most one full-amount refund exists",
+      "evidence": "ledger",
+      "name": "no_duplicate_full_refund"
+    },
+    {
+      "description": "Total refunded never exceeds the amount paid",
+      "evidence": "ledger",
+      "name": "total_refund_within_payment"
+    },
+    {
+      "description": "Each ledger row has a distinct idempotency key",
+      "evidence": "ledger",
+      "name": "unique_idempotency_keys"
+    }
+  ],
+  "replay": {
+    "capsule_schema_versions": [
+      1,
+      2
+    ],
+    "dispatch": "recorded_actions"
+  },
+  "roles": [
+    "refund_agent"
+  ],
+  "schema_version": 1,
+  "source": "ghostlab.core refund-world/1 and refund-adapters/1",
+  "status": "implemented",
+  "summary": "A synthetic INR 2,500 order: a refund commits but its response times out, and the target must not refund twice.",
+  "title": "Refund world",
+  "tools": [
+    {
+      "description": "Read the synthetic order for the bound customer",
+      "effect": "read",
+      "name": "get_order",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "order_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Issue a refund with an idempotency key",
+      "effect": "mutate",
+      "name": "issue_refund",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "amount_minor": {
+            "type": "integer"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount_minor",
+          "customer_id",
+          "idempotency_key",
+          "order_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Look up a refund by idempotency key",
+      "effect": "read",
+      "name": "get_refund_status",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "idempotency_key",
+          "order_id"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "world_version": "refund-world/1"
+}

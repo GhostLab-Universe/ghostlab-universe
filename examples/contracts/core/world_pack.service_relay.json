@@ -1,0 +1,173 @@
+{
+  "adapters": [
+    {
+      "adapter_id": "relay-local-success",
+      "description": "Each role trusts its own local success and retries blindly",
+      "kind": "vulnerable"
+    },
+    {
+      "adapter_id": "relay-lease-checked",
+      "description": "Checks leases, promise versions and ownership before acting",
+      "kind": "repaired"
+    }
+  ],
+  "faults": [
+    {
+      "description": "Competing jobs see stale availability",
+      "fault_id": "stale_availability_competition",
+      "fault_pack": "stale_availability",
+      "parameters": [
+        {
+          "description": "Jobs that read the same stale availability",
+          "name": "competing_jobs",
+          "type": "integer"
+        }
+      ]
+    },
+    {
+      "description": "A successful reservation loses its acknowledgement and is retried",
+      "fault_id": "lost_reservation_ack",
+      "fault_pack": "lost_acknowledgement",
+      "parameters": []
+    },
+    {
+      "description": "The owner takes over while an automated confirmation is queued",
+      "fault_id": "takeover_with_queued_confirmation",
+      "fault_pack": "owner_takeover",
+      "parameters": []
+    }
+  ],
+  "invariants": [
+    {
+      "description": "Technician and part allocations never exceed capacity or duplicate ownership",
+      "evidence": "resource_leases",
+      "name": "allocations_within_capacity"
+    },
+    {
+      "description": "Every confirmed service has valid matching reservations and promise versions",
+      "evidence": "reservations",
+      "name": "confirmations_backed_by_reservations"
+    },
+    {
+      "description": "Automated mutations stop after effective owner takeover until explicitly resumed",
+      "evidence": "conversation_ownership",
+      "name": "no_automation_after_takeover"
+    }
+  ],
+  "replay": {
+    "capsule_schema_versions": [
+      2
+    ],
+    "dispatch": "recorded_actions"
+  },
+  "roles": [
+    "front_desk",
+    "inventory",
+    "dispatch"
+  ],
+  "schema_version": 1,
+  "source": "GhostLab priority-worlds plan (design-level, 2026-10-29)",
+  "status": "specified",
+  "summary": "An appliance-repair shop with two technicians, one scarce part and several jobs; front desk, inventory and dispatch each succeed locally but together promise an impossible appointment.",
+  "title": "Small Business Relay",
+  "tools": [
+    {
+      "description": "Read technician slots, parts and current leases",
+      "effect": "read",
+      "name": "inspect_availability",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Lease a technician slot or part with an idempotency key",
+      "effect": "mutate",
+      "name": "reserve_resource",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "request_key": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "request_key",
+          "resource_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Release a lease",
+      "effect": "mutate",
+      "name": "release_resource",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "lease_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lease_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Confirm an appointment to the synthetic customer",
+      "effect": "mutate",
+      "name": "confirm_service",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "promise_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id",
+          "promise_version"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Transfer conversation ownership to the business owner",
+      "effect": "handoff",
+      "name": "hand_off_to_owner",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "world_version": "service-relay/1"
+}

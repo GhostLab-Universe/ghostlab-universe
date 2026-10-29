@@ -1,0 +1,16 @@
+{
+  "evidence_event_ids": [
+    3
+  ],
+  "finding_id": "journey-run-1-delivered_messages_permitted",
+  "invariant": "delivered_messages_permitted",
+  "limit_value": 0,
+  "observed_value": 1,
+  "recorded_at": "2026-10-29T10:00:05Z",
+  "run_id": "journey-run-1",
+  "schema_version": 1,
+  "unit": "unpermitted_deliveries",
+  "verdict": "failed",
+  "verifier_version": "journey-verifier-1",
+  "world_version": "group-journey/1"
+}

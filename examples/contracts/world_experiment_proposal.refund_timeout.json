@@ -1,0 +1,19 @@
+{
+  "adapter_id": "vulnerable",
+  "expected_signal": "total_refund_within_payment fails",
+  "hypothesis": "A retry after a post-commit timeout issues a second refund",
+  "scenario": {
+    "faults": [
+      {
+        "after_event": null,
+        "fault_id": "timeout_after_commit",
+        "parameters": []
+      }
+    ],
+    "max_tool_calls": 20,
+    "schema_version": 1,
+    "world_version": "refund-world/1"
+  },
+  "schema_version": 1,
+  "world_version": "refund-world/1"
+}

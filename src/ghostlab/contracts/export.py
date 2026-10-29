@@ -87,8 +87,27 @@ def core_examples() -> dict[str, str]:
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "capsule.json"
         export_capsule(path, fixture, Scenario(timeout_after_commit=True), result["faulted"])
-        files["examples/contracts/core/capsule_v1.refund_failure.json"] = _json(
-            json.loads(path.read_text(encoding="utf-8")))
+        capsule = json.loads(path.read_text(encoding="utf-8"))
+        files["examples/contracts/core/capsule_v1.refund_failure.json"] = _json(capsule)
+    # Contract set 1.1: reviewed pack manifests, and refund evidence in the generic form.
+    from . import world_refund
+    from .world_packs import PACKS
+    for version, world in PACKS.items():
+        name = version.split("/")[0].replace("-", "_")
+        files[f"examples/contracts/core/world_pack.{name}.json"] = _json(
+            world.model_dump(mode="json"))
+    dump = lambda model: _json(model.model_dump(mode="json"))  # noqa: E731
+    files.update({
+        "examples/contracts/core/world_run_result.refund_faulted.json":
+            dump(world_refund.run_to_world(result["faulted"])),
+        "examples/contracts/core/world_reality_diff.refund_demo.json":
+            dump(world_refund.diff_to_world(result["diff"])),
+        "examples/contracts/core/world_scenario.refund_timeout.json":
+            dump(world_refund.scenario_to_world({"timeout_after_commit": True,
+                                                 "max_tool_calls": 20})),
+        "examples/contracts/core/capsule_v2.refund_failure.json":
+            dump(world_refund.capsule_v1_to_v2(capsule)),
+    })
     return files
 
 

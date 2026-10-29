@@ -1,0 +1,27 @@
+{
+  "faults": [
+    {
+      "after_event": 4,
+      "fault_id": "sharing_revoked_while_queued",
+      "parameters": [
+        {
+          "name": "recipient_id",
+          "value": "participant-c"
+        }
+      ]
+    },
+    {
+      "after_event": null,
+      "fault_id": "stale_preference_memory",
+      "parameters": [
+        {
+          "name": "preference_version",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "max_tool_calls": 40,
+  "schema_version": 1,
+  "world_version": "group-journey/1"
+}

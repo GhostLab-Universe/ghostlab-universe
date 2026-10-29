@@ -1,0 +1,144 @@
+{
+  "payload": {
+    "actor_id": "traveller-a",
+    "fixture": {
+      "journey_id": "journey-1",
+      "participants": 3
+    },
+    "recorded_model_outputs": [],
+    "run": {
+      "actor_id": "traveller-a",
+      "adapter_id": "journey-naive",
+      "adapter_version": "journey-adapters/1",
+      "checks": {
+        "commitments_use_approved_intent": true,
+        "delivered_messages_permitted": false,
+        "mandatory_participants_feasible": true
+      },
+      "final_state": {
+        "intent_version": 2,
+        "messages": [
+          {
+            "delivered": true,
+            "message_id": "msg-1",
+            "recipient_id": "participant-c",
+            "sharing_permitted": false
+          }
+        ]
+      },
+      "schema_version": 1,
+      "status": "completed",
+      "trace": [
+        {
+          "event_id": 1,
+          "outcome": {
+            "result": {
+              "intent_version": 2
+            }
+          },
+          "request": {
+            "arguments": {
+              "journey_id": "journey-1"
+            },
+            "tool": "inspect_constraints"
+          },
+          "state": {
+            "intent_version": 2,
+            "messages": [
+              {
+                "delivered": false,
+                "message_id": "msg-1",
+                "recipient_id": "participant-c",
+                "sharing_permitted": true
+              }
+            ]
+          }
+        },
+        {
+          "event_id": 2,
+          "outcome": {
+            "result": {
+              "message_id": "msg-1"
+            }
+          },
+          "request": {
+            "arguments": {
+              "recipient_id": "participant-c",
+              "template_id": "itinerary-v2"
+            },
+            "tool": "queue_message"
+          },
+          "state": {
+            "intent_version": 2,
+            "messages": [
+              {
+                "delivered": false,
+                "message_id": "msg-1",
+                "recipient_id": "participant-c",
+                "sharing_permitted": true
+              }
+            ]
+          }
+        },
+        {
+          "event_id": 3,
+          "outcome": {
+            "result": {
+              "delivered": true
+            }
+          },
+          "request": {
+            "arguments": {
+              "message_id": "msg-1"
+            },
+            "tool": "deliver_message"
+          },
+          "state": {
+            "intent_version": 2,
+            "messages": [
+              {
+                "delivered": true,
+                "message_id": "msg-1",
+                "recipient_id": "participant-c",
+                "sharing_permitted": false
+              }
+            ]
+          }
+        }
+      ],
+      "world_version": "group-journey/1"
+    },
+    "scenario": {
+      "faults": [
+        {
+          "after_event": 4,
+          "fault_id": "sharing_revoked_while_queued",
+          "parameters": [
+            {
+              "name": "recipient_id",
+              "value": "participant-c"
+            }
+          ]
+        },
+        {
+          "after_event": null,
+          "fault_id": "stale_preference_memory",
+          "parameters": [
+            {
+              "name": "preference_version",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "max_tool_calls": 40,
+      "schema_version": 1,
+      "world_version": "group-journey/1"
+    },
+    "schema_version": 2,
+    "seed": 0,
+    "source": "specified journey pack fixture (not executable yet)",
+    "world_version": "group-journey/1"
+  },
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

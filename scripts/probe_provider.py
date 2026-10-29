@@ -6,12 +6,15 @@
 
 Live mode needs, together: --live, an exact --model, a --max-calls cap (1-10),
 --confirm-paid-calls, and the provider key in its environment variable
-(MODEL_API_KEY or BASETEN_API_KEY). Each call is capped at 512 output tokens.
+(MODEL_API_KEY or BASETEN_API_KEY). --max-calls caps every outbound HTTP attempt,
+retries included, because each attempt may be billed; the report shows model
+calls and HTTP attempts separately. Each call is capped at 512 output tokens.
 Tool results sent back are labeled synthetic fixtures; no tool is dispatched.
 The report is redacted and written under artifacts/local/ (git-ignored).
 """
 
 import argparse
+import dataclasses
 import json
 import platform
 import sys
@@ -62,8 +65,22 @@ def plan():
     return [{"check": name, "calls": calls} for name, calls in CALLS_NEEDED.items()]
 
 
+class AttemptCap:
+    """Counts every outbound HTTP attempt (retries included) against --max-calls."""
+
+    def __init__(self, limit: int):
+        self.limit, self.used = limit, 0
+
+    def __call__(self) -> bool:
+        if self.used >= self.limit:
+            return False
+        self.used += 1
+        return True
+
+
 def run_live(config, runtime, max_calls):
-    adapter = adapter_for(config, runtime)
+    cap = AttemptCap(max_calls)
+    adapter = adapter_for(config, dataclasses.replace(runtime, attempt_gate=cap))
     status_tool = ToolDefinition.model_validate({
         **_example("tool_definition.issue_refund"), "name": "get_refund_status",
         "description": "Look up a synthetic refund by idempotency key",
@@ -85,8 +102,9 @@ def run_live(config, runtime, max_calls):
                        "attempts": [a.__dict__ for a in adapter.last_attempts]})
 
     for name, needed in CALLS_NEEDED.items():
-        if calls + needed > max_calls:
-            record(name, "skipped_call_cap", f"needs {needed} call(s); cap is {max_calls}")
+        if cap.used + needed > max_calls:
+            record(name, "skipped_call_cap",
+                   f"needs at least {needed} HTTP attempt(s); {cap.used} of {max_calls} used")
             continue
         if name == "auth_minimal":
             reply = call(_request(config, "probe-auth"),
@@ -129,7 +147,7 @@ def run_live(config, runtime, max_calls):
                    "status": "passed" if reported else ("failed" if replies else "not_run"),
                    "detail": f"{len(reported)}/{len(replies)} replies reported token usage",
                    "attempts": []})
-    return checks, calls
+    return checks, calls, cap.used
 
 
 def main(argv=None, runtime=None) -> int:
@@ -153,6 +171,7 @@ def main(argv=None, runtime=None) -> int:
     secrets = ()
     if not args.live:
         report.update(mode="dry_run", live=False, model=args.model, calls_made=0,
+                      http_attempts=0,
                       planned=plan(), checks=[], note="No request was sent.")
     else:
         missing = [flag for flag, ok in (("--model", args.model), ("--max-calls", args.max_calls),
@@ -172,10 +191,10 @@ def main(argv=None, runtime=None) -> int:
         except ProviderConfigError as error:
             parser.error(str(error))
         secrets = (credential.reveal(),)
-        checks, calls = run_live(config, runtime or Runtime(), args.max_calls)
+        checks, calls, attempts = run_live(config, runtime or Runtime(), args.max_calls)
         report.update(mode="live", live=runtime is None, model=args.model,
                       endpoint=config.base_url, max_calls=args.max_calls, calls_made=calls,
-                      checks=checks)
+                      http_attempts=attempts, checks=checks)
     text = redact(json.dumps(report, indent=2, sort_keys=True), *secrets)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(text + "\n", encoding="utf-8")

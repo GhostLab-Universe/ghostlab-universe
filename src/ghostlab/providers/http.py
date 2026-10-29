@@ -8,6 +8,12 @@ cost tokens, which is why attempts are bounded and reported.
 
 Cancellation is observed before each attempt and during backoff. An HTTP
 request already in flight is not interrupted.
+
+Every outbound attempt, retries included, first asks ``Runtime.attempt_gate``
+(when set) for permission, so a caller can cap or reserve paid attempts. Bodies
+are streamed with an incremental byte cap (success and error responses alike)
+and the request's absolute deadline is checked while reading, not only between
+attempts.
 """
 
 import json
@@ -25,6 +31,7 @@ RETRYABLE_STATUS = {429: "rate_limited", 500: "provider_transient", 502: "provid
                     503: "provider_transient"}
 FINAL_STATUS = {401: "unauthenticated", 403: "forbidden", 504: "deadline_exceeded"}
 MAX_RESPONSE_BYTES = 4_000_000
+MAX_ERROR_BODY_BYTES = 65_536  # error bodies are only read for their message
 
 
 @dataclass(frozen=True)
@@ -49,6 +56,14 @@ class Runtime:
     sleep: object = time.sleep
     monotonic: object = time.monotonic
     jitter: object = random.random
+    # Called before every outbound HTTP attempt; returning False stops before sending.
+    attempt_gate: object = None
+
+
+class _ReadAborted(Exception):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
 
 
 def make_error(code, message, *, retryable=False, secrets=()) -> ErrorInfo:
@@ -56,16 +71,40 @@ def make_error(code, message, *, retryable=False, secrets=()) -> ErrorInfo:
     return ErrorInfo(code=code, message=text, retryable=retryable, side_effect="none", ref=None)
 
 
-def _provider_message(response: httpx.Response) -> str:
+def _provider_message(status: int, content: bytes) -> str:
     try:
-        body = response.json()
+        body = json.loads(content)
         error = body.get("error") if isinstance(body, dict) else None
         if isinstance(error, dict) and isinstance(error.get("message"), str):
             code = error.get("code") or error.get("type") or ""
-            return f"HTTP {response.status_code} {code}: {error['message']}".strip()
+            return f"HTTP {status} {code}: {error['message']}".strip()
     except (ValueError, UnicodeDecodeError):
         pass
-    return f"HTTP {response.status_code}"
+    return f"HTTP {status}"
+
+
+def _read_bounded(response: httpx.Response, limit: int, *, truncate: bool, deadline: float,
+                  runtime: Runtime) -> bytes:
+    """Read at most ``limit`` bytes, checking the absolute deadline between chunks.
+
+    Over the limit, a success body is rejected and an error body is cut short;
+    either way the rest of the body is never downloaded.
+    """
+    declared = response.headers.get("content-length")
+    if not truncate and declared is not None and declared.isdigit() and int(declared) > limit:
+        raise _ReadAborted("provider_invalid_output", "Response too large")
+    chunks, size = [], 0
+    for chunk in response.iter_bytes():
+        if runtime.monotonic() >= deadline:
+            raise _ReadAborted("deadline_exceeded", "Deadline reached while reading the reply")
+        if size + len(chunk) > limit:
+            if truncate:
+                chunks.append(chunk[:limit - size])
+                break
+            raise _ReadAborted("provider_invalid_output", "Response too large")
+        chunks.append(chunk)
+        size += len(chunk)
+    return b"".join(chunks)
 
 
 def _retry_after(response: httpx.Response, cap: float) -> float | None:
@@ -105,12 +144,26 @@ def post_json(config: ProviderConfig, path: str, payload: dict, *, timeout_ms: i
         if remaining <= 0:
             outcome.error = make_error("deadline_exceeded", "Deadline reached before sending")
             return outcome
+        if runtime.attempt_gate is not None and not runtime.attempt_gate():
+            outcome.error = make_error("budget_exhausted",
+                                       "HTTP attempt cap reached; the request was not sent")
+            return outcome
         started = runtime.monotonic()
+        status = None
         try:
             with httpx.Client(transport=runtime.transport, timeout=httpx.Timeout(remaining),
                               follow_redirects=False) as client:
-                response = client.post(url, json=payload, headers=headers)
-                content = response.read()
+                with client.stream("POST", url, json=payload, headers=headers) as response:
+                    status = response.status_code
+                    delay = (_retry_after(response, policy.retry_after_max_s)
+                             if status in RETRYABLE_STATUS else None)
+                    content = _read_bounded(
+                        response, MAX_RESPONSE_BYTES if status == 200 else MAX_ERROR_BODY_BYTES,
+                        truncate=status != 200, deadline=deadline, runtime=runtime)
+        except _ReadAborted as abort:
+            outcome.attempts.append(Attempt(status, abort.code, _ms(runtime, started)))
+            outcome.error = make_error(abort.code, str(abort))
+            return outcome
         except httpx.TimeoutException:
             outcome.attempts.append(Attempt(None, "deadline_exceeded", _ms(runtime, started)))
             outcome.error = make_error("deadline_exceeded", f"No reply within {timeout_ms} ms")
@@ -120,12 +173,8 @@ def post_json(config: ProviderConfig, path: str, payload: dict, *, timeout_ms: i
             outcome.attempts.append(Attempt(None, code, _ms(runtime, started)))
         else:
             duration = _ms(runtime, started)
-            status = response.status_code
             if status == 200:
                 outcome.attempts.append(Attempt(status, None, duration))
-                if len(content) > MAX_RESPONSE_BYTES:
-                    outcome.error = make_error("provider_invalid_output", "Response too large")
-                    return outcome
                 try:
                     body = json.loads(content)
                 except (ValueError, UnicodeDecodeError):
@@ -136,10 +185,9 @@ def post_json(config: ProviderConfig, path: str, payload: dict, *, timeout_ms: i
                     return outcome
                 outcome.body = body
                 return outcome
-            message = _provider_message(response)
+            message = _provider_message(status, content)
             if status in RETRYABLE_STATUS:
                 code = RETRYABLE_STATUS[status]
-                delay = _retry_after(response, policy.retry_after_max_s)
                 outcome.attempts.append(Attempt(status, code, duration))
             else:
                 code = FINAL_STATUS.get(status, "provider_permanent")

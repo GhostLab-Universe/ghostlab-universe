@@ -31,6 +31,21 @@ def failed(config: ProviderConfig, request: ModelRequest, error: ErrorInfo, rece
         "continuation": None, "error": error.model_dump(), "received_at": received_at})
 
 
+def scrub(config: ProviderConfig, reply: ModelReply) -> ModelReply:
+    """Remove the configured credential from every field of a reply.
+
+    Provider bodies (error messages, text, tool arguments) can echo a key back.
+    Each adapter passes every reply through here, so no path can leak it.
+    """
+    secret = config.credential.reveal()
+    serialized = reply.model_dump_json()
+    escaped = json.dumps(secret)[1:-1]
+    if secret not in serialized and escaped not in serialized:
+        return reply
+    return ModelReply.model_validate_json(
+        serialized.replace(escaped, "***").replace(secret, "***"))
+
+
 def invalid(config, request, message: str, received_at: str, usage=None):
     reply = failed(config, request, ErrorInfo(
         code="provider_invalid_output", message=message[:500], retryable=False,

@@ -18,7 +18,7 @@ from . import render
 from .base import ProviderConfig, ProviderRequestError, check_request, utc_now
 from .http import Attempt, Runtime, post_json
 from .replies import (InvalidOutput, as_count, build, check_pairing, check_tool_calls,
-                      decode_continuation, encode_continuation, failed, invalid,
+                      decode_continuation, encode_continuation, failed, invalid, scrub,
                       structured_output)
 
 PREFIX = "baseten-chat:v1:"
@@ -77,6 +77,9 @@ class BasetenChatAdapter:
         return payload
 
     def complete(self, request: ModelRequest, bundle: ContextBundle, *, cancel=None) -> ModelReply:
+        return scrub(self.config, self._complete(request, bundle, cancel))
+
+    def _complete(self, request, bundle, cancel) -> ModelReply:
         payload = self.build_payload(request, bundle)
         history = payload["messages"][2:]
         outcome = post_json(self.config, "/chat/completions", payload,
@@ -123,9 +126,15 @@ class BasetenChatAdapter:
         finish = choice.get("finish_reason")
         if finish not in FINISH:
             raise InvalidOutput(f"Unexpected finish_reason {finish!r}")
-        status = "tool_calls" if calls else FINISH[finish]
+        status = FINISH[finish]
         if status == "tool_calls" and not calls:
             raise InvalidOutput("finish_reason tool_calls without tool calls")
+        if status == "completed" and calls:
+            status = "tool_calls"
+        if status in ("incomplete", "refused"):
+            # Truncated or filtered output: calls may be partial or blocked. Never expose
+            # them as executable, and keep them out of the continuation history.
+            calls, wire_calls = [], []
         text = content or None
         structured = None
         if status == "completed":

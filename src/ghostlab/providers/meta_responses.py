@@ -15,7 +15,7 @@ from . import render
 from .base import ProviderConfig, ProviderRequestError, check_request, utc_now
 from .http import Attempt, Runtime, make_error, post_json
 from .replies import (InvalidOutput, as_count, build, check_pairing, check_tool_calls,
-                      decode_continuation, encode_continuation, failed, invalid,
+                      decode_continuation, encode_continuation, failed, invalid, scrub,
                       structured_output)
 
 PREFIX = "meta-responses:v1:"
@@ -69,6 +69,9 @@ class MetaResponsesAdapter:
         return payload
 
     def complete(self, request: ModelRequest, bundle: ContextBundle, *, cancel=None) -> ModelReply:
+        return scrub(self.config, self._complete(request, bundle, cancel))
+
+    def _complete(self, request, bundle, cancel) -> ModelReply:
         payload = self.build_payload(request, bundle)
         outcome = post_json(self.config, "/responses", payload, timeout_ms=request.timeout_ms,
                             cancel=cancel, runtime=self.runtime)
@@ -117,9 +120,12 @@ class MetaResponsesAdapter:
         if status == "completed":
             reply_status = "tool_calls" if calls else "completed"
         elif status == "incomplete":
-            reply_status = "incomplete"
+            # Truncated output: any proposed calls may be partial, so none are exposed.
+            reply_status, calls = "incomplete", []
         elif status in ("failed", "cancelled"):
-            return failed(self.config, request, _status_error(body, status), received_at)
+            return failed(self.config, request,
+                          _status_error(body, status, self.config.credential.reveal()),
+                          received_at)
         else:
             raise InvalidOutput(f"Unexpected response status {status!r}")
         structured = None
@@ -142,12 +148,12 @@ def _usage(body):
             "cost_minor": None, "cost_currency": None}
 
 
-def _status_error(body, status):
+def _status_error(body, status, secret):
     error = body.get("error") if isinstance(body.get("error"), dict) else {}
     code = error.get("code") if isinstance(error.get("code"), str) else None
     if status == "cancelled":
         return make_error("cancelled", "Provider reported the response as cancelled")
     message = error.get("message") if isinstance(error.get("message"), str) else ""
     return make_error("provider_transient" if code == "server_error" else "provider_permanent",
-                  f"Provider status failed {code or ''}: {message}".strip(),
-                  retryable=code == "server_error")
+                      f"Provider status failed {code or ''}: {message}".strip(),
+                      retryable=code == "server_error", secrets=(secret,))

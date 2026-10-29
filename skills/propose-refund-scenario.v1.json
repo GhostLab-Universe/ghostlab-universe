@@ -1,0 +1,23 @@
+{
+  "allowed_tools": [],
+  "output_schema": {"name": "experiment_proposal", "version": 1},
+  "preconditions": [
+    "A baseline run of the refund world exists",
+    "The campaign budget allows at least one more run"
+  ],
+  "prompt_version": "explorer-prompt-1",
+  "purpose": "Propose one bounded refund-world experiment likely to violate a refund invariant",
+  "schema_version": 1,
+  "skill_id": "propose-refund-scenario",
+  "steps": [
+    "Read the verified findings and recent tool observations in this context",
+    "Pick one fault the refund world supports (timeout_after_commit) and one adapter",
+    "State the hypothesis and the invariant you expect to fail",
+    "Return exactly one experiment_proposal object and nothing else"
+  ],
+  "stop_conditions": [
+    "One experiment_proposal returned",
+    "No supported fault would test a new hypothesis"
+  ],
+  "version": 1
+}

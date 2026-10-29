@@ -55,8 +55,17 @@ from .inference import ExplorerClient, LiveInferenceAuthorization, require_infer
 
 ORCHESTRATION_VERSION = "ghostlab-orchestration/1"
 TARGET_TOOLS = {"get_order", "issue_refund", "get_refund_status"}
+class CampaignExists(Exception):
+    """A campaign id may be started once per project; it is never reused or taken over."""
+
+
 ROUTES = ("plan", "propose", "validate", "execute", "verify", "remember", "request_repair",
           "await_approval", "consume", "execute_repair")
+
+
+def ledger_key(project_id: str, campaign_id: str) -> str:
+    """Budget ledger campaign key: ``<project>:<campaign>``."""
+    return f"{project_id}:{campaign_id}"
 
 
 @dataclass(frozen=True)
@@ -126,11 +135,14 @@ class CampaignController:
     # -- public API -----------------------------------------------------------------
 
     def start(self, campaign_id: str, spec: CampaignSpec) -> dict:
+        if self.graph.get_state(self._config(campaign_id)).values:
+            raise CampaignExists(f"campaign {campaign_id} already exists in this project")
         within = check_within_ceiling("supervisor", spec.budget)
         if not within.allowed:
             raise PolicyDenied(within)
-        model = self.s.adapter_factory(self.s.runtime).config.model
-        limits = require_inference_allowed(self.s.runtime, model, spec.budget, self.s.live)
+        config = self.s.adapter_factory(self.s.runtime).config
+        limits = require_inference_allowed(self.s.runtime, config.model, spec.budget,
+                                           self.s.live, credential_source=config.credential.source)
         now = utc_timestamp(self.s.clock())
         state: CampaignState = {
             "campaign_id": campaign_id, "project_id": self.session.project_id,
@@ -149,7 +161,7 @@ class CampaignController:
         """Re-check a paused campaign. The resume payload grants nothing."""
         self._check_owner(campaign_id)
         if not self.graph.get_state(self._config(campaign_id)).next:
-            return self.state(campaign_id)  # finished: nothing to resume
+            return self._snapshot(campaign_id)  # finished: nothing to resume
         return self._invoke(Command(resume="check"), campaign_id)
 
     def recover(self, campaign_id: str) -> dict:
@@ -161,12 +173,15 @@ class CampaignController:
         return self._invoke(None, campaign_id)
 
     def state(self, campaign_id: str) -> dict:
+        self._check_owner(campaign_id)
+        return self._snapshot(campaign_id)
+
+    def _snapshot(self, campaign_id: str) -> dict:
         snapshot = self.graph.get_state(self._config(campaign_id))
         return {**snapshot.values, "paused": bool(snapshot.next)}
 
     def record(self, campaign_id: str) -> CampaignRecord:
         state = self.state(campaign_id)
-        self._check_owner(campaign_id)
         status = "awaiting_approval" if state["paused"] else state["status"]
         return CampaignRecord.model_validate({
             "schema_version": 1, "campaign_id": campaign_id, "project_id": state["project_id"],
@@ -196,11 +211,11 @@ class CampaignController:
 
     def _invoke(self, payload, campaign_id):
         self.graph.invoke(payload, self._config(campaign_id), durability="sync")
-        return self.state(campaign_id)
+        return self._snapshot(campaign_id)
 
-    @staticmethod
-    def _config(campaign_id):
-        return {"configurable": {"thread_id": campaign_id}}
+    def _config(self, campaign_id):
+        # Threads are namespaced by project, so equal campaign ids never collide.
+        return {"configurable": {"thread_id": f"{self.session.project_id}:{campaign_id}"}}
 
     def _check_owner(self, campaign_id):
         values = self.graph.get_state(self._config(campaign_id)).values
@@ -223,8 +238,10 @@ class CampaignController:
         return BudgetLimits.model_validate(state["limits"])
 
     def _accountant(self, state) -> BudgetAccountant:
-        return BudgetAccountant(self.s.ledger, state["campaign_id"], self._limits(state),
-                                clock=self.s.clock)
+        # Ledger rows are namespaced by project too (M04's ledger has no project column).
+        return BudgetAccountant(self.s.ledger,
+                                ledger_key(state["project_id"], state["campaign_id"]),
+                                self._limits(state), clock=self.s.clock)
 
     def _event(self, state, kind, summary, *, task_id=None, run_id=None, refs=()):
         event = ExperimentEvent.model_validate({
@@ -293,17 +310,25 @@ class CampaignController:
         target = delegate(self.root, "target", TARGET_TOOLS)
         accountant = self._accountant(state)
         task_cap = ceiling_for("target").max_tool_calls * len(runs)
-        reservations = [accountant.reserve(task_id, "tool_calls", scenario.max_tool_calls,
-                                           task_limit=task_cap) for scenario, _ in runs]
-        workers = max(1, min(self._limits(state).max_parallel_runs, len(runs)))
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            outcomes = list(pool.map(
-                lambda item: self.s.engine(self.s.fixture, item[0], item[1], scope=target,
-                                           project_id=self.session.project_id,
-                                           binding=self.s.binding), runs))
-        for reservation, outcome in zip(reservations, outcomes):
-            accountant.reconcile(reservation, outcome.tool_calls)
-        return outcomes
+        reservations, settled = [], False
+        try:
+            for scenario, _ in runs:
+                reservations.append(accountant.reserve(
+                    task_id, "tool_calls", scenario.max_tool_calls, task_limit=task_cap))
+            workers = max(1, min(self._limits(state).max_parallel_runs, len(runs)))
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                outcomes = list(pool.map(
+                    lambda item: self.s.engine(self.s.fixture, item[0], item[1], scope=target,
+                                               project_id=self.session.project_id,
+                                               binding=self.s.binding), runs))
+            for reservation, outcome in zip(reservations, outcomes):
+                accountant.reconcile(reservation, outcome.tool_calls)
+            settled = True
+            return outcomes
+        finally:
+            if not settled:  # a refused reservation or a raising run: leave nothing open
+                for reservation in reservations:
+                    accountant.release(reservation)
 
     # -- nodes ------------------------------------------------------------------------
 

@@ -126,7 +126,8 @@ class Lab:
     """One developer's local storage plus everything a controller needs."""
 
     def __init__(self, root: Path, script: Script, *, retry_attempts=3, binding=None,
-                 approvers=None, transport=True, live=None, on_node=None):
+                 approvers=None, transport=True, live=None, on_node=None,
+                 real_transport=None):
         self.paths = StoragePaths(root)
         app = open_database(self.paths.app_db)
         self.script, self.clock, self.timer = script, Clock(), FakeSleep()
@@ -140,7 +141,8 @@ class Lab:
         self.binding = binding or StaticPrincipalBinding(
             {(PROJECT, OPERATOR.principal_id): "synthetic-customer-1"})
         self.engine = EngineSpy()
-        self.runtime = Runtime(transport=httpx.MockTransport(script) if transport else None,
+        chosen = real_transport or (httpx.MockTransport(script) if transport else None)
+        self.runtime = Runtime(transport=chosen,
                                sleep=self.timer.sleep, monotonic=self.timer.monotonic,
                                jitter=lambda: 0.0)
         self.config = ProviderConfig(provider="meta_responses", model=MODEL,

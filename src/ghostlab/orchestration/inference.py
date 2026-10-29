@@ -12,6 +12,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+import httpx
+
 from ghostlab.budgets import AttemptGate, BudgetAccountant
 from ghostlab.context import ContextCompiler, ContextRequest, MemorySelection
 from ghostlab.contracts import BudgetLimits, ExperimentProposal, ModelReply, ModelRequest
@@ -54,12 +56,20 @@ class LiveInferenceAuthorization:
 
 
 def require_inference_allowed(runtime: Runtime, provider_model: str, limits: BudgetLimits,
-                              live: LiveInferenceAuthorization | None) -> BudgetLimits:
-    """Return the effective limits; refuse a network runtime without authorization."""
-    if runtime.transport is not None:
+                              live: LiveInferenceAuthorization | None, *,
+                              credential_source: str = "") -> BudgetLimits:
+    """Return the effective limits; refuse any non-mock runtime without authorization.
+
+    Only an ``httpx.MockTransport`` keeps requests in-process. ``None`` (the
+    default network transport) or any real transport needs explicit authorization
+    and a key read from the environment.
+    """
+    if isinstance(runtime.transport, httpx.MockTransport):
         return limits  # mocked transport: no request leaves the process
     if live is None:
         raise LiveInferenceRefused("a network runtime needs LiveInferenceAuthorization")
+    if not credential_source.startswith("env:"):
+        raise LiveInferenceRefused("live calls need a key read from the environment")
     live.check(provider_model, limits)
     return limits.model_validate({**limits.model_dump(),
                                   "max_model_calls": live.max_model_calls})

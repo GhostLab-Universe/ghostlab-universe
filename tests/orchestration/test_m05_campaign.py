@@ -3,13 +3,14 @@
 import pytest
 
 from ghostlab.contracts import CampaignRecord, MemoryQuery
-from ghostlab.orchestration import TrustedSession
+from ghostlab.orchestration import CampaignExists, TrustedSession, ledger_key
 from ghostlab.policy import ApprovalDenied, PolicyDenied, StaticPrincipalBinding, root_scope
 
 from m05_harness import (BUSY, OPERATOR, PROJECT, REVIEWER, SECRET, STRANGER, Lab, Script,
                          meta_reply, proposal, spec)
 
 CID = "campaign-1"
+KEY = ledger_key(PROJECT, CID)  # budget ledger rows are namespaced by project
 
 
 def paused_lab(tmp_path, **options):
@@ -173,7 +174,7 @@ def test_provider_errors_have_bounded_recovery(tmp_path):
     assert state["status"] == "failed" and state["outcome"] == "explorer_failed"
     assert len(lab.script.requests) == 4  # 2 task attempts x 2 HTTP attempts, then stop
     assert lab.engine.calls == []
-    used, unknown = lab.ledger.committed(CID, "model_calls")
+    used, unknown = lab.ledger.committed(KEY, "model_calls")
     assert used == 4  # every HTTP attempt was reserved and accounted
     assert SECRET not in str(state)
 
@@ -184,7 +185,7 @@ def test_budget_counts_every_http_attempt_including_retries(tmp_path):
         state = controller.start(CID, spec(max_model_calls=2))
     assert len(lab.script.requests) == 2  # the third (retry) attempt was never sent
     assert state["status"] == "budget_exhausted" and state["outcome"] == "model_calls"
-    assert lab.ledger.committed(CID, "model_calls")[0] == 2
+    assert lab.ledger.committed(KEY, "model_calls")[0] == 2
     assert lab.engine.calls == []
 
 
@@ -213,10 +214,44 @@ def test_unbound_or_mismatched_identity_denies_the_run_without_mutation(tmp_path
     assert state["status"] == "failed" and state["outcome"] == "policy_denied"
     assert state["errors"][-1]["code"] == "forbidden"
     assert state["experiments"] == {}
-    assert lab.ledger.committed(CID, "tool_calls")[0] == 0  # reserved, then reconciled to 0
+    assert lab.ledger.committed(KEY, "tool_calls")[0] == 0  # reserved, then reconciled to 0
 
 
 def test_campaign_budget_above_supervisor_ceiling_is_refused(tmp_path):
     lab = Lab(tmp_path, Script())
     with lab.controller() as controller, pytest.raises(PolicyDenied):
         controller.start(CID, spec(max_model_calls=10_000))
+
+
+# --- review fixes: no takeover, owner-only reads, no leaked reservations ------------
+
+def test_start_cannot_take_over_or_restart_an_existing_campaign(tmp_path):
+    lab, state = paused_lab(tmp_path)
+    with lab.controller() as same, pytest.raises(CampaignExists):
+        same.start(CID, spec())
+    with lab.controller(session=TrustedSession(REVIEWER, PROJECT)) as other_user, \
+            pytest.raises(CampaignExists):
+        other_user.start(CID, spec())
+    with lab.controller() as owner:
+        kept = owner.state(CID)
+    assert kept["paused"] and kept["principal_id"] == OPERATOR.principal_id
+    assert kept["approval"]["approval_id"] == state["approval"]["approval_id"]
+
+
+def test_state_and_record_are_owner_only(tmp_path):
+    lab, _ = paused_lab(tmp_path)
+    for session in (TrustedSession(OPERATOR, "project-other"), TrustedSession(REVIEWER, PROJECT)):
+        with lab.controller(session=session) as other:
+            with pytest.raises(PolicyDenied):
+                other.state(CID)
+            with pytest.raises(PolicyDenied):
+                other.record(CID)
+
+
+def test_unbound_principal_denies_and_leaves_no_open_reservation(tmp_path):
+    lab = Lab(tmp_path, Script(proposal()), binding=StaticPrincipalBinding({}))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    assert state["status"] == "failed" and state["outcome"] == "policy_denied"
+    assert lab.engine.calls  # the engine was reached and refused before any world call
+    assert lab.ledger.committed(KEY, "tool_calls") == (0, 0)  # released, nothing open

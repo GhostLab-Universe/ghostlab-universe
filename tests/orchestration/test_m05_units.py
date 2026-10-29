@@ -183,5 +183,23 @@ def test_valid_live_authorization_caps_model_calls_without_sending(tmp_path):
     from ghostlab.providers import Runtime
     live = LiveInferenceAuthorization(model=MODEL, max_model_calls=3, confirm_paid_calls=True,
                                       compatibility_report=report(tmp_path / "r.json"))
-    limits = require_inference_allowed(Runtime(transport=None), MODEL, spec().budget, live)
+    limits = require_inference_allowed(Runtime(transport=None), MODEL, spec().budget, live,
+                                       credential_source="env:MODEL_API_KEY")
     assert limits.max_model_calls == 3  # the explicit cap replaces the campaign value
+    with pytest.raises(LiveInferenceRefused, match="environment"):
+        require_inference_allowed(Runtime(transport=None), MODEL, spec().budget, live,
+                                  credential_source="test-fixture")
+
+
+
+def test_real_http_transport_is_not_treated_as_a_mock(tmp_path):
+    import httpx
+    transport = httpx.HTTPTransport()
+    try:
+        script = Script()
+        lab = Lab(tmp_path, script, real_transport=transport)
+        with lab.controller() as controller, pytest.raises(LiveInferenceRefused):
+            controller.start("campaign-1", spec())
+        assert script.requests == []
+    finally:
+        transport.close()

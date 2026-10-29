@@ -1,0 +1,10 @@
+{
+  "cost_currency": null,
+  "cost_minor": null,
+  "input_tokens": 0,
+  "model_calls": 3,
+  "output_tokens": 0,
+  "tool_calls": 9,
+  "unknown_usage_events": 3,
+  "wall_clock_ms": 1200
+}

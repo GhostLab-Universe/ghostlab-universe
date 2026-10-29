@@ -1,0 +1,88 @@
+{
+  "$id": "urn:ghostlab:contract:memory_query:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "project_id is filled by the controller from TrustedScope, not by a model.",
+  "properties": {
+    "as_of": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$",
+      "type": "string"
+    },
+    "campaign_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "kinds": {
+      "items": {
+        "enum": [
+          "episodic_event",
+          "finding",
+          "preference",
+          "procedure_ref"
+        ],
+        "type": "string"
+      },
+      "maxItems": 4,
+      "minItems": 1,
+      "type": "array"
+    },
+    "limit": {
+      "maximum": 200,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "project_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "statuses": {
+      "items": {
+        "enum": [
+          "unverified",
+          "verified",
+          "contradicted",
+          "superseded",
+          "expired"
+        ],
+        "type": "string"
+      },
+      "maxItems": 5,
+      "minItems": 1,
+      "type": "array"
+    },
+    "world_version": {
+      "anyOf": [
+        {
+          "const": "refund-world/1",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "project_id",
+    "campaign_id",
+    "world_version",
+    "kinds",
+    "statuses",
+    "as_of",
+    "limit"
+  ],
+  "title": "MemoryQuery",
+  "type": "object"
+}

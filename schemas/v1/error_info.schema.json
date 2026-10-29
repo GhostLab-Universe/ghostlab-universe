@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Typed pointer to evidence; a digest pins content when it is known.",
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "artifact",
+            "run",
+            "event",
+            "finding",
+            "capsule",
+            "task",
+            "memory",
+            "approval",
+            "context_bundle",
+            "envelope"
+          ],
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "sha256"
+      ],
+      "title": "Ref",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:error_info:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Typed error. side_effect records whether a world action may have committed.",
+  "properties": {
+    "code": {
+      "enum": [
+        "validation_failed",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "conflict",
+        "budget_exhausted",
+        "cancelled",
+        "deadline_exceeded",
+        "rate_limited",
+        "provider_transient",
+        "provider_permanent",
+        "provider_invalid_output",
+        "tool_error",
+        "tool_timeout",
+        "approval_required",
+        "approval_invalid",
+        "internal"
+      ],
+      "type": "string"
+    },
+    "message": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Ref"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "side_effect": {
+      "enum": [
+        "none",
+        "committed",
+        "unknown"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "retryable",
+    "side_effect",
+    "ref"
+  ],
+  "title": "ErrorInfo",
+  "type": "object"
+}

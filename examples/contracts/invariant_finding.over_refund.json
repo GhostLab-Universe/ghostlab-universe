@@ -1,0 +1,15 @@
+{
+  "evidence_event_ids": [
+    2,
+    3
+  ],
+  "finding_id": "finding-1",
+  "invariant": "total_refund_within_payment",
+  "limit_minor": 250000,
+  "observed_minor": 500000,
+  "recorded_at": "2026-10-29T10:00:05Z",
+  "run_id": "run-faulted-1",
+  "schema_version": 1,
+  "verdict": "failed",
+  "verifier_version": "refund-verifier-1"
+}

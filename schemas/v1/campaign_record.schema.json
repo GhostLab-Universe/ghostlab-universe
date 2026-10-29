@@ -1,0 +1,273 @@
+{
+  "$defs": {
+    "BudgetLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_cost_minor": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_input_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_model_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_parallel_runs": {
+          "maximum": 64,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_tool_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_wall_clock_ms": {
+          "maximum": 1000000000000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_model_calls",
+        "max_tool_calls",
+        "max_input_tokens",
+        "max_output_tokens",
+        "max_cost_minor",
+        "cost_currency",
+        "max_wall_clock_ms",
+        "max_parallel_runs"
+      ],
+      "title": "BudgetLimits",
+      "type": "object"
+    },
+    "BudgetUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cost_minor": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "output_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tool_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unknown_usage_events": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "wall_clock_ms": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "model_calls",
+        "tool_calls",
+        "input_tokens",
+        "output_tokens",
+        "cost_minor",
+        "cost_currency",
+        "wall_clock_ms",
+        "unknown_usage_events"
+      ],
+      "title": "BudgetUsage",
+      "type": "object"
+    },
+    "CampaignSpec": {
+      "additionalProperties": false,
+      "description": "What a client asks for. Project and principal come from the session, not here.",
+      "properties": {
+        "budget": {
+          "$ref": "#/$defs/BudgetLimits"
+        },
+        "objective": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "success_criteria": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "world_version": {
+          "const": "refund-world/1",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "objective",
+        "success_criteria",
+        "world_version",
+        "budget"
+      ],
+      "title": "CampaignSpec",
+      "type": "object"
+    },
+    "Principal": {
+      "additionalProperties": false,
+      "description": "Identity derived from an authenticated session, never from a request body.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "service",
+            "local_dev"
+          ],
+          "type": "string"
+        },
+        "principal_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "principal_id",
+        "kind"
+      ],
+      "title": "Principal",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:campaign_record:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "campaign_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "created_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/Principal"
+    },
+    "project_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "spec": {
+      "$ref": "#/$defs/CampaignSpec"
+    },
+    "status": {
+      "enum": [
+        "queued",
+        "running",
+        "awaiting_approval",
+        "completed",
+        "failed",
+        "cancelled",
+        "budget_exhausted"
+      ],
+      "type": "string"
+    },
+    "trace_id": {
+      "pattern": "^[0-9a-f]{32}$",
+      "type": "string"
+    },
+    "updated_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$",
+      "type": "string"
+    },
+    "usage": {
+      "$ref": "#/$defs/BudgetUsage"
+    }
+  },
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "project_id",
+    "created_by",
+    "spec",
+    "status",
+    "usage",
+    "trace_id",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "CampaignRecord",
+  "type": "object"
+}

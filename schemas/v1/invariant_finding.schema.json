@@ -1,0 +1,91 @@
+{
+  "$id": "urn:ghostlab:contract:invariant_finding:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A verifier verdict derived from ledger/state evidence, never model confidence.",
+  "properties": {
+    "evidence_event_ids": {
+      "items": {
+        "maximum": 1000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    },
+    "finding_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "invariant": {
+      "enum": [
+        "authorized_refunds",
+        "total_refund_within_payment",
+        "no_duplicate_full_refund",
+        "unique_idempotency_keys"
+      ],
+      "type": "string"
+    },
+    "limit_minor": {
+      "anyOf": [
+        {
+          "maximum": 1000000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "observed_minor": {
+      "anyOf": [
+        {
+          "maximum": 1000000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recorded_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "verdict": {
+      "enum": [
+        "passed",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "verifier_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "finding_id",
+    "run_id",
+    "invariant",
+    "verifier_version",
+    "verdict",
+    "evidence_event_ids",
+    "observed_minor",
+    "limit_minor",
+    "recorded_at"
+  ],
+  "title": "InvariantFinding",
+  "type": "object"
+}

@@ -1,0 +1,10 @@
+{
+  "cost_currency": null,
+  "max_cost_minor": null,
+  "max_input_tokens": 200000,
+  "max_model_calls": 20,
+  "max_output_tokens": 20000,
+  "max_parallel_runs": 2,
+  "max_tool_calls": 60,
+  "max_wall_clock_ms": 600000
+}

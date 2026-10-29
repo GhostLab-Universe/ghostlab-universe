@@ -1,0 +1,42 @@
+{
+  "description": "Issue a refund for an order using an idempotency key",
+  "name": "issue_refund",
+  "parameters": {
+    "additionalProperties": false,
+    "properties": {
+      "amount_minor": {
+        "maximum": 1000000000000000,
+        "minimum": 1,
+        "title": "Amount Minor",
+        "type": "integer"
+      },
+      "customer_id": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Customer Id",
+        "type": "string"
+      },
+      "idempotency_key": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Idempotency Key",
+        "type": "string"
+      },
+      "order_id": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Order Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "order_id",
+      "customer_id",
+      "amount_minor",
+      "idempotency_key"
+    ],
+    "title": "IssueRefundArgs",
+    "type": "object"
+  },
+  "world_version": "refund-world/1"
+}

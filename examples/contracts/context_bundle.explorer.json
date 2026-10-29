@@ -1,0 +1,76 @@
+{
+  "bundle_id": "bundle-1",
+  "campaign_id": "campaign-1",
+  "compiled_at": "2026-10-29T10:00:00Z",
+  "estimated_tokens": 900,
+  "items": [
+    {
+      "artifact": null,
+      "content": "Return exactly one experiment proposal.",
+      "item_id": "item-1",
+      "kind": "instruction",
+      "provenance": {
+        "observed_at": "2026-10-29T10:00:00Z",
+        "source_kind": "controller",
+        "source_ref": null,
+        "trust": "trusted"
+      }
+    },
+    {
+      "artifact": {
+        "id": "artifact-trace-1",
+        "kind": "artifact",
+        "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+      },
+      "content": "issue_refund raised PaymentTimeout after commit (event 2).",
+      "item_id": "item-2",
+      "kind": "observation",
+      "provenance": {
+        "observed_at": "2026-10-29T10:00:05Z",
+        "source_kind": "tool_result",
+        "source_ref": {
+          "id": "run-faulted-1:2",
+          "kind": "event",
+          "sha256": null
+        },
+        "trust": "untrusted"
+      }
+    }
+  ],
+  "objective": "Propose one experiment that could expose a duplicate refund",
+  "output_schema": {
+    "name": "experiment_proposal",
+    "version": 1
+  },
+  "prerequisite_refs": [
+    {
+      "id": "run-faulted-1",
+      "kind": "run",
+      "sha256": null
+    }
+  ],
+  "prompt_version": "explorer-prompt-1",
+  "role": "explorer",
+  "schema_version": 1,
+  "scope": {
+    "allowed_tools": [],
+    "delegated_by": "supervisor",
+    "issued_by": "controller",
+    "policy_version": "policy-1",
+    "principal": {
+      "kind": "local_dev",
+      "principal_id": "local-dev-user"
+    },
+    "project_id": "project-local",
+    "role": "explorer"
+  },
+  "skill": {
+    "skill_id": "propose-refund-scenario",
+    "version": 1
+  },
+  "success_criteria": [
+    "Proposal validates against experiment_proposal/1"
+  ],
+  "task_id": "task-explore-1",
+  "token_budget": 8000
+}

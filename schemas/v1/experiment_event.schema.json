@@ -1,0 +1,140 @@
+{
+  "$defs": {
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Typed pointer to evidence; a digest pins content when it is known.",
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "artifact",
+            "run",
+            "event",
+            "finding",
+            "capsule",
+            "task",
+            "memory",
+            "approval",
+            "context_bundle",
+            "envelope"
+          ],
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "sha256"
+      ],
+      "title": "Ref",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:experiment_event:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Ordered application event for status streams; not model-token streaming.",
+  "properties": {
+    "campaign_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "campaign_created",
+        "campaign_status_changed",
+        "task_status_changed",
+        "run_started",
+        "tool_event_recorded",
+        "run_completed",
+        "finding_recorded",
+        "approval_requested",
+        "approval_decided",
+        "budget_reserved",
+        "budget_exhausted",
+        "capsule_exported",
+        "replay_completed"
+      ],
+      "type": "string"
+    },
+    "occurred_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$",
+      "type": "string"
+    },
+    "refs": {
+      "items": {
+        "$ref": "#/$defs/Ref"
+      },
+      "maxItems": 64,
+      "type": "array"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "sequence": {
+      "maximum": 1000000000000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "summary": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "task_id": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "trace_id": {
+      "pattern": "^[0-9a-f]{32}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "sequence",
+    "kind",
+    "task_id",
+    "run_id",
+    "trace_id",
+    "occurred_at",
+    "refs",
+    "summary"
+  ],
+  "title": "ExperimentEvent",
+  "type": "object"
+}

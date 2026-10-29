@@ -1,0 +1,138 @@
+{
+  "$defs": {
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Where content came from. Only controller/verifier/human sources are trusted.",
+      "properties": {
+        "observed_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$",
+          "type": "string"
+        },
+        "source_kind": {
+          "enum": [
+            "controller",
+            "verifier",
+            "human",
+            "memory",
+            "tool_result",
+            "model_output"
+          ],
+          "type": "string"
+        },
+        "source_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trust": {
+          "enum": [
+            "trusted",
+            "verified",
+            "untrusted"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_kind",
+        "source_ref",
+        "observed_at",
+        "trust"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Typed pointer to evidence; a digest pins content when it is known.",
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "artifact",
+            "run",
+            "event",
+            "finding",
+            "capsule",
+            "task",
+            "memory",
+            "approval",
+            "context_bundle",
+            "envelope"
+          ],
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "sha256"
+      ],
+      "title": "Ref",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:artifact_ref:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "created_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$",
+      "type": "string"
+    },
+    "media_type": {
+      "pattern": "^[a-z]+/[a-z0-9.+-]{1,100}$",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "size_bytes": {
+      "maximum": 1099511627776,
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "sha256",
+    "size_bytes",
+    "media_type",
+    "provenance",
+    "created_at"
+  ],
+  "title": "ArtifactRef",
+  "type": "object"
+}

@@ -1,0 +1,10 @@
+{
+  "adapter": "vulnerable",
+  "expected_signal": "total_refund_within_payment fails",
+  "hypothesis": "A retry after a post-commit timeout issues a second refund",
+  "scenario": {
+    "max_tool_calls": 20,
+    "timeout_after_commit": true
+  },
+  "schema_version": 1
+}

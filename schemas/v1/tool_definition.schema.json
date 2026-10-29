@@ -1,0 +1,41 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "urn:ghostlab:contract:tool_definition:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "name": {
+      "enum": [
+        "get_order",
+        "issue_refund",
+        "get_refund_status"
+      ],
+      "type": "string"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "world_version": {
+      "const": "refund-world/1",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "world_version",
+    "description",
+    "parameters"
+  ],
+  "title": "ToolDefinition",
+  "type": "object"
+}

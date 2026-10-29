@@ -1,0 +1,11 @@
+{
+  "code": "tool_timeout",
+  "message": "Payment committed; response timed out",
+  "ref": {
+    "id": "run-faulted-1:2",
+    "kind": "event",
+    "sha256": null
+  },
+  "retryable": false,
+  "side_effect": "committed"
+}

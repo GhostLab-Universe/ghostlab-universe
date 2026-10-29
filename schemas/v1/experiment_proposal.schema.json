@@ -1,0 +1,62 @@
+{
+  "$defs": {
+    "ScenarioV1": {
+      "additionalProperties": false,
+      "properties": {
+        "max_tool_calls": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timeout_after_commit": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "timeout_after_commit",
+        "max_tool_calls"
+      ],
+      "title": "ScenarioV1",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:experiment_proposal:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Explorer structured output. Every field required; no identity or authority.\n\nShaped for Meta strict structured output (object root, all fields required,\nadditionalProperties false). Live acceptance by the model is untested.",
+  "properties": {
+    "adapter": {
+      "enum": [
+        "vulnerable",
+        "repaired"
+      ],
+      "type": "string"
+    },
+    "expected_signal": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "hypothesis": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "scenario": {
+      "$ref": "#/$defs/ScenarioV1"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "hypothesis",
+    "adapter",
+    "scenario",
+    "expected_signal"
+  ],
+  "title": "ExperimentProposal",
+  "type": "object"
+}

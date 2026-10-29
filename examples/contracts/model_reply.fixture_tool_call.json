@@ -1,0 +1,25 @@
+{
+  "continuation": "opaque-fixture-continuation",
+  "error": null,
+  "model": "fixture-model",
+  "provider": "meta_responses",
+  "received_at": "2026-10-29T10:00:05Z",
+  "request_id": "request-2",
+  "schema_version": 1,
+  "status": "tool_calls",
+  "structured_output": null,
+  "text": null,
+  "tool_calls": [
+    {
+      "arguments_json": "{\"order_id\": \"synthetic-order-1\", \"customer_id\": \"synthetic-customer-1\", \"idempotency_key\": \"refund-intent-1\"}",
+      "provider_call_id": "call-fixture-1",
+      "tool_name": "get_refund_status"
+    }
+  ],
+  "usage": {
+    "cost_currency": null,
+    "cost_minor": null,
+    "input_tokens": null,
+    "output_tokens": null
+  }
+}

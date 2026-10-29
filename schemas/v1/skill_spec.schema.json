@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "SchemaRef": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        "version": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "SchemaRef",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:skill_spec:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A reviewed procedure. allowed_tools narrows a scope; it never grants one.",
+  "properties": {
+    "allowed_tools": {
+      "items": {
+        "enum": [
+          "get_order",
+          "issue_refund",
+          "get_refund_status"
+        ],
+        "type": "string"
+      },
+      "maxItems": 16,
+      "type": "array"
+    },
+    "output_schema": {
+      "$ref": "#/$defs/SchemaRef"
+    },
+    "preconditions": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 16,
+      "type": "array"
+    },
+    "prompt_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "purpose": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "skill_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "steps": {
+      "items": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "type": "array"
+    },
+    "stop_conditions": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    },
+    "version": {
+      "maximum": 10000,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "skill_id",
+    "version",
+    "prompt_version",
+    "purpose",
+    "preconditions",
+    "allowed_tools",
+    "steps",
+    "output_schema",
+    "stop_conditions"
+  ],
+  "title": "SkillSpec",
+  "type": "object"
+}

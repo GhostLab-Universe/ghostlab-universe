@@ -1,0 +1,217 @@
+{
+  "bundle_defs": {
+    "AgentEnvelope": "695455e4ba81f64012de1f0254bae81062d3140219cdb97af69f61d6f8500711",
+    "ApprovalDecision": "46283a9e504960d5d2f9163f201597f82916ee3b61f60372fcf56d498d7918b2",
+    "ApprovalRequest": "7595995c7428081f5c52c7b88d677298a96654d8cfe873eea6c51ec7f3b5684b",
+    "ApprovalSubmission": "6f4f5baf6ae13c8b29d9ebcef289f43ac98ac9c282f1ae16f95e403e5eff15c8",
+    "ArtifactRef": "9b0884eb9b54710d7fb81eef8c3f6d5b6be56318b6b26d53e2d6c9195b36d55f",
+    "BudgetLimits": "644624b38dffa4391f1e47aa745310d7c72f245c02f6c0f5e8517c66d54087e1",
+    "BudgetReservation": "4780a377073272d586f695f221f35b0acc1550f7c28d7ef50ad4b0e58bffe777",
+    "BudgetUsage": "6e8ed21cc3d3fc58c7a1859d28d8b368b5f5ca6e5863bb34daacb50a283b8ec8",
+    "CampaignRecord": "1b25e7a399675a106e4b367506dc1555e5515a6efe6247792c304226cd0a66e8",
+    "CampaignSpec": "2f0322f103f1607c326bc1e9b0fced02bed88083488f242bc32a47ea49efc24b",
+    "CapsulePayloadV1": "f86ae5e134add4d8843bfe2033c05a1608e3f754b87a8957bc4bd0a69aa8592c",
+    "CapsuleV1": "13a4076cd4ad827cd6bc462ab1da41e258f42de01f2dc3e00d8c65efcdc3417f",
+    "ContextBundle": "389b71ff8a7c713a7ab9b1de96992d63baa7dbe51a8b1c83fe81ce3c662e13c8",
+    "ContextItem": "b53473949207e3b8ff002f60660ea372395e2a4ff6f64d7c1abd208d5ab09f3d",
+    "Divergence": "bdab87853f7014f2f6c3a12cc5b0cc082790b76faba6ba56d45760f9f1e4b3a4",
+    "ErrorInfo": "3c368823c25d87790fe9cea52e114ae8e62380746e7b6af3d0ecb5208843aaf2",
+    "ExperimentEvent": "0c451fa1f24ee981dccf18b23a8e676619453b299eb09f40ec93bec1f9deec13",
+    "ExperimentProposal": "a7194c8c031c3db1ca1ae5159ce8592480698cb95d770e05cfc06a3c3b7fffa7",
+    "ExperimentResult": "a5138e00e6e99748d837f1a718c7ec62b09d180a3532711c30d35e0528d560ed",
+    "FixtureV1": "6f27d77a7a96e4322a36f22e85c7e44fd402dc282cb9d2ed41521b5a1977b8da",
+    "GetOrderArgs": "afa179c585b3deb53070532a654410a327973a4560cbb683499a3913490b6f37",
+    "GetOrderCall": "f7a903af2a7bd8463a2167628b4e4c6f107768fcad63dd7edcf40f00dacc9dd7",
+    "GetRefundStatusArgs": "4cbd285d559ead208e1ba640060c1ca144b0c75d9f83918517a8c9c0e3c85e71",
+    "GetRefundStatusCall": "223361463da7d3ec7de0082c49ffd1a8b3ff436ad42a72c9e66e6eec672af884",
+    "InvariantFinding": "a10a0e7eddc165cc23aecc2e6ee12ac7f4e05d31c382623f29a037529d316284",
+    "IssueRefundArgs": "2818f48204b5cb7686c592603aadda6d79255059b4dbbdff8cd714ab88f04abf",
+    "IssueRefundCall": "656ddc04cb046dd3fc5af8ea5c59358764a7e5a7df1e0d22b2d4a9ee31777e34",
+    "JsonValue": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "LedgerRow": "c7cf3ccfc802ae30d87273b66c47ce8573d4f347992bfd3031508a95483f2d69",
+    "MemoryQuery": "7fc3abd28eb452956f4489d3da6e4062ae0e601b778ab85b7a4af402629c0676",
+    "MemoryRecord": "c714844c692bb5af855f6a97bec8b49840499209f7dfd68d6ccc61a73d5f8691",
+    "ModelReply": "454774f92e2f7504bb79bbc86c259cd82feb11649032348bafa6401ed725be63",
+    "ModelRequest": "9a2818a226a3c5f3eeee8a0f7349db46770c4675244a150f4c632d8e84cd7bbe",
+    "OrderRecord": "e09a54c76eb59fe9b3b5552007f63cabff46fa4300f32e693deebfd037596942",
+    "OutcomeError": "0233bb57756d9efe8d003a018574bb93db9c221b497d04ad882fc598fea6c567",
+    "OutcomeResult": "f521475996283f3d8351ec3f55fa584f4763722bcaf42a44530da461d3dc4e91",
+    "Principal": "4a46dd91906e610b92bc2a5cb7afed4d965c72245f17707aec240e5980d8c3d8",
+    "ProposedToolCall": "61a3634130f5e579a0d78f8fcf067825ffebb51f70dc6fd2fc65a11368fd53d5",
+    "Provenance": "89565d1e026a927b1c803710c1e7484450a78dd681c70e00162fc7447f03b0c4",
+    "RealityDiff": "b643bea883219b437f721f7cccd8a58adfe8549c4af68a05b5d9717606c8d0f2",
+    "RecordedRequest": "db4cc61ac301bb58ad13472f46bfe174efc175b882807a630a101a583616bc7f",
+    "Ref": "5f9111b424b7b54f5801960ca7bd23f5ecc6181fa878f8687edf9bc42b46ccf8",
+    "RefundChecks": "7ecc38b1424db2777814cc5b9b323a6f6670e99bea062d93761a71d7ed09c05e",
+    "RefundStatus": "b0343238679071353279f302065574edc6512328f983dd99e5b348feb3f55e42",
+    "RetentionPolicy": "da6b2b1b69278ff8e2619e6d4283e11c6bb5ab4d306012ed6b78d82a01018540",
+    "RunResult": "14cee9c1d8d9187b2deb72a07a2e1767a3a5b904d4ae04b11d3b6f6f453965c5",
+    "ScenarioV1": "48f2aed6560ab6afdae02e4a66bff80b8cb2e5c2cfd40af1f40053234e354a64",
+    "SchemaRef": "92653396f9131274f5e1412798b842cf3b35170eee9e16620fb28d927ddbe7a1",
+    "SkillRef": "a0d17d1f8b25919ac84f0e28f4eff3b1691078bd9b041b14e9a6d1e364be97f8",
+    "SkillSpec": "50dd2741bf6be61209d34b4723e33518ccbd075b02979be7e6988edc5932ef2f",
+    "TaskSpec": "34635631c5756fcedf92e4f7c7e318ec9b332d0d299abc675903a4b0d88c2b08",
+    "ToolDefinition": "f5858ce9381ade4feca841151efe6f76c3b242014f16584da4d33c8fff085bdd",
+    "ToolInvocation": "a202236e514288d0f096b9f271381dfa70f3c2cf2ce8874870074d9f5e9d4b39",
+    "ToolResult": "f931160c44cc6050333f615abcb260f6e2a5368eb9309e2969c15ee35d76f8a7",
+    "ToolResultForModel": "4d119fbc2569ae1ce78123398ab0877c7a391cef9abba7b46433801d37b1d4c3",
+    "TraceEvent": "1b44e97b2ee75ecd04897f9f352dfba53085a601ea64d6674495adb26ef7d943",
+    "TrustedScope": "347a5ff6623e75cea0d20127abec33a5d7ace933ea0462f6b721d896c6fcc857",
+    "Usage": "fc5e383e17d20dae8ed2dbdb8a56da480b18ceaff4a35d0b6c0d437c3eddb57c",
+    "WorldSnapshot": "82210068e2a2da8612ec687c130376450cf08249af37724aa7bbc541cfec4626"
+  },
+  "contract_set": "ghostlab-contracts/1",
+  "contracts": {
+    "agent_envelope": {
+      "sha256": "c3a7963349fedbd13809b958cc998669a660bef2253ae46dc526d44527bc971b",
+      "type": "AgentEnvelope",
+      "version": 1
+    },
+    "approval_decision": {
+      "sha256": "52746b1ad5f30a1d8d73e937985d4f69ee6af99dc50b54beb6149933ac9fe372",
+      "type": "ApprovalDecision",
+      "version": 1
+    },
+    "approval_request": {
+      "sha256": "ec5860dbf7fc7417154fd272e6844182bebb4450c95cb7472cc7eed4a7914cd7",
+      "type": "ApprovalRequest",
+      "version": 1
+    },
+    "approval_submission": {
+      "sha256": "b25f52bf75302680b88b19fd862107e1dc1b9fbed4378b8838523c2a984e5ba7",
+      "type": "ApprovalSubmission",
+      "version": 1
+    },
+    "artifact_ref": {
+      "sha256": "0ae6145c79ad4a46c7dea974e52ac295b375a7fe1030d9b0a4b200b1409fc7fa",
+      "type": "ArtifactRef",
+      "version": 1
+    },
+    "budget_limits": {
+      "sha256": "bc5f553663cba004d2a955aa63838ffcde7e3e6ba8af45c830a0f245af7a86d6",
+      "type": "BudgetLimits",
+      "version": 1
+    },
+    "budget_reservation": {
+      "sha256": "7508ade1119307012be8c5741afb298fd51095908f4318f525335ddfe5c8ab7e",
+      "type": "BudgetReservation",
+      "version": 1
+    },
+    "budget_usage": {
+      "sha256": "c53ac79028e4dc166d3c9eeff54557196253f9ad60d9c9e066ca68d24ae7e326",
+      "type": "BudgetUsage",
+      "version": 1
+    },
+    "campaign_record": {
+      "sha256": "60742845f923c37a2644608e1d4a2fa8016b5712888df1655d544c4e80b610c2",
+      "type": "CampaignRecord",
+      "version": 1
+    },
+    "campaign_spec": {
+      "sha256": "e30d65c75214dfae3ae1edfdb8f19d69ae313575bfcdbca6246324885a636ea6",
+      "type": "CampaignSpec",
+      "version": 1
+    },
+    "capsule_v1": {
+      "sha256": "305268a4348331a810f661bc665b7729e82c466de20e6a305b1f1c28c53dd468",
+      "type": "CapsuleV1",
+      "version": 1
+    },
+    "context_bundle": {
+      "sha256": "d794c6c618034e460297e56e000bd7d96826c616c290f3dde0eb98fb32dddd6d",
+      "type": "ContextBundle",
+      "version": 1
+    },
+    "error_info": {
+      "sha256": "5672e1ce1134c6ed8409833d2eab5daa15e60b9270091c9555629e74142bb9cf",
+      "type": "ErrorInfo",
+      "version": 1
+    },
+    "experiment_event": {
+      "sha256": "9b92684a4d4da1f6b48e050d9e6e4dede9228e9a14d6ef942ac94bbd4ae3a54a",
+      "type": "ExperimentEvent",
+      "version": 1
+    },
+    "experiment_proposal": {
+      "sha256": "de89a8c6341cf50bdbd9b3ae7a140bcef91dfd008cbb70498c624c6aa2b2cd0a",
+      "type": "ExperimentProposal",
+      "version": 1
+    },
+    "experiment_result": {
+      "sha256": "8d554c1ab5329404fad570a87efc84e9821b41ebffeba4c5a1dcf0c9e7bcae72",
+      "type": "ExperimentResult",
+      "version": 1
+    },
+    "invariant_finding": {
+      "sha256": "04969f3012a54c6a5d04822ccef295b080e39b9bb2be2cede4f793bc954c622f",
+      "type": "InvariantFinding",
+      "version": 1
+    },
+    "memory_query": {
+      "sha256": "f0b4baa4bbf98c2a788279b3f6c2fec521e12e271374686892c6d81bf9f21d9a",
+      "type": "MemoryQuery",
+      "version": 1
+    },
+    "memory_record": {
+      "sha256": "ddafcd95fdb9bb7a0be44928176368ebbe8f19d383f29f1150a8cffca1d1a7a9",
+      "type": "MemoryRecord",
+      "version": 1
+    },
+    "model_reply": {
+      "sha256": "a7da660fff90ce04e8af686293314b45f2528b38c88e2337f9a40e8f2500a73e",
+      "type": "ModelReply",
+      "version": 1
+    },
+    "model_request": {
+      "sha256": "4970e4b115b82bf7ed97e74308f769c9d18d5c9d63093a5066fabe1cc22e984b",
+      "type": "ModelRequest",
+      "version": 1
+    },
+    "reality_diff": {
+      "sha256": "581be432a9d675c91a9906c7f891aa295b4bcd1ffb0e405cab511bde14c15595",
+      "type": "RealityDiff",
+      "version": 1
+    },
+    "ref": {
+      "sha256": "576e61fb2402fbaab2384b386074b5aa2389ce5f2aa92c472147d738dfb1dbfe",
+      "type": "Ref",
+      "version": 1
+    },
+    "run_result": {
+      "sha256": "c3b925929726395f7e736850bd5c74ce0ddc1cf863108179593a6a6c0e0b3dc2",
+      "type": "RunResult",
+      "version": 1
+    },
+    "skill_spec": {
+      "sha256": "ec4930099389b2c2c4623d1b899546d560a0b5910524ead1c147e64c88f20903",
+      "type": "SkillSpec",
+      "version": 1
+    },
+    "task_spec": {
+      "sha256": "b1f68295a9433a52f46392af33b104647708b4e6a3bb12ee7ebeb184185f65be",
+      "type": "TaskSpec",
+      "version": 1
+    },
+    "tool_definition": {
+      "sha256": "35b29ae4ab8766569b03d6c25531e6771630b2f0874be29d6fe8326cc9d792f8",
+      "type": "ToolDefinition",
+      "version": 1
+    },
+    "tool_invocation": {
+      "sha256": "9d6cf8ec37f50491843aa9ff30cf4ecb2b833c2bc8fd76033a3dd3402fd7348c",
+      "type": "ToolInvocation",
+      "version": 1
+    },
+    "tool_result": {
+      "sha256": "0c087133714ada718b8a4382ec3e262db6c75732a042bd1fca840f4113cf865f",
+      "type": "ToolResult",
+      "version": 1
+    },
+    "trusted_scope": {
+      "sha256": "b8580f18437b54f8d72416675e6287e0148356289259b89a0e1e506c2ce337c5",
+      "type": "TrustedScope",
+      "version": 1
+    }
+  },
+  "note": "Frozen record of contract set ghostlab-contracts/1 at integration commit 7486db5. Additive extensions must leave every entry here unchanged."
+}

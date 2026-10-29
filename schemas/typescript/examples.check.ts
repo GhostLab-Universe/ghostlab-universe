@@ -215,6 +215,151 @@ export const campaign_spec__refund_timeout: C.CampaignSpec = {
   "world_version": "refund-world/1"
 };
 
+export const capsule_v2__journey_fixture: C.CapsuleV2 = {
+  "payload": {
+    "actor_id": "traveller-a",
+    "fixture": {
+      "journey_id": "journey-1",
+      "participants": 3
+    },
+    "recorded_model_outputs": [],
+    "run": {
+      "actor_id": "traveller-a",
+      "adapter_id": "journey-naive",
+      "adapter_version": "journey-adapters/1",
+      "checks": {
+        "commitments_use_approved_intent": true,
+        "delivered_messages_permitted": false,
+        "mandatory_participants_feasible": true
+      },
+      "final_state": {
+        "intent_version": 2,
+        "messages": [
+          {
+            "delivered": true,
+            "message_id": "msg-1",
+            "recipient_id": "participant-c",
+            "sharing_permitted": false
+          }
+        ]
+      },
+      "schema_version": 1,
+      "status": "completed",
+      "trace": [
+        {
+          "event_id": 1,
+          "outcome": {
+            "result": {
+              "intent_version": 2
+            }
+          },
+          "request": {
+            "arguments": {
+              "journey_id": "journey-1"
+            },
+            "tool": "inspect_constraints"
+          },
+          "state": {
+            "intent_version": 2,
+            "messages": [
+              {
+                "delivered": false,
+                "message_id": "msg-1",
+                "recipient_id": "participant-c",
+                "sharing_permitted": true
+              }
+            ]
+          }
+        },
+        {
+          "event_id": 2,
+          "outcome": {
+            "result": {
+              "message_id": "msg-1"
+            }
+          },
+          "request": {
+            "arguments": {
+              "recipient_id": "participant-c",
+              "template_id": "itinerary-v2"
+            },
+            "tool": "queue_message"
+          },
+          "state": {
+            "intent_version": 2,
+            "messages": [
+              {
+                "delivered": false,
+                "message_id": "msg-1",
+                "recipient_id": "participant-c",
+                "sharing_permitted": true
+              }
+            ]
+          }
+        },
+        {
+          "event_id": 3,
+          "outcome": {
+            "result": {
+              "delivered": true
+            }
+          },
+          "request": {
+            "arguments": {
+              "message_id": "msg-1"
+            },
+            "tool": "deliver_message"
+          },
+          "state": {
+            "intent_version": 2,
+            "messages": [
+              {
+                "delivered": true,
+                "message_id": "msg-1",
+                "recipient_id": "participant-c",
+                "sharing_permitted": false
+              }
+            ]
+          }
+        }
+      ],
+      "world_version": "group-journey/1"
+    },
+    "scenario": {
+      "faults": [
+        {
+          "after_event": 4,
+          "fault_id": "sharing_revoked_while_queued",
+          "parameters": [
+            {
+              "name": "recipient_id",
+              "value": "participant-c"
+            }
+          ]
+        },
+        {
+          "after_event": null,
+          "fault_id": "stale_preference_memory",
+          "parameters": [
+            {
+              "name": "preference_version",
+              "value": 1
+            }
+          ]
+        }
+      ],
+      "max_tool_calls": 40,
+      "schema_version": 1,
+      "world_version": "group-journey/1"
+    },
+    "schema_version": 2,
+    "seed": 0,
+    "source": "specified journey pack fixture (not executable yet)",
+    "world_version": "group-journey/1"
+  },
+  "sha256": "e5550b8ef6f1d946f7cabb1ace04100cd2d8abcdd8ab3f963a3f44ed5af0541b"
+};
+
 export const context_bundle__explorer: C.ContextBundle = {
   "bundle_id": "bundle-1",
   "campaign_id": "campaign-1",
@@ -459,6 +604,185 @@ export const capsule_v1__refund_failure: C.CapsuleV1 = {
     "world_version": "refund-world/1"
   },
   "sha256": "75bbb46ce174dacefc396ded5bbc6b0e8c7ea7bdc5c5f8be14ae552f62ece040"
+};
+
+export const capsule_v2__refund_failure: C.CapsuleV2 = {
+  "payload": {
+    "actor_id": "synthetic-customer-1",
+    "fixture": {
+      "currency": "INR",
+      "customer_id": "synthetic-customer-1",
+      "order_id": "synthetic-order-1",
+      "paid_minor": 250000
+    },
+    "recorded_model_outputs": [],
+    "run": {
+      "actor_id": "synthetic-customer-1",
+      "adapter_id": "vulnerable",
+      "adapter_version": "refund-adapters/1",
+      "checks": {
+        "authorized_refunds": true,
+        "no_duplicate_full_refund": false,
+        "total_refund_within_payment": false,
+        "unique_idempotency_keys": true
+      },
+      "final_state": {
+        "ledger": [
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-intent-1",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-1"
+          },
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-retry-2",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-2"
+          }
+        ],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 500000
+      },
+      "schema_version": 1,
+      "status": "completed",
+      "trace": [
+        {
+          "event_id": 1,
+          "outcome": {
+            "result": {
+              "currency": "INR",
+              "customer_id": "synthetic-customer-1",
+              "order_id": "synthetic-order-1",
+              "paid_minor": 250000
+            }
+          },
+          "request": {
+            "arguments": {
+              "customer_id": "synthetic-customer-1",
+              "order_id": "synthetic-order-1"
+            },
+            "tool": "get_order"
+          },
+          "state": {
+            "ledger": [],
+            "order": {
+              "currency": "INR",
+              "customer_id": "synthetic-customer-1",
+              "order_id": "synthetic-order-1",
+              "paid_minor": 250000
+            },
+            "total_refunded_minor": 0
+          }
+        },
+        {
+          "event_id": 2,
+          "outcome": {
+            "error": "PaymentTimeout",
+            "message": "Payment committed; response timed out"
+          },
+          "request": {
+            "arguments": {
+              "amount_minor": 250000,
+              "customer_id": "synthetic-customer-1",
+              "idempotency_key": "refund-intent-1",
+              "order_id": "synthetic-order-1"
+            },
+            "tool": "issue_refund"
+          },
+          "state": {
+            "ledger": [
+              {
+                "amount_minor": 250000,
+                "customer_id": "synthetic-customer-1",
+                "idempotency_key": "refund-intent-1",
+                "order_id": "synthetic-order-1",
+                "transaction_id": "refund-1"
+              }
+            ],
+            "order": {
+              "currency": "INR",
+              "customer_id": "synthetic-customer-1",
+              "order_id": "synthetic-order-1",
+              "paid_minor": 250000
+            },
+            "total_refunded_minor": 250000
+          }
+        },
+        {
+          "event_id": 3,
+          "outcome": {
+            "result": {
+              "amount_minor": 250000,
+              "customer_id": "synthetic-customer-1",
+              "idempotency_key": "refund-retry-2",
+              "order_id": "synthetic-order-1",
+              "transaction_id": "refund-2"
+            }
+          },
+          "request": {
+            "arguments": {
+              "amount_minor": 250000,
+              "customer_id": "synthetic-customer-1",
+              "idempotency_key": "refund-retry-2",
+              "order_id": "synthetic-order-1"
+            },
+            "tool": "issue_refund"
+          },
+          "state": {
+            "ledger": [
+              {
+                "amount_minor": 250000,
+                "customer_id": "synthetic-customer-1",
+                "idempotency_key": "refund-intent-1",
+                "order_id": "synthetic-order-1",
+                "transaction_id": "refund-1"
+              },
+              {
+                "amount_minor": 250000,
+                "customer_id": "synthetic-customer-1",
+                "idempotency_key": "refund-retry-2",
+                "order_id": "synthetic-order-1",
+                "transaction_id": "refund-2"
+              }
+            ],
+            "order": {
+              "currency": "INR",
+              "customer_id": "synthetic-customer-1",
+              "order_id": "synthetic-order-1",
+              "paid_minor": 250000
+            },
+            "total_refunded_minor": 500000
+          }
+        }
+      ],
+      "world_version": "refund-world/1"
+    },
+    "scenario": {
+      "faults": [
+        {
+          "after_event": null,
+          "fault_id": "timeout_after_commit",
+          "parameters": []
+        }
+      ],
+      "max_tool_calls": 20,
+      "schema_version": 1,
+      "world_version": "refund-world/1"
+    },
+    "schema_version": 2,
+    "seed": 0,
+    "source": "trusted-synthetic-refund-adapter",
+    "world_version": "refund-world/1"
+  },
+  "sha256": "0d5c6498f666dba0af305e65e1ccd306a65d3963400983524708847323df9ef3"
 };
 
 export const experiment_result__refund_demo: C.ExperimentResult = {
@@ -1215,6 +1539,864 @@ export const run_result__faulted_vulnerable: C.RunResult = {
   ]
 };
 
+export const world_pack__group_journey: C.WorldPack = {
+  "adapters": [
+    {
+      "adapter_id": "journey-naive",
+      "description": "Treats one traveller's agreement as everyone's and trusts memory",
+      "kind": "vulnerable"
+    },
+    {
+      "adapter_id": "journey-version-checked",
+      "description": "Re-reads intent version and permissions before each commitment",
+      "kind": "repaired"
+    }
+  ],
+  "faults": [
+    {
+      "description": "An old preference reappears through stale or contaminated memory",
+      "fault_id": "stale_preference_memory",
+      "fault_pack": "stale_or_contaminated_memory",
+      "parameters": [
+        {
+          "description": "Superseded intent version that reappears",
+          "name": "preference_version",
+          "type": "integer"
+        }
+      ]
+    },
+    {
+      "description": "A delayed update conflicts with the revised itinerary",
+      "fault_id": "delayed_itinerary_update",
+      "fault_pack": "late_conflicting_update",
+      "parameters": [
+        {
+          "description": "Events by which the update arrives late",
+          "name": "delay_events",
+          "type": "integer"
+        }
+      ]
+    },
+    {
+      "description": "Sharing permission is revoked while a message waits for delivery",
+      "fault_id": "sharing_revoked_while_queued",
+      "fault_pack": "permission_revocation",
+      "parameters": [
+        {
+          "description": "Participant whose sharing permission is revoked",
+          "name": "recipient_id",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "invariants": [
+    {
+      "description": "Every new commitment uses the applicable approved intent version",
+      "evidence": "reservations",
+      "name": "commitments_use_approved_intent"
+    },
+    {
+      "description": "Mandatory participants keep feasible, non-overlapping journeys under the fixture's travel times",
+      "evidence": "calendar",
+      "name": "mandatory_participants_feasible"
+    },
+    {
+      "description": "Every delivered message had current recipient and disclosure permission at the delivery event; earlier deliveries stay recorded",
+      "evidence": "delivery_log",
+      "name": "delivered_messages_permitted"
+    }
+  ],
+  "replay": {
+    "capsule_schema_versions": [
+      2
+    ],
+    "dispatch": "recorded_actions"
+  },
+  "roles": [
+    "planner",
+    "calendar_coordinator",
+    "communications"
+  ],
+  "schema_version": 1,
+  "source": "GhostLab priority-worlds plan (design-level, 2026-10-29)",
+  "status": "specified",
+  "summary": "Two travellers replan an overnight visit after a cancellation; one changes a hard return deadline and revokes itinerary sharing with a third person.",
+  "title": "Group Journey Rescue",
+  "tools": [
+    {
+      "description": "Read the current intent version, participants and permissions",
+      "effect": "read",
+      "name": "inspect_constraints",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "journey_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "journey_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Place a hold on a transport or lodging option",
+      "effect": "mutate",
+      "name": "hold_availability",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "intent_version": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "journey_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "option_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_version",
+          "journey_id",
+          "option_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Release a previously placed hold",
+      "effect": "mutate",
+      "name": "release_availability",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "hold_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "hold_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Confirm a held reservation under a stated intent version",
+      "effect": "mutate",
+      "name": "confirm_reservation",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "hold_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "intent_version": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hold_id",
+          "intent_version"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Update one participant's calendar commitment",
+      "effect": "mutate",
+      "name": "update_calendar_event",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "intent_version": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "participant_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "intent_version",
+          "participant_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Queue a synthetic itinerary message",
+      "effect": "mutate",
+      "name": "queue_message",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "recipient_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "template_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipient_id",
+          "template_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Deliver a queued synthetic message (exposure is irreversible)",
+      "effect": "deliver",
+      "name": "deliver_message",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "message_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "world_version": "group-journey/1"
+};
+
+export const world_pack__refund_world: C.WorldPack = {
+  "adapters": [
+    {
+      "adapter_id": "vulnerable",
+      "description": "Retries a timed-out refund with a new idempotency key",
+      "kind": "vulnerable"
+    },
+    {
+      "adapter_id": "repaired",
+      "description": "Checks refund status before any retry",
+      "kind": "repaired"
+    }
+  ],
+  "faults": [
+    {
+      "description": "The first refund commits, then its response times out",
+      "fault_id": "timeout_after_commit",
+      "fault_pack": "lost_acknowledgement",
+      "parameters": []
+    }
+  ],
+  "invariants": [
+    {
+      "description": "Every refund row belongs to the order's customer and order",
+      "evidence": "ledger",
+      "name": "authorized_refunds"
+    },
+    {
+      "description": "At most one full-amount refund exists",
+      "evidence": "ledger",
+      "name": "no_duplicate_full_refund"
+    },
+    {
+      "description": "Total refunded never exceeds the amount paid",
+      "evidence": "ledger",
+      "name": "total_refund_within_payment"
+    },
+    {
+      "description": "Each ledger row has a distinct idempotency key",
+      "evidence": "ledger",
+      "name": "unique_idempotency_keys"
+    }
+  ],
+  "replay": {
+    "capsule_schema_versions": [
+      1,
+      2
+    ],
+    "dispatch": "recorded_actions"
+  },
+  "roles": [
+    "refund_agent"
+  ],
+  "schema_version": 1,
+  "source": "ghostlab.core refund-world/1 and refund-adapters/1",
+  "status": "implemented",
+  "summary": "A synthetic INR 2,500 order: a refund commits but its response times out, and the target must not refund twice.",
+  "title": "Refund world",
+  "tools": [
+    {
+      "description": "Read the synthetic order for the bound customer",
+      "effect": "read",
+      "name": "get_order",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "order_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Issue a refund with an idempotency key",
+      "effect": "mutate",
+      "name": "issue_refund",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "amount_minor": {
+            "maximum": 1000000000000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "idempotency_key": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount_minor",
+          "customer_id",
+          "idempotency_key",
+          "order_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Look up a refund by idempotency key",
+      "effect": "read",
+      "name": "get_refund_status",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "idempotency_key": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "idempotency_key",
+          "order_id"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "world_version": "refund-world/1"
+};
+
+export const world_pack__service_relay: C.WorldPack = {
+  "adapters": [
+    {
+      "adapter_id": "relay-local-success",
+      "description": "Each role trusts its own local success and retries blindly",
+      "kind": "vulnerable"
+    },
+    {
+      "adapter_id": "relay-lease-checked",
+      "description": "Checks leases, promise versions and ownership before acting",
+      "kind": "repaired"
+    }
+  ],
+  "faults": [
+    {
+      "description": "Competing jobs see stale availability",
+      "fault_id": "stale_availability_competition",
+      "fault_pack": "stale_availability",
+      "parameters": [
+        {
+          "description": "Jobs that read the same stale availability",
+          "name": "competing_jobs",
+          "type": "integer"
+        }
+      ]
+    },
+    {
+      "description": "A successful reservation loses its acknowledgement and is retried",
+      "fault_id": "lost_reservation_ack",
+      "fault_pack": "lost_acknowledgement",
+      "parameters": []
+    },
+    {
+      "description": "The owner takes over while an automated confirmation is queued",
+      "fault_id": "takeover_with_queued_confirmation",
+      "fault_pack": "owner_takeover",
+      "parameters": []
+    }
+  ],
+  "invariants": [
+    {
+      "description": "Technician and part allocations never exceed capacity or duplicate ownership",
+      "evidence": "resource_leases",
+      "name": "allocations_within_capacity"
+    },
+    {
+      "description": "Every confirmed service has valid matching reservations and promise versions",
+      "evidence": "reservations",
+      "name": "confirmations_backed_by_reservations"
+    },
+    {
+      "description": "Automated mutations stop after effective owner takeover until explicitly resumed",
+      "evidence": "conversation_ownership",
+      "name": "no_automation_after_takeover"
+    }
+  ],
+  "replay": {
+    "capsule_schema_versions": [
+      2
+    ],
+    "dispatch": "recorded_actions"
+  },
+  "roles": [
+    "front_desk",
+    "inventory",
+    "dispatch"
+  ],
+  "schema_version": 1,
+  "source": "GhostLab priority-worlds plan (design-level, 2026-10-29)",
+  "status": "specified",
+  "summary": "An appliance-repair shop with two technicians, one scarce part and several jobs; front desk, inventory and dispatch each succeed locally but together promise an impossible appointment.",
+  "title": "Small Business Relay",
+  "tools": [
+    {
+      "description": "Read technician slots, parts and current leases",
+      "effect": "read",
+      "name": "inspect_availability",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Lease a technician slot or part with an idempotency key",
+      "effect": "mutate",
+      "name": "reserve_resource",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "request_key": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "resource_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "request_key",
+          "resource_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Release a lease",
+      "effect": "mutate",
+      "name": "release_resource",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "lease_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "lease_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Confirm an appointment to the synthetic customer",
+      "effect": "mutate",
+      "name": "confirm_service",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "promise_version": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id",
+          "promise_version"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Transfer conversation ownership to the business owner",
+      "effect": "handoff",
+      "name": "hand_off_to_owner",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "conversation_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "world_version": "service-relay/1"
+};
+
+export const world_reality_diff__refund_demo: C.WorldRealityDiff = {
+  "baseline_metrics": {
+    "refunded_minor": 250000
+  },
+  "faulted_metrics": {
+    "refunded_minor": 500000
+  },
+  "first_divergence": {
+    "baseline": {
+      "event_id": 2,
+      "outcome": {
+        "result": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-intent-1",
+          "order_id": "synthetic-order-1",
+          "transaction_id": "refund-1"
+        }
+      },
+      "request": {
+        "arguments": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-intent-1",
+          "order_id": "synthetic-order-1"
+        },
+        "tool": "issue_refund"
+      },
+      "state": {
+        "ledger": [
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-intent-1",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-1"
+          }
+        ],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 250000
+      }
+    },
+    "event_id": 2,
+    "faulted": {
+      "event_id": 2,
+      "outcome": {
+        "error": "PaymentTimeout",
+        "message": "Payment committed; response timed out"
+      },
+      "request": {
+        "arguments": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-intent-1",
+          "order_id": "synthetic-order-1"
+        },
+        "tool": "issue_refund"
+      },
+      "state": {
+        "ledger": [
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-intent-1",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-1"
+          }
+        ],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 250000
+      }
+    }
+  },
+  "schema_version": 1,
+  "violated_invariants": [
+    "total_refund_within_payment",
+    "no_duplicate_full_refund"
+  ],
+  "world_version": "refund-world/1"
+};
+
+export const world_run_result__refund_faulted: C.WorldRunResult = {
+  "actor_id": "synthetic-customer-1",
+  "adapter_id": "vulnerable",
+  "adapter_version": "refund-adapters/1",
+  "checks": {
+    "authorized_refunds": true,
+    "no_duplicate_full_refund": false,
+    "total_refund_within_payment": false,
+    "unique_idempotency_keys": true
+  },
+  "final_state": {
+    "ledger": [
+      {
+        "amount_minor": 250000,
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "refund-intent-1",
+        "order_id": "synthetic-order-1",
+        "transaction_id": "refund-1"
+      },
+      {
+        "amount_minor": 250000,
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "refund-retry-2",
+        "order_id": "synthetic-order-1",
+        "transaction_id": "refund-2"
+      }
+    ],
+    "order": {
+      "currency": "INR",
+      "customer_id": "synthetic-customer-1",
+      "order_id": "synthetic-order-1",
+      "paid_minor": 250000
+    },
+    "total_refunded_minor": 500000
+  },
+  "schema_version": 1,
+  "status": "completed",
+  "trace": [
+    {
+      "event_id": 1,
+      "outcome": {
+        "result": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        }
+      },
+      "request": {
+        "arguments": {
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1"
+        },
+        "tool": "get_order"
+      },
+      "state": {
+        "ledger": [],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 0
+      }
+    },
+    {
+      "event_id": 2,
+      "outcome": {
+        "error": "PaymentTimeout",
+        "message": "Payment committed; response timed out"
+      },
+      "request": {
+        "arguments": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-intent-1",
+          "order_id": "synthetic-order-1"
+        },
+        "tool": "issue_refund"
+      },
+      "state": {
+        "ledger": [
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-intent-1",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-1"
+          }
+        ],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 250000
+      }
+    },
+    {
+      "event_id": 3,
+      "outcome": {
+        "result": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-retry-2",
+          "order_id": "synthetic-order-1",
+          "transaction_id": "refund-2"
+        }
+      },
+      "request": {
+        "arguments": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-retry-2",
+          "order_id": "synthetic-order-1"
+        },
+        "tool": "issue_refund"
+      },
+      "state": {
+        "ledger": [
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-intent-1",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-1"
+          },
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-retry-2",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-2"
+          }
+        ],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 500000
+      }
+    }
+  ],
+  "world_version": "refund-world/1"
+};
+
+export const world_scenario__refund_timeout: C.WorldScenario = {
+  "faults": [
+    {
+      "after_event": null,
+      "fault_id": "timeout_after_commit",
+      "parameters": []
+    }
+  ],
+  "max_tool_calls": 20,
+  "schema_version": 1,
+  "world_version": "refund-world/1"
+};
+
 export const error_info__committed_timeout: C.ErrorInfo = {
   "code": "tool_timeout",
   "message": "Payment committed; response timed out",
@@ -1225,6 +2407,68 @@ export const error_info__committed_timeout: C.ErrorInfo = {
   },
   "retryable": false,
   "side_effect": "committed"
+};
+
+export const evidence_interpretation__journey_revocation: C.EvidenceInterpretation = {
+  "claims": [
+    {
+      "cited": [
+        {
+          "id": "journey-run-1:3",
+          "kind": "event",
+          "sha256": null
+        },
+        {
+          "id": "journey-run-1-delivered_messages_permitted",
+          "kind": "finding",
+          "sha256": null
+        }
+      ],
+      "invariant": "delivered_messages_permitted",
+      "statement": "Delivery at event 3 happened after sharing was revoked"
+    }
+  ],
+  "hypothesis_assessment": "supported",
+  "open_questions": [
+    "Was the revocation visible to the communications role?"
+  ],
+  "run_id": "journey-run-1",
+  "schema_version": 1,
+  "summary": "The message queued before revocation was delivered after it.",
+  "world_version": "group-journey/1"
+};
+
+export const evidence_interpretation__refund_over_refund: C.EvidenceInterpretation = {
+  "claims": [
+    {
+      "cited": [
+        {
+          "id": "run-faulted-1:3",
+          "kind": "event",
+          "sha256": null
+        }
+      ],
+      "invariant": "unique_idempotency_keys",
+      "statement": "The second issue_refund at event 3 used a new key"
+    },
+    {
+      "cited": [
+        {
+          "id": "finding-1",
+          "kind": "finding",
+          "sha256": null
+        }
+      ],
+      "invariant": "total_refund_within_payment",
+      "statement": "Total refunded is 500000 against 250000 paid"
+    }
+  ],
+  "hypothesis_assessment": "supported",
+  "open_questions": [],
+  "run_id": "run-faulted-1",
+  "schema_version": 1,
+  "summary": "The retry used a new idempotency key after the committed refund timed out, so the ledger holds two full refunds.",
+  "world_version": "refund-world/1"
 };
 
 export const experiment_event__finding_recorded: C.ExperimentEvent = {
@@ -1410,6 +2654,53 @@ export const ref__event: C.Ref = {
   "sha256": null
 };
 
+export const repair_suggestion__journey_recheck_permission: C.RepairSuggestion = {
+  "adapter_id": null,
+  "change_kind": "describe_change_for_review",
+  "cited": [
+    {
+      "id": "journey-run-1-delivered_messages_permitted",
+      "kind": "finding",
+      "sha256": null
+    }
+  ],
+  "description": "Before deliver_message, re-read the recipient's sharing permission and drop queued messages whose permission was revoked.",
+  "rationale": "Permission is evaluated at the delivery event, not when queued.",
+  "risks": [
+    "Late revocations may drop a message the sender expected to arrive"
+  ],
+  "schema_version": 1,
+  "target_invariants": [
+    "delivered_messages_permitted"
+  ],
+  "title": "Re-check permission at delivery time",
+  "world_version": "group-journey/1"
+};
+
+export const repair_suggestion__refund_status_check: C.RepairSuggestion = {
+  "adapter_id": "repaired",
+  "change_kind": "use_checked_in_adapter",
+  "cited": [
+    {
+      "id": "finding-1",
+      "kind": "finding",
+      "sha256": null
+    }
+  ],
+  "description": "Use the checked-in repaired adapter, which reuses the idempotency key and checks status after a timeout instead of issuing a new refund.",
+  "rationale": "The timeout happened after commit, so status shows the refund exists.",
+  "risks": [
+    "A status outage would now block retries"
+  ],
+  "schema_version": 1,
+  "target_invariants": [
+    "total_refund_within_payment",
+    "no_duplicate_full_refund"
+  ],
+  "title": "Check refund status before retrying",
+  "world_version": "refund-world/1"
+};
+
 export const skill_spec__propose_refund_scenario: C.SkillSpec = {
   "allowed_tools": [],
   "output_schema": {
@@ -1576,4 +2867,426 @@ export const trusted_scope__target: C.TrustedScope = {
   },
   "project_id": "project-local",
   "role": "target"
+};
+
+export const world_campaign_record__group_journey: C.WorldCampaignRecord = {
+  "campaign_id": "campaign-1",
+  "created_at": "2026-10-29T10:00:00Z",
+  "created_by": {
+    "kind": "local_dev",
+    "principal_id": "local-dev-user"
+  },
+  "project_id": "project-local",
+  "schema_version": 1,
+  "spec": {
+    "budget": {
+      "cost_currency": null,
+      "max_cost_minor": null,
+      "max_input_tokens": 200000,
+      "max_model_calls": 20,
+      "max_output_tokens": 20000,
+      "max_parallel_runs": 2,
+      "max_tool_calls": 60,
+      "max_wall_clock_ms": 600000
+    },
+    "objective": "Find commitments made under a superseded journey intent",
+    "schema_version": 1,
+    "success_criteria": [
+      "A failing journey invariant is reproduced from a v2 capsule"
+    ],
+    "world_version": "group-journey/1"
+  },
+  "status": "running",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "updated_at": "2026-10-29T10:00:05Z",
+  "usage": {
+    "cost_currency": null,
+    "cost_minor": null,
+    "input_tokens": 0,
+    "model_calls": 3,
+    "output_tokens": 0,
+    "tool_calls": 9,
+    "unknown_usage_events": 3,
+    "wall_clock_ms": 1200
+  }
+};
+
+export const world_campaign_spec__group_journey: C.WorldCampaignSpec = {
+  "budget": {
+    "cost_currency": null,
+    "max_cost_minor": null,
+    "max_input_tokens": 200000,
+    "max_model_calls": 20,
+    "max_output_tokens": 20000,
+    "max_parallel_runs": 2,
+    "max_tool_calls": 60,
+    "max_wall_clock_ms": 600000
+  },
+  "objective": "Find commitments made under a superseded journey intent",
+  "schema_version": 1,
+  "success_criteria": [
+    "A failing journey invariant is reproduced from a v2 capsule"
+  ],
+  "world_version": "group-journey/1"
+};
+
+export const world_experiment_proposal__group_journey_revocation: C.WorldExperimentProposal = {
+  "adapter_id": "journey-naive",
+  "expected_signal": "delivered_messages_permitted fails",
+  "hypothesis": "A message queued before revocation is still delivered afterwards",
+  "scenario": {
+    "faults": [
+      {
+        "after_event": 4,
+        "fault_id": "sharing_revoked_while_queued",
+        "parameters": [
+          {
+            "name": "recipient_id",
+            "value": "participant-c"
+          }
+        ]
+      },
+      {
+        "after_event": null,
+        "fault_id": "stale_preference_memory",
+        "parameters": [
+          {
+            "name": "preference_version",
+            "value": 1
+          }
+        ]
+      }
+    ],
+    "max_tool_calls": 40,
+    "schema_version": 1,
+    "world_version": "group-journey/1"
+  },
+  "schema_version": 1,
+  "world_version": "group-journey/1"
+};
+
+export const world_experiment_proposal__refund_timeout: C.WorldExperimentProposal = {
+  "adapter_id": "vulnerable",
+  "expected_signal": "total_refund_within_payment fails",
+  "hypothesis": "A retry after a post-commit timeout issues a second refund",
+  "scenario": {
+    "faults": [
+      {
+        "after_event": null,
+        "fault_id": "timeout_after_commit",
+        "parameters": []
+      }
+    ],
+    "max_tool_calls": 20,
+    "schema_version": 1,
+    "world_version": "refund-world/1"
+  },
+  "schema_version": 1,
+  "world_version": "refund-world/1"
+};
+
+export const world_invariant_finding__journey_revoked_delivery: C.WorldInvariantFinding = {
+  "evidence_event_ids": [
+    3
+  ],
+  "finding_id": "journey-run-1-delivered_messages_permitted",
+  "invariant": "delivered_messages_permitted",
+  "limit_value": 0,
+  "observed_value": 1,
+  "recorded_at": "2026-10-29T10:00:05Z",
+  "run_id": "journey-run-1",
+  "schema_version": 1,
+  "unit": "unpermitted_deliveries",
+  "verdict": "failed",
+  "verifier_version": "journey-verifier-1",
+  "world_version": "group-journey/1"
+};
+
+export const world_memory_query__journey_findings: C.WorldMemoryQuery = {
+  "as_of": "2026-10-29T10:00:05Z",
+  "campaign_id": null,
+  "kinds": [
+    "finding"
+  ],
+  "limit": 20,
+  "project_id": "project-local",
+  "schema_version": 1,
+  "statuses": [
+    "verified",
+    "unverified"
+  ],
+  "world_version": "group-journey/1"
+};
+
+export const world_memory_record__journey_finding: C.WorldMemoryRecord = {
+  "campaign_id": "campaign-1",
+  "content": "A message queued before revocation was delivered after it.",
+  "effective_from": "2026-10-29T10:00:05Z",
+  "effective_until": null,
+  "evidence": [
+    {
+      "id": "journey-run-1-delivered_messages_permitted",
+      "kind": "finding",
+      "sha256": null
+    }
+  ],
+  "kind": "finding",
+  "observed_at": "2026-10-29T10:00:05Z",
+  "project_id": "project-local",
+  "provenance": {
+    "observed_at": "2026-10-29T10:00:05Z",
+    "source_kind": "verifier",
+    "source_ref": {
+      "id": "run-faulted-1",
+      "kind": "run",
+      "sha256": null
+    },
+    "trust": "verified"
+  },
+  "record_id": "memory-1",
+  "retention": {
+    "audit_hold": false,
+    "expires_at": null,
+    "policy": "project"
+  },
+  "schema_version": 1,
+  "status": "verified",
+  "supersedes": [],
+  "world_version": "group-journey/1"
+};
+
+export const world_reality_diff__journey_fixture: C.WorldRealityDiff = {
+  "baseline_metrics": {
+    "messages_delivered_without_permission": 0
+  },
+  "faulted_metrics": {
+    "messages_delivered_without_permission": 1
+  },
+  "first_divergence": {
+    "baseline": null,
+    "event_id": 3,
+    "faulted": {
+      "event_id": 3,
+      "outcome": {
+        "result": {
+          "delivered": true
+        }
+      },
+      "request": {
+        "arguments": {
+          "message_id": "msg-1"
+        },
+        "tool": "deliver_message"
+      },
+      "state": {
+        "intent_version": 2,
+        "messages": [
+          {
+            "delivered": true,
+            "message_id": "msg-1",
+            "recipient_id": "participant-c",
+            "sharing_permitted": false
+          }
+        ]
+      }
+    }
+  },
+  "schema_version": 1,
+  "violated_invariants": [
+    "delivered_messages_permitted"
+  ],
+  "world_version": "group-journey/1"
+};
+
+export const world_run_result__journey_fixture: C.WorldRunResult = {
+  "actor_id": "traveller-a",
+  "adapter_id": "journey-naive",
+  "adapter_version": "journey-adapters/1",
+  "checks": {
+    "commitments_use_approved_intent": true,
+    "delivered_messages_permitted": false,
+    "mandatory_participants_feasible": true
+  },
+  "final_state": {
+    "intent_version": 2,
+    "messages": [
+      {
+        "delivered": true,
+        "message_id": "msg-1",
+        "recipient_id": "participant-c",
+        "sharing_permitted": false
+      }
+    ]
+  },
+  "schema_version": 1,
+  "status": "completed",
+  "trace": [
+    {
+      "event_id": 1,
+      "outcome": {
+        "result": {
+          "intent_version": 2
+        }
+      },
+      "request": {
+        "arguments": {
+          "journey_id": "journey-1"
+        },
+        "tool": "inspect_constraints"
+      },
+      "state": {
+        "intent_version": 2,
+        "messages": [
+          {
+            "delivered": false,
+            "message_id": "msg-1",
+            "recipient_id": "participant-c",
+            "sharing_permitted": true
+          }
+        ]
+      }
+    },
+    {
+      "event_id": 2,
+      "outcome": {
+        "result": {
+          "message_id": "msg-1"
+        }
+      },
+      "request": {
+        "arguments": {
+          "recipient_id": "participant-c",
+          "template_id": "itinerary-v2"
+        },
+        "tool": "queue_message"
+      },
+      "state": {
+        "intent_version": 2,
+        "messages": [
+          {
+            "delivered": false,
+            "message_id": "msg-1",
+            "recipient_id": "participant-c",
+            "sharing_permitted": true
+          }
+        ]
+      }
+    },
+    {
+      "event_id": 3,
+      "outcome": {
+        "result": {
+          "delivered": true
+        }
+      },
+      "request": {
+        "arguments": {
+          "message_id": "msg-1"
+        },
+        "tool": "deliver_message"
+      },
+      "state": {
+        "intent_version": 2,
+        "messages": [
+          {
+            "delivered": true,
+            "message_id": "msg-1",
+            "recipient_id": "participant-c",
+            "sharing_permitted": false
+          }
+        ]
+      }
+    }
+  ],
+  "world_version": "group-journey/1"
+};
+
+export const world_scenario__group_journey_revocation: C.WorldScenario = {
+  "faults": [
+    {
+      "after_event": 4,
+      "fault_id": "sharing_revoked_while_queued",
+      "parameters": [
+        {
+          "name": "recipient_id",
+          "value": "participant-c"
+        }
+      ]
+    },
+    {
+      "after_event": null,
+      "fault_id": "stale_preference_memory",
+      "parameters": [
+        {
+          "name": "preference_version",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "max_tool_calls": 40,
+  "schema_version": 1,
+  "world_version": "group-journey/1"
+};
+
+export const world_tool_definition__journey_deliver_message: C.WorldToolDefinition = {
+  "description": "Deliver a queued synthetic message (exposure is irreversible)",
+  "name": "deliver_message",
+  "parameters": {
+    "additionalProperties": false,
+    "properties": {
+      "message_id": {
+        "maxLength": 100,
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "message_id"
+    ],
+    "type": "object"
+  },
+  "world_version": "group-journey/1"
+};
+
+export const world_tool_invocation__journey_deliver_message: C.WorldToolInvocation = {
+  "arguments": {
+    "message_id": "msg-1"
+  },
+  "invocation_id": "invocation-j1",
+  "provider_call_id": null,
+  "run_id": "journey-run-1",
+  "schema_version": 1,
+  "tool": "deliver_message",
+  "world_version": "group-journey/1"
+};
+
+export const world_tool_result__journey_delivered: C.WorldToolResult = {
+  "error": null,
+  "event_id": 3,
+  "invocation_id": "invocation-j1",
+  "output": {
+    "delivered": true
+  },
+  "provider_call_id": null,
+  "schema_version": 1,
+  "status": "ok"
+};
+
+export const world_trusted_scope__journey_target: C.WorldTrustedScope = {
+  "allowed_tools": [
+    "inspect_constraints",
+    "queue_message",
+    "deliver_message"
+  ],
+  "delegated_by": "supervisor",
+  "issued_by": "controller",
+  "policy_version": "policy-1",
+  "principal": {
+    "kind": "local_dev",
+    "principal_id": "local-dev-user"
+  },
+  "project_id": "project-local",
+  "role": "target",
+  "world_version": "group-journey/1"
 };

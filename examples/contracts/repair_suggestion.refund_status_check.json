@@ -1,0 +1,23 @@
+{
+  "adapter_id": "repaired",
+  "change_kind": "use_checked_in_adapter",
+  "cited": [
+    {
+      "id": "finding-1",
+      "kind": "finding",
+      "sha256": null
+    }
+  ],
+  "description": "Use the checked-in repaired adapter, which reuses the idempotency key and checks status after a timeout instead of issuing a new refund.",
+  "rationale": "The timeout happened after commit, so status shows the refund exists.",
+  "risks": [
+    "A status outage would now block retries"
+  ],
+  "schema_version": 1,
+  "target_invariants": [
+    "total_refund_within_payment",
+    "no_duplicate_full_refund"
+  ],
+  "title": "Check refund status before retrying",
+  "world_version": "refund-world/1"
+}

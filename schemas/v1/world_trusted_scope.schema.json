@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "Principal": {
+      "additionalProperties": false,
+      "description": "Identity derived from an authenticated session, never from a request body.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "service",
+            "local_dev"
+          ],
+          "type": "string"
+        },
+        "principal_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "principal_id",
+        "kind"
+      ],
+      "title": "Principal",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:world_trusted_scope:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``trusted_scope`` whose tools come from a registered world pack.",
+  "properties": {
+    "allowed_tools": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{1,63}$",
+        "type": "string"
+      },
+      "maxItems": 32,
+      "type": "array"
+    },
+    "delegated_by": {
+      "anyOf": [
+        {
+          "enum": [
+            "supervisor",
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target",
+            "verifier"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "issued_by": {
+      "const": "controller",
+      "type": "string"
+    },
+    "policy_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "principal": {
+      "$ref": "#/$defs/Principal"
+    },
+    "project_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "role": {
+      "enum": [
+        "supervisor",
+        "worldsmith",
+        "explorer",
+        "analyst",
+        "target",
+        "verifier"
+      ],
+      "type": "string"
+    },
+    "world_version": {
+      "enum": [
+        "refund-world/1",
+        "group-journey/1",
+        "service-relay/1"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "principal",
+    "role",
+    "delegated_by",
+    "allowed_tools",
+    "policy_version",
+    "issued_by",
+    "world_version"
+  ],
+  "title": "WorldTrustedScope",
+  "type": "object"
+}

@@ -1,0 +1,295 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "WorldAdapterSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter_id": {
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "vulnerable",
+            "repaired"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "adapter_id",
+        "kind",
+        "description"
+      ],
+      "title": "WorldAdapterSpec",
+      "type": "object"
+    },
+    "WorldFaultParameterSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "boolean"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "description"
+      ],
+      "title": "WorldFaultParameterSpec",
+      "type": "object"
+    },
+    "WorldFaultSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "fault_id": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "fault_pack": {
+          "enum": [
+            "lost_acknowledgement",
+            "stale_or_contaminated_memory",
+            "late_conflicting_update",
+            "permission_revocation",
+            "stale_availability",
+            "owner_takeover"
+          ],
+          "type": "string"
+        },
+        "parameters": {
+          "items": {
+            "$ref": "#/$defs/WorldFaultParameterSpec"
+          },
+          "maxItems": 8,
+          "type": "array"
+        }
+      },
+      "required": [
+        "fault_id",
+        "fault_pack",
+        "description",
+        "parameters"
+      ],
+      "title": "WorldFaultSpec",
+      "type": "object"
+    },
+    "WorldInvariantSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence": {
+          "enum": [
+            "ledger",
+            "reservations",
+            "calendar",
+            "delivery_log",
+            "resource_leases",
+            "conversation_ownership"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "evidence"
+      ],
+      "title": "WorldInvariantSpec",
+      "type": "object"
+    },
+    "WorldReplaySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "capsule_schema_versions": {
+          "items": {
+            "maximum": 2,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array"
+        },
+        "dispatch": {
+          "const": "recorded_actions",
+          "type": "string"
+        }
+      },
+      "required": [
+        "capsule_schema_versions",
+        "dispatch"
+      ],
+      "title": "WorldReplaySpec",
+      "type": "object"
+    },
+    "WorldToolSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effect": {
+          "enum": [
+            "read",
+            "mutate",
+            "deliver",
+            "handoff"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "effect",
+        "parameters"
+      ],
+      "title": "WorldToolSpec",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:world_pack:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "adapters": {
+      "items": {
+        "$ref": "#/$defs/WorldAdapterSpec"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "faults": {
+      "items": {
+        "$ref": "#/$defs/WorldFaultSpec"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    },
+    "invariants": {
+      "items": {
+        "$ref": "#/$defs/WorldInvariantSpec"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    },
+    "replay": {
+      "$ref": "#/$defs/WorldReplaySpec"
+    },
+    "roles": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]{1,63}$",
+        "type": "string"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "source": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "implemented",
+        "specified"
+      ],
+      "type": "string"
+    },
+    "summary": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+    },
+    "tools": {
+      "items": {
+        "$ref": "#/$defs/WorldToolSpec"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "type": "array"
+    },
+    "world_version": {
+      "enum": [
+        "refund-world/1",
+        "group-journey/1",
+        "service-relay/1"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "world_version",
+    "title",
+    "status",
+    "summary",
+    "roles",
+    "tools",
+    "faults",
+    "invariants",
+    "adapters",
+    "replay",
+    "source"
+  ],
+  "title": "WorldPack",
+  "type": "object"
+}

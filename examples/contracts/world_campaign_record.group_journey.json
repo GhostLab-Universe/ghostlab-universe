@@ -1,0 +1,41 @@
+{
+  "campaign_id": "campaign-1",
+  "created_at": "2026-10-29T10:00:00Z",
+  "created_by": {
+    "kind": "local_dev",
+    "principal_id": "local-dev-user"
+  },
+  "project_id": "project-local",
+  "schema_version": 1,
+  "spec": {
+    "budget": {
+      "cost_currency": null,
+      "max_cost_minor": null,
+      "max_input_tokens": 200000,
+      "max_model_calls": 20,
+      "max_output_tokens": 20000,
+      "max_parallel_runs": 2,
+      "max_tool_calls": 60,
+      "max_wall_clock_ms": 600000
+    },
+    "objective": "Find commitments made under a superseded journey intent",
+    "schema_version": 1,
+    "success_criteria": [
+      "A failing journey invariant is reproduced from a v2 capsule"
+    ],
+    "world_version": "group-journey/1"
+  },
+  "status": "running",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "updated_at": "2026-10-29T10:00:05Z",
+  "usage": {
+    "cost_currency": null,
+    "cost_minor": null,
+    "input_tokens": 0,
+    "model_calls": 3,
+    "output_tokens": 0,
+    "tool_calls": 9,
+    "unknown_usage_events": 3,
+    "wall_clock_ms": 1200
+  }
+}

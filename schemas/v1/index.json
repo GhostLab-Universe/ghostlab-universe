@@ -1,5 +1,5 @@
 {
-  "contract_set": "ghostlab-contracts/1",
+  "contract_set": "ghostlab-contracts/1.1",
   "contracts": [
     {
       "consumers": [
@@ -434,6 +434,256 @@
       "schema": "v1/artifact_ref.schema.json",
       "sha256": "0ae6145c79ad4a46c7dea974e52ac295b375a7fe1030d9b0a4b200b1409fc7fa",
       "type": "ArtifactRef",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M02",
+        "M05",
+        "M06",
+        "M08"
+      ],
+      "id": "urn:ghostlab:contract:world_pack:1",
+      "model_facing": false,
+      "name": "world_pack",
+      "producer": "M00",
+      "schema": "v1/world_pack.schema.json",
+      "sha256": "37248062480068cbcc05c6571895e0c285e6855aca8834bedf43f0d24c8c2589",
+      "type": "WorldPack",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M05",
+        "M08"
+      ],
+      "id": "urn:ghostlab:contract:world_campaign_spec:1",
+      "model_facing": false,
+      "name": "world_campaign_spec",
+      "producer": "M07",
+      "schema": "v1/world_campaign_spec.schema.json",
+      "sha256": "0cc5400269a80ad0c50d05023d9f021966b0dcd9b108c23feba030abeb44d85a",
+      "type": "WorldCampaignSpec",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M04",
+        "M07",
+        "M08"
+      ],
+      "id": "urn:ghostlab:contract:world_campaign_record:1",
+      "model_facing": false,
+      "name": "world_campaign_record",
+      "producer": "M05",
+      "schema": "v1/world_campaign_record.schema.json",
+      "sha256": "b4e4eaf927cd4a9853ee3892726cb3087a07a94553684cd0193f1415efed2855",
+      "type": "WorldCampaignRecord",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M02",
+        "M06"
+      ],
+      "id": "urn:ghostlab:contract:world_trusted_scope:1",
+      "model_facing": false,
+      "name": "world_trusted_scope",
+      "producer": "M05",
+      "schema": "v1/world_trusted_scope.schema.json",
+      "sha256": "68bbb6b5d385b36ce6179c42ce95c6916763a0c2ae5c108afcac1b58b9a54ad8",
+      "type": "WorldTrustedScope",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M01",
+        "M06"
+      ],
+      "id": "urn:ghostlab:contract:world_tool_definition:1",
+      "model_facing": false,
+      "name": "world_tool_definition",
+      "producer": "M02",
+      "schema": "v1/world_tool_definition.schema.json",
+      "sha256": "c242317807be486a2ccdf85e02c0e4abf014a00d6441409547ffec79923ca86a",
+      "type": "WorldToolDefinition",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M02",
+        "M06"
+      ],
+      "id": "urn:ghostlab:contract:world_tool_invocation:1",
+      "model_facing": false,
+      "name": "world_tool_invocation",
+      "producer": "M05",
+      "schema": "v1/world_tool_invocation.schema.json",
+      "sha256": "6bf17c82e768c7528e5ee100d10c71b6d2f133dfd94a6c692ef656bb0ae83bfa",
+      "type": "WorldToolInvocation",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M01",
+        "M05"
+      ],
+      "id": "urn:ghostlab:contract:world_tool_result:1",
+      "model_facing": false,
+      "name": "world_tool_result",
+      "producer": "M02",
+      "schema": "v1/world_tool_result.schema.json",
+      "sha256": "0dddaa2f504cf20cc8cfe3a9ea1c9e8dd65afeee845197b646ef3a546d6f73ae",
+      "type": "WorldToolResult",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M02",
+        "M09"
+      ],
+      "id": "urn:ghostlab:contract:world_scenario:1",
+      "model_facing": false,
+      "name": "world_scenario",
+      "producer": "M05",
+      "schema": "v1/world_scenario.schema.json",
+      "sha256": "25bd39770f420ac5cdcf95aeb7d53a23490ba4342e6da2cfc947021680718f9f",
+      "type": "WorldScenario",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M05",
+        "M06"
+      ],
+      "id": "urn:ghostlab:contract:world_experiment_proposal:1",
+      "model_facing": true,
+      "name": "world_experiment_proposal",
+      "producer": "M01",
+      "schema": "v1/world_experiment_proposal.schema.json",
+      "sha256": "a70ab4439418e25f31980e2fff538db20183515869f16b99dbcadf46924dc19a",
+      "type": "WorldExperimentProposal",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M04",
+        "M05",
+        "M07",
+        "M08",
+        "M09"
+      ],
+      "id": "urn:ghostlab:contract:world_run_result:1",
+      "model_facing": false,
+      "name": "world_run_result",
+      "producer": "M02",
+      "schema": "v1/world_run_result.schema.json",
+      "sha256": "b53f84ca6df10e62899affc86230c594702ee33af35461eda8b21f6525926dce",
+      "type": "WorldRunResult",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M07",
+        "M08",
+        "M09"
+      ],
+      "id": "urn:ghostlab:contract:world_reality_diff:1",
+      "model_facing": false,
+      "name": "world_reality_diff",
+      "producer": "M02",
+      "schema": "v1/world_reality_diff.schema.json",
+      "sha256": "69b502694e1dee814205a8b3c902cbd0cd56fed7f4edcc38b241ca4ac7c5f2a8",
+      "type": "WorldRealityDiff",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M03",
+        "M04",
+        "M08",
+        "M09"
+      ],
+      "id": "urn:ghostlab:contract:world_invariant_finding:1",
+      "model_facing": false,
+      "name": "world_invariant_finding",
+      "producer": "M02",
+      "schema": "v1/world_invariant_finding.schema.json",
+      "sha256": "c7988be37029d80750aa26eca1603aa8cc04870cf50adcaf00cf54eaa8fac0e4",
+      "type": "WorldInvariantFinding",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M04",
+        "M07",
+        "M08",
+        "M09"
+      ],
+      "id": "urn:ghostlab:contract:capsule_v2:1",
+      "model_facing": false,
+      "name": "capsule_v2",
+      "producer": "M02",
+      "schema": "v1/capsule_v2.schema.json",
+      "sha256": "8ae8554ea2f4454345d5cecb95a73ec2f441cdadf36b7698a5353bac6da1502d",
+      "type": "CapsuleV2",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M03",
+        "M05"
+      ],
+      "id": "urn:ghostlab:contract:world_memory_record:1",
+      "model_facing": false,
+      "name": "world_memory_record",
+      "producer": "M04",
+      "schema": "v1/world_memory_record.schema.json",
+      "sha256": "8bfffd89aa162417369816dce4e3ccb2c72323733ca95f0bcf6e29c505f796fc",
+      "type": "WorldMemoryRecord",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M04"
+      ],
+      "id": "urn:ghostlab:contract:world_memory_query:1",
+      "model_facing": false,
+      "name": "world_memory_query",
+      "producer": "M03",
+      "schema": "v1/world_memory_query.schema.json",
+      "sha256": "2387e3b4c664b11df9676b7652ac579c9dc865e59216e18c23aacddb274c77d4",
+      "type": "WorldMemoryQuery",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M05",
+        "M08",
+        "M09"
+      ],
+      "id": "urn:ghostlab:contract:evidence_interpretation:1",
+      "model_facing": true,
+      "name": "evidence_interpretation",
+      "producer": "M01",
+      "schema": "v1/evidence_interpretation.schema.json",
+      "sha256": "aedaa5ee368464e36cb11647a00a8dd1d75072cfba00eebcb3ffb89fb5cfeb35",
+      "type": "EvidenceInterpretation",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M05",
+        "M06",
+        "M08"
+      ],
+      "id": "urn:ghostlab:contract:repair_suggestion:1",
+      "model_facing": true,
+      "name": "repair_suggestion",
+      "producer": "M01",
+      "schema": "v1/repair_suggestion.schema.json",
+      "sha256": "f7f37f0b50439b4971cb342f0339bda793ed942d331e610f23cc23013026ad27",
+      "type": "RepairSuggestion",
       "version": 1
     }
   ],

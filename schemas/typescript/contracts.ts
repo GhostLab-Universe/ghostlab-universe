@@ -33,7 +33,24 @@ export type GhostLabContracts =
   | TrustedScope
   | Ref
   | ErrorInfo
-  | ArtifactRef;
+  | ArtifactRef
+  | WorldPack
+  | WorldCampaignSpec
+  | WorldCampaignRecord
+  | WorldTrustedScope
+  | WorldToolDefinition
+  | WorldToolInvocation
+  | WorldToolResult
+  | WorldScenario
+  | WorldExperimentProposal
+  | WorldRunResult
+  | WorldRealityDiff
+  | WorldInvariantFinding
+  | CapsuleV2
+  | WorldMemoryRecord
+  | WorldMemoryQuery
+  | EvidenceInterpretation
+  | RepairSuggestion;
 export type JsonValue = unknown;
 
 /**
@@ -1731,4 +1748,1122 @@ export interface ArtifactRef {
   schema_version: 1;
   sha256: string;
   size_bytes: number;
+}
+export interface WorldPack {
+  /**
+   * @minItems 1
+   * @maxItems 8
+   */
+  adapters:
+    | [WorldAdapterSpec]
+    | [WorldAdapterSpec, WorldAdapterSpec]
+    | [WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec]
+    | [WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec]
+    | [WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec]
+    | [WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec, WorldAdapterSpec]
+    | [
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec
+      ]
+    | [
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec,
+        WorldAdapterSpec
+      ];
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  faults:
+    | [WorldFaultSpec]
+    | [WorldFaultSpec, WorldFaultSpec]
+    | [WorldFaultSpec, WorldFaultSpec, WorldFaultSpec]
+    | [WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec]
+    | [WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec]
+    | [WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec]
+    | [WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec, WorldFaultSpec]
+    | [
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec
+      ]
+    | [
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec
+      ]
+    | [
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec
+      ]
+    | [
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec
+      ]
+    | [
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec
+      ]
+    | [
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec
+      ]
+    | [
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec
+      ]
+    | [
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec
+      ]
+    | [
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec,
+        WorldFaultSpec
+      ];
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  invariants:
+    | [WorldInvariantSpec]
+    | [WorldInvariantSpec, WorldInvariantSpec]
+    | [WorldInvariantSpec, WorldInvariantSpec, WorldInvariantSpec]
+    | [WorldInvariantSpec, WorldInvariantSpec, WorldInvariantSpec, WorldInvariantSpec]
+    | [WorldInvariantSpec, WorldInvariantSpec, WorldInvariantSpec, WorldInvariantSpec, WorldInvariantSpec]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ]
+    | [
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec,
+        WorldInvariantSpec
+      ];
+  replay: WorldReplaySpec;
+  /**
+   * @minItems 1
+   * @maxItems 8
+   */
+  roles:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string];
+  schema_version: 1;
+  source: string;
+  status: "implemented" | "specified";
+  summary: string;
+  title: string;
+  /**
+   * @minItems 1
+   * @maxItems 32
+   */
+  tools: [WorldToolSpec, ...WorldToolSpec[]];
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface WorldAdapterSpec {
+  adapter_id: string;
+  description: string;
+  kind: "vulnerable" | "repaired";
+}
+export interface WorldFaultSpec {
+  description: string;
+  fault_id: string;
+  fault_pack:
+    | "lost_acknowledgement"
+    | "stale_or_contaminated_memory"
+    | "late_conflicting_update"
+    | "permission_revocation"
+    | "stale_availability"
+    | "owner_takeover";
+  /**
+   * @maxItems 8
+   */
+  parameters:
+    | []
+    | [WorldFaultParameterSpec]
+    | [WorldFaultParameterSpec, WorldFaultParameterSpec]
+    | [WorldFaultParameterSpec, WorldFaultParameterSpec, WorldFaultParameterSpec]
+    | [WorldFaultParameterSpec, WorldFaultParameterSpec, WorldFaultParameterSpec, WorldFaultParameterSpec]
+    | [
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec
+      ]
+    | [
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec
+      ]
+    | [
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec
+      ]
+    | [
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec,
+        WorldFaultParameterSpec
+      ];
+}
+export interface WorldFaultParameterSpec {
+  description: string;
+  name: string;
+  type: "string" | "integer" | "boolean";
+}
+export interface WorldInvariantSpec {
+  description: string;
+  evidence: "ledger" | "reservations" | "calendar" | "delivery_log" | "resource_leases" | "conversation_ownership";
+  name: string;
+}
+export interface WorldReplaySpec {
+  /**
+   * @minItems 1
+   * @maxItems 2
+   */
+  capsule_schema_versions: [number] | [number, number];
+  dispatch: "recorded_actions";
+}
+export interface WorldToolSpec {
+  description: string;
+  effect: "read" | "mutate" | "deliver" | "handoff";
+  name: string;
+  parameters: {
+    [k: string]: JsonValue | undefined;
+  };
+}
+/**
+ * ``campaign_spec`` for any registered world. Still carries no identity.
+ */
+export interface WorldCampaignSpec {
+  budget: BudgetLimits;
+  objective: string;
+  schema_version: 1;
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  success_criteria:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface WorldCampaignRecord {
+  campaign_id: string;
+  created_at: string;
+  created_by: Principal;
+  project_id: string;
+  schema_version: 1;
+  spec: WorldCampaignSpec;
+  status: "queued" | "running" | "awaiting_approval" | "completed" | "failed" | "cancelled" | "budget_exhausted";
+  trace_id: string;
+  updated_at: string;
+  usage: BudgetUsage;
+}
+/**
+ * ``trusted_scope`` whose tools come from a registered world pack.
+ */
+export interface WorldTrustedScope {
+  /**
+   * @maxItems 32
+   */
+  allowed_tools: string[];
+  delegated_by: ("supervisor" | "worldsmith" | "explorer" | "analyst" | "target" | "verifier") | null;
+  issued_by: "controller";
+  policy_version: string;
+  principal: Principal;
+  project_id: string;
+  role: "supervisor" | "worldsmith" | "explorer" | "analyst" | "target" | "verifier";
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+/**
+ * A tool offered to a target, exactly as the reviewed pack declares it.
+ */
+export interface WorldToolDefinition {
+  description: string;
+  name: string;
+  parameters: {
+    [k: string]: JsonValue | undefined;
+  };
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+/**
+ * A validated call the controller may dispatch into a world.
+ */
+export interface WorldToolInvocation {
+  arguments: {
+    [k: string]: JsonValue | undefined;
+  };
+  invocation_id: string;
+  provider_call_id: string | null;
+  run_id: string;
+  schema_version: 1;
+  tool: string;
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface WorldToolResult {
+  error: ErrorInfo | null;
+  event_id: number | null;
+  invocation_id: string;
+  output: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  provider_call_id: string | null;
+  schema_version: 1;
+  status: "ok" | "error";
+}
+/**
+ * A fault schedule for one world. Model-facing (inside proposals): no free dicts.
+ */
+export interface WorldScenario {
+  /**
+   * @maxItems 8
+   */
+  faults:
+    | []
+    | [FaultInjection]
+    | [FaultInjection, FaultInjection]
+    | [FaultInjection, FaultInjection, FaultInjection]
+    | [FaultInjection, FaultInjection, FaultInjection, FaultInjection]
+    | [FaultInjection, FaultInjection, FaultInjection, FaultInjection, FaultInjection]
+    | [FaultInjection, FaultInjection, FaultInjection, FaultInjection, FaultInjection, FaultInjection]
+    | [FaultInjection, FaultInjection, FaultInjection, FaultInjection, FaultInjection, FaultInjection, FaultInjection]
+    | [
+        FaultInjection,
+        FaultInjection,
+        FaultInjection,
+        FaultInjection,
+        FaultInjection,
+        FaultInjection,
+        FaultInjection,
+        FaultInjection
+      ];
+  max_tool_calls: number;
+  schema_version: 1;
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface FaultInjection {
+  after_event: number | null;
+  fault_id: string;
+  /**
+   * @maxItems 8
+   */
+  parameters:
+    | []
+    | [FaultParameter]
+    | [FaultParameter, FaultParameter]
+    | [FaultParameter, FaultParameter, FaultParameter]
+    | [FaultParameter, FaultParameter, FaultParameter, FaultParameter]
+    | [FaultParameter, FaultParameter, FaultParameter, FaultParameter, FaultParameter]
+    | [FaultParameter, FaultParameter, FaultParameter, FaultParameter, FaultParameter, FaultParameter]
+    | [FaultParameter, FaultParameter, FaultParameter, FaultParameter, FaultParameter, FaultParameter, FaultParameter]
+    | [
+        FaultParameter,
+        FaultParameter,
+        FaultParameter,
+        FaultParameter,
+        FaultParameter,
+        FaultParameter,
+        FaultParameter,
+        FaultParameter
+      ];
+}
+export interface FaultParameter {
+  name: string;
+  value: string | number | boolean;
+}
+/**
+ * Explorer structured output for any registered world. Identity-free.
+ */
+export interface WorldExperimentProposal {
+  adapter_id: string;
+  expected_signal: string;
+  hypothesis: string;
+  scenario: WorldScenario;
+  schema_version: 1;
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface WorldRunResult {
+  actor_id: string;
+  adapter_id: string;
+  adapter_version: string;
+  checks: {
+    [k: string]: boolean | undefined;
+  };
+  final_state: {
+    [k: string]: JsonValue | undefined;
+  };
+  schema_version: 1;
+  status: "completed" | "budget_exhausted";
+  /**
+   * @maxItems 1000
+   */
+  trace: WorldTraceEvent[];
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface WorldTraceEvent {
+  event_id: number;
+  outcome: WorldOutcomeResult | WorldOutcomeError;
+  request: WorldRecordedRequest;
+  state: {
+    [k: string]: JsonValue | undefined;
+  };
+}
+export interface WorldOutcomeResult {
+  result: {
+    [k: string]: JsonValue | undefined;
+  };
+}
+export interface WorldOutcomeError {
+  error: string;
+  message: string;
+}
+/**
+ * What the target attempted, recorded even when the world rejected it.
+ */
+export interface WorldRecordedRequest {
+  arguments: {
+    [k: string]: JsonValue | undefined;
+  };
+  tool: string;
+}
+export interface WorldRealityDiff {
+  baseline_metrics: {
+    [k: string]: number | undefined;
+  };
+  faulted_metrics: {
+    [k: string]: number | undefined;
+  };
+  first_divergence: WorldDivergence | null;
+  schema_version: 1;
+  /**
+   * @maxItems 16
+   */
+  violated_invariants:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface WorldDivergence {
+  baseline: WorldTraceEvent | null;
+  event_id: number;
+  faulted: WorldTraceEvent | null;
+}
+/**
+ * A verifier verdict from world evidence, never model confidence.
+ */
+export interface WorldInvariantFinding {
+  /**
+   * @maxItems 1000
+   */
+  evidence_event_ids: number[];
+  finding_id: string;
+  invariant: string;
+  limit_value: number | null;
+  observed_value: number | null;
+  recorded_at: string;
+  run_id: string;
+  schema_version: 1;
+  unit: string | null;
+  verdict: "passed" | "failed";
+  verifier_version: string;
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+/**
+ * v2 has no separate loader yet, so the contract itself verifies the checksum.
+ *
+ * The checksum detects accidental change; it does not establish authorship.
+ */
+export interface CapsuleV2 {
+  payload: CapsulePayloadV2;
+  sha256: string;
+}
+/**
+ * Failure Capsule for any registered world. v1 capsules stay valid and replayable.
+ */
+export interface CapsulePayloadV2 {
+  actor_id: string;
+  fixture: {
+    [k: string]: JsonValue | undefined;
+  };
+  /**
+   * @maxItems 1000
+   */
+  recorded_model_outputs: JsonValue[];
+  run: WorldRunResult;
+  scenario: WorldScenario;
+  schema_version: 2;
+  seed: number;
+  source: string;
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface WorldMemoryRecord {
+  campaign_id: string | null;
+  content: string;
+  effective_from: string;
+  effective_until: string | null;
+  /**
+   * @maxItems 64
+   */
+  evidence: Ref[];
+  kind: "episodic_event" | "finding" | "preference" | "procedure_ref";
+  observed_at: string;
+  project_id: string;
+  provenance: Provenance;
+  record_id: string;
+  retention: RetentionPolicy;
+  schema_version: 1;
+  status: "unverified" | "verified" | "contradicted" | "superseded" | "expired";
+  /**
+   * @maxItems 32
+   */
+  supersedes: string[];
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface WorldMemoryQuery {
+  as_of: string;
+  campaign_id: string | null;
+  /**
+   * @minItems 1
+   * @maxItems 4
+   */
+  kinds:
+    | ["episodic_event" | "finding" | "preference" | "procedure_ref"]
+    | [
+        "episodic_event" | "finding" | "preference" | "procedure_ref",
+        "episodic_event" | "finding" | "preference" | "procedure_ref"
+      ]
+    | [
+        "episodic_event" | "finding" | "preference" | "procedure_ref",
+        "episodic_event" | "finding" | "preference" | "procedure_ref",
+        "episodic_event" | "finding" | "preference" | "procedure_ref"
+      ]
+    | [
+        "episodic_event" | "finding" | "preference" | "procedure_ref",
+        "episodic_event" | "finding" | "preference" | "procedure_ref",
+        "episodic_event" | "finding" | "preference" | "procedure_ref",
+        "episodic_event" | "finding" | "preference" | "procedure_ref"
+      ];
+  limit: number;
+  project_id: string;
+  schema_version: 1;
+  /**
+   * @minItems 1
+   * @maxItems 5
+   */
+  statuses:
+    | ["unverified" | "verified" | "contradicted" | "superseded" | "expired"]
+    | [
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired"
+      ]
+    | [
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired"
+      ]
+    | [
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired"
+      ]
+    | [
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired",
+        "unverified" | "verified" | "contradicted" | "superseded" | "expired"
+      ];
+  world_version: ("refund-world/1" | "group-journey/1" | "service-relay/1") | null;
+}
+/**
+ * ``interpret-evidence`` output. ``hypothesis_assessment`` is commentary, not a verdict.
+ */
+export interface EvidenceInterpretation {
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  claims:
+    | [EvidenceClaim]
+    | [EvidenceClaim, EvidenceClaim]
+    | [EvidenceClaim, EvidenceClaim, EvidenceClaim]
+    | [EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim]
+    | [EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim]
+    | [EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim]
+    | [EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim, EvidenceClaim]
+    | [
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim
+      ]
+    | [
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim
+      ]
+    | [
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim
+      ]
+    | [
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim
+      ]
+    | [
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim
+      ]
+    | [
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim
+      ]
+    | [
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim
+      ]
+    | [
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim
+      ]
+    | [
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim,
+        EvidenceClaim
+      ];
+  hypothesis_assessment: "supported" | "not_supported" | "inconclusive";
+  /**
+   * @maxItems 8
+   */
+  open_questions:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string];
+  run_id: string;
+  schema_version: 1;
+  summary: string;
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+export interface EvidenceClaim {
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  cited:
+    | [Ref]
+    | [Ref, Ref]
+    | [Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref];
+  invariant: string | null;
+  statement: string;
+}
+/**
+ * ``suggest-idempotency-repair`` output: a reviewable proposal, never executable code.
+ */
+export interface RepairSuggestion {
+  adapter_id: string | null;
+  change_kind: "use_checked_in_adapter" | "describe_change_for_review";
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  cited:
+    | [Ref]
+    | [Ref, Ref]
+    | [Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref]
+    | [Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref, Ref];
+  description: string;
+  rationale: string;
+  /**
+   * @minItems 1
+   * @maxItems 8
+   */
+  risks:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string];
+  schema_version: 1;
+  /**
+   * @minItems 1
+   * @maxItems 8
+   */
+  target_invariants:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string];
+  title: string;
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
 }

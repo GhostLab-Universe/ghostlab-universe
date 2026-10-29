@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "FaultInjection": {
+      "additionalProperties": false,
+      "properties": {
+        "after_event": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fault_id": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "parameters": {
+          "items": {
+            "$ref": "#/$defs/FaultParameter"
+          },
+          "maxItems": 8,
+          "type": "array"
+        }
+      },
+      "required": [
+        "fault_id",
+        "after_event",
+        "parameters"
+      ],
+      "title": "FaultInjection",
+      "type": "object"
+    },
+    "FaultParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{1,63}$",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "title": "FaultParameter",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:world_scenario:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A fault schedule for one world. Model-facing (inside proposals): no free dicts.",
+  "properties": {
+    "faults": {
+      "items": {
+        "$ref": "#/$defs/FaultInjection"
+      },
+      "maxItems": 8,
+      "type": "array"
+    },
+    "max_tool_calls": {
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "world_version": {
+      "enum": [
+        "refund-world/1",
+        "group-journey/1",
+        "service-relay/1"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "world_version",
+    "faults",
+    "max_tool_calls"
+  ],
+  "title": "WorldScenario",
+  "type": "object"
+}

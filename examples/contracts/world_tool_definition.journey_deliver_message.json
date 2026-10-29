@@ -1,0 +1,19 @@
+{
+  "description": "Deliver a queued synthetic message (exposure is irreversible)",
+  "name": "deliver_message",
+  "parameters": {
+    "additionalProperties": false,
+    "properties": {
+      "message_id": {
+        "maxLength": 100,
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "message_id"
+    ],
+    "type": "object"
+  },
+  "world_version": "group-journey/1"
+}

@@ -1,0 +1,22 @@
+{
+  "adapter_id": null,
+  "change_kind": "describe_change_for_review",
+  "cited": [
+    {
+      "id": "journey-run-1-delivered_messages_permitted",
+      "kind": "finding",
+      "sha256": null
+    }
+  ],
+  "description": "Before deliver_message, re-read the recipient's sharing permission and drop queued messages whose permission was revoked.",
+  "rationale": "Permission is evaluated at the delivery event, not when queued.",
+  "risks": [
+    "Late revocations may drop a message the sender expected to arrive"
+  ],
+  "schema_version": 1,
+  "target_invariants": [
+    "delivered_messages_permitted"
+  ],
+  "title": "Re-check permission at delivery time",
+  "world_version": "group-journey/1"
+}

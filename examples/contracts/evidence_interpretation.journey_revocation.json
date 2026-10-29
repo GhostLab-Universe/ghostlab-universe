@@ -1,0 +1,28 @@
+{
+  "claims": [
+    {
+      "cited": [
+        {
+          "id": "journey-run-1:3",
+          "kind": "event",
+          "sha256": null
+        },
+        {
+          "id": "journey-run-1-delivered_messages_permitted",
+          "kind": "finding",
+          "sha256": null
+        }
+      ],
+      "invariant": "delivered_messages_permitted",
+      "statement": "Delivery at event 3 happened after sharing was revoked"
+    }
+  ],
+  "hypothesis_assessment": "supported",
+  "open_questions": [
+    "Was the revocation visible to the communications role?"
+  ],
+  "run_id": "journey-run-1",
+  "schema_version": 1,
+  "summary": "The message queued before revocation was delivered after it.",
+  "world_version": "group-journey/1"
+}

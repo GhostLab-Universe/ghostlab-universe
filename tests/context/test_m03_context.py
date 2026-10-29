@@ -5,8 +5,9 @@ from pydantic import ValidationError
 
 from ghostlab.context import (ContextCompiler, ContextError, ContextRequest, MemorySelection,
                               Observation, summarize_findings)
-from ghostlab.context.compiler import MAX_INLINE_CHARS
-from ghostlab.contracts import (ContextBundle, ContextItem, InvariantFinding, Provenance, Ref)
+from ghostlab.context.compiler import CONTEXT_ITEM_MAX_CHARS, MAX_INLINE_CHARS
+from ghostlab.contracts import (ContextBundle, ContextItem, InvariantFinding, MemoryRecord,
+                                Provenance, Ref)
 from ghostlab.skills import SkillRegistry
 from ghostlab.storage.interfaces import MemoryStore, NotFound, ScopeViolation
 
@@ -242,3 +243,59 @@ def test_summary_cites_evidence_that_remains_retrievable(skills):
     with pytest.raises(ValueError):
         summarize_findings(findings, item_id="s", run_ref=Ref(kind="run", id="run-other",
                                                               sha256=None), observed_at=T2)
+
+
+# --- review finding 5: maximum-length memory must not overflow ContextItem -------------------
+
+MEMORY_MAX = 8_000  # MemoryRecord.content limit (M00 LongText)
+
+
+def test_context_item_limit_matches_contract():
+    ok = ContextItem(item_id="i", kind="finding", content="x" * CONTEXT_ITEM_MAX_CHARS,
+                     artifact=None, provenance=record("m").provenance)
+    assert len(ok.content) == CONTEXT_ITEM_MAX_CHARS
+    with pytest.raises(ValidationError):
+        ContextItem(item_id="i", kind="finding", content="x" * (CONTEXT_ITEM_MAX_CHARS + 1),
+                    artifact=None, provenance=record("m").provenance)
+    assert len(record("m", content="y" * MEMORY_MAX).content) == MEMORY_MAX
+
+
+@pytest.mark.parametrize("length", [MAX_INLINE_CHARS - 20, MAX_INLINE_CHARS, MAX_INLINE_CHARS + 1,
+                                    CONTEXT_ITEM_MAX_CHARS - 11, 7_990, 7_999, MEMORY_MAX])
+def test_memory_near_maximum_compiles_and_stays_retrievable(skills, length):
+    full = ("Blind retry over-refunds. " * 400)[:length]
+    store = FakeMemoryStore([record("memory-long", content=full)])
+    compiled = compile_with(skills, store, token_budget=20_000)
+    item = next(i for i in compiled.bundle.items if i.item_id == "memory-long")
+    assert len(item.content) <= CONTEXT_ITEM_MAX_CHARS
+    if length <= MAX_INLINE_CHARS:
+        assert item.content == f"[verified] {full}" and item.artifact is None
+    else:
+        assert item.content.startswith(f"[verified] {full[:MAX_INLINE_CHARS]}")
+        assert f"[truncated: {length} characters; full record in memory memory-long]" in item.content
+        assert item.artifact == Ref(kind="memory", id="memory-long", sha256=None)
+    # The full record is still retrievable through the store by the referenced id.
+    assert store.get(scope(), "memory-long").content == full
+
+
+def test_long_memory_prefers_its_evidence_artifact_as_reference(skills):
+    artifact = Ref(kind="artifact", id="artifact-trace-1", sha256="0" * 64)
+    base = record("memory-long", content="z" * MEMORY_MAX)
+    with_artifact = MemoryRecord.model_validate(
+        {**base.model_dump(), "evidence": [*base.model_dump()["evidence"], artifact.model_dump()]})
+    compiled = compile_with(skills, FakeMemoryStore([with_artifact]), token_budget=20_000)
+    item = next(i for i in compiled.bundle.items if i.item_id == "memory-long")
+    assert item.artifact == artifact and len(item.content) <= CONTEXT_ITEM_MAX_CHARS
+
+
+def test_maximum_length_memory_is_dropped_by_budget_not_rejected(skills):
+    baseline = compile_with(skills, FakeMemoryStore())
+    tight = baseline.bundle.estimated_tokens + 10  # room for the instruction, not the record
+    store = FakeMemoryStore([record("memory-long", content="w" * MEMORY_MAX),
+                             record("memory-unverified-long", content="v" * MEMORY_MAX,
+                                    status="unverified", trust="untrusted",
+                                    source_kind="model_output", evidence=("finding-b",))])
+    compiled = compile_with(skills, store, token_budget=tight)
+    dropped = {o.item_id: o.reason for o in compiled.dropped}
+    assert dropped == {"memory-long": "token_budget", "memory-unverified-long": "token_budget"}
+    assert compiled.bundle.estimated_tokens <= compiled.bundle.token_budget

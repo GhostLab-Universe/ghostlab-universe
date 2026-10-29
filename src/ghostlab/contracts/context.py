@@ -5,8 +5,8 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from .common import Provenance, Ref, SchemaRef, TrustedScope
-from .primitives import (Identifier, LongText, ModelRole, ShortText, StrictModel, Text,
-                         ToolName, UtcTimestamp, require_unique)
+from .primitives import (Identifier, LongText, ModelRole, SchemaVersion, ShortText, StrictModel,
+                         Text, ToolName, UtcTimestamp, require_unique)
 
 
 class SkillRef(StrictModel):
@@ -17,7 +17,7 @@ class SkillRef(StrictModel):
 class SkillSpec(StrictModel):
     """A reviewed procedure. allowed_tools narrows a scope; it never grants one."""
 
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     skill_id: Identifier
     version: int = Field(ge=1, le=10_000)
     prompt_version: Identifier
@@ -50,7 +50,7 @@ class ContextItem(StrictModel):
 
 
 class ContextBundle(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     bundle_id: Identifier
     campaign_id: Identifier
     task_id: Identifier

@@ -9,8 +9,8 @@ from typing import Annotated, Literal
 from pydantic import Field, JsonValue, StringConstraints, model_validator
 
 from .common import ErrorInfo
-from .primitives import (Identifier, PositiveMinorUnits, StrictModel, Text, ToolName,
-                         WorldVersion)
+from .primitives import (Identifier, PositiveMinorUnits, SchemaVersion, StrictModel, Text,
+                         ToolName, WorldVersion)
 
 ToolArg = Annotated[str, StringConstraints(min_length=1, max_length=100)]
 
@@ -83,7 +83,7 @@ class ToolDefinition(StrictModel):
 class ToolInvocation(StrictModel):
     """A validated, allowlisted call the controller may dispatch."""
 
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     invocation_id: Identifier
     run_id: Identifier
     provider_call_id: Annotated[str, StringConstraints(min_length=1, max_length=256)] | None
@@ -91,7 +91,7 @@ class ToolInvocation(StrictModel):
 
 
 class ToolResult(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     invocation_id: Identifier
     provider_call_id: Annotated[str, StringConstraints(min_length=1, max_length=256)] | None
     event_id: int | None = Field(ge=1, le=1_000)

@@ -1,13 +1,16 @@
 """Campaigns, tasks and the AgentEnvelope used for internal role communication."""
 
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Literal
 
 from pydantic import Field, model_validator
 
 from .budgets import BudgetLimits, BudgetUsage
 from .common import ErrorInfo, Principal, Ref, SchemaRef, TrustedScope
-from .primitives import (AgentRole, Identifier, ShortText, SpanId, StrictModel, Text, TraceId,
-                         UtcTimestamp, WorldVersion, parse_timestamp, require_unique)
+from .primitives import (AgentRole, Identifier, SchemaVersion, ShortText, SpanId, StrictModel,
+                         Text, TraceId, UtcTimestamp, WorldVersion, parse_timestamp,
+                         require_unique)
 
 CampaignStatus = Literal["queued", "running", "awaiting_approval", "completed", "failed",
                          "cancelled", "budget_exhausted"]
@@ -17,7 +20,7 @@ TaskKind = Literal["propose_world", "propose_experiment", "validate_proposal", "
                    "verify_run", "analyze_evidence", "record_memory", "await_approval"]
 
 # Legal task transitions. M05 enforces them; terminal states have no exits.
-TASK_TRANSITIONS: dict[str, frozenset[str]] = {
+TASK_TRANSITIONS: Mapping[str, frozenset[str]] = MappingProxyType({
     "pending": frozenset({"ready", "skipped", "cancelled"}),
     "ready": frozenset({"running", "skipped", "cancelled"}),
     "running": frozenset({"succeeded", "failed", "awaiting_approval", "ready", "cancelled"}),
@@ -26,13 +29,13 @@ TASK_TRANSITIONS: dict[str, frozenset[str]] = {
     "failed": frozenset(),
     "cancelled": frozenset(),
     "skipped": frozenset(),
-}
+})
 
 
 class CampaignSpec(StrictModel):
     """What a client asks for. Project and principal come from the session, not here."""
 
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     objective: Text
     success_criteria: list[ShortText] = Field(min_length=1, max_length=16)
     world_version: WorldVersion
@@ -40,7 +43,7 @@ class CampaignSpec(StrictModel):
 
 
 class CampaignRecord(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     campaign_id: Identifier
     project_id: Identifier
     created_by: Principal
@@ -59,7 +62,7 @@ class CampaignRecord(StrictModel):
 
 
 class TaskSpec(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     task_id: Identifier
     campaign_id: Identifier
     kind: TaskKind
@@ -92,7 +95,7 @@ class AgentEnvelope(StrictModel):
     carried by reference in ``evidence`` and never alters ``scope``.
     """
 
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     envelope_id: Identifier
     correlation_id: Identifier
     campaign_id: Identifier

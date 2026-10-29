@@ -5,14 +5,14 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from .common import Principal, Ref, TrustedScope
-from .primitives import (AgentRole, Identifier, Sha256Hex, ShortText, StrictModel, Text,
-                         UtcTimestamp, parse_timestamp)
+from .primitives import (AgentRole, Identifier, SchemaVersion, Sha256Hex, ShortText, StrictModel,
+                         Text, UtcTimestamp, parse_timestamp)
 
 ApprovalStatus = Literal["pending", "approved", "rejected", "expired", "consumed"]
 
 
 class ApprovalRequest(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     approval_id: Identifier
     campaign_id: Identifier
     task_id: Identifier
@@ -40,7 +40,7 @@ class ApprovalRequest(StrictModel):
 class ApprovalSubmission(StrictModel):
     """Client request body. The approver is taken from the session, never from here."""
 
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     approval_id: Identifier
     action_digest: Sha256Hex
     decision: Literal["approve", "reject"]
@@ -48,7 +48,7 @@ class ApprovalSubmission(StrictModel):
 
 
 class ApprovalDecision(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     decision_id: Identifier
     approval_id: Identifier
     action_digest: Sha256Hex

@@ -4,8 +4,8 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from .primitives import (Count, Currency, Identifier, MinorUnits, PositiveCount, StrictModel,
-                         UtcTimestamp)
+from .primitives import (Count, Currency, Identifier, MinorUnits, PositiveCount, SchemaVersion,
+                         StrictModel, UtcTimestamp)
 
 BudgetResource = Literal["model_calls", "tool_calls", "input_tokens", "output_tokens",
                          "cost_minor", "wall_clock_ms"]
@@ -38,9 +38,15 @@ class BudgetUsage(StrictModel):
     wall_clock_ms: Count
     unknown_usage_events: Count
 
+    @model_validator(mode="after")
+    def _check(self):
+        if (self.cost_minor is None) != (self.cost_currency is None):
+            raise ValueError("cost_minor and cost_currency are set together")
+        return self
+
 
 class BudgetReservation(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     reservation_id: Identifier
     campaign_id: Identifier
     task_id: Identifier

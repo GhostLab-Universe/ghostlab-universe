@@ -10,8 +10,8 @@ from pydantic import Field, JsonValue, StringConstraints, model_validator
 
 from .common import ErrorInfo, Ref, SchemaRef
 from .evidence import ScenarioV1
-from .primitives import (Count, Currency, Identifier, MinorUnits, ModelId, ModelRole,
-                         StrictModel, Text, UtcTimestamp)
+from .primitives import (Count, Currency, FalseFlag, Identifier, MinorUnits, ModelId, ModelRole,
+                         SchemaVersion, StrictModel, Text, UtcTimestamp)
 from .tools import ToolDefinition
 
 Provider = Literal["meta_responses", "baseten_chat_completions"]
@@ -27,7 +27,7 @@ class ToolResultForModel(StrictModel):
 
 
 class ModelRequest(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     request_id: Identifier
     campaign_id: Identifier
     task_id: Identifier
@@ -42,7 +42,7 @@ class ModelRequest(StrictModel):
     max_output_tokens: int = Field(ge=1, le=200_000)
     timeout_ms: int = Field(ge=1, le=600_000)
     budget_reservation_id: Identifier
-    stream: Literal[False]  # streaming stays off until its capability gate passes
+    stream: FalseFlag  # streaming stays off until its capability gate passes
 
     @model_validator(mode="after")
     def _check(self):
@@ -73,7 +73,7 @@ class Usage(StrictModel):
 
 
 class ModelReply(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     request_id: Identifier
     provider: Provider
     model: ModelId
@@ -105,7 +105,7 @@ class ExperimentProposal(StrictModel):
     additionalProperties false). Live acceptance by the model is untested.
     """
 
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     hypothesis: Text
     adapter: Literal["vulnerable", "repaired"]
     scenario: ScenarioV1

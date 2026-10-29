@@ -6,17 +6,19 @@ recurse into this directory, so the core suite still runs without Pydantic.
 
 import copy
 import json
+import pickle
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from ghostlab.capsule import export_capsule, replay
 from ghostlab.contracts import (BY_NAME, CONTRACTS, TASK_TRANSITIONS, CapsuleV1,
                                 ExperimentResult, RunResult)
 from ghostlab.contracts.export import ROOT, contract_for, render_all
+from ghostlab.contracts.primitives import FrozenDict, FrozenList
 from ghostlab.core import Fixture, Scenario, experiment, run
 
 EXAMPLES = ROOT / "examples" / "contracts"
@@ -295,3 +297,119 @@ def test_contracts_are_immutable():
     ref = BY_NAME["ref"].model.model_validate(load("ref"))
     with pytest.raises(ValidationError):
         ref.id = "changed"
+
+
+# --- review regressions: nested mutability, BudgetUsage cost, version coercion -
+
+def _plain_collections(value, path="$"):
+    """Yield paths of any list/dict reachable from a validated model that is still mutable."""
+    if isinstance(value, BaseModel):
+        for name in type(value).model_fields:
+            yield from _plain_collections(getattr(value, name), f"{path}.{name}")
+    elif isinstance(value, dict):
+        if not isinstance(value, FrozenDict):
+            yield path
+        for key, item in value.items():
+            yield from _plain_collections(item, f"{path}[{key!r}]")
+    elif isinstance(value, list):
+        if not isinstance(value, FrozenList):
+            yield path
+        for index, item in enumerate(value):
+            yield from _plain_collections(item, f"{path}[{index}]")
+
+
+@pytest.mark.parametrize("path", EXAMPLE_PATHS, ids=lambda p: p.name)
+@pytest.mark.parametrize("mode", ["json", "python"])
+def test_no_mutable_collection_survives_validation(path, mode):
+    model = contract_for(str(path)).model
+    text = path.read_text(encoding="utf-8")
+    parsed = (model.model_validate_json(text) if mode == "json"
+              else model.model_validate(json.loads(text)))
+    assert list(_plain_collections(parsed)) == []
+
+
+@pytest.mark.parametrize("name,mutate", [
+    ("agent_envelope", lambda m: m.input_refs.append(m.input_refs[0])),
+    ("agent_envelope", lambda m: m.scope.allowed_tools.append("issue_refund")),
+    ("trusted_scope", lambda m: m.allowed_tools.clear()),
+    ("context_bundle", lambda m: m.items.pop()),
+    ("tool_definition", lambda m: m.parameters.update(extra=1)),
+    ("tool_definition", lambda m: m.parameters["properties"].pop("amount_minor")),
+    ("run_result", lambda m: m.final_state.ledger.append(m.final_state.ledger[0])),
+    ("run_result", lambda m: m.trace[0].request.arguments.__setitem__("customer_id", "x")),
+    ("capsule_v1", lambda m: m.payload.run.trace.reverse()),
+    ("capsule_v1", lambda m: m.payload.recorded_model_outputs.append({})),
+    ("model_reply", lambda m: m.tool_calls.__setitem__(0, m.tool_calls[0])),
+    ("approval_request", lambda m: m.material_risks.__iadd__(["none"])),
+    ("memory_record", lambda m: m.supersedes.extend(["memory-0"])),
+    ("task_spec", lambda m: m.depends_on.insert(0, "task-x")),
+], ids=lambda v: v if isinstance(v, str) else "")
+def test_nested_collections_reject_mutation(name, mutate):
+    model = BY_NAME[name].model.model_validate(load(name))
+    before = model.model_dump_json()
+    with pytest.raises(TypeError, match="immutable"):
+        mutate(model)
+    assert model.model_dump_json() == before
+
+
+def test_frozen_models_copy_pickle_and_dump_cleanly():
+    model = ExperimentResult.model_validate(experiment())
+    assert copy.deepcopy(model) == model
+    assert pickle.loads(pickle.dumps(model)) == model
+    dumped = model.model_dump()
+    assert type(dumped["faulted"]["trace"]) is list  # dumps are plain and independent
+    dumped["faulted"]["trace"].clear()
+    assert len(model.faulted.trace) == 3
+
+
+def test_task_transitions_table_is_read_only():
+    with pytest.raises(TypeError):
+        TASK_TRANSITIONS["succeeded"] = frozenset({"running"})
+
+
+@pytest.mark.parametrize("name,update", [
+    ("budget_usage", {"cost_minor": 10}),
+    ("budget_usage", {"cost_currency": "INR"}),
+], ids=str)
+def test_budget_usage_cost_and_currency_set_together(name, update):
+    payload = load(name)
+    payload.update(update)
+    rejects(name, payload)
+    record = load("campaign_record")
+    record["usage"].update(update)
+    rejects("campaign_record", record)
+    payload.update(cost_minor=10, cost_currency="INR")
+    BY_NAME[name].model.model_validate(payload)
+
+
+VERSIONED = [c.name for c in CONTRACTS if "schema_version" in c.model.model_fields]
+
+
+@pytest.mark.parametrize("name", VERSIONED)
+@pytest.mark.parametrize("bad", [True, 1.0, "1", 2, 0, None])
+def test_schema_version_must_be_exact_integer(name, bad):
+    payload = load(name)
+    payload["schema_version"] = bad
+    rejects(name, payload)
+
+
+@pytest.mark.parametrize("bad", [True, 1.0, "1"])
+def test_capsule_schema_version_must_be_exact_integer(bad):
+    payload = load("capsule_v1")
+    payload["payload"]["schema_version"] = bad
+    rejects("capsule_v1", payload)
+
+
+@pytest.mark.parametrize("bad", [0, 0.0, "false", None])
+def test_stream_flag_must_be_boolean_false(bad):
+    payload = load("model_request")
+    payload["stream"] = bad
+    rejects("model_request", payload)
+
+
+def test_version_fix_leaves_published_schema_shape_unchanged():
+    def published(name):
+        return json.loads((ROOT / "schemas" / "v1" / f"{name}.schema.json")
+                          .read_text(encoding="utf-8"))["properties"]
+    assert published("agent_envelope")["schema_version"] == {"const": 1, "type": "integer"}
+    assert published("model_request")["stream"] == {"const": False, "type": "boolean"}

@@ -5,8 +5,8 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from .common import Provenance, Ref
-from .primitives import (Identifier, LongText, StrictModel, UtcTimestamp, WorldVersion,
-                         parse_timestamp, require_unique)
+from .primitives import (Identifier, LongText, SchemaVersion, StrictModel, UtcTimestamp,
+                         WorldVersion, parse_timestamp, require_unique)
 
 MemoryKind = Literal["episodic_event", "finding", "preference", "procedure_ref"]
 MemoryStatus = Literal["unverified", "verified", "contradicted", "superseded", "expired"]
@@ -19,7 +19,7 @@ class RetentionPolicy(StrictModel):
 
 
 class MemoryRecord(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     record_id: Identifier
     project_id: Identifier
     campaign_id: Identifier | None
@@ -53,7 +53,7 @@ class MemoryRecord(StrictModel):
 class MemoryQuery(StrictModel):
     """project_id is filled by the controller from TrustedScope, not by a model."""
 
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     project_id: Identifier
     campaign_id: Identifier | None
     world_version: WorldVersion | None

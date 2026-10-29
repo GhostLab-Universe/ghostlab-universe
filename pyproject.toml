@@ -42,3 +42,5 @@ required-version = ">=0.13.6"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Serializer warnings (e.g. from frozen collections) must fail the suite.
+filterwarnings = ["error"]

@@ -10,8 +10,8 @@ from typing import Annotated, Literal
 from pydantic import Field, JsonValue, StringConstraints, model_validator
 
 from .common import Ref
-from .primitives import (Identifier, MinorUnits, Sha256Hex, StrictModel, Text, TraceId,
-                         UtcTimestamp, WorldVersion, require_unique)
+from .primitives import (Identifier, MinorUnits, SchemaVersion, Sha256Hex, StrictModel, Text,
+                         TraceId, UtcTimestamp, WorldVersion, require_unique)
 from .tools import LedgerRow, OrderRecord, ToolArg, ToolOutput
 
 InvariantName = Literal["authorized_refunds", "total_refund_within_payment",
@@ -98,7 +98,7 @@ class ExperimentResult(StrictModel):
 
 
 class CapsulePayloadV1(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     world_version: WorldVersion
     fixture: FixtureV1
     scenario: ScenarioV1
@@ -127,7 +127,7 @@ class CapsuleV1(StrictModel):
 class InvariantFinding(StrictModel):
     """A verifier verdict derived from ledger/state evidence, never model confidence."""
 
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     finding_id: Identifier
     run_id: Identifier
     invariant: InvariantName
@@ -157,7 +157,7 @@ ExperimentEventKind = Literal[
 class ExperimentEvent(StrictModel):
     """Ordered application event for status streams; not model-token streaming."""
 
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     campaign_id: Identifier
     sequence: int = Field(ge=1, le=10**12)
     kind: ExperimentEventKind

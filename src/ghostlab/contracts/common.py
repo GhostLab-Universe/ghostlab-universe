@@ -4,8 +4,8 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from .primitives import (AgentRole, Identifier, MediaType, SchemaName, Sha256Hex, StrictModel,
-                         Text, ToolName, UtcTimestamp, require_unique)
+from .primitives import (AgentRole, Identifier, MediaType, SchemaName, SchemaVersion, Sha256Hex,
+                         StrictModel, Text, ToolName, UtcTimestamp, require_unique)
 
 RefKind = Literal["artifact", "run", "event", "finding", "capsule", "task", "memory",
                   "approval", "context_bundle", "envelope"]
@@ -82,7 +82,7 @@ class ErrorInfo(StrictModel):
 
 
 class ArtifactRef(StrictModel):
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     artifact_id: Identifier
     sha256: Sha256Hex
     size_bytes: int = Field(ge=0, le=2**40)

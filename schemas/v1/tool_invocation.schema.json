@@ -1,0 +1,199 @@
+{
+  "$defs": {
+    "GetOrderArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "customer_id"
+      ],
+      "title": "GetOrderArgs",
+      "type": "object"
+    },
+    "GetOrderCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "$ref": "#/$defs/GetOrderArgs"
+        },
+        "tool": {
+          "const": "get_order",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "GetOrderCall",
+      "type": "object"
+    },
+    "GetRefundStatusArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "customer_id",
+        "idempotency_key"
+      ],
+      "title": "GetRefundStatusArgs",
+      "type": "object"
+    },
+    "GetRefundStatusCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "$ref": "#/$defs/GetRefundStatusArgs"
+        },
+        "tool": {
+          "const": "get_refund_status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "GetRefundStatusCall",
+      "type": "object"
+    },
+    "IssueRefundArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "amount_minor": {
+          "maximum": 1000000000000000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "customer_id",
+        "amount_minor",
+        "idempotency_key"
+      ],
+      "title": "IssueRefundArgs",
+      "type": "object"
+    },
+    "IssueRefundCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "$ref": "#/$defs/IssueRefundArgs"
+        },
+        "tool": {
+          "const": "issue_refund",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "IssueRefundCall",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:tool_invocation:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A validated, allowlisted call the controller may dispatch.",
+  "properties": {
+    "call": {
+      "discriminator": {
+        "mapping": {
+          "get_order": "#/$defs/GetOrderCall",
+          "get_refund_status": "#/$defs/GetRefundStatusCall",
+          "issue_refund": "#/$defs/IssueRefundCall"
+        },
+        "propertyName": "tool"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/GetOrderCall"
+        },
+        {
+          "$ref": "#/$defs/GetRefundStatusCall"
+        },
+        {
+          "$ref": "#/$defs/IssueRefundCall"
+        }
+      ]
+    },
+    "invocation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "provider_call_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "invocation_id",
+    "run_id",
+    "provider_call_id",
+    "call"
+  ],
+  "title": "ToolInvocation",
+  "type": "object"
+}

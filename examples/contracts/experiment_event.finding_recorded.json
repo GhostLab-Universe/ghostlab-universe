@@ -1,0 +1,18 @@
+{
+  "campaign_id": "campaign-1",
+  "kind": "finding_recorded",
+  "occurred_at": "2026-10-29T10:00:05Z",
+  "refs": [
+    {
+      "id": "finding-1",
+      "kind": "finding",
+      "sha256": null
+    }
+  ],
+  "run_id": "run-faulted-1",
+  "schema_version": 1,
+  "sequence": 7,
+  "summary": "total_refund_within_payment failed: 500000 > 250000 minor units",
+  "task_id": "task-verify-1",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+}

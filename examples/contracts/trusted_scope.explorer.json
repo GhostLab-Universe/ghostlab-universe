@@ -1,0 +1,12 @@
+{
+  "allowed_tools": [],
+  "delegated_by": "supervisor",
+  "issued_by": "controller",
+  "policy_version": "policy-1",
+  "principal": {
+    "kind": "local_dev",
+    "principal_id": "local-dev-user"
+  },
+  "project_id": "project-local",
+  "role": "explorer"
+}

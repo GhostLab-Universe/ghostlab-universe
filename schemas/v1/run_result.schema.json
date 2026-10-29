@@ -1,0 +1,312 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "LedgerRow": {
+      "additionalProperties": false,
+      "properties": {
+        "amount_minor": {
+          "maximum": 1000000000000000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "transaction_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "transaction_id",
+        "order_id",
+        "customer_id",
+        "amount_minor",
+        "idempotency_key"
+      ],
+      "title": "LedgerRow",
+      "type": "object"
+    },
+    "OrderRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "paid_minor": {
+          "maximum": 1000000000000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "order_id",
+        "customer_id",
+        "paid_minor",
+        "currency"
+      ],
+      "title": "OrderRecord",
+      "type": "object"
+    },
+    "OutcomeError": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "enum": [
+            "ToolError",
+            "PaymentTimeout",
+            "BudgetExceeded"
+          ],
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "message"
+      ],
+      "title": "OutcomeError",
+      "type": "object"
+    },
+    "OutcomeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OrderRecord"
+            },
+            {
+              "$ref": "#/$defs/RefundStatus"
+            },
+            {
+              "$ref": "#/$defs/LedgerRow"
+            }
+          ]
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "OutcomeResult",
+      "type": "object"
+    },
+    "RecordedRequest": {
+      "additionalProperties": false,
+      "description": "What the target attempted, recorded even when the world rejected it.",
+      "properties": {
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "tool": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "RecordedRequest",
+      "type": "object"
+    },
+    "RefundChecks": {
+      "additionalProperties": false,
+      "properties": {
+        "authorized_refunds": {
+          "type": "boolean"
+        },
+        "no_duplicate_full_refund": {
+          "type": "boolean"
+        },
+        "total_refund_within_payment": {
+          "type": "boolean"
+        },
+        "unique_idempotency_keys": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "authorized_refunds",
+        "total_refund_within_payment",
+        "no_duplicate_full_refund",
+        "unique_idempotency_keys"
+      ],
+      "title": "RefundChecks",
+      "type": "object"
+    },
+    "RefundStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "refund": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LedgerRow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "committed",
+            "not_found"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "refund"
+      ],
+      "title": "RefundStatus",
+      "type": "object"
+    },
+    "TraceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutcomeResult"
+            },
+            {
+              "$ref": "#/$defs/OutcomeError"
+            }
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/RecordedRequest"
+        },
+        "state": {
+          "$ref": "#/$defs/WorldSnapshot"
+        }
+      },
+      "required": [
+        "event_id",
+        "request",
+        "outcome",
+        "state"
+      ],
+      "title": "TraceEvent",
+      "type": "object"
+    },
+    "WorldSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "ledger": {
+          "items": {
+            "$ref": "#/$defs/LedgerRow"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "order": {
+          "$ref": "#/$defs/OrderRecord"
+        },
+        "total_refunded_minor": {
+          "maximum": 1000000000000000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "order",
+        "ledger",
+        "total_refunded_minor"
+      ],
+      "title": "WorldSnapshot",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:run_result:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actor_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "type": "string"
+    },
+    "adapter": {
+      "enum": [
+        "vulnerable",
+        "repaired"
+      ],
+      "type": "string"
+    },
+    "adapter_version": {
+      "const": "refund-adapters/1",
+      "type": "string"
+    },
+    "checks": {
+      "$ref": "#/$defs/RefundChecks"
+    },
+    "final_state": {
+      "$ref": "#/$defs/WorldSnapshot"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "budget_exhausted"
+      ],
+      "type": "string"
+    },
+    "trace": {
+      "items": {
+        "$ref": "#/$defs/TraceEvent"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    }
+  },
+  "required": [
+    "adapter",
+    "adapter_version",
+    "actor_id",
+    "status",
+    "trace",
+    "final_state",
+    "checks"
+  ],
+  "title": "RunResult",
+  "type": "object"
+}

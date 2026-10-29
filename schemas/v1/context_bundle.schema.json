@@ -1,0 +1,391 @@
+{
+  "$defs": {
+    "ContextItem": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "item_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "instruction",
+            "finding",
+            "observation",
+            "summary",
+            "schema",
+            "question"
+          ],
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "item_id",
+        "kind",
+        "content",
+        "artifact",
+        "provenance"
+      ],
+      "title": "ContextItem",
+      "type": "object"
+    },
+    "Principal": {
+      "additionalProperties": false,
+      "description": "Identity derived from an authenticated session, never from a request body.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "service",
+            "local_dev"
+          ],
+          "type": "string"
+        },
+        "principal_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "principal_id",
+        "kind"
+      ],
+      "title": "Principal",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Where content came from. Only controller/verifier/human sources are trusted.",
+      "properties": {
+        "observed_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "source_kind": {
+          "enum": [
+            "controller",
+            "verifier",
+            "human",
+            "memory",
+            "tool_result",
+            "model_output"
+          ],
+          "type": "string"
+        },
+        "source_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trust": {
+          "enum": [
+            "trusted",
+            "verified",
+            "untrusted"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_kind",
+        "source_ref",
+        "observed_at",
+        "trust"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Typed pointer to evidence; a digest pins content when it is known.",
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "artifact",
+            "run",
+            "event",
+            "finding",
+            "capsule",
+            "task",
+            "memory",
+            "approval",
+            "context_bundle",
+            "envelope"
+          ],
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "sha256"
+      ],
+      "title": "Ref",
+      "type": "object"
+    },
+    "SchemaRef": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        "version": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "SchemaRef",
+      "type": "object"
+    },
+    "SkillRef": {
+      "additionalProperties": false,
+      "properties": {
+        "skill_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "version": {
+          "maximum": 10000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "skill_id",
+        "version"
+      ],
+      "title": "SkillRef",
+      "type": "object"
+    },
+    "TrustedScope": {
+      "additionalProperties": false,
+      "description": "Authority the controller grants for one task. Model output never sets this.",
+      "properties": {
+        "allowed_tools": {
+          "items": {
+            "enum": [
+              "get_order",
+              "issue_refund",
+              "get_refund_status"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "delegated_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "supervisor",
+                "worldsmith",
+                "explorer",
+                "analyst",
+                "target",
+                "verifier"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issued_by": {
+          "const": "controller",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/Principal"
+        },
+        "project_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "supervisor",
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target",
+            "verifier"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "principal",
+        "role",
+        "delegated_by",
+        "allowed_tools",
+        "policy_version",
+        "issued_by"
+      ],
+      "title": "TrustedScope",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:context_bundle:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "bundle_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "campaign_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "compiled_at": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+      "type": "string"
+    },
+    "estimated_tokens": {
+      "maximum": 2000000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/ContextItem"
+      },
+      "maxItems": 256,
+      "type": "array"
+    },
+    "objective": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "output_schema": {
+      "$ref": "#/$defs/SchemaRef"
+    },
+    "prerequisite_refs": {
+      "items": {
+        "$ref": "#/$defs/Ref"
+      },
+      "maxItems": 64,
+      "type": "array"
+    },
+    "prompt_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "role": {
+      "enum": [
+        "worldsmith",
+        "explorer",
+        "analyst",
+        "target"
+      ],
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "#/$defs/TrustedScope"
+    },
+    "skill": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SkillRef"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "success_criteria": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    },
+    "task_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "token_budget": {
+      "maximum": 2000000,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "campaign_id",
+    "task_id",
+    "role",
+    "scope",
+    "objective",
+    "success_criteria",
+    "prerequisite_refs",
+    "items",
+    "skill",
+    "prompt_version",
+    "output_schema",
+    "token_budget",
+    "estimated_tokens",
+    "compiled_at"
+  ],
+  "title": "ContextBundle",
+  "type": "object"
+}

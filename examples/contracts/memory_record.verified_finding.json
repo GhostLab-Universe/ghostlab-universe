@@ -1,0 +1,36 @@
+{
+  "campaign_id": "campaign-1",
+  "content": "Timeout after commit plus blind retry over-refunds the order.",
+  "effective_from": "2026-10-29T10:00:05Z",
+  "effective_until": null,
+  "evidence": [
+    {
+      "id": "finding-1",
+      "kind": "finding",
+      "sha256": null
+    }
+  ],
+  "kind": "finding",
+  "observed_at": "2026-10-29T10:00:05Z",
+  "project_id": "project-local",
+  "provenance": {
+    "observed_at": "2026-10-29T10:00:05Z",
+    "source_kind": "verifier",
+    "source_ref": {
+      "id": "run-faulted-1",
+      "kind": "run",
+      "sha256": null
+    },
+    "trust": "verified"
+  },
+  "record_id": "memory-1",
+  "retention": {
+    "audit_hold": false,
+    "expires_at": null,
+    "policy": "project"
+  },
+  "schema_version": 1,
+  "status": "verified",
+  "supersedes": [],
+  "world_version": "refund-world/1"
+}

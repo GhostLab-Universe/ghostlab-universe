@@ -1,0 +1,147 @@
+{
+  "actor_id": "synthetic-customer-1",
+  "adapter": "vulnerable",
+  "adapter_version": "refund-adapters/1",
+  "checks": {
+    "authorized_refunds": true,
+    "no_duplicate_full_refund": false,
+    "total_refund_within_payment": false,
+    "unique_idempotency_keys": true
+  },
+  "final_state": {
+    "ledger": [
+      {
+        "amount_minor": 250000,
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "refund-intent-1",
+        "order_id": "synthetic-order-1",
+        "transaction_id": "refund-1"
+      },
+      {
+        "amount_minor": 250000,
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "refund-retry-2",
+        "order_id": "synthetic-order-1",
+        "transaction_id": "refund-2"
+      }
+    ],
+    "order": {
+      "currency": "INR",
+      "customer_id": "synthetic-customer-1",
+      "order_id": "synthetic-order-1",
+      "paid_minor": 250000
+    },
+    "total_refunded_minor": 500000
+  },
+  "status": "completed",
+  "trace": [
+    {
+      "event_id": 1,
+      "outcome": {
+        "result": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        }
+      },
+      "request": {
+        "arguments": {
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1"
+        },
+        "tool": "get_order"
+      },
+      "state": {
+        "ledger": [],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 0
+      }
+    },
+    {
+      "event_id": 2,
+      "outcome": {
+        "error": "PaymentTimeout",
+        "message": "Payment committed; response timed out"
+      },
+      "request": {
+        "arguments": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-intent-1",
+          "order_id": "synthetic-order-1"
+        },
+        "tool": "issue_refund"
+      },
+      "state": {
+        "ledger": [
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-intent-1",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-1"
+          }
+        ],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 250000
+      }
+    },
+    {
+      "event_id": 3,
+      "outcome": {
+        "result": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-retry-2",
+          "order_id": "synthetic-order-1",
+          "transaction_id": "refund-2"
+        }
+      },
+      "request": {
+        "arguments": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-retry-2",
+          "order_id": "synthetic-order-1"
+        },
+        "tool": "issue_refund"
+      },
+      "state": {
+        "ledger": [
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-intent-1",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-1"
+          },
+          {
+            "amount_minor": 250000,
+            "customer_id": "synthetic-customer-1",
+            "idempotency_key": "refund-retry-2",
+            "order_id": "synthetic-order-1",
+            "transaction_id": "refund-2"
+          }
+        ],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 500000
+      }
+    }
+  ]
+}

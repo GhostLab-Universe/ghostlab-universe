@@ -1,0 +1,15 @@
+{
+  "as_of": "2026-10-29T10:00:05Z",
+  "campaign_id": null,
+  "kinds": [
+    "finding"
+  ],
+  "limit": 20,
+  "project_id": "project-local",
+  "schema_version": 1,
+  "statuses": [
+    "verified",
+    "unverified"
+  ],
+  "world_version": "refund-world/1"
+}

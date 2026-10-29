@@ -1,0 +1,3102 @@
+{
+  "$defs": {
+    "AgentEnvelope": {
+      "additionalProperties": false,
+      "description": "Typed message between controller and logical roles.\n\n``scope`` is attached by the controller. Content produced by a model role is\ncarried by reference in ``evidence`` and never alters ``scope``.",
+      "properties": {
+        "campaign_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "correlation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "created_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "envelope_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/ErrorInfo"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "maxItems": 256,
+          "type": "array"
+        },
+        "expected_output": {
+          "$ref": "#/$defs/SchemaRef"
+        },
+        "input_refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "objective": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "parent_envelope_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recipient_role": {
+          "enum": [
+            "supervisor",
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target",
+            "verifier"
+          ],
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/TrustedScope"
+        },
+        "sender_role": {
+          "enum": [
+            "supervisor",
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target",
+            "verifier"
+          ],
+          "type": "string"
+        },
+        "span_id": {
+          "pattern": "^[0-9a-f]{16}$",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "in_progress",
+            "completed",
+            "failed",
+            "rejected",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "trace_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "envelope_id",
+        "correlation_id",
+        "campaign_id",
+        "task_id",
+        "trace_id",
+        "span_id",
+        "parent_envelope_id",
+        "sender_role",
+        "recipient_role",
+        "scope",
+        "objective",
+        "input_refs",
+        "expected_output",
+        "status",
+        "evidence",
+        "errors",
+        "created_at"
+      ],
+      "title": "AgentEnvelope",
+      "type": "object"
+    },
+    "ApprovalDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "action_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "approval_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "approver": {
+          "$ref": "#/$defs/Principal"
+        },
+        "decided_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "approve",
+            "reject"
+          ],
+          "type": "string"
+        },
+        "decision_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "decision_id",
+        "approval_id",
+        "action_digest",
+        "decision",
+        "approver",
+        "policy_version",
+        "reason",
+        "decided_at"
+      ],
+      "title": "ApprovalDecision",
+      "type": "object"
+    },
+    "ApprovalRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "action_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "action_kind": {
+          "enum": [
+            "apply_repair",
+            "change_policy",
+            "execute_consequential_action"
+          ],
+          "type": "string"
+        },
+        "approval_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "created_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "expires_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "material_risks": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "payload": {
+          "$ref": "#/$defs/Ref"
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "requested_by_role": {
+          "enum": [
+            "supervisor",
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target",
+            "verifier"
+          ],
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/TrustedScope"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "approved",
+            "rejected",
+            "expired",
+            "consumed"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "approval_id",
+        "campaign_id",
+        "task_id",
+        "action_kind",
+        "action_digest",
+        "payload",
+        "summary",
+        "material_risks",
+        "requested_by_role",
+        "scope",
+        "policy_version",
+        "status",
+        "created_at",
+        "expires_at"
+      ],
+      "title": "ApprovalRequest",
+      "type": "object"
+    },
+    "ApprovalSubmission": {
+      "additionalProperties": false,
+      "description": "Client request body. The approver is taken from the session, never from here.",
+      "properties": {
+        "action_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "approval_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "approve",
+            "reject"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "approval_id",
+        "action_digest",
+        "decision",
+        "reason"
+      ],
+      "title": "ApprovalSubmission",
+      "type": "object"
+    },
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "created_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "media_type": {
+          "pattern": "^[a-z]+/[a-z0-9.+-]{1,100}$",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "size_bytes": {
+          "maximum": 1099511627776,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "artifact_id",
+        "sha256",
+        "size_bytes",
+        "media_type",
+        "provenance",
+        "created_at"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "BudgetLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_cost_minor": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_input_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_model_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_parallel_runs": {
+          "maximum": 64,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_tool_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_wall_clock_ms": {
+          "maximum": 1000000000000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_model_calls",
+        "max_tool_calls",
+        "max_input_tokens",
+        "max_output_tokens",
+        "max_cost_minor",
+        "cost_currency",
+        "max_wall_clock_ms",
+        "max_parallel_runs"
+      ],
+      "title": "BudgetLimits",
+      "type": "object"
+    },
+    "BudgetReservation": {
+      "additionalProperties": false,
+      "properties": {
+        "actual": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "amount": {
+          "maximum": 1000000000000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "campaign_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "created_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "reservation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "resource": {
+          "enum": [
+            "model_calls",
+            "tool_calls",
+            "input_tokens",
+            "output_tokens",
+            "cost_minor",
+            "wall_clock_ms"
+          ],
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "reserved",
+            "reconciled",
+            "released"
+          ],
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "reservation_id",
+        "campaign_id",
+        "task_id",
+        "resource",
+        "amount",
+        "status",
+        "actual",
+        "created_at"
+      ],
+      "title": "BudgetReservation",
+      "type": "object"
+    },
+    "BudgetUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cost_minor": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "output_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tool_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unknown_usage_events": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "wall_clock_ms": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "model_calls",
+        "tool_calls",
+        "input_tokens",
+        "output_tokens",
+        "cost_minor",
+        "cost_currency",
+        "wall_clock_ms",
+        "unknown_usage_events"
+      ],
+      "title": "BudgetUsage",
+      "type": "object"
+    },
+    "CampaignRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "created_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/Principal"
+        },
+        "project_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "spec": {
+          "$ref": "#/$defs/CampaignSpec"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "awaiting_approval",
+            "completed",
+            "failed",
+            "cancelled",
+            "budget_exhausted"
+          ],
+          "type": "string"
+        },
+        "trace_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "updated_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/BudgetUsage"
+        }
+      },
+      "required": [
+        "schema_version",
+        "campaign_id",
+        "project_id",
+        "created_by",
+        "spec",
+        "status",
+        "usage",
+        "trace_id",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "CampaignRecord",
+      "type": "object"
+    },
+    "CampaignSpec": {
+      "additionalProperties": false,
+      "description": "What a client asks for. Project and principal come from the session, not here.",
+      "properties": {
+        "budget": {
+          "$ref": "#/$defs/BudgetLimits"
+        },
+        "objective": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "success_criteria": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "world_version": {
+          "const": "refund-world/1",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "objective",
+        "success_criteria",
+        "world_version",
+        "budget"
+      ],
+      "title": "CampaignSpec",
+      "type": "object"
+    },
+    "CapsulePayloadV1": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "fixture": {
+          "$ref": "#/$defs/FixtureV1"
+        },
+        "recorded_model_outputs": {
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "run": {
+          "$ref": "#/$defs/RunResult"
+        },
+        "scenario": {
+          "$ref": "#/$defs/ScenarioV1"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "seed": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "const": "trusted-synthetic-refund-adapter",
+          "type": "string"
+        },
+        "world_version": {
+          "const": "refund-world/1",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "fixture",
+        "scenario",
+        "actor_id",
+        "source",
+        "seed",
+        "recorded_model_outputs",
+        "run"
+      ],
+      "title": "CapsulePayloadV1",
+      "type": "object"
+    },
+    "CapsuleV1": {
+      "additionalProperties": false,
+      "description": "On-disk v1 envelope. sha256 is accidental-change detection, not authorship.",
+      "properties": {
+        "payload": {
+          "$ref": "#/$defs/CapsulePayloadV1"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "payload",
+        "sha256"
+      ],
+      "title": "CapsuleV1",
+      "type": "object"
+    },
+    "ContextBundle": {
+      "additionalProperties": false,
+      "properties": {
+        "bundle_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "compiled_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "estimated_tokens": {
+          "maximum": 2000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ContextItem"
+          },
+          "maxItems": 256,
+          "type": "array"
+        },
+        "objective": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "output_schema": {
+          "$ref": "#/$defs/SchemaRef"
+        },
+        "prerequisite_refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "prompt_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target"
+          ],
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/TrustedScope"
+        },
+        "skill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SkillRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "success_criteria": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "token_budget": {
+          "maximum": 2000000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "bundle_id",
+        "campaign_id",
+        "task_id",
+        "role",
+        "scope",
+        "objective",
+        "success_criteria",
+        "prerequisite_refs",
+        "items",
+        "skill",
+        "prompt_version",
+        "output_schema",
+        "token_budget",
+        "estimated_tokens",
+        "compiled_at"
+      ],
+      "title": "ContextBundle",
+      "type": "object"
+    },
+    "ContextItem": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "item_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "instruction",
+            "finding",
+            "observation",
+            "summary",
+            "schema",
+            "question"
+          ],
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "item_id",
+        "kind",
+        "content",
+        "artifact",
+        "provenance"
+      ],
+      "title": "ContextItem",
+      "type": "object"
+    },
+    "Divergence": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TraceEvent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event_id": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "faulted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TraceEvent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "event_id",
+        "baseline",
+        "faulted"
+      ],
+      "title": "Divergence",
+      "type": "object"
+    },
+    "ErrorInfo": {
+      "additionalProperties": false,
+      "description": "Typed error. side_effect records whether a world action may have committed.",
+      "properties": {
+        "code": {
+          "enum": [
+            "validation_failed",
+            "unauthenticated",
+            "forbidden",
+            "not_found",
+            "conflict",
+            "budget_exhausted",
+            "cancelled",
+            "deadline_exceeded",
+            "rate_limited",
+            "provider_transient",
+            "provider_permanent",
+            "provider_invalid_output",
+            "tool_error",
+            "tool_timeout",
+            "approval_required",
+            "approval_invalid",
+            "internal"
+          ],
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "side_effect": {
+          "enum": [
+            "none",
+            "committed",
+            "unknown"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "side_effect",
+        "ref"
+      ],
+      "title": "ErrorInfo",
+      "type": "object"
+    },
+    "ExperimentEvent": {
+      "additionalProperties": false,
+      "description": "Ordered application event for status streams; not model-token streaming.",
+      "properties": {
+        "campaign_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "campaign_created",
+            "campaign_status_changed",
+            "task_status_changed",
+            "run_started",
+            "tool_event_recorded",
+            "run_completed",
+            "finding_recorded",
+            "approval_requested",
+            "approval_decided",
+            "budget_reserved",
+            "budget_exhausted",
+            "capsule_exported",
+            "replay_completed"
+          ],
+          "type": "string"
+        },
+        "occurred_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "sequence": {
+          "maximum": 1000000000000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "summary": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trace_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "campaign_id",
+        "sequence",
+        "kind",
+        "task_id",
+        "run_id",
+        "trace_id",
+        "occurred_at",
+        "refs",
+        "summary"
+      ],
+      "title": "ExperimentEvent",
+      "type": "object"
+    },
+    "ExperimentProposal": {
+      "additionalProperties": false,
+      "description": "Explorer structured output. Every field required; no identity or authority.\n\nShaped for Meta strict structured output (object root, all fields required,\nadditionalProperties false). Live acceptance by the model is untested.",
+      "properties": {
+        "adapter": {
+          "enum": [
+            "vulnerable",
+            "repaired"
+          ],
+          "type": "string"
+        },
+        "expected_signal": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "hypothesis": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scenario": {
+          "$ref": "#/$defs/ScenarioV1"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "hypothesis",
+        "adapter",
+        "scenario",
+        "expected_signal"
+      ],
+      "title": "ExperimentProposal",
+      "type": "object"
+    },
+    "ExperimentResult": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "$ref": "#/$defs/RunResult"
+        },
+        "diff": {
+          "$ref": "#/$defs/RealityDiff"
+        },
+        "faulted": {
+          "$ref": "#/$defs/RunResult"
+        },
+        "repaired": {
+          "$ref": "#/$defs/RunResult"
+        }
+      },
+      "required": [
+        "baseline",
+        "faulted",
+        "repaired",
+        "diff"
+      ],
+      "title": "ExperimentResult",
+      "type": "object"
+    },
+    "FixtureV1": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "paid_minor": {
+          "maximum": 1000000000000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "order_id",
+        "customer_id",
+        "paid_minor",
+        "currency"
+      ],
+      "title": "FixtureV1",
+      "type": "object"
+    },
+    "GetOrderArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "customer_id"
+      ],
+      "title": "GetOrderArgs",
+      "type": "object"
+    },
+    "GetOrderCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "$ref": "#/$defs/GetOrderArgs"
+        },
+        "tool": {
+          "const": "get_order",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "GetOrderCall",
+      "type": "object"
+    },
+    "GetRefundStatusArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "customer_id",
+        "idempotency_key"
+      ],
+      "title": "GetRefundStatusArgs",
+      "type": "object"
+    },
+    "GetRefundStatusCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "$ref": "#/$defs/GetRefundStatusArgs"
+        },
+        "tool": {
+          "const": "get_refund_status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "GetRefundStatusCall",
+      "type": "object"
+    },
+    "InvariantFinding": {
+      "additionalProperties": false,
+      "description": "A verifier verdict derived from ledger/state evidence, never model confidence.",
+      "properties": {
+        "evidence_event_ids": {
+          "items": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "finding_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "invariant": {
+          "enum": [
+            "authorized_refunds",
+            "total_refund_within_payment",
+            "no_duplicate_full_refund",
+            "unique_idempotency_keys"
+          ],
+          "type": "string"
+        },
+        "limit_minor": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_minor": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recorded_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "verdict": {
+          "enum": [
+            "passed",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "verifier_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "finding_id",
+        "run_id",
+        "invariant",
+        "verifier_version",
+        "verdict",
+        "evidence_event_ids",
+        "observed_minor",
+        "limit_minor",
+        "recorded_at"
+      ],
+      "title": "InvariantFinding",
+      "type": "object"
+    },
+    "IssueRefundArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "amount_minor": {
+          "maximum": 1000000000000000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "customer_id",
+        "amount_minor",
+        "idempotency_key"
+      ],
+      "title": "IssueRefundArgs",
+      "type": "object"
+    },
+    "IssueRefundCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "$ref": "#/$defs/IssueRefundArgs"
+        },
+        "tool": {
+          "const": "issue_refund",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "IssueRefundCall",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LedgerRow": {
+      "additionalProperties": false,
+      "properties": {
+        "amount_minor": {
+          "maximum": 1000000000000000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "transaction_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "transaction_id",
+        "order_id",
+        "customer_id",
+        "amount_minor",
+        "idempotency_key"
+      ],
+      "title": "LedgerRow",
+      "type": "object"
+    },
+    "MemoryQuery": {
+      "additionalProperties": false,
+      "description": "project_id is filled by the controller from TrustedScope, not by a model.",
+      "properties": {
+        "as_of": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kinds": {
+          "items": {
+            "enum": [
+              "episodic_event",
+              "finding",
+              "preference",
+              "procedure_ref"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "type": "array"
+        },
+        "limit": {
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "project_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "statuses": {
+          "items": {
+            "enum": [
+              "unverified",
+              "verified",
+              "contradicted",
+              "superseded",
+              "expired"
+            ],
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "type": "array"
+        },
+        "world_version": {
+          "anyOf": [
+            {
+              "const": "refund-world/1",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "campaign_id",
+        "world_version",
+        "kinds",
+        "statuses",
+        "as_of",
+        "limit"
+      ],
+      "title": "MemoryQuery",
+      "type": "object"
+    },
+    "MemoryRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "effective_from": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "effective_until": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "episodic_event",
+            "finding",
+            "preference",
+            "procedure_ref"
+          ],
+          "type": "string"
+        },
+        "observed_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "record_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "retention": {
+          "$ref": "#/$defs/RetentionPolicy"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "unverified",
+            "verified",
+            "contradicted",
+            "superseded",
+            "expired"
+          ],
+          "type": "string"
+        },
+        "supersedes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "world_version": {
+          "const": "refund-world/1",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_id",
+        "project_id",
+        "campaign_id",
+        "world_version",
+        "kind",
+        "content",
+        "evidence",
+        "provenance",
+        "status",
+        "observed_at",
+        "effective_from",
+        "effective_until",
+        "supersedes",
+        "retention"
+      ],
+      "title": "MemoryRecord",
+      "type": "object"
+    },
+    "ModelReply": {
+      "additionalProperties": false,
+      "properties": {
+        "continuation": {
+          "anyOf": [
+            {
+              "maxLength": 65536,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$",
+          "type": "string"
+        },
+        "provider": {
+          "enum": [
+            "meta_responses",
+            "baseten_chat_completions"
+          ],
+          "type": "string"
+        },
+        "received_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "request_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "tool_calls",
+            "incomplete",
+            "refused",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "structured_output": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "anyOf": [
+            {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tool_calls": {
+          "items": {
+            "$ref": "#/$defs/ProposedToolCall"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        }
+      },
+      "required": [
+        "schema_version",
+        "request_id",
+        "provider",
+        "model",
+        "status",
+        "text",
+        "tool_calls",
+        "structured_output",
+        "usage",
+        "continuation",
+        "error",
+        "received_at"
+      ],
+      "title": "ModelReply",
+      "type": "object"
+    },
+    "ModelRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "budget_reservation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "context_bundle": {
+          "$ref": "#/$defs/Ref"
+        },
+        "continuation": {
+          "anyOf": [
+            {
+              "maxLength": 65536,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_output_tokens": {
+          "maximum": 200000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "model": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$",
+          "type": "string"
+        },
+        "output_schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SchemaRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider": {
+          "enum": [
+            "meta_responses",
+            "baseten_chat_completions"
+          ],
+          "type": "string"
+        },
+        "request_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target"
+          ],
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "stream": {
+          "const": false,
+          "type": "boolean"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "maximum": 600000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tool_results": {
+          "items": {
+            "$ref": "#/$defs/ToolResultForModel"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "tools": {
+          "items": {
+            "$ref": "#/$defs/ToolDefinition"
+          },
+          "maxItems": 16,
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "request_id",
+        "campaign_id",
+        "task_id",
+        "role",
+        "provider",
+        "model",
+        "context_bundle",
+        "tools",
+        "tool_results",
+        "output_schema",
+        "continuation",
+        "max_output_tokens",
+        "timeout_ms",
+        "budget_reservation_id",
+        "stream"
+      ],
+      "title": "ModelRequest",
+      "type": "object"
+    },
+    "OrderRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "customer_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "order_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "paid_minor": {
+          "maximum": 1000000000000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "order_id",
+        "customer_id",
+        "paid_minor",
+        "currency"
+      ],
+      "title": "OrderRecord",
+      "type": "object"
+    },
+    "OutcomeError": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "enum": [
+            "ToolError",
+            "PaymentTimeout",
+            "BudgetExceeded"
+          ],
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "message"
+      ],
+      "title": "OutcomeError",
+      "type": "object"
+    },
+    "OutcomeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OrderRecord"
+            },
+            {
+              "$ref": "#/$defs/RefundStatus"
+            },
+            {
+              "$ref": "#/$defs/LedgerRow"
+            }
+          ]
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "OutcomeResult",
+      "type": "object"
+    },
+    "Principal": {
+      "additionalProperties": false,
+      "description": "Identity derived from an authenticated session, never from a request body.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "service",
+            "local_dev"
+          ],
+          "type": "string"
+        },
+        "principal_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "principal_id",
+        "kind"
+      ],
+      "title": "Principal",
+      "type": "object"
+    },
+    "ProposedToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments_json": {
+          "maxLength": 65536,
+          "type": "string"
+        },
+        "provider_call_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tool_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider_call_id",
+        "tool_name",
+        "arguments_json"
+      ],
+      "title": "ProposedToolCall",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Where content came from. Only controller/verifier/human sources are trusted.",
+      "properties": {
+        "observed_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+          "type": "string"
+        },
+        "source_kind": {
+          "enum": [
+            "controller",
+            "verifier",
+            "human",
+            "memory",
+            "tool_result",
+            "model_output"
+          ],
+          "type": "string"
+        },
+        "source_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trust": {
+          "enum": [
+            "trusted",
+            "verified",
+            "untrusted"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_kind",
+        "source_ref",
+        "observed_at",
+        "trust"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RealityDiff": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_refunded_minor": {
+          "maximum": 1000000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "faulted_refunded_minor": {
+          "maximum": 1000000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "first_divergence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Divergence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "violated_invariants": {
+          "items": {
+            "enum": [
+              "authorized_refunds",
+              "total_refund_within_payment",
+              "no_duplicate_full_refund",
+              "unique_idempotency_keys"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "first_divergence",
+        "baseline_refunded_minor",
+        "faulted_refunded_minor",
+        "violated_invariants"
+      ],
+      "title": "RealityDiff",
+      "type": "object"
+    },
+    "RecordedRequest": {
+      "additionalProperties": false,
+      "description": "What the target attempted, recorded even when the world rejected it.",
+      "properties": {
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "tool": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "RecordedRequest",
+      "type": "object"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Typed pointer to evidence; a digest pins content when it is known.",
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "artifact",
+            "run",
+            "event",
+            "finding",
+            "capsule",
+            "task",
+            "memory",
+            "approval",
+            "context_bundle",
+            "envelope"
+          ],
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "sha256"
+      ],
+      "title": "Ref",
+      "type": "object"
+    },
+    "RefundChecks": {
+      "additionalProperties": false,
+      "properties": {
+        "authorized_refunds": {
+          "type": "boolean"
+        },
+        "no_duplicate_full_refund": {
+          "type": "boolean"
+        },
+        "total_refund_within_payment": {
+          "type": "boolean"
+        },
+        "unique_idempotency_keys": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "authorized_refunds",
+        "total_refund_within_payment",
+        "no_duplicate_full_refund",
+        "unique_idempotency_keys"
+      ],
+      "title": "RefundChecks",
+      "type": "object"
+    },
+    "RefundStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "refund": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LedgerRow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "committed",
+            "not_found"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "refund"
+      ],
+      "title": "RefundStatus",
+      "type": "object"
+    },
+    "RetentionPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "audit_hold": {
+          "type": "boolean"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy": {
+          "enum": [
+            "campaign",
+            "project",
+            "audit"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy",
+        "expires_at",
+        "audit_hold"
+      ],
+      "title": "RetentionPolicy",
+      "type": "object"
+    },
+    "RunResult": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "adapter": {
+          "enum": [
+            "vulnerable",
+            "repaired"
+          ],
+          "type": "string"
+        },
+        "adapter_version": {
+          "const": "refund-adapters/1",
+          "type": "string"
+        },
+        "checks": {
+          "$ref": "#/$defs/RefundChecks"
+        },
+        "final_state": {
+          "$ref": "#/$defs/WorldSnapshot"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "budget_exhausted"
+          ],
+          "type": "string"
+        },
+        "trace": {
+          "items": {
+            "$ref": "#/$defs/TraceEvent"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        }
+      },
+      "required": [
+        "adapter",
+        "adapter_version",
+        "actor_id",
+        "status",
+        "trace",
+        "final_state",
+        "checks"
+      ],
+      "title": "RunResult",
+      "type": "object"
+    },
+    "ScenarioV1": {
+      "additionalProperties": false,
+      "properties": {
+        "max_tool_calls": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timeout_after_commit": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "timeout_after_commit",
+        "max_tool_calls"
+      ],
+      "title": "ScenarioV1",
+      "type": "object"
+    },
+    "SchemaRef": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        "version": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "SchemaRef",
+      "type": "object"
+    },
+    "SkillRef": {
+      "additionalProperties": false,
+      "properties": {
+        "skill_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "version": {
+          "maximum": 10000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "skill_id",
+        "version"
+      ],
+      "title": "SkillRef",
+      "type": "object"
+    },
+    "SkillSpec": {
+      "additionalProperties": false,
+      "description": "A reviewed procedure. allowed_tools narrows a scope; it never grants one.",
+      "properties": {
+        "allowed_tools": {
+          "items": {
+            "enum": [
+              "get_order",
+              "issue_refund",
+              "get_refund_status"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "output_schema": {
+          "$ref": "#/$defs/SchemaRef"
+        },
+        "preconditions": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "prompt_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "purpose": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "skill_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array"
+        },
+        "stop_conditions": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "version": {
+          "maximum": 10000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "skill_id",
+        "version",
+        "prompt_version",
+        "purpose",
+        "preconditions",
+        "allowed_tools",
+        "steps",
+        "output_schema",
+        "stop_conditions"
+      ],
+      "title": "SkillSpec",
+      "type": "object"
+    },
+    "TaskSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "campaign_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "depends_on": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "exit_condition": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "propose_world",
+            "propose_experiment",
+            "validate_proposal",
+            "execute_run",
+            "verify_run",
+            "analyze_evidence",
+            "record_memory",
+            "await_approval"
+          ],
+          "type": "string"
+        },
+        "max_attempts": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "output_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "role": {
+          "enum": [
+            "supervisor",
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target",
+            "verifier"
+          ],
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "ready",
+            "running",
+            "awaiting_approval",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "skipped"
+          ],
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "task_id",
+        "campaign_id",
+        "kind",
+        "role",
+        "depends_on",
+        "status",
+        "attempt",
+        "max_attempts",
+        "exit_condition",
+        "output_ref"
+      ],
+      "title": "TaskSpec",
+      "type": "object"
+    },
+    "ToolDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "name": {
+          "enum": [
+            "get_order",
+            "issue_refund",
+            "get_refund_status"
+          ],
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "world_version": {
+          "const": "refund-world/1",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "world_version",
+        "description",
+        "parameters"
+      ],
+      "title": "ToolDefinition",
+      "type": "object"
+    },
+    "ToolInvocation": {
+      "additionalProperties": false,
+      "description": "A validated, allowlisted call the controller may dispatch.",
+      "properties": {
+        "call": {
+          "discriminator": {
+            "mapping": {
+              "get_order": "#/$defs/GetOrderCall",
+              "get_refund_status": "#/$defs/GetRefundStatusCall",
+              "issue_refund": "#/$defs/IssueRefundCall"
+            },
+            "propertyName": "tool"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/GetOrderCall"
+            },
+            {
+              "$ref": "#/$defs/GetRefundStatusCall"
+            },
+            {
+              "$ref": "#/$defs/IssueRefundCall"
+            }
+          ]
+        },
+        "invocation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "provider_call_id": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "invocation_id",
+        "run_id",
+        "provider_call_id",
+        "call"
+      ],
+      "title": "ToolInvocation",
+      "type": "object"
+    },
+    "ToolResult": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event_id": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "invocation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OrderRecord"
+            },
+            {
+              "$ref": "#/$defs/RefundStatus"
+            },
+            {
+              "$ref": "#/$defs/LedgerRow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider_call_id": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "error"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "invocation_id",
+        "provider_call_id",
+        "event_id",
+        "status",
+        "output",
+        "error"
+      ],
+      "title": "ToolResult",
+      "type": "object"
+    },
+    "ToolResultForModel": {
+      "additionalProperties": false,
+      "properties": {
+        "is_error": {
+          "type": "boolean"
+        },
+        "output_json": {
+          "maxLength": 65536,
+          "type": "string"
+        },
+        "provider_call_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider_call_id",
+        "output_json",
+        "is_error"
+      ],
+      "title": "ToolResultForModel",
+      "type": "object"
+    },
+    "TraceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutcomeResult"
+            },
+            {
+              "$ref": "#/$defs/OutcomeError"
+            }
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/RecordedRequest"
+        },
+        "state": {
+          "$ref": "#/$defs/WorldSnapshot"
+        }
+      },
+      "required": [
+        "event_id",
+        "request",
+        "outcome",
+        "state"
+      ],
+      "title": "TraceEvent",
+      "type": "object"
+    },
+    "TrustedScope": {
+      "additionalProperties": false,
+      "description": "Authority the controller grants for one task. Model output never sets this.",
+      "properties": {
+        "allowed_tools": {
+          "items": {
+            "enum": [
+              "get_order",
+              "issue_refund",
+              "get_refund_status"
+            ],
+            "type": "string"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "delegated_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "supervisor",
+                "worldsmith",
+                "explorer",
+                "analyst",
+                "target",
+                "verifier"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issued_by": {
+          "const": "controller",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/Principal"
+        },
+        "project_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "supervisor",
+            "worldsmith",
+            "explorer",
+            "analyst",
+            "target",
+            "verifier"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "principal",
+        "role",
+        "delegated_by",
+        "allowed_tools",
+        "policy_version",
+        "issued_by"
+      ],
+      "title": "TrustedScope",
+      "type": "object"
+    },
+    "Usage": {
+      "additionalProperties": false,
+      "description": "Reported usage. None means the provider did not report it (unknown, not zero).",
+      "properties": {
+        "cost_currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cost_minor": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input_tokens": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "output_tokens": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "input_tokens",
+        "output_tokens",
+        "cost_minor",
+        "cost_currency"
+      ],
+      "title": "Usage",
+      "type": "object"
+    },
+    "WorldSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "ledger": {
+          "items": {
+            "$ref": "#/$defs/LedgerRow"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "order": {
+          "$ref": "#/$defs/OrderRecord"
+        },
+        "total_refunded_minor": {
+          "maximum": 1000000000000000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "order",
+        "ledger",
+        "total_refunded_minor"
+      ],
+      "title": "WorldSnapshot",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:ghostlab-contracts/1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/AgentEnvelope"
+    },
+    {
+      "$ref": "#/$defs/CampaignSpec"
+    },
+    {
+      "$ref": "#/$defs/CampaignRecord"
+    },
+    {
+      "$ref": "#/$defs/TaskSpec"
+    },
+    {
+      "$ref": "#/$defs/ContextBundle"
+    },
+    {
+      "$ref": "#/$defs/SkillSpec"
+    },
+    {
+      "$ref": "#/$defs/ModelRequest"
+    },
+    {
+      "$ref": "#/$defs/ModelReply"
+    },
+    {
+      "$ref": "#/$defs/ExperimentProposal"
+    },
+    {
+      "$ref": "#/$defs/ToolDefinition"
+    },
+    {
+      "$ref": "#/$defs/ToolInvocation"
+    },
+    {
+      "$ref": "#/$defs/ToolResult"
+    },
+    {
+      "$ref": "#/$defs/RunResult"
+    },
+    {
+      "$ref": "#/$defs/ExperimentResult"
+    },
+    {
+      "$ref": "#/$defs/RealityDiff"
+    },
+    {
+      "$ref": "#/$defs/CapsuleV1"
+    },
+    {
+      "$ref": "#/$defs/InvariantFinding"
+    },
+    {
+      "$ref": "#/$defs/ExperimentEvent"
+    },
+    {
+      "$ref": "#/$defs/MemoryRecord"
+    },
+    {
+      "$ref": "#/$defs/MemoryQuery"
+    },
+    {
+      "$ref": "#/$defs/ApprovalRequest"
+    },
+    {
+      "$ref": "#/$defs/ApprovalSubmission"
+    },
+    {
+      "$ref": "#/$defs/ApprovalDecision"
+    },
+    {
+      "$ref": "#/$defs/BudgetLimits"
+    },
+    {
+      "$ref": "#/$defs/BudgetUsage"
+    },
+    {
+      "$ref": "#/$defs/BudgetReservation"
+    },
+    {
+      "$ref": "#/$defs/TrustedScope"
+    },
+    {
+      "$ref": "#/$defs/Ref"
+    },
+    {
+      "$ref": "#/$defs/ErrorInfo"
+    },
+    {
+      "$ref": "#/$defs/ArtifactRef"
+    }
+  ],
+  "description": "Generated by `python -m ghostlab.contracts.export`. Do not edit.",
+  "title": "GhostLabContracts"
+}

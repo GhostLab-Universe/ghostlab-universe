@@ -1,0 +1,14 @@
+{
+  "action_digest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "approval_id": "approval-1",
+  "approver": {
+    "kind": "local_dev",
+    "principal_id": "local-dev-user"
+  },
+  "decided_at": "2026-10-29T10:00:05Z",
+  "decision": "approve",
+  "decision_id": "decision-1",
+  "policy_version": "policy-1",
+  "reason": null,
+  "schema_version": 1
+}

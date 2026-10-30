@@ -23,7 +23,8 @@ from m05_harness import OPERATOR, PROJECT, STRANGER, Script, meta_reply, proposa
 from m05_journey_harness import J, journey_reply, journey_spec
 from m05_relay_harness import (AUTOMATION, BUSINESS_OWNER, CAPACITY_RACE, CHECKED, COMPETITION,
                                FIRST_CONFIRM_EVENT, FIRST_LEASE_EVENT, LOCAL, LOST_ACK, R,
-                               TAKEOVER_RACE, RelayLab, proposal_json, relay_reply, relay_spec)
+                               TAKEOVER, TAKEOVER_RACE, RelayLab, fault, proposal_json,
+                               relay_reply, relay_spec)
 
 CID = "campaign-1"
 INVARIANT = "no_automation_after_takeover"
@@ -398,6 +399,16 @@ def test_a_principal_bound_to_the_business_owner_cannot_drive_the_automation(tmp
     assert open_reservations(lab) == []
 
 
+@pytest.mark.parametrize("bound, fixture", [
+    ("nobody", None), (AUTOMATION, RelayFixture(operator="another-automation"))])
+def test_an_identity_outside_the_shop_is_denied_not_a_clean_run(tmp_path, bound, fixture):
+    lab, state = start(tmp_path, world_binding=binding(bound), relay_fixture=fixture)
+    assert (state["status"], state["outcome"]) == ("failed", "policy_denied")
+    assert state["experiments"] == {} and state["errors"][-1]["code"] == "forbidden"
+    assert "isn't in this shop" in state["errors"][-1]["message"]
+    assert open_reservations(lab) == []
+
+
 def test_an_unbound_principal_runs_nothing(tmp_path):
     lab, state = start(tmp_path, world_binding=StaticWorldBinding({}))
     assert (state["status"], state["outcome"]) == ("failed", "policy_denied")
@@ -478,7 +489,7 @@ def test_exporting_a_lab_capsule_does_not_weaken_the_repair(tmp_path):
 
 def test_a_proposal_over_the_target_tool_limit_is_rejected(tmp_path):
     lab, state = start(tmp_path, relay_reply(cap=21), relay_reply(cap=21))
-    assert state["experiments"] == {} and state["outcome"] == "no_failure_found"
+    assert state["experiments"] == {} and state["outcome"] == "no_experiment_ran"
     assert any("exceeds the target role ceiling" in e["message"] for e in state["errors"])
 
 
@@ -488,15 +499,17 @@ def test_the_limit_itself_is_accepted(tmp_path):
 
 
 def test_a_campaign_budget_that_cannot_cover_the_repair_stops_it(tmp_path):
-    # The experiment spends 14 of 25, leaving 11: one short of the repair's cap of 12.
-    lab = RelayLab(tmp_path, Script(relay_reply(cap=12)))
+    # The experiment spends 14 of 33, leaving 19: one short of the repair's cap of 20.
+    lab = RelayLab(tmp_path, Script(relay_reply(cap=16)))
     with lab.controller() as controller:
-        state = controller.start(CID, relay_spec(max_tool_calls=25))
+        state = controller.start(CID, relay_spec(max_tool_calls=33))
     lab.approve(state)
     with lab.controller() as controller:
         done = controller.resume(CID)
     assert (done["status"], done["outcome"]) == ("budget_exhausted", "tool_calls")
-    assert not done["repair"].get("run") and open_reservations(lab) == []
+    assert not (done["repair"] or {}).get("run") and open_reservations(lab) == []
+    # the check is before single use, so the approval isn't spent on a repair that can't start
+    assert lab.approval_store.get(PROJECT, state["approval"]["approval_id"]).status == "approved"
 
 
 class TripAfter:
@@ -662,8 +675,34 @@ def test_a_relay_campaign_without_a_recorded_fixture_is_refused(tmp_path):
 
 # --- 12. a verified repair has to have run ---------------------------------------------------
 
+class CappedRepair(RelayDriver):
+    """The repair's cap is the target limit, so only a changed driver can truncate it."""
+
+    def __init__(self, cap):
+        self.repair_cap = cap
+
+    def repair_action(self, experiment_id, proposal):
+        action = super().repair_action(experiment_id, proposal)
+        return {**action, "scenario": {**action["scenario"], "max_tool_calls": self.repair_cap}}
+
+
+def capped_repair(cap):
+    return {**DEFAULT_WORLDS, R: CappedRepair(cap)}
+
+
+def test_the_repair_gets_the_target_limit_not_the_proposals_cap(tmp_path):
+    lab, state = start(tmp_path, relay_reply(cap=7))  # enough for local-success, not the repair
+    assert state["approval"]["action"]["scenario"]["max_tool_calls"] == 20
+    done = resume_after_approval(lab, state)
+    assert done["outcome"] == "repair_verified"
+    with lab.controller() as controller:
+        ref = controller.export_capsule(CID, run="repaired")
+        assert controller.replay_capsule(CID, run="repaired")["reproduced"]
+    assert load(lab, ref)["payload"]["scenario"]["max_tool_calls"] == 20
+
+
 def test_a_truncated_repair_is_incomplete_not_verified(tmp_path):
-    lab, state = start(tmp_path, relay_reply(cap=7))  # enough to detect, too few to repair
+    lab, state = start(tmp_path, relay_reply(cap=7), worlds=capped_repair(7))
     assert failed(state)[0]["evidence_event_ids"] == [4]
     done = resume_after_approval(lab, state)
     assert (done["status"], done["outcome"]) == ("budget_exhausted", "repair_incomplete")
@@ -675,13 +714,14 @@ def test_a_truncated_repair_is_incomplete_not_verified(tmp_path):
 
 
 def test_a_repair_with_exactly_enough_calls_is_verified(tmp_path):
-    lab, state = start(tmp_path, relay_reply(cap=8))
+    lab, state = start(tmp_path, relay_reply(cap=8), worlds=capped_repair(8))
     done = resume_after_approval(lab, state)
     assert done["outcome"] == "repair_verified" and done["repair"]["run_status"] == "completed"
 
 
 def test_a_guard_denial_stays_successful_enforcement(tmp_path):
-    lab, state = start(tmp_path, relay_reply(CHECKED, faults=[TAKEOVER_RACE], cap=10))
+    lab, state = start(tmp_path, relay_reply(CHECKED, faults=[TAKEOVER_RACE], cap=10),
+                       worlds=capped_repair(10))
     done = resume_after_approval(lab, state)
     assert done["outcome"] == "repair_verified"
     assert done["repair"]["held_by"] == "guarded_boundary"
@@ -808,7 +848,8 @@ def test_a_truncated_experiment_reports_incomplete_coverage(tmp_path):
     assert not failed(state)
     for experiment in state["experiments"].values():
         assert experiment["coverage"] == {"baseline": "budget_exhausted",
-                                          "fork": "budget_exhausted", "complete": False}
+                                          "fork": "budget_exhausted",
+                                          "faults_triggered": False, "complete": False}
     with lab.controller() as controller:
         assert controller.record(CID).status == "budget_exhausted"
 
@@ -822,9 +863,53 @@ def test_a_violation_seen_before_truncation_is_retained(tmp_path):
 
 
 def test_a_finished_experiment_with_no_failure_is_still_no_failure_found(tmp_path):
-    _, state = start(tmp_path, relay_reply(CHECKED, faults=[]),
-                     relay_reply(CHECKED, faults=[], cap=19))
+    _, state = start(tmp_path, relay_reply(CHECKED, faults=[TAKEOVER]),
+                     relay_reply(CHECKED, faults=[LOST_ACK]))
     assert (state["status"], state["outcome"]) == ("completed", "no_failure_found")
+    assert all(e["coverage"]["complete"] for e in state["experiments"].values())
+
+
+@pytest.mark.parametrize("faults, other", [
+    ([fault("takeover_with_queued_confirmation", 1000)],
+     [fault("takeover_with_queued_confirmation", 999)]),
+    ([fault("lost_reservation_ack", 1000)], [fault("lost_reservation_ack", 999)]),
+    ([fault("stale_availability_competition", 1000, competing_jobs=2)],
+     [fault("stale_availability_competition", 999, competing_jobs=2)]),
+    ([], [fault("lost_reservation_ack", 999)]),
+    ([TAKEOVER, fault("lost_reservation_ack", 1000)],
+     [TAKEOVER, fault("lost_reservation_ack", 999)]),
+])
+def test_a_fault_that_never_fired_is_not_coverage(tmp_path, faults, other):
+    lab, state = start(tmp_path, relay_reply(CHECKED, faults=faults),
+                       relay_reply(CHECKED, faults=other))
+    assert (state["status"], state["outcome"]) == ("budget_exhausted", "coverage_incomplete")
+    assert all(e["coverage"]["faults_triggered"] is False for e in state["experiments"].values())
+    assert lab.memory_store.query(supervisor_scope(PROJECT, OPERATOR), memory_query()) == []
+
+
+def test_the_default_takeover_needs_the_leases_it_waits_for(tmp_path):
+    # Competitors hold the part, so job-1's booking never completes and the takeover never lands.
+    _, state = start(tmp_path, relay_reply(CHECKED, faults=[COMPETITION, TAKEOVER]),
+                     relay_reply(CHECKED, faults=[COMPETITION]))
+    (first, second) = state["experiments"].values()
+    assert first["coverage"]["faults_triggered"] is False
+    assert second["coverage"]["faults_triggered"] is True
+
+
+@pytest.mark.parametrize("faults", [[TAKEOVER], [LOST_ACK], [COMPETITION],
+                                    [COMPETITION, LOST_ACK]])
+def test_a_fault_that_fired_counts(tmp_path, faults):
+    _, state = start(tmp_path, relay_reply(CHECKED, faults=faults),
+                     relay_reply(LOCAL, faults=faults))
+    assert next(iter(state["experiments"].values()))["coverage"]["faults_triggered"] is True
+
+
+def test_a_competition_that_found_nothing_free_still_fired():
+    # job-3 and job-4 lose out at the counter, but the counters still froze.
+    fixture = RelayFixture(competitors=())
+    run = run_directly(CHECKED, [("stale_availability_competition", None,
+                                  {"competing_jobs": 2})], LAB, fixture=fixture).run
+    assert DRIVER.faults_triggered(proposal_json(CHECKED, faults=[COMPETITION]), run)
 
 
 # --- 15. three worlds side by side ----------------------------------------------------------

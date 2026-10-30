@@ -1,5 +1,6 @@
 """Relay Explorer context: the skill, and memory selection by world (no model calls)."""
 
+import itertools
 import json
 import re
 
@@ -12,11 +13,16 @@ from ghostlab.contracts.world_packs import PACKS, pack
 from ghostlab.providers.render import resolve_output_schema, strict_subset_violations
 from ghostlab.skills import SkillRegistry
 from ghostlab.skills.registry import ROOT
+from ghostlab.worlds.relay import RelayFixture, RelayScenario, scenario_json
+from ghostlab.worlds.relay_run import ADAPTERS, run
 
 from m03_fakes import NOW, T1, FakeMemoryStore, LeakyMemoryStore, scope
 
 R = "service-relay/1"
 SKILL = "propose-relay-scenario"
+LOCAL, CHECKED = "relay-local-success", "relay-lease-checked"
+STALE, LOST, TAKEOVER = ("stale_availability_competition", "lost_reservation_ack",
+                         "takeover_with_queued_confirmation")
 
 
 @pytest.fixture(scope="module")
@@ -89,6 +95,52 @@ def test_the_skill_states_the_bound_the_world_enforces(skills):
     steps = " ".join(skills.get(SKILL).spec.steps)
     assert f"from 1 to {MAX_COMPETING_JOBS}" in steps
     assert f"the shop has {len(RelayFixture().competitors)}" in steps
+
+
+def stated_caps(skills):
+    (match,) = filter(None, (re.fullmatch(
+        r"Leave room for the adapter to finish: (\S+) needs at least (\d+) tool calls, and "
+        r"(\S+) needs at least (\d+)", step) for step in skills.get(SKILL).spec.steps))
+    first, first_cap, second, second_cap = match.groups()
+    return {first: int(first_cap), second: int(second_cap)}
+
+
+def fault_cases():
+    """Every fault alone and combined, at every timing that can land inside a run."""
+    triggers = [None, *range(1, 21)]
+    for after in triggers:
+        yield ((STALE, after, {"competing_jobs": 2}),)
+        yield ((STALE, after, {"competing_jobs": 1}),)
+        yield ((LOST, after, {}),)
+        yield ((TAKEOVER, after, {}),)
+    for first, second, third in itertools.product([None, 1, 2, 3, 4, 5], repeat=3):
+        yield ((STALE, first, {"competing_jobs": 2}), (LOST, second, {}), (TAKEOVER, third, {}))
+
+
+def trace_length(adapter, faults, cap):
+    return len(run(RelayFixture(), RelayScenario.from_json(scenario_json(faults, cap)),
+                   adapter)["trace"])
+
+
+def test_the_stated_caps_are_enough_and_are_needed(skills):
+    caps = stated_caps(skills)
+    assert set(caps) == set(ADAPTERS)
+    for adapter, cap in caps.items():
+        lengths = [trace_length(adapter, faults, 40) for faults in fault_cases()]
+        assert max(lengths) <= cap, adapter
+    # Each number is what a real timing takes, not a padded guess.
+    assert trace_length(LOCAL, ((LOST, None, {}),), 40) == caps[LOCAL]
+    worst = ((STALE, 1, {"competing_jobs": 2}), (LOST, None, {}), (TAKEOVER, 5, {}))
+    assert trace_length(CHECKED, worst, 40) == caps[CHECKED]
+
+
+def test_a_proposal_built_from_the_skill_is_accepted():
+    data = scenario_json(((STALE, None, {"competing_jobs": 2}), (LOST, 3, {}), (TAKEOVER, 5, {})),
+                         20)
+    for adapter in ADAPTERS:
+        WorldExperimentProposal.model_validate({
+            "schema_version": 1, "world_version": R, "hypothesis": "A stated fault breaks it",
+            "adapter_id": adapter, "scenario": data, "expected_signal": "An invariant fails"})
 
 
 def test_the_skill_states_the_target_tool_limit(skills):

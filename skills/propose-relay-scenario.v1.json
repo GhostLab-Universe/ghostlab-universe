@@ -15,11 +15,12 @@
   "steps": [
     "Read the verified findings and questions in this context",
     "Pick one or more faults service-relay/1 supports, each with its parameters as name and value pairs",
-    "stale_availability_competition: competing_jobs is how many competing jobs take a free resource, from 1 to 8, and the shop has 2; after_event null has them in place before the first call, and a number has them arrive after that event",
+    "stale_availability_competition: competing_jobs (integer) is how many competing jobs take a free resource, from 1 to 8, such as 2; the shop has 2, so a larger number adds nothing; after_event null has them in place before the first call, and a number has them arrive after that event",
     "lost_reservation_ack: it has no parameters; after_event null loses the acknowledgement of the first new reservation, and a number loses that of the first reservation after that event",
     "takeover_with_queued_confirmation: it has no parameters; after_event null takes the first job over just after its leases are in place, and a number takes it over after that event",
     "Pick one adapter of the pack: relay-local-success or relay-lease-checked",
     "Set max_tool_calls to at most 20",
+    "Leave room for the adapter to finish: relay-local-success needs at least 8 tool calls, and relay-lease-checked needs at least 12",
     "State the hypothesis and the invariant you expect to fail: allocations_within_capacity, confirmations_backed_by_reservations or no_automation_after_takeover",
     "Return exactly one world_experiment_proposal object and nothing else"
   ],

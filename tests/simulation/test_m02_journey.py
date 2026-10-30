@@ -542,6 +542,7 @@ def test_altered_evidence_with_a_fresh_checksum_is_not_reproduced(exported, muta
     lambda p: p["scenario"]["faults"][0].update(fault_id=["x"]),
     lambda p: p["fixture"].update(options=[1, 2]),
     lambda p: p["fixture"].update(intents=[[1]]),
+    # the shape of the pre-implementation placeholder example, with a valid checksum
     lambda p: p.update(fixture={"journey_id": "journey-1", "participants": 3}),
 ])
 def test_malformed_capsules_fail_cleanly(exported, mutate):
@@ -565,11 +566,6 @@ def test_oversized_and_non_json_capsules_fail_cleanly(tmp_path):
     for path in (big, bad):
         with pytest.raises(ValueError):
             journey_capsule.replay(path)
-
-
-def test_the_published_placeholder_capsule_is_not_replayable():
-    with pytest.raises(ValueError):
-        journey_capsule.replay(EXAMPLES / "capsule_v2.journey_fixture.json")
 
 
 def test_v1_and_v2_loaders_refuse_each_other(exported, tmp_path):
@@ -602,8 +598,9 @@ def test_journey_cli_demo_and_replay(tmp_path, capsys):
     rewrite(path, lambda p: p["run"]["trace"].pop())
     assert main(["journey-replay", str(path)]) == 1
     capsys.readouterr()
+    rewrite(path, lambda p: p.update(fixture={"journey_id": "journey-1", "participants": 3}))
     with pytest.raises(SystemExit) as exit_info:
-        main(["journey-replay", str(EXAMPLES / "capsule_v2.journey_fixture.json")])
+        main(["journey-replay", str(path)])
     assert exit_info.value.code == 2
 
 

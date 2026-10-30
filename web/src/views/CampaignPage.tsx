@@ -285,8 +285,8 @@ function BudgetTable({ limits, usage }: { limits: BudgetLimits; usage: BudgetUsa
             {rows.map(([name, used, limit]) => (
               <tr key={name}>
                 <th scope="row">{name}</th>
-                <td>{used}</td>
-                <td>{limit}</td>
+                <td data-label="Used">{used}</td>
+                <td data-label="Limit">{limit}</td>
               </tr>
             ))}
           </tbody>

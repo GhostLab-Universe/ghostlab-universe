@@ -237,10 +237,10 @@ export function DiffPanel({
                         </>
                       ) : null}
                     </th>
-                    <td>
+                    <td data-label="Baseline">
                       <EventCell event={row.baseline} />
                     </td>
-                    <td>
+                    <td data-label="Fork">
                       <EventCell event={row.fork} />
                     </td>
                   </tr>
@@ -287,8 +287,8 @@ function MetricTable({ experiment, currency }: { experiment: ExperimentView; cur
               <th scope="row">
                 <Mono>{row.name}</Mono>
               </th>
-              <td>{shown(row.name, row.baseline)}</td>
-              <td>{shown(row.name, row.fork)}</td>
+              <td data-label="Baseline">{shown(row.name, row.baseline)}</td>
+              <td data-label="Fork">{shown(row.name, row.fork)}</td>
             </tr>
           ))}
         </tbody>
@@ -385,8 +385,8 @@ export function DifferenceTable({ baseline, fork }: { baseline: WorldTraceEvent 
                   <th scope="row">
                     <Mono>{row.path}</Mono>
                   </th>
-                  <td>{shownValue(row.baseline)}</td>
-                  <td>{shownValue(row.fork)}</td>
+                  <td data-label="Baseline">{shownValue(row.baseline)}</td>
+                  <td data-label="Fork">{shownValue(row.fork)}</td>
                 </tr>
               ))}
             </tbody>

@@ -318,17 +318,20 @@ test.describe("narrow screen", () => {
     });
   }
 
-  test("a wide table keeps its tokens whole and scrolls by keyboard", async ({ page }) => {
+  test("every table value is on screen, not scrolled out of reach", async ({ page }) => {
     await go(page, "campaign/fx-journey/diff");
-    const cell = page.getByTestId("difference-table").getByText("sharing.participant-c");
-    await expect(cell).toBeVisible();
-    const box = await cell.boundingBox();
-    expect(box?.height, "one line, not a column of fragments").toBeLessThan(30);
-    const region = page.getByRole("region", { name: "Recorded differences at the first divergence" });
-    await region.focus();
-    await page.keyboard.press("ArrowRight");
-    await expect.poll(() => region.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
-    await noSidewaysScroll(page);
+    await eventsCompared(page);
+    const cells = page.locator(".table-wrap td");
+    const count = await cells.count();
+    expect(count).toBeGreaterThan(20);
+    for (let index = 0; index < count; index += 1) {
+      const box = await cells.nth(index).boundingBox();
+      expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(320);
+    }
+    const row = page.locator(".table-wrap tbody tr", { hasText: "messages_delivered_without_permission" });
+    await expect(row.locator('td[data-label="Baseline"]')).toContainText("0");
+    await expect(row.locator('td[data-label="Fork"]')).toContainText("1");
   });
 
   test("the sides stack rather than squeeze", async ({ page }) => {

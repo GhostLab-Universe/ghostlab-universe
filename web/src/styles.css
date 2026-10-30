@@ -426,6 +426,8 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.92rem;
+  /* Tokens stay whole: a wide table scrolls inside its focusable region. */
+  overflow-wrap: normal;
 }
 
 th,

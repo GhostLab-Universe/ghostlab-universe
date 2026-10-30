@@ -16,7 +16,7 @@ import { DiffPanel } from "../../src/views/DiffPage.tsx";
 import { ApplicationEvents, ProposalSection, RunEvidence } from "../../src/views/EvidencePage.tsx";
 
 const html = (node: ReactNode) => renderToStaticMarkup(node);
-const text = (markup: string) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+const text = (markup: string) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").replaceAll("&#x27;", "'");
 const scenario = (id: string) => SCENARIOS.find((item) => item.id === id)!;
 const source = createFixtureSource();
 const refresh = async () => undefined;

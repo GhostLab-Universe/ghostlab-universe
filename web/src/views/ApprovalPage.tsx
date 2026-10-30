@@ -3,7 +3,7 @@ import type { ApprovalView, CampaignView, DecisionResult, SessionInfo } from "..
 import type { DataSource, Failure, Origin } from "../data/source.ts";
 import { actionFacts, buildSubmission, decisionGate, IdempotencyKeys, type Decision } from "../logic/approval.ts";
 import { readCoverage } from "../logic/coverage.ts";
-import { BLOCKED_ENDED_HELP, describeFailure } from "../logic/failure.ts";
+import { BLOCKED_ENDED_HELP, describeFailure, failureState } from "../logic/failure.ts";
 import { formatTimestamp, prettyJson } from "../logic/format.ts";
 import { Digest, Facts, FailureNotice, Loading, Mono, Notice, RefLabel, Section, Tag } from "../ui/components.tsx";
 import { useResource } from "../ui/hooks.ts";
@@ -241,7 +241,10 @@ export function DecisionPanel({
           </p>
         </form>
       ) : null}
-      {failure === null ? null : <FailureNotice failure={failure} />}
+      {/* A second refusal of the same resume would only repeat the notice below. */}
+      {failure === null || (refused && failureState(failure) === "blocked") ? null : (
+        <FailureNotice failure={failure} />
+      )}
       {refused ? (
         <Notice
           state={resumeFailure?.state === "blocked" ? "blocked" : "conflict"}

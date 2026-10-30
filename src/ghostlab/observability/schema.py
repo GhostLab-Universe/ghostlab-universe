@@ -21,7 +21,8 @@ KINDS = ("event", "span")
 # when it becomes part of the vocabulary.
 EVENT_NAMES = (
     "campaign.run", "campaign.status", "task.status", "model.call", "model.attempt",
-    "tool.call", "validation.failed", "retry", "cancellation", "approval.requested",
+    "tool.call", "validation.failed", "retry", "cancellation", "campaign.error",
+    "approval.requested",
     "approval.decided", "approval.consumed", "budget.exhausted", "policy.denied",
     "run.completed", "finding.recorded", "capsule.exported", "capsule.replayed",
 )

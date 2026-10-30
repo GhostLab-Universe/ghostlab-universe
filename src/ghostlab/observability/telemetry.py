@@ -16,8 +16,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .redact import Sanitizer, TextRedactor
-from .schema import (APPROVAL_STATUSES, NAME_PATTERN, SCHEMA, SPAN_ID_PATTERN, TelemetryRecord,
-                     TraceContext, Usage, Versions)
+from .schema import (APPROVAL_STATUSES, NAME_PATTERN, SCHEMA, SPAN_ID_PATTERN, TIMESTAMP_PATTERN,
+                     TelemetryRecord, TraceContext, Usage, Versions)
 from .sinks import NullSink, TelemetrySink
 
 
@@ -102,9 +102,13 @@ class Telemetry:
               latency_ms: int | None = None, attempt: int | None = None,
               retries: int | None = None, cancelled: bool | None = None,
               validation_failures: int | None = None, approval_id: str | None = None,
-              approval_status: str | None = None, attributes: Mapping | None = None) -> None:
-        """Write one point-in-time record under the context's current span."""
-        self._write("event", name, None, context.span_id, context, started_at=None,
+              approval_status: str | None = None, attributes: Mapping | None = None,
+              at: str | None = None) -> None:
+        """Write one point-in-time record under the context's current span.
+
+        ``at`` overrides the clock, for a record rebuilt later from stored evidence.
+        """
+        self._write("event", name, None, context.span_id, context, started_at=None, at=at,
                     latency_ms=latency_ms, outcome=outcome, error_code=error_code,
                     usage=usage or Usage(), attempt=attempt, retries=retries, cancelled=cancelled,
                     validation_failures=validation_failures, approval_id=approval_id,
@@ -118,6 +122,20 @@ class Telemetry:
         return _SpanScope(self, name, Span(child), context.span_id, _timestamp(self.clock()),
                           self.monotonic())
 
+    def finished_span(self, name: str, context: TraceContext, *, span_id: str, started_at: str,
+                      ended_at: str, latency_ms: int | None = None, outcome: str | None = None,
+                      error_code: str | None = None, usage: Usage | None = None,
+                      attempt: int | None = None, retries: int | None = None,
+                      cancelled: bool | None = None, validation_failures: int | None = None,
+                      approval_id: str | None = None, approval_status: str | None = None,
+                      attributes: Mapping | None = None) -> None:
+        """Write a span whose times are already known, for a trace rebuilt from evidence."""
+        self._write("span", name, span_id, context.span_id, context, started_at=started_at,
+                    at=ended_at, latency_ms=latency_ms, outcome=outcome, error_code=error_code,
+                    usage=usage or Usage(), attempt=attempt, retries=retries, cancelled=cancelled,
+                    validation_failures=validation_failures, approval_id=approval_id,
+                    approval_status=approval_status, attributes=attributes)
+
     def close(self) -> None:
         try:
             self.sink.close()
@@ -126,12 +144,12 @@ class Telemetry:
 
     def _write(self, kind, name, span_id, parent_id, context, *, started_at, latency_ms, outcome,
                error_code, usage, attempt, retries, cancelled, validation_failures, approval_id,
-               approval_status, attributes):
+               approval_status, attributes, at=None):
         try:
             record = self._record(kind, name, span_id or self.new_span_id(), parent_id, context,
                                   started_at, latency_ms, outcome, error_code, usage, attempt,
                                   retries, cancelled, validation_failures, approval_id,
-                                  approval_status, attributes)
+                                  approval_status, attributes, at)
         except Exception:
             self.rejected += 1
             if self.strict:
@@ -148,9 +166,12 @@ class Telemetry:
     def _record(self, kind, name, span_id, parent_id, context: TraceContext, started_at,
                 latency_ms, outcome, error_code, usage: Usage, attempt, retries, cancelled,
                 validation_failures, approval_id, approval_status,
-                attributes: Mapping[str, Any] | None) -> TelemetryRecord:
+                attributes: Mapping[str, Any] | None, at: str | None) -> TelemetryRecord:
         if not isinstance(name, str) or not NAME_PATTERN.match(name):
             raise ValueError("telemetry name must be a dotted lowercase identifier")
+        for moment in (at, started_at):
+            if moment is not None and not TIMESTAMP_PATTERN.match(moment):
+                raise ValueError("timestamps must be RFC 3339 UTC")
         if not SPAN_ID_PATTERN.match(span_id):
             raise ValueError("span ids must be 16 lowercase hex characters")
         if approval_status is not None and approval_status not in APPROVAL_STATUSES:
@@ -161,7 +182,7 @@ class Telemetry:
         kept, dropped = clean.attribute_map(attributes)
         versions: Versions = context.versions
         return TelemetryRecord(
-            schema=SCHEMA, kind=kind, name=name, timestamp=_timestamp(self.clock()),
+            schema=SCHEMA, kind=kind, name=name, timestamp=at or _timestamp(self.clock()),
             started_at=started_at, trace_id=context.trace_id, span_id=span_id,
             parent_span_id=parent_id, project_id=clean.text(context.project_id),
             campaign_id=clean.text(context.campaign_id), task_id=clean.text(context.task_id),

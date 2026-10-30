@@ -1,0 +1,2397 @@
+{
+ "adversarial.budget_exhaustion": {
+  "campaigns": {
+   "journey_tool_cap": {
+    "approval": null,
+    "errors": [],
+    "outcome": "no_failure_found",
+    "paused": false,
+    "runs": {
+     "exp-c216d65bf5f1736f/baseline": "8cc9cfb53d740c1d44a0445740984d85107a98ecbaffa8e677153a0188d769e7",
+     "exp-c216d65bf5f1736f/fork": "8cc9cfb53d740c1d44a0445740984d85107a98ecbaffa8e677153a0188d769e7"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ]
+    ]
+   },
+   "model_calls": {
+    "approval": null,
+    "errors": [
+     "budget_exhausted"
+    ],
+    "outcome": "model_calls",
+    "paused": false,
+    "runs": {},
+    "status": "budget_exhausted",
+    "tasks": [
+     [
+      "propose_experiment",
+      "failed"
+     ],
+     [
+      "validate_proposal",
+      "cancelled"
+     ],
+     [
+      "execute_run",
+      "cancelled"
+     ],
+     [
+      "verify_run",
+      "cancelled"
+     ],
+     [
+      "record_memory",
+      "cancelled"
+     ]
+    ]
+   },
+   "tool_calls": {
+    "approval": null,
+    "errors": [
+     "validation_failed"
+    ],
+    "outcome": "no_failure_found",
+    "paused": false,
+    "runs": {},
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "failed"
+     ],
+     [
+      "execute_run",
+      "skipped"
+     ],
+     [
+      "verify_run",
+      "skipped"
+     ],
+     [
+      "record_memory",
+      "skipped"
+     ]
+    ]
+   },
+   "wall_clock": {
+    "approval": null,
+    "errors": [
+     "deadline_exceeded"
+    ],
+    "outcome": "wall_clock_ms",
+    "paused": false,
+    "runs": {},
+    "status": "budget_exhausted",
+    "tasks": [
+     [
+      "propose_experiment",
+      "cancelled"
+     ],
+     [
+      "validate_proposal",
+      "cancelled"
+     ],
+     [
+      "execute_run",
+      "cancelled"
+     ],
+     [
+      "verify_run",
+      "cancelled"
+     ],
+     [
+      "record_memory",
+      "cancelled"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "journey_tool_cap": [
+    200
+   ],
+   "model_calls": [
+    503,
+    503
+   ],
+   "tool_calls": [
+    200
+   ],
+   "wall_clock": []
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 1400,
+     "unknown_count": 2
+    },
+    "output": {
+     "known_sum": 240,
+     "unknown_count": 2
+    }
+   },
+   "handoffs": {
+    "failed": 12,
+    "total": 16
+   },
+   "human_decisions": {
+    "decided": 0,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 4,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 6,
+    "total": 20
+   },
+   "tool_calls": {
+    "failed": 0,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 0,
+    "succeeded": 6,
+    "total": 6
+   }
+  },
+  "observations": {}
+ },
+ "adversarial.caller_spoofing": {
+  "campaigns": {
+   "journey_unbound": {
+    "approval": null,
+    "errors": [
+     "forbidden"
+    ],
+    "outcome": "policy_denied",
+    "paused": false,
+    "runs": {},
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "failed"
+     ],
+     [
+      "verify_run",
+      "skipped"
+     ],
+     [
+      "record_memory",
+      "skipped"
+     ]
+    ]
+   },
+   "main": {
+    "approval": "pending",
+    "errors": [],
+    "outcome": null,
+    "paused": true,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "awaiting_approval",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "awaiting_approval"
+     ],
+     [
+      "execute_run",
+      "pending"
+     ]
+    ]
+   },
+   "refund_other_customer": {
+    "approval": null,
+    "errors": [
+     "forbidden"
+    ],
+    "outcome": "policy_denied",
+    "paused": false,
+    "runs": {},
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "failed"
+     ],
+     [
+      "verify_run",
+      "skipped"
+     ],
+     [
+      "record_memory",
+      "skipped"
+     ]
+    ]
+   },
+   "refund_unbound": {
+    "approval": null,
+    "errors": [
+     "forbidden"
+    ],
+    "outcome": "policy_denied",
+    "paused": false,
+    "runs": {},
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "failed"
+     ],
+     [
+      "verify_run",
+      "skipped"
+     ],
+     [
+      "record_memory",
+      "skipped"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "journey_unbound": [
+    200
+   ],
+   "main": [
+    200
+   ],
+   "refund_other_customer": [
+    200
+   ],
+   "refund_unbound": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 2800,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 480,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 9,
+    "total": 17
+   },
+   "human_decisions": {
+    "decided": 0,
+    "pending": 1,
+    "rejected": 0
+   },
+   "model_attempts": 4,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 11,
+    "total": 22
+   },
+   "tool_calls": {
+    "failed": 1,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 1,
+    "succeeded": 4,
+    "total": 5
+   }
+  },
+  "observations": {
+   "operator_self_approves": "ApprovalDenied:approver_not_authorized",
+   "other_project": {
+    "resume": "PolicyDenied:cross_project",
+    "state": "PolicyDenied:cross_project"
+   },
+   "resume_without_decision_paused": true,
+   "still_pending_after_attempts": "pending",
+   "stranger": {
+    "record": "PolicyDenied:cross_project",
+    "recover": "PolicyDenied:cross_project",
+    "resume": "PolicyDenied:cross_project",
+    "state": "PolicyDenied:cross_project"
+   },
+   "stranger_approves": "ApprovalDenied:approver_not_authorized",
+   "wrong_digest": "ApprovalDenied:digest_mismatch"
+  }
+ },
+ "adversarial.capsule_tampering.journey": {
+  "campaigns": {
+   "main": {
+    "approval": "pending",
+    "errors": [],
+    "outcome": null,
+    "paused": true,
+    "runs": {
+     "exp-9e4e59c2a2c402f3/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-9e4e59c2a2c402f3/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08"
+    },
+    "status": "awaiting_approval",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "awaiting_approval"
+     ],
+     [
+      "execute_run",
+      "pending"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 0,
+    "pending": 1,
+    "rejected": 0
+   },
+   "model_attempts": 1,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 5,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 0,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 0,
+    "succeeded": 24,
+    "total": 24
+   }
+  },
+  "observations": {
+   "altered": {
+    "claimed_guarded": "not_reproduced",
+    "forged_checks": "not_reproduced",
+    "hidden_delivery": "not_reproduced",
+    "truncated_trace": "not_reproduced"
+   },
+   "malformed": {
+    "empty_object": "rejected",
+    "extra_envelope_field": "rejected",
+    "not_json": "rejected",
+    "oversized": "rejected",
+    "stale_checksum": "rejected",
+    "truncated": "rejected"
+   },
+   "untouched": "REPRODUCED"
+  }
+ },
+ "adversarial.capsule_tampering.refund": {
+  "campaigns": {
+   "main": {
+    "approval": "pending",
+    "errors": [],
+    "outcome": null,
+    "paused": true,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "awaiting_approval",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "awaiting_approval"
+     ],
+     [
+      "execute_run",
+      "pending"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 0,
+    "pending": 1,
+    "rejected": 0
+   },
+   "model_attempts": 1,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 5,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 1,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 1,
+    "succeeded": 4,
+    "total": 5
+   }
+  },
+  "observations": {
+   "altered": {
+    "changed_fixture": "not_reproduced",
+    "forged_checks": "not_reproduced",
+    "forged_request": "not_reproduced",
+    "ledger_amount": "not_reproduced",
+    "truncated_trace": "not_reproduced"
+   },
+   "malformed": {
+    "empty_object": "rejected",
+    "extra_envelope_field": "rejected",
+    "not_json": "rejected",
+    "oversized": "rejected",
+    "stale_checksum": "rejected",
+    "truncated": "rejected"
+   },
+   "untouched": "REPRODUCED"
+  }
+ },
+ "adversarial.crash_restart.journey": {
+  "campaigns": {
+   "after_execute": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-9e4e59c2a2c402f3/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-9e4e59c2a2c402f3/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08",
+     "repaired": "02981ee91114eeb8eb5bc72604ad31be4ea19893bf2da3a7ebc07962f8da4a35"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   },
+   "control": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-9e4e59c2a2c402f3/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-9e4e59c2a2c402f3/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08",
+     "repaired": "02981ee91114eeb8eb5bc72604ad31be4ea19893bf2da3a7ebc07962f8da4a35"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   },
+   "mid_model_call": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-9e4e59c2a2c402f3/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-9e4e59c2a2c402f3/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08",
+     "repaired": "02981ee91114eeb8eb5bc72604ad31be4ea19893bf2da3a7ebc07962f8da4a35"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "after_execute": [
+    200
+   ],
+   "control": [
+    200
+   ],
+   "mid_model_call": [
+    null,
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 2522,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 1360,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 15
+   },
+   "human_decisions": {
+    "decided": 3,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 4,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 2,
+    "succeeded": 2
+   },
+   "successful_campaigns": 3,
+   "tasks": {
+    "succeeded": 21,
+    "total": 21
+   },
+   "tool_calls": {
+    "failed": 0,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 0,
+    "succeeded": 123,
+    "total": 123
+   }
+  },
+  "observations": {
+   "crash_after_execute": "RuntimeError",
+   "crash_mid_model_call": "SimulatedCrash"
+  }
+ },
+ "adversarial.crash_restart.refund": {
+  "campaigns": {
+   "after_execute": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6",
+     "repaired": "1f2fe3df29abcc869e36a2dc599a67f0836df00329b9a59d605eab021ecc0b49"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   },
+   "control": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6",
+     "repaired": "1f2fe3df29abcc869e36a2dc599a67f0836df00329b9a59d605eab021ecc0b49"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   },
+   "mid_model_call": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6",
+     "repaired": "1f2fe3df29abcc869e36a2dc599a67f0836df00329b9a59d605eab021ecc0b49"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "after_execute": [
+    200
+   ],
+   "control": [
+    200
+   ],
+   "mid_model_call": [
+    null,
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 2461,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 1360,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 15
+   },
+   "human_decisions": {
+    "decided": 3,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 4,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 2,
+    "succeeded": 2
+   },
+   "successful_campaigns": 3,
+   "tasks": {
+    "succeeded": 21,
+    "total": 21
+   },
+   "tool_calls": {
+    "failed": 6,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 6,
+    "succeeded": 18,
+    "total": 24
+   }
+  },
+  "observations": {
+   "crash_after_execute": "RuntimeError",
+   "crash_mid_model_call": "SimulatedCrash"
+  }
+ },
+ "adversarial.memory_injection.journey": {
+  "campaigns": {
+   "main": {
+    "approval": "pending",
+    "errors": [],
+    "outcome": null,
+    "paused": true,
+    "runs": {
+     "exp-6f414fe8e262db2c/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-6f414fe8e262db2c/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08"
+    },
+    "status": "awaiting_approval",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "awaiting_approval"
+     ],
+     [
+      "execute_run",
+      "pending"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 0,
+    "pending": 1,
+    "rejected": 0
+   },
+   "model_attempts": 1,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 5,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 0,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 0,
+    "succeeded": 24,
+    "total": 24
+   }
+  },
+  "observations": {
+   "forged_verified_status": "unverified",
+   "injection_in_instructions": false,
+   "injection_in_model_input": true,
+   "paused_for_human": true,
+   "promotion": "Conflict",
+   "repaired_before_decision": false,
+   "stored_status": "unverified"
+  }
+ },
+ "adversarial.memory_injection.refund": {
+  "campaigns": {
+   "main": {
+    "approval": "pending",
+    "errors": [],
+    "outcome": null,
+    "paused": true,
+    "runs": {
+     "exp-5d5e44e60da02746/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-5d5e44e60da02746/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "awaiting_approval",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "awaiting_approval"
+     ],
+     [
+      "execute_run",
+      "pending"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 0,
+    "pending": 1,
+    "rejected": 0
+   },
+   "model_attempts": 1,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 5,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 1,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 1,
+    "succeeded": 4,
+    "total": 5
+   }
+  },
+  "observations": {
+   "forged_verified_status": "unverified",
+   "injection_in_instructions": false,
+   "injection_in_model_input": true,
+   "paused_for_human": true,
+   "promotion": "Conflict",
+   "repaired_before_decision": false,
+   "stored_status": "unverified"
+  }
+ },
+ "adversarial.model_field_spoofing": {
+  "campaigns": {
+   "main": {
+    "approval": null,
+    "errors": [
+     "provider_invalid_output",
+     "provider_invalid_output"
+    ],
+    "outcome": "explorer_failed",
+    "paused": false,
+    "runs": {},
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "failed"
+     ],
+     [
+      "validate_proposal",
+      "skipped"
+     ],
+     [
+      "execute_run",
+      "skipped"
+     ],
+     [
+      "verify_run",
+      "skipped"
+     ],
+     [
+      "record_memory",
+      "skipped"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200,
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 1400,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 240,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 4,
+    "total": 4
+   },
+   "human_decisions": {
+    "decided": 0,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 2,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 0,
+    "total": 5
+   },
+   "tool_calls": {
+    "failed": 0,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 0,
+    "succeeded": 0,
+    "total": 0
+   }
+  },
+  "observations": {
+   "http_attempts": 2
+  }
+ },
+ "adversarial.permission_revocation": {
+  "campaigns": {
+   "adapter_rechecks": {
+    "approval": null,
+    "errors": [],
+    "outcome": "no_failure_found",
+    "paused": false,
+    "runs": {
+     "exp-c3694c6f6c253758/baseline": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+     "exp-c3694c6f6c253758/fork": "02981ee91114eeb8eb5bc72604ad31be4ea19893bf2da3a7ebc07962f8da4a35"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ]
+    ]
+   },
+   "journey_authority_withdrawn": {
+    "approval": "consumed",
+    "errors": [
+     "forbidden"
+    ],
+    "outcome": "policy_denied",
+    "paused": false,
+    "runs": {
+     "exp-9e4e59c2a2c402f3/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-9e4e59c2a2c402f3/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08"
+    },
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "failed"
+     ]
+    ]
+   },
+   "refund_authority_withdrawn": {
+    "approval": "consumed",
+    "errors": [
+     "forbidden"
+    ],
+    "outcome": "policy_denied",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "failed"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "adapter_rechecks": [
+    200
+   ],
+   "journey_authority_withdrawn": [
+    200
+   ],
+   "refund_authority_withdrawn": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 2100,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 360,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 2,
+    "total": 14
+   },
+   "human_decisions": {
+    "decided": 2,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 3,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 17,
+    "total": 19
+   },
+   "tool_calls": {
+    "failed": 1,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 1,
+    "succeeded": 63,
+    "total": 64
+   }
+  },
+  "observations": {}
+ },
+ "adversarial.provider_errors": {
+  "campaigns": {
+   "busy": {
+    "approval": null,
+    "errors": [
+     "provider_transient",
+     "provider_transient"
+    ],
+    "outcome": "explorer_failed",
+    "paused": false,
+    "runs": {},
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "failed"
+     ],
+     [
+      "validate_proposal",
+      "skipped"
+     ],
+     [
+      "execute_run",
+      "skipped"
+     ],
+     [
+      "verify_run",
+      "skipped"
+     ],
+     [
+      "record_memory",
+      "skipped"
+     ]
+    ]
+   },
+   "garbled": {
+    "approval": null,
+    "errors": [
+     "provider_invalid_output",
+     "provider_invalid_output"
+    ],
+    "outcome": "explorer_failed",
+    "paused": false,
+    "runs": {},
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "failed"
+     ],
+     [
+      "validate_proposal",
+      "skipped"
+     ],
+     [
+      "execute_run",
+      "skipped"
+     ],
+     [
+      "verify_run",
+      "skipped"
+     ],
+     [
+      "record_memory",
+      "skipped"
+     ]
+    ]
+   },
+   "malformed_then_valid": {
+    "approval": "pending",
+    "errors": [
+     "provider_invalid_output"
+    ],
+    "outcome": null,
+    "paused": true,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "awaiting_approval",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "awaiting_approval"
+     ],
+     [
+      "execute_run",
+      "pending"
+     ]
+    ]
+   },
+   "rate_limited_then_valid": {
+    "approval": "pending",
+    "errors": [],
+    "outcome": null,
+    "paused": true,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "awaiting_approval",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "awaiting_approval"
+     ],
+     [
+      "execute_run",
+      "pending"
+     ]
+    ]
+   },
+   "unauthorized": {
+    "approval": null,
+    "errors": [
+     "unauthenticated"
+    ],
+    "outcome": "explorer_failed",
+    "paused": false,
+    "runs": {},
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "failed"
+     ],
+     [
+      "validate_proposal",
+      "skipped"
+     ],
+     [
+      "execute_run",
+      "skipped"
+     ],
+     [
+      "verify_run",
+      "skipped"
+     ],
+     [
+      "record_memory",
+      "skipped"
+     ]
+    ]
+   },
+   "usage_not_reported": {
+    "approval": "pending",
+    "errors": [],
+    "outcome": null,
+    "paused": true,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "awaiting_approval",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "awaiting_approval"
+     ],
+     [
+      "execute_run",
+      "pending"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "busy": [
+    503,
+    503,
+    503,
+    503
+   ],
+   "garbled": [
+    200,
+    200
+   ],
+   "malformed_then_valid": [
+    200,
+    200
+   ],
+   "rate_limited_then_valid": [
+    429,
+    200
+   ],
+   "unauthorized": [
+    401
+   ],
+   "usage_not_reported": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 1400,
+     "unknown_count": 9
+    },
+    "output": {
+     "known_sum": 240,
+     "unknown_count": 9
+    }
+   },
+   "handoffs": {
+    "failed": 12,
+    "total": 27
+   },
+   "human_decisions": {
+    "decided": 0,
+    "pending": 3,
+    "rejected": 0
+   },
+   "model_attempts": 12,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 2,
+    "succeeded": 2
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 15,
+    "total": 36
+   },
+   "tool_calls": {
+    "failed": 3,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 3,
+    "succeeded": 12,
+    "total": 15
+   }
+  },
+  "observations": {}
+ },
+ "adversarial.uncertain_commit": {
+  "campaigns": {
+   "before_repair": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6",
+     "repaired": "1f2fe3df29abcc869e36a2dc599a67f0836df00329b9a59d605eab021ecc0b49"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   },
+   "consume_window": {
+    "approval": "consumed",
+    "errors": [
+     "approval_invalid"
+    ],
+    "outcome": "approval_not_approved",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "failed"
+     ],
+     [
+      "execute_run",
+      "skipped"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "before_repair": [
+    200
+   ],
+   "consume_window": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 1400,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 240,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 1,
+    "total": 10
+   },
+   "human_decisions": {
+    "decided": 2,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 2,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 1,
+    "succeeded": 1
+   },
+   "successful_campaigns": 1,
+   "tasks": {
+    "succeeded": 12,
+    "total": 14
+   },
+   "tool_calls": {
+    "failed": 3,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 3,
+    "succeeded": 10,
+    "total": 13
+   }
+  },
+  "observations": {
+   "crash_before_repair": "RuntimeError",
+   "crashed_after_consume": true,
+   "outcome_after_recovery": "approval_not_approved",
+   "status_after_recovery": "failed"
+  }
+ },
+ "flow.human_rejection": {
+  "campaigns": {
+   "main": {
+    "approval": "rejected",
+    "errors": [],
+    "outcome": "repair_rejected",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "failed"
+     ],
+     [
+      "execute_run",
+      "skipped"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 1,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 1,
+    "pending": 0,
+    "rejected": 1
+   },
+   "model_attempts": 1,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 5,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 1,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 1,
+    "succeeded": 4,
+    "total": 5
+   }
+  },
+  "observations": {}
+ },
+ "flow.journey": {
+  "campaigns": {
+   "main": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-9e4e59c2a2c402f3/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-9e4e59c2a2c402f3/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08",
+     "repaired": "02981ee91114eeb8eb5bc72604ad31be4ea19893bf2da3a7ebc07962f8da4a35"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 1,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 1,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 1,
+   "tasks": {
+    "succeeded": 7,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 0,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 0,
+    "succeeded": 41,
+    "total": 41
+   }
+  },
+  "observations": {
+   "paused_before_decision": true,
+   "replay_fork": {
+    "provider_requests_during_replay": 0,
+    "reported_model_calls": 0,
+    "reproduced": true
+   },
+   "replay_repaired": {
+    "provider_requests_during_replay": 0,
+    "reported_model_calls": 0,
+    "reproduced": true
+   }
+  }
+ },
+ "flow.journey_check_to_delivery_race": {
+  "campaigns": {
+   "main": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-86f94b2b2732ef0a/baseline": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+     "exp-86f94b2b2732ef0a/fork": "7437dd8dc74c80e0c641cd1050d2a62af5d307bc0eb762c7cfaddcba94a17771",
+     "repaired": "43a3288a8af0470d7173a62e8bfe08ff288f8593dd23cd3d57862b906892ce8f"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 1,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 1,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 1,
+   "tasks": {
+    "succeeded": 7,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 1,
+    "failed_guard_denied": 1,
+    "failed_injected_fault": 0,
+    "succeeded": 53,
+    "total": 54
+   }
+  },
+  "observations": {
+   "replay_repaired": {
+    "provider_requests_during_replay": 0,
+    "reported_model_calls": 0,
+    "reproduced": true
+   }
+  }
+ },
+ "flow.refund": {
+  "campaigns": {
+   "main": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6",
+     "repaired": "1f2fe3df29abcc869e36a2dc599a67f0836df00329b9a59d605eab021ecc0b49"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 1,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 1,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 1,
+   "tasks": {
+    "succeeded": 7,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 2,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 2,
+    "succeeded": 6,
+    "total": 8
+   }
+  },
+  "observations": {
+   "paused_before_decision": true,
+   "repaired_runs_before_decision": 0,
+   "replay_fork": {
+    "provider_requests_during_replay": 0,
+    "reported_model_calls": 0,
+    "reproduced": true
+   },
+   "replay_repaired": {
+    "provider_requests_during_replay": 0,
+    "reported_model_calls": 0,
+    "reproduced": true
+   }
+  }
+ },
+ "ops.recovery_drill": {
+  "campaigns": {
+   "main": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6",
+     "repaired": "1f2fe3df29abcc869e36a2dc599a67f0836df00329b9a59d605eab021ecc0b49"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": []
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 1,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 0,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 1,
+    "succeeded": 1
+   },
+   "successful_campaigns": 1,
+   "tasks": {
+    "succeeded": 7,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 2,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 2,
+    "succeeded": 6,
+    "total": 8
+   }
+  },
+  "observations": {
+   "pause_survived_restore": true,
+   "provider_requests_after_restore": 0,
+   "replay_after_restore": {
+    "provider_requests_during_replay": 0,
+    "reported_model_calls": 0,
+    "reproduced": true
+   }
+  }
+ }
+}

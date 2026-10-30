@@ -3,10 +3,11 @@
  * loudly without it rather than passing by skipping. A pass against an unmerged M07
  * branch is not an integrated result, and scripted inference is not a live one.
  *
- * Start M07's fixture server (scripted replies, never a model) from a checkout of
- * feature/m07-api, then run `node tests/integration/run.mjs` from web/:
+ * Start outcome_server.py, a thin wrapper over M07's fixture server (scripted replies,
+ * never a model), then run `node tests/integration/run.mjs` from web/:
  *
- *   GHOSTLAB_AUTH_MODE=local_dev python tests/api/fixture_server.py --root <dir> --port 8788
+ *   GHOSTLAB_AUTH_MODE=local_dev python tests/integration/outcome_server.py \
+ *     --m07 <checkout of feature/m07-api> --root <dir> --port 8788
  *
  * Worlds, stores, approvals, verifier and capsules are M07's real code over real HTTP,
  * through the same client, poller and panels the interface uses.
@@ -25,13 +26,15 @@ import { createApiClient } from "../../src/api/client.ts";
 import type { DataSource, Failure, Result, RunName } from "../../src/data/source.ts";
 import { SERVICE_ORIGIN } from "../../src/data/source.ts";
 import { actionFacts, buildSubmission, IdempotencyKeys } from "../../src/logic/approval.ts";
-import { coverageOf } from "../../src/logic/coverage.ts";
+import { coverageOf, readCoverage } from "../../src/logic/coverage.ts";
 import { violatingEventIds } from "../../src/logic/evidence.ts";
 import { describeFailure } from "../../src/logic/failure.ts";
+import { presentReplay } from "../../src/logic/replay.ts";
+import { campaignStatus } from "../../src/logic/status.ts";
 import { CampaignLive } from "../../src/logic/live.ts";
 import { presentRepair } from "../../src/logic/repair.ts";
 import { ApprovalDetail } from "../../src/views/ApprovalPage.tsx";
-import { RepairResult } from "../../src/views/CampaignPage.tsx";
+import { CampaignPanel, RepairResult } from "../../src/views/CampaignPage.tsx";
 import { ReplayPanel } from "../../src/views/CapsulePage.tsx";
 import { DiffPanel } from "../../src/views/DiffPage.tsx";
 
@@ -43,11 +46,11 @@ const nonce = Date.now().toString(36);
 const noTimers = { setTimer: () => null, clearTimer: () => undefined };
 const text = (markup: string) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
-function spec(world: WorldCampaignSpec["world_version"]): WorldCampaignSpec {
+function spec(world: WorldCampaignSpec["world_version"], marker = ""): WorldCampaignSpec {
   return {
     schema_version: 1,
     world_version: world,
-    objective: "Find a failure after a fault",
+    objective: `Find a failure after a fault ${marker}`.trim(),
     success_criteria: ["A failing invariant is reproduced and a repair is verified"],
     budget: {
       cost_currency: null,
@@ -94,8 +97,13 @@ interface Paused {
   approval: ApprovalView;
 }
 
-async function pausedCampaign(source: DataSource, world: WorldCampaignSpec["world_version"], key: string): Promise<Paused> {
-  const created = unwrap(await source.createCampaign(spec(world), `${key}-${nonce}`));
+async function pausedCampaign(
+  source: DataSource,
+  world: WorldCampaignSpec["world_version"],
+  key: string,
+  marker = "",
+): Promise<Paused> {
+  const created = unwrap(await source.createCampaign(spec(world, marker), `${key}-${nonce}`));
   const campaignId = created.record.campaign_id;
   const live = new CampaignLive(source, campaignId, noTimers);
   const view = await until(live, "awaiting_approval");
@@ -146,6 +154,8 @@ test("refund: create, diff, replay, approve, verified repair", async () => {
   assert.equal(fork.result.checks.total_refund_within_payment, false);
   const coverage = coverageOf(experiment, paused.baseline, fork);
   assert.equal(coverage?.coverage.complete, true, "both scripted runs finish");
+  assert.equal(coverage?.recorded, true, "the service reports coverage");
+  assert.deepEqual(view.experiments[0]?.coverage, experiment.coverage);
   const page = diffText(paused);
   assert.match(page, /First divergence Event 2/);
   assert.match(page, /Total refunded 500000 minor units/);
@@ -165,6 +175,7 @@ test("refund: create, diff, replay, approve, verified repair", async () => {
   assert.equal(approval.action?.adapter, "repaired");
   assert.equal(actionFacts(approval.action).mode, null, "refund's action has no execution mode");
   assert.ok(actionFacts(approval.action).fixtureSha256);
+  assert.equal(view.fixture_sha256, actionFacts(approval.action).fixtureSha256, "the digest the approval binds");
   const detail = text(renderToStaticMarkup(<ApprovalDetail approval={approval} origins={SERVICE_ORIGIN} />));
   assert.match(detail, new RegExp(approval.request.action_digest));
 
@@ -265,6 +276,125 @@ test("a bad spec is a validation error and creates nothing", async () => {
   const failure = failureOf(await client.createCampaign(bad, `invalid-${nonce}`));
   assert.equal(failure.status, 422);
   assert.equal(describeFailure(failure).state, "validation_error");
+});
+
+test("coverage_incomplete: a truncated run with no failure is never success", async () => {
+  const created = unwrap(await client.createCampaign(spec("group-journey/1", "outcome-truncated"), `truncated-${nonce}`));
+  const campaignId = created.record.campaign_id;
+  const live = new CampaignLive(client, campaignId, noTimers);
+  const view = await until(live, "budget_exhausted", "completed", "failed");
+  assert.equal(view.record.status, "budget_exhausted");
+  assert.equal(view.outcome, "coverage_incomplete");
+  assert.equal(view.approval, null);
+  assert.equal(view.repair, null);
+  assert.equal(campaignStatus(view.record.status, view.outcome).tone, "warn");
+  const summary = view.experiments.at(-1)!;
+  assert.equal(readCoverage(summary)?.complete, false);
+  const page = renderToStaticMarkup(<CampaignPanel view={view} origins={SERVICE_ORIGIN} source={client} refresh={async () => undefined} />);
+  assert.match(text(page), /A run that stopped early proves nothing/);
+  assert.match(text(page), /complete false/);
+  assert.doesNotMatch(page, /data-tone="ok"/);
+
+  const experimentId = summary.experiment_id;
+  const experiment = unwrap(await client.getExperiment(campaignId, experimentId));
+  const baseline = unwrap(await client.getRun(campaignId, experimentId, "baseline"));
+  const fork = unwrap(await client.getRun(campaignId, experimentId, "fork"));
+  assert.equal(fork.result.status, "budget_exhausted");
+  const diff = text(
+    renderToStaticMarkup(
+      <DiffPanel campaignId={campaignId} experiment={experiment} origins={SERVICE_ORIGIN} baseline={baseline} fork={fork} runOrigins={SERVICE_ORIGIN} />,
+    ),
+  );
+  assert.match(diff, /Coverage incomplete/);
+  assert.doesNotMatch(diff, /read from the two recorded runs/);
+
+  unwrap(await client.exportCapsule(campaignId, experimentId, "fork"));
+  const replay = unwrap(await client.replayCapsule(campaignId, experimentId, "fork"));
+  assert.equal(replay.reproduced, true);
+  assert.equal(replay.run_status, "budget_exhausted");
+  assert.equal(presentReplay(replay).tone, "warn");
+});
+
+test("a violation before truncation stands and still reaches approval", async () => {
+  const paused = await pausedCampaign(client, "group-journey/1", "violation", "outcome-violation");
+  assert.equal(readCoverage(paused.experiment)?.complete, false);
+  assert.deepEqual(violatingEventIds(paused.experiment.findings), [10]);
+  assert.equal(paused.approval.effective_status, "pending");
+  assert.match(diffText(paused), /Coverage incomplete, violation recorded/);
+  assert.match(diffText(paused), /Violation evidence Event 10/);
+});
+
+test("repair_incomplete: a truncated repair is not verified and held_by stays null", async () => {
+  const { live, approval, campaignId, experiment } = await pausedCampaign(client, "group-journey/1", "short-repair", "outcome-short-repair");
+  unwrap(await client.decideApproval(buildSubmission(approval, "approve", ""), `short-repair-decision-${nonce}`));
+  const done = await until(live, "budget_exhausted", "completed", "failed");
+  assert.equal(done.record.status, "budget_exhausted");
+  assert.equal(done.outcome, "repair_incomplete");
+  assert.ok(done.repair);
+  assert.equal(done.repair.held_by, null);
+  assert.equal(done.repair.safety_held, true);
+  const shown = presentRepair(done.repair, done.outcome, "group-journey/1");
+  assert.equal(shown.tone, "warn");
+  assert.equal(shown.headline, "Repair incomplete");
+  unwrap(await client.exportCapsule(campaignId, experiment.experiment_id, "repaired"));
+  const replay = unwrap(await client.replayCapsule(campaignId, experiment.experiment_id, "repaired"));
+  assert.equal(replay.run_status, "budget_exhausted");
+  assert.equal(presentReplay(replay).tone, "warn");
+});
+
+test("settings_changed at consumption ends the campaign, approval unspent", async () => {
+  const { live, approval, campaignId } = await pausedCampaign(client, "group-journey/1", "at-consume", "outcome-settings-at-consume");
+  const decided = unwrap(await client.decideApproval(buildSubmission(approval, "approve", ""), `at-consume-decision-${nonce}`));
+  assert.equal(decided.resumed, true);
+  const done = await until(live, "failed", "completed", "budget_exhausted");
+  assert.equal(done.record.status, "failed");
+  assert.equal(done.outcome, "settings_changed");
+  assert.equal(done.repair, null);
+  assert.equal(campaignStatus(done.record.status, done.outcome).label, "Blocked: settings changed");
+  const after = unwrap(await client.getApproval(approval.request.approval_id));
+  assert.equal(after.effective_status, "approved", "not spent");
+  const page = renderToStaticMarkup(<CampaignPanel view={done} origins={SERVICE_ORIGIN} source={client} refresh={async () => undefined} />);
+  assert.match(page, /data-testid="state-blocked"/);
+  assert.doesNotMatch(page, /data-testid="state-failed"/);
+  assert.doesNotMatch(text(page), /Resume campaign/);
+  const resumed = unwrap(await client.resumeCampaign(campaignId));
+  assert.equal(resumed.record.status, "failed", "resume does nothing here, so the UI offers none");
+});
+
+test("a resume refused by settings_changed is blocked, and restoring them lets it finish", async () => {
+  const { live, approval, campaignId } = await pausedCampaign(client, "group-journey/1", "at-resume", "outcome-settings-at-resume");
+  const decided = unwrap(await client.decideApproval(buildSubmission(approval, "approve", ""), `at-resume-decision-${nonce}`));
+  assert.equal(decided.resumed, false);
+  assert.equal(decided.resume_error?.reason, "settings_changed");
+  assert.equal(decided.resume_error?.error.code, "conflict");
+  const failure: Failure = { kind: "service", status: 409, ...decided.resume_error! };
+  assert.equal(describeFailure(failure).state, "blocked");
+
+  const held = await until(live, "awaiting_approval");
+  assert.equal(held.repair, null);
+  assert.equal(held.job.state, "stalled");
+  assert.equal(unwrap(await client.getApproval(approval.request.approval_id)).effective_status, "approved");
+
+  unwrap(await client.resumeCampaign(campaignId));
+  const done = await until(live, "completed", "failed", "budget_exhausted");
+  assert.equal(done.outcome, "repair_verified");
+  assert.equal(unwrap(await client.getApproval(approval.request.approval_id)).effective_status, "consumed");
+});
+
+test("credential-shaped client text is refused, stores nothing and approves nothing", async () => {
+  const objective = { ...spec("refund-world/1"), objective: "Check token=abcd1234 handling" };
+  const created = failureOf(await client.createCampaign(objective, `secret-${nonce}`));
+  assert.equal(created.status, 422);
+  assert.equal(created.reason, "secret_shaped_text");
+  assert.equal(describeFailure(created).state, "validation_error");
+  assert.doesNotMatch(created.error.message, /abcd1234/);
+
+  const { approval } = await pausedCampaign(client, "refund-world/1", "secret-reason");
+  const refused = failureOf(
+    await client.decideApproval(buildSubmission(approval, "approve", "token=abcd1234"), `secret-decision-${nonce}`),
+  );
+  assert.equal(refused.reason, "secret_shaped_text");
+  assert.equal(unwrap(await client.getApproval(approval.request.approval_id)).effective_status, "pending");
 });
 
 test("a design-only world is refused", async () => {

@@ -48,8 +48,13 @@ const TITLES: Record<FailureState, string> = {
   reconnecting: "Reconnecting",
 };
 
+/** A refused action. M07 uses one reason for three causes; only its message says which. */
 export const BLOCKED_HELP =
-  "The approval has not been used. Restoring the campaign's original settings lets it resume.";
+  "Nothing ran, and any approval is still unused. If the world's settings changed, restoring them lets the campaign resume. A damaged record can't be restored. The message above says which this is.";
+
+/** failed / settings_changed: the campaign has ended, so a resume does nothing. */
+export const BLOCKED_ENDED_HELP =
+  "The fixture changed before the approval was used, so the campaign stopped. The approval is unspent, and this campaign can't continue.";
 
 export interface FailureSummary {
   state: FailureState;

@@ -18,6 +18,7 @@ Controller._execute_repair and Controller._repair_action at the recorded commit.
 import argparse
 import hashlib
 import json
+import tempfile
 from dataclasses import replace
 from pathlib import Path
 
@@ -109,7 +110,13 @@ def truncated_experiment(scenario):
     fork = run(fixture, JourneyScenario.from_json(scenario), NAIVE)
     lab = execution_mode_for("experiment").as_json()
     statuses = {baseline["status"], fork["status"]}
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "capsule.json"
+        journey_capsule.export_capsule(path, fixture, scenario, fork)
+        capsule = json.loads(path.read_text("utf-8"))
+        replayed = journey_replay(path)
     return {"baseline": baseline, "fork": fork, "scenario": scenario,
+            "capsule": capsule, "replay": replayed,
             "diff": driver.diff(fixture, baseline, fork),
             "findings": driver.findings(fixture, "journey-run-1", fork, RECORDED_AT, lab),
             "coverage": {"baseline": baseline["status"], "fork": fork["status"],
@@ -125,7 +132,8 @@ def bound_action(driver, fixture, proposal):
 
 def refund_replay(path):
     result = refund_capsule.replay(path)
-    return {"world_version": REFUND, "reproduced": result["reproduced"],
+    status = json.loads(path.read_text("utf-8"))["payload"]["run"]["status"]
+    return {"world_version": REFUND, "run_status": status, "reproduced": result["reproduced"],
             "matches": result["matches"], "checks": result["checks"],
             "metrics": {"refunded_minor": result["total_refunded_minor"]},
             "guarded": None, "model_calls": result["model_calls"]}
@@ -133,7 +141,8 @@ def refund_replay(path):
 
 def journey_replay(path):
     result = journey_capsule.replay(path)
-    return {"world_version": JOURNEY, "reproduced": result["reproduced"],
+    status = json.loads(path.read_text("utf-8"))["payload"]["run"]["status"]
+    return {"world_version": JOURNEY, "run_status": status, "reproduced": result["reproduced"],
             "matches": result["matches"], "checks": result["checks"],
             "metrics": result["metrics"], "guarded": result["guarded"],
             "model_calls": result["model_calls"]}

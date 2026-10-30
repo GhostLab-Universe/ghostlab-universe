@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import type { CampaignView, ExperimentView } from "../api/api.generated.ts";
-import type { Coverage } from "../api/pending.ts";
+import type { CampaignView, Coverage, ExperimentView } from "../api/api.generated.ts";
 import type { DataSource, Origin, RunName } from "../data/source.ts";
 import { coverageNote } from "../logic/coverage.ts";
 import { campaignHref, type ViewName } from "../logic/routes.ts";

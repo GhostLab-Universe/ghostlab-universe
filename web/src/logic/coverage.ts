@@ -1,23 +1,18 @@
-import type { RunView } from "../api/api.generated.ts";
-import type { Coverage } from "../api/pending.ts";
+import type { Coverage, RunView } from "../api/api.generated.ts";
 import type { Tone } from "./repair.ts";
 
 export const COMPLETED = "completed";
 
-function isCoverage(value: unknown): value is Coverage {
-  const item = value as Partial<Coverage> | null | undefined;
-  return typeof item?.baseline === "string" && typeof item.fork === "string" && typeof item.complete === "boolean";
-}
-
 /**
- * Reads the coverage the service recorded, or null if it sent none. A record that says
- * complete while a run didn't finish is treated as incomplete: it can only under-claim.
+ * The coverage the service recorded. Null only on a checkpoint older than coverage. A
+ * record that says complete while a run didn't finish is treated as incomplete: this
+ * can only under-claim.
  */
-export function readCoverage(experiment: object): Coverage | null {
-  const value = (experiment as { coverage?: unknown }).coverage;
-  if (!isCoverage(value)) return null;
-  const finished = value.baseline === COMPLETED && value.fork === COMPLETED;
-  return { ...value, complete: value.complete && finished };
+export function readCoverage(experiment: { coverage: Coverage | null }): Coverage | null {
+  const { coverage } = experiment;
+  if (coverage === null) return null;
+  const finished = coverage.baseline === COMPLETED && coverage.fork === COMPLETED;
+  return { ...coverage, complete: coverage.complete && finished };
 }
 
 export interface CoverageSource {
@@ -25,9 +20,9 @@ export interface CoverageSource {
   recorded: boolean;
 }
 
-/** Falls back to the two recorded run statuses, the same rule M05 uses to set `complete`. */
+/** On an older checkpoint, falls back to the two recorded run statuses: M05's own rule. */
 export function coverageOf(
-  experiment: object,
+  experiment: { coverage: Coverage | null },
   baseline: RunView | null,
   fork: RunView | null,
 ): CoverageSource | null {

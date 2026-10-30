@@ -9,6 +9,7 @@ import { buildSubmission } from "../../src/logic/approval.ts";
 import { coverageNote, coverageOf, readCoverage } from "../../src/logic/coverage.ts";
 import { violatingEventIds } from "../../src/logic/evidence.ts";
 import { BLOCKED_HELP, describeFailure, failureState, revokesAccess } from "../../src/logic/failure.ts";
+import { presentReplay } from "../../src/logic/replay.ts";
 import { presentRepair } from "../../src/logic/repair.ts";
 import { campaignStatus } from "../../src/logic/status.ts";
 
@@ -50,14 +51,38 @@ test("a violation before truncation stands", () => {
 });
 
 test("coverage that claims complete over an unfinished run reads as incomplete", () => {
-  const coverage = { baseline: "completed", fork: "budget_exhausted", complete: true };
+  const coverage = { baseline: "completed" as const, fork: "budget_exhausted" as const, complete: true };
   assert.equal(readCoverage({ coverage })?.complete, false);
 });
 
-test("a service that sends no coverage is 'not reported', never assumed complete", () => {
-  assert.equal(readCoverage({}), null);
-  assert.equal(readCoverage({ coverage: { complete: true } }), null);
-  assert.equal(readCoverage({ coverage: "complete" }), null);
+test("coverage missing on an older checkpoint is never assumed complete", () => {
+  assert.equal(readCoverage({ coverage: null }), null);
+});
+
+test("BLOCKED_HELP promises nothing a damaged record can't deliver", () => {
+  assert.match(BLOCKED_HELP, /A damaged record can't be restored/);
+  assert.doesNotMatch(BLOCKED_HELP, /lets the campaign resume\.$/);
+});
+
+test("replay: reproduced alone is never a pass", () => {
+  const replay = recorded.journey_truncated_clean.replay;
+  assert.equal(replay.reproduced, true);
+  assert.equal(replay.run_status, "budget_exhausted");
+  assert.equal(presentReplay(replay).tone, "warn");
+  assert.match(presentReplay(replay).headline, /stopped early/);
+  const violation = recorded.journey_truncated_violation.replay;
+  assert.match(presentReplay(violation).detail, /still stands/);
+  assert.equal(presentReplay(recorded.refund_replay).headline, "Failure reproduced");
+  assert.equal(presentReplay({ ...recorded.refund_replay, reproduced: false }).tone, "fail");
+  const clean = { ...recorded.refund_replay, checks: { a: true } };
+  assert.equal(presentReplay(clean).tone, "neutral");
+});
+
+test("every campaign fixture carries the digest its approval binds", () => {
+  for (const id of ["fx-refund", "fx-journey"]) {
+    const { view, approval } = stage(id);
+    assert.equal(view.fixture_sha256, approval?.action?.fixture_sha256, id);
+  }
 });
 
 test("without the field, the diff falls back to the recorded run statuses", () => {
@@ -74,10 +99,10 @@ test("without the field, the diff falls back to the recorded run statuses", () =
       findings: run.findings,
     };
   };
-  const source = coverageOf({}, view("baseline"), view("fork"));
+  const source = coverageOf({ coverage: null }, view("baseline"), view("fork"));
   assert.equal(source?.recorded, false);
   assert.equal(source?.coverage.complete, false);
-  assert.equal(coverageOf({}, null, view("fork")), null);
+  assert.equal(coverageOf({ coverage: null }, null, view("fork")), null);
   assert.equal(coverageOf({ coverage: experiment.coverage }, null, null)?.recorded, true);
 });
 

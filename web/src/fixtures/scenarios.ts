@@ -13,6 +13,7 @@ import type {
   CampaignView,
   CapsuleV1,
   CapsuleV2,
+  Coverage,
   ErrorResponse,
   ExecutionRecord,
   ExperimentEvent,
@@ -23,7 +24,6 @@ import type {
   WorldRealityDiff,
   WorldRunResult,
 } from "../api/api.generated.ts";
-import type { Coverage, WithCoverage } from "../api/pending.ts";
 import type { Failure, Origin, RunName } from "../data/source.ts";
 import {
   approval_decision__approved,
@@ -187,6 +187,7 @@ function campaign(
   overrides: Partial<Omit<CampaignView, "record">> & { status?: CampaignView["record"]["status"]; updatedAt?: string },
 ): CampaignView {
   const { status, updatedAt, ...rest } = overrides;
+  const bound = record.spec.world_version === "refund-world/1" ? recorded.refund_repair_action : recorded.journey_repair_action;
   return {
     record: {
       ...record,
@@ -202,6 +203,7 @@ function campaign(
     repair: null,
     errors: [],
     event_count: 0,
+    fixture_sha256: bound.action.fixture_sha256 as string,
     ...rest,
   };
 }
@@ -351,6 +353,9 @@ function truncatedWorld(truncation: RecordedTruncation, name: string): World {
       diff: truncation.diff,
       findings: truncation.findings,
       coverage: truncation.coverage,
+      replay: truncation.replay,
+      capsule: truncation.capsule,
+      capsuleOrigins: [core(`${name}.capsule`), core(`${name}.replay`)],
       runs: {
         baseline: { run_id: "journey-run-1-baseline", result: truncation.baseline, findings: [], origins: [core(`${name}.baseline`)] },
         fork: { run_id: "journey-run-1", result: truncation.fork, findings: truncation.findings, origins: [core(`${name}.fork`)] },
@@ -369,7 +374,7 @@ function originsFor(world: World, note: string): readonly Origin[] {
   return [published(world.recordFile, note), AUTHORED_STATE];
 }
 
-function summaryOf(experiment: ExperimentFixture): WithCoverage<CampaignView["experiments"][number]>[] {
+function summaryOf(experiment: ExperimentFixture): CampaignView["experiments"] {
   return [
     {
       experiment_id: experiment.experiment_id,

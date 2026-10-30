@@ -105,7 +105,12 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
     if (scenario.resumeError !== undefined) {
       const status = submission.decision === "approve" ? ("approved" as const) : ("rejected" as const);
       const request = { ...approval.request, status };
-      stages.set(scenario.id, { ...stage!, approval: { ...approval, request, effective_status: status, decision } });
+      stages.set(scenario.id, {
+        ...stage!,
+        // A decided approval nothing has resumed: M07 reports this as stalled.
+        view: { ...stage!.view, job: { state: "stalled", cancel_requested: false, error: null } },
+        approval: { ...approval, request, effective_status: status, decision },
+      });
       return ok({ decision, approval: request, resumed: false, resume_error: scenario.resumeError }, [TEST_DOUBLE]);
     }
     const next = submission.decision === "approve" ? scenario.approved : scenario.rejected;

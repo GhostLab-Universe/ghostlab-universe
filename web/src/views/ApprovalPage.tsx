@@ -3,7 +3,7 @@ import type { ApprovalView, CampaignView, DecisionResult, SessionInfo } from "..
 import type { DataSource, Failure, Origin } from "../data/source.ts";
 import { actionFacts, buildSubmission, decisionGate, IdempotencyKeys, type Decision } from "../logic/approval.ts";
 import { readCoverage } from "../logic/coverage.ts";
-import { BLOCKED_HELP, describeFailure } from "../logic/failure.ts";
+import { BLOCKED_ENDED_HELP, describeFailure } from "../logic/failure.ts";
 import { formatTimestamp, prettyJson } from "../logic/format.ts";
 import { Digest, Facts, FailureNotice, Loading, Mono, Notice, RefLabel, Section, Tag } from "../ui/components.tsx";
 import { useResource } from "../ui/hooks.ts";
@@ -39,9 +39,12 @@ export function ApprovalPage({
   if (resource.status === "failed") return <FailureNotice failure={resource.failure} />;
   const truncated = view.experiments.flatMap((experiment) => readCoverage(experiment) ?? []).find((item) => !item.complete);
   // Approved but never consumed, so a reload still shows why nothing has run.
-  const unspent =
-    resource.data.effective_status === "approved" && view.repair === null && view.job.state !== "active";
   const blocked = view.outcome === "settings_changed";
+  const unspent =
+    resource.data.effective_status === "approved" &&
+    view.repair === null &&
+    view.job.state !== "active" &&
+    !blocked;
 
   async function decide(approval: ApprovalView, decision: Decision, reason: string) {
     setBusy(true);
@@ -258,11 +261,11 @@ export function DecisionPanel({
         </Notice>
       ) : blocked ? (
         <Notice state="blocked" title="Blocked: settings changed" live>
-          <p>{BLOCKED_HELP}</p>
+          <p>{BLOCKED_ENDED_HELP}</p>
         </Notice>
       ) : unspent ? (
         <Notice state="conflict" title="Approved, not yet used">
-          <p>The decision is recorded, but the campaign has not resumed. A resume is refused while its settings differ.</p>
+          <p>The decision is recorded, but the campaign has not resumed, so the approval is unspent.</p>
           <button type="button" disabled={busy} onClick={onResume}>
             Resume campaign
           </button>

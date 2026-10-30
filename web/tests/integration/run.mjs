@@ -1,4 +1,4 @@
-// Runs the M07 integration tests. From web/, with a service running:
+// Runs the service-backed tests. From web/, with outcome_server.py running:
 //   M07_ORIGIN=http://127.0.0.1:8788 node tests/integration/run.mjs
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";

@@ -31,6 +31,7 @@ function toView(experiment: typeof refund) {
     execution: experiment.execution,
     diff: experiment.diff,
     findings: experiment.findings,
+    coverage: experiment.coverage,
     runs: Object.keys(experiment.runs) as ["baseline", "fork"],
   };
 }

@@ -1,4 +1,6 @@
 import type {
+  CapsuleV2,
+  Coverage,
   ReplayResult,
   RepairView,
   WorldInvariantFinding,
@@ -6,7 +8,6 @@ import type {
   WorldRunResult,
   WorldScenario,
 } from "../api/api.generated.ts";
-import type { Coverage } from "../api/pending.ts";
 
 export interface RecordedRepair {
   campaign_status: "completed" | "failed" | "budget_exhausted";
@@ -23,6 +24,8 @@ export interface RecordedTruncation {
   diff: WorldRealityDiff;
   findings: WorldInvariantFinding[];
   coverage: Coverage;
+  capsule: CapsuleV2;
+  replay: ReplayResult;
 }
 
 export interface RecordedAction {

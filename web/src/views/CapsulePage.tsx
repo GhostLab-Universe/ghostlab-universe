@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { CampaignView, CapsuleInfo, ExperimentView, ReplayResult } from "../api/api.generated.ts";
 import type { DataSource, Failure, Origin, RunName } from "../data/source.ts";
+import { presentReplay } from "../logic/replay.ts";
 import { Digest, Facts, FailureNotice, Mono, Section, Tag } from "../ui/components.tsx";
 import { ExperimentGate, ExperimentPicker, useExperiment } from "./experimentData.tsx";
 
@@ -157,7 +158,7 @@ function CapsuleControls({
 }
 
 export function ReplayPanel({ result, origins }: { result: ReplayResult; origins: readonly Origin[] }) {
-  const failing = Object.entries(result.checks).filter(([, passed]) => !passed);
+  const shown = presentReplay(result);
   return (
     <Section title="Replay result" origins={origins}>
       <dl className="recorded" data-testid="replay-fields">
@@ -171,6 +172,14 @@ export function ReplayPanel({ result, origins }: { result: ReplayResult; origins
         </div>
         <div>
           <dt>
+            <Mono>run_status</Mono>
+          </dt>
+          <dd>
+            <Mono>{result.run_status}</Mono>
+          </dd>
+        </div>
+        <div>
+          <dt>
             <Mono>model_calls</Mono>
           </dt>
           <dd>
@@ -178,22 +187,10 @@ export function ReplayPanel({ result, origins }: { result: ReplayResult; origins
           </dd>
         </div>
       </dl>
-      {!result.reproduced ? (
-        <div className="verdict" data-tone="fail" data-testid="replay-verdict">
-          <strong>Not reproduced</strong>
-          <p>The recorded evidence did not repeat, so this capsule's claims don't hold.</p>
-        </div>
-      ) : failing.length > 0 ? (
-        <div className="verdict" data-tone="warn" data-testid="replay-verdict">
-          <strong>Failure reproduced</strong>
-          <p>The recorded failure repeated. Reproducing it is not a pass: these checks still fail.</p>
-        </div>
-      ) : (
-        <div className="verdict" data-tone="neutral" data-testid="replay-verdict">
-          <strong>Reproduced</strong>
-          <p>The recorded run repeated and every check it records passed.</p>
-        </div>
-      )}
+      <div className="verdict" data-tone={shown.tone} data-testid="replay-verdict">
+        <strong>{shown.headline}</strong>
+        <p>{shown.detail}</p>
+      </div>
       <h3>What was compared</h3>
       <ul className="checks">
         {Object.entries(result.matches).map(([name, matched]) => (

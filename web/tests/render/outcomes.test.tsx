@@ -11,6 +11,7 @@ import { ServiceModeNotice, SessionFacts } from "../../src/ui/App.tsx";
 import { FailureNotice, RecordedErrors } from "../../src/ui/components.tsx";
 import { DecisionPanel } from "../../src/views/ApprovalPage.tsx";
 import { CampaignPanel, RepairResult } from "../../src/views/CampaignPage.tsx";
+import { ReplayPanel } from "../../src/views/CapsulePage.tsx";
 import { DiffPanel } from "../../src/views/DiffPage.tsx";
 import { ApplicationEvents, ProposalSection, RunEvidence } from "../../src/views/EvidencePage.tsx";
 
@@ -26,7 +27,7 @@ function campaignPage(id: string) {
 }
 
 function experimentView(experiment: ExperimentFixture, withCoverage = true): ExperimentView {
-  const { coverage, ...fields } = experiment;
+  const fields = experiment;
   return {
     experiment_id: fields.experiment_id,
     iteration: 1,
@@ -35,7 +36,7 @@ function experimentView(experiment: ExperimentFixture, withCoverage = true): Exp
     diff: fields.diff,
     findings: fields.findings,
     runs: Object.keys(fields.runs) as ["baseline", "fork"],
-    ...(withCoverage ? { coverage } : {}),
+    coverage: withCoverage ? fields.coverage : null,
   };
 }
 
@@ -75,17 +76,11 @@ test("the campaign view shows coverage_incomplete and no success", () => {
   assert.match(shown, /stopped at their tool cap/);
 });
 
-test("the campaign view says when coverage is not reported", () => {
+test("the campaign view says when coverage was not recorded", () => {
   const { view, origins } = scenario("fx-coverage-incomplete").stage;
-  const experiments = view.experiments.map(({ experiment_id, iteration, hypothesis, adapter_id, runs }) => ({
-    experiment_id,
-    iteration,
-    hypothesis,
-    adapter_id,
-    runs,
-  }));
+  const experiments = view.experiments.map((experiment) => ({ ...experiment, coverage: null }));
   const page = text(html(<CampaignPanel view={{ ...view, experiments }} origins={origins} source={source} refresh={refresh} />));
-  assert.match(page, /Coverage is not reported by this service/);
+  assert.match(page, /Coverage was not recorded for this experiment/);
   assert.match(page, /proves nothing/, "the outcome still says so without the field");
 });
 
@@ -105,7 +100,7 @@ test("the diff view keeps a violation seen before truncation", () => {
   assert.match(page, /delivered_messages_permitted/);
 });
 
-test("the diff view reads coverage from the runs when the contract lacks it", () => {
+test("on an older checkpoint the diff reads coverage from the runs", () => {
   const page = text(diffPage(scenario("fx-coverage-violation").stage.experiment!, false));
   assert.match(page, /Coverage incomplete, violation recorded/);
   assert.match(page, /read from the two recorded runs/);
@@ -151,15 +146,38 @@ test("a resume refused with settings_changed is blocked, not failed", () => {
   const markup = html(<FailureNotice failure={failure} />);
   assert.match(markup, /data-testid="state-blocked"/);
   assert.doesNotMatch(markup, /state-failed/);
-  assert.match(text(markup), /The approval has not been used/);
+  assert.match(text(markup), /any approval is still unused/);
+  assert.match(text(markup), /A damaged record can't be restored/);
 });
 
-test("a failed campaign with outcome settings_changed is blocked and offers resume", () => {
+test("a failed campaign with outcome settings_changed is blocked, and resume isn't offered", () => {
   const page = campaignPage("fx-settings-blocked");
   assert.match(page, /data-testid="state-blocked"/);
   assert.doesNotMatch(page, /data-testid="state-failed"/);
-  assert.match(text(page), /Resume campaign/);
-  assert.match(text(page), /The approval has not been used/);
+  assert.doesNotMatch(text(page), /Resume campaign/, "resume does nothing on a finished campaign");
+  assert.match(text(page), /The approval is unspent, and this campaign can't continue/);
+});
+
+test("the campaign view shows the pinned fixture, or says it is older", () => {
+  const { view, origins } = scenario("fx-journey").stage;
+  assert.match(text(campaignPage("fx-journey")), new RegExp(view.fixture_sha256 ?? "missing"));
+  const older = html(<CampaignPanel view={{ ...view, fixture_sha256: null }} origins={origins} source={source} refresh={refresh} />);
+  assert.match(text(older), /not recorded on this older checkpoint/);
+});
+
+test("a replay of a truncated run is never read as a pass", () => {
+  const stage = scenario("fx-coverage-incomplete").stage;
+  const markup = html(<ReplayPanel result={stage.experiment!.replay} origins={[]} />);
+  assert.match(text(markup), /reproduced true/);
+  assert.match(text(markup), /run_status budget_exhausted/);
+  assert.match(markup, /data-tone="warn"[^>]*data-testid="replay-verdict"/);
+  assert.match(text(markup), /Passing checks on it prove nothing/);
+  assert.doesNotMatch(markup, /data-tone="ok"/);
+});
+
+test("a replay reaching a violation in a truncated run keeps it", () => {
+  const stage = scenario("fx-coverage-violation").stage;
+  assert.match(text(html(<ReplayPanel result={stage.experiment!.replay} origins={[]} />)), /The failure it reached still stands/);
 });
 
 const panel = (id: string, extra: Partial<Parameters<typeof DecisionPanel>[0]>) =>
@@ -189,12 +207,13 @@ test("the decision panel keeps a blocked resume visible", () => {
   assert.match(markup, /data-testid="state-blocked"/);
   assert.match(text(markup), /Decision recorded, campaign not resumed/);
   assert.match(text(markup), /settings_changed/);
-  assert.match(text(markup), /The approval has not been used/);
+  assert.match(text(markup), /any approval is still unused/);
 });
 
 test("after a reload, an unspent approval still explains itself", () => {
   const blocked = panel("fx-settings-blocked", { blocked: true });
   assert.match(blocked, /data-testid="state-blocked"/);
+  assert.doesNotMatch(text(blocked), /Resume campaign/);
   const unspent = text(panel("fx-settings-blocked", { unspent: true }));
   assert.match(unspent, /Approved, not yet used/);
   assert.match(unspent, /Resume campaign/);

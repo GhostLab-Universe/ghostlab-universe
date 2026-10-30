@@ -2,13 +2,13 @@ import { useState } from "react";
 import type { BudgetLimits, BudgetUsage, CampaignView, RepairView } from "../api/api.generated.ts";
 import type { DataSource, Failure, Origin, Result } from "../data/source.ts";
 import { readCoverage } from "../logic/coverage.ts";
-import { BLOCKED_HELP } from "../logic/failure.ts";
+import { BLOCKED_ENDED_HELP } from "../logic/failure.ts";
 import { formatCount, formatTimestamp } from "../logic/format.ts";
 import { presentRepair } from "../logic/repair.ts";
 import { campaignHref } from "../logic/routes.ts";
 import { taskStatus } from "../logic/status.ts";
 import { orderTasks } from "../logic/timeline.ts";
-import { Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
+import { Digest, Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
 import { CoverageLine, CoverageNotice } from "./experimentData.tsx";
 
 export function CampaignPanel({
@@ -33,8 +33,7 @@ export function CampaignPanel({
       ) : null}
       {view.outcome === "settings_changed" ? (
         <Notice state="blocked" title="Blocked: settings changed" live>
-          <p>The campaign's recorded fixture no longer matches, so it stopped before using the approval.</p>
-          <p>{BLOCKED_HELP}</p>
+          <p>{BLOCKED_ENDED_HELP}</p>
         </Notice>
       ) : record.status === "failed" ? (
         <Notice state="failed" title="Campaign failed" />
@@ -68,6 +67,15 @@ export function CampaignPanel({
             { term: "Last status change", detail: formatTimestamp(record.updated_at) },
             { term: "Created by", detail: <Mono>{record.created_by.principal_id}</Mono> },
             { term: "Trace", detail: <Mono>{record.trace_id}</Mono> },
+            {
+              term: "Pinned fixture",
+              detail:
+                view.fixture_sha256 === null ? (
+                  <span className="muted">not recorded on this older checkpoint</span>
+                ) : (
+                  <Digest value={view.fixture_sha256} />
+                ),
+            },
           ]}
         />
       </Section>
@@ -97,7 +105,7 @@ function ExperimentList({ view }: { view: CampaignView }) {
             </p>
             <p className="muted">Hypothesis (model output, untrusted): {experiment.hypothesis}</p>
             {coverage === null ? (
-              <p className="muted">Coverage is not reported by this service.</p>
+              <p className="muted">Coverage was not recorded for this experiment.</p>
             ) : (
               <CoverageLine coverage={coverage} recorded />
             )}
@@ -128,7 +136,6 @@ function JobControls({ view, source, refresh }: { view: CampaignView; source: Da
   const { status } = view.record;
   const canCancel = (status === "running" || status === "queued") && !view.job.cancel_requested;
   const stalled = view.job.state === "stalled";
-  const blocked = view.outcome === "settings_changed";
 
   async function act(run: () => Promise<Result<CampaignView>>) {
     setBusy(true);
@@ -139,7 +146,7 @@ function JobControls({ view, source, refresh }: { view: CampaignView; source: Da
     setBusy(false);
   }
 
-  if (!canCancel && !stalled && !blocked && !view.job.cancel_requested && failure === null) return null;
+  if (!canCancel && !stalled && !view.job.cancel_requested && failure === null) return null;
   const id = view.record.campaign_id;
   return (
     <Section title="Execution">
@@ -156,7 +163,7 @@ function JobControls({ view, source, refresh }: { view: CampaignView; source: Da
             Cancel campaign
           </button>
         ) : null}
-        {stalled || blocked ? (
+        {stalled ? (
           <button type="button" disabled={busy} onClick={() => void act(() => source.resumeCampaign(id))}>
             Resume campaign
           </button>

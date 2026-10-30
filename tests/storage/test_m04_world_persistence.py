@@ -291,6 +291,34 @@ def test_a_contradicted_duplicate_cannot_stand_in_as_the_replacement(store):
     assert store.get(scope(), record.record_id).status == "verified"
 
 
+def test_supersede_refuses_to_name_records_it_does_not_retire(store):
+    pipeline = MemoryPipeline(store)
+    record = pipeline.capture(scope(), trusted())
+    other = pipeline.capture(scope(), trusted(content="another finding"))
+    later = dataclasses.replace(trusted(), content="newer", observed_at=LATER,
+                                supersedes=(other.record_id,))
+    with pytest.raises(ValueError):
+        pipeline.supersede(scope(), record.record_id, later)
+    assert store.get(scope(), record.record_id).status == "verified"
+
+
+@pytest.mark.parametrize("change", [
+    {"provenance": UNTRUSTED}, {"evidence": ()}, {"audit_hold": True},
+    {"retention_policy": "audit"}, {"expires_at": "2027-01-01T00:00:00Z"}])
+def test_capture_does_not_answer_with_a_record_that_differs(store, change):
+    pipeline = MemoryPipeline(store)
+    pipeline.capture(scope(), trusted())
+    with pytest.raises(Conflict):
+        pipeline.capture(scope(), dataclasses.replace(trusted(), **change))
+
+
+def test_the_same_capture_still_returns_the_same_record(store):
+    pipeline = MemoryPipeline(store)
+    first = pipeline.capture(scope(), trusted())
+    pipeline.contradict(scope(), first.record_id)  # status moved on after capture
+    assert pipeline.capture(scope(), trusted()).record_id == first.record_id
+
+
 def test_superseding_twice_is_repeatable_after_a_crash(store):
     pipeline = MemoryPipeline(store)
     record = pipeline.capture(scope(), trusted())
@@ -406,6 +434,23 @@ def test_a_blob_being_replaced_is_read_again_not_a_crash(artifacts, monkeypatch)
     calls = refuse_once(monkeypatch, Path, "read_bytes")
     second = keep(view, name="b")
     assert len(calls) == 2 and view.read(second) == view.read(first) == b"same"
+
+
+def test_a_read_during_a_replace_is_tried_again(artifacts, monkeypatch):
+    view = artifacts.for_project(scope())
+    ref = keep(view)
+    calls = refuse_once(monkeypatch, Path, "open")
+    assert view.read(ref) == b"same"
+    assert len(calls) == 2
+
+
+def test_a_blob_that_stays_locked_fails_the_read_as_a_storage_error(artifacts, monkeypatch):
+    view = artifacts.for_project(scope())
+    ref = keep(view)
+    monkeypatch.setattr(Path, "open", lambda *a, **k: (_ for _ in ()).throw(PermissionError("held")))
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    with pytest.raises(StorageError):
+        view.read(ref)
 
 
 def test_a_refused_replace_is_retried(artifacts, monkeypatch):

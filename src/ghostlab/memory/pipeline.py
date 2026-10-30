@@ -107,6 +107,10 @@ class MemoryPipeline:
             raise ValueError("Unverified input cannot retire a verified record")
         replacement = self.capture(scope, Observation(**{
             **observation.__dict__, "supersedes": (*observation.supersedes, old_record_id)}))
+        # Capture returns an existing row for the same content, which may be something else.
+        if (old_record_id not in replacement.supersedes
+                or replacement.status != initial_status(observation)):
+            raise Conflict("Another record already holds this content")
         if old.status in {"unverified", "verified"}:
             self.store.transition(scope, old_record_id, expected_status=old.status,
                                   new_status="superseded")

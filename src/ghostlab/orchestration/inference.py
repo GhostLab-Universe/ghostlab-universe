@@ -113,13 +113,17 @@ class ExplorerClient:
                 objective: str, success_criteria: tuple[str, ...], as_of: str,
                 questions: tuple[str, ...], accountant: BudgetAccountant,
                 task_limits: BudgetLimits, remaining_ms: int,
-                deadline_passed: Callable[[], bool], cancel=None) -> ProposalOutcome:
+                deadline_passed: Callable[[], bool], cancel=None,
+                skill_id: str = "propose-refund-scenario",
+                world_version: str = "refund-world/1",
+                proposal_model=ExperimentProposal) -> ProposalOutcome:
         compiled = self.compiler.compile(ContextRequest(
             bundle_id=f"bundle-{task_id}", campaign_id=campaign_id, task_id=task_id,
             role="explorer", scope=scope, objective=objective,
-            success_criteria=success_criteria, skill_id="propose-refund-scenario",
+            success_criteria=success_criteria, skill_id=skill_id,
             as_of=as_of, compiled_at=as_of, token_budget=self.token_budget,
-            questions=questions, memory=MemorySelection(campaign_id=None, limit=10)))
+            questions=questions, memory=MemorySelection(
+                world_version=world_version, campaign_id=None, limit=10)))
         bundle = compiled.bundle
         probe = self.adapter_factory(self.runtime)
         if remaining_ms < 1 or deadline_passed():
@@ -147,7 +151,7 @@ class ExplorerClient:
         gate.settle(reply)
         proposal = None
         if reply.status == "completed" and reply.structured_output is not None:
-            proposal = ExperimentProposal.model_validate(reply.structured_output)
+            proposal = proposal_model.model_validate(reply.structured_output)
         invocation = dataclasses.asdict(compiled.invocation)
         return ProposalOutcome(
             proposal.model_dump(mode="json") if proposal else None,

@@ -41,7 +41,8 @@ def test_failure_found_then_paused_for_approval(tmp_path):
         "as_of": "2026-10-29T13:00:00Z", "limit": 20}))
     assert any("total_refund_within_payment failed" in r.content for r in records)
     # Artifacts are content-addressed and readable back.
-    assert lab.artifacts.read(lab.artifacts.ref(experiment["fork"]["id"]))
+    artifacts = lab.artifacts.for_project(scope)
+    assert artifacts.read(artifacts.ref(experiment["fork"]["id"]))
 
 
 def test_approval_resumes_once_and_consumes_single_use(tmp_path):

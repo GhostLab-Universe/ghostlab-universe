@@ -54,9 +54,10 @@ class PolicyEnforcedWorld(RefundWorld):
 
 @dataclass(frozen=True)
 class RunOutcome:
-    run: dict | None          # RunResult-shaped dict, or None when policy denied the run
+    run: dict | None          # RunResult-shaped dict, or None when the run did not finish
     denial: Decision | None
     tool_calls: int
+    stopped: str | None = None  # why a run stopped early: cancelled or out of wall clock
 
 
 def execute_run(fixture: Fixture, scenario: Scenario, adapter: str, *, scope: TrustedScope,

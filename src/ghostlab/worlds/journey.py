@@ -303,6 +303,18 @@ class JourneyWorld:
             raise HostDenied("Only the organizer's agent may change the journey")
         if "journey_id" in arguments and arguments["journey_id"] != self.fixture.journey_id:
             raise HostDenied("Journey does not exist")
+        # Reference checks precede the guard, so an unknown version is never "stale".
+        references = {
+            "intent_version": (dict(self.fixture.intents), "Intent version does not exist"),
+            "option_id": ({o.option_id for o in self.fixture.options}, "Option does not exist"),
+            "hold_id": (self.state["holds"], "Hold does not exist"),
+            "message_id": (self.state["messages"], "Message does not exist"),
+            "participant_id": (self.fixture.mandatory, "Participant has no journey calendar"),
+            "recipient_id": (self.fixture.participants, "Recipient is not a participant"),
+        }
+        for name, (known, message) in references.items():
+            if name in arguments and arguments[name] not in known:
+                raise HostDenied(message)
 
     # -- tools (``at`` is the event index; one tool argument is itself named event_id) ---
 
@@ -343,21 +355,8 @@ class JourneyWorld:
                    if h["option_id"] == option_id and h["status"] in {"held", "confirmed"})
         return held * len(self.fixture.mandatory)
 
-    def _known_version(self, intent_version):
-        if intent_version not in dict(self.fixture.intents):
-            raise HostDenied("Intent version does not exist")
-
-    def _hold(self, hold_id):
-        hold = self.state["holds"].get(hold_id)
-        if hold is None:
-            raise HostDenied("Hold does not exist")
-        return hold
-
     def _hold_availability(self, at, journey_id, option_id, intent_version):
         option = self.fixture.option(option_id)
-        if option is None:
-            raise HostDenied("Option does not exist")
-        self._known_version(intent_version)
         if option.seats - self._seats_used(option_id) < len(self.fixture.mandatory):
             raise ToolError("Not enough seats")
         hold_id = f"hold-{len(self.state['holds']) + 1}"
@@ -367,7 +366,7 @@ class JourneyWorld:
         return deepcopy(hold)
 
     def _release_availability(self, at, hold_id):
-        hold = self._hold(hold_id)
+        hold = self.state["holds"][hold_id]
         if hold["status"] == "released":
             raise ToolError("Hold already released")
         hold["status"] = "released"
@@ -378,8 +377,7 @@ class JourneyWorld:
         return {"hold_id": hold_id, "status": "released"}
 
     def _confirm_reservation(self, at, hold_id, intent_version):
-        hold = self._hold(hold_id)
-        self._known_version(intent_version)
+        hold = self.state["holds"][hold_id]
         if hold["status"] != "held":
             raise ToolError("Hold is not available to confirm")
         hold["status"] = "confirmed"
@@ -394,9 +392,6 @@ class JourneyWorld:
         return deepcopy(reservation)
 
     def _update_calendar_event(self, at, participant_id, event_id, intent_version):
-        if participant_id not in self.fixture.mandatory:
-            raise HostDenied("Participant has no journey calendar")
-        self._known_version(intent_version)
         # The most recently confirmed reservation, so a rebooking is what gets scheduled.
         reservation = max((r for r in self.state["reservations"].values()
                            if r["status"] == "confirmed"),
@@ -417,8 +412,6 @@ class JourneyWorld:
                 "reservation_id": reservation["reservation_id"]}
 
     def _queue_message(self, at, recipient_id, template_id):
-        if recipient_id not in self.fixture.participants:
-            raise HostDenied("Recipient is not a participant")
         message_id = f"msg-{len(self.state['messages']) + 1}"
         self.state["messages"][message_id] = {
             "message_id": message_id, "recipient_id": recipient_id,
@@ -432,9 +425,7 @@ class JourneyWorld:
         return {"message_id": message_id, "status": "queued"}
 
     def _deliver_message(self, at, message_id):
-        message = self.state["messages"].get(message_id)
-        if message is None:
-            raise HostDenied("Message does not exist")
+        message = self.state["messages"][message_id]
         if message["status"] != "queued":
             raise ToolError("Message is not queued")
         # Delivery is irreversible exposure; the world records it and never undoes it.

@@ -8,8 +8,9 @@ state, the two business mistakes the lab world deliberately allows:
   version that is not the currently approved one;
 - delivery of a message whose recipient's sharing permission has been withdrawn.
 
-A denied call is recorded as an error event and changes nothing: no hold, no
-commitment, no delivery. This module shares no code with the verifier
+It runs after the world's host checks (schema, principal, references), so it
+only ever sees well-formed calls. A denied call is recorded as an error event
+and changes nothing: no hold, no commitment, no delivery. This module shares no code with the verifier
 (``ghostlab.worlds.journey_verify``), so a bug cannot hide in both.
 """
 
@@ -34,9 +35,9 @@ class GuardedJourneyWorld(JourneyWorld):
                 raise StaleIntentDenied(
                     f"intent version {arguments['intent_version']} is not the approved "
                     f"version {current}")
-        if tool == "deliver_message":
-            message = self.state["messages"].get(arguments["message_id"])
-            if message is not None and not self.state["sharing"].get(message["recipient_id"]):
+        if tool == "deliver_message":  # host checks already proved the message exists
+            message = self.state["messages"][arguments["message_id"]]
+            if not self.state["sharing"][message["recipient_id"]]:
                 raise PermissionWithdrawnDenied("recipient's sharing permission was withdrawn")
 
 

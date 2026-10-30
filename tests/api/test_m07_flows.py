@@ -28,7 +28,10 @@ def test_refund_flow_from_create_to_replayed_repair(stack):
     assert experiment["runs"] == ["baseline", "fork"]
 
     base = f"/v1/campaigns/{campaign_id}/experiments/{experiment['experiment_id']}"
-    diff = api.get(f"{base}/diff").json()
+    compared = api.get(f"{base}/diff").json()
+    assert compared["coverage"] == {"baseline": "completed", "fork": "completed",
+                                    "complete": True}
+    diff = compared["diff"]
     assert diff["world_version"] == REFUND
     assert diff["baseline_metrics"] == {"refunded_minor": 250000}
     assert diff["faulted_metrics"] == {"refunded_minor": 500000}
@@ -62,7 +65,7 @@ def test_refund_flow_from_create_to_replayed_repair(stack):
     assert exported.json()["capsule_schema_version"] == 1
 
     replayed = api.post(f"{base}/capsules/repaired/replay").json()
-    assert replayed["reproduced"] is True
+    assert replayed["reproduced"] is True and replayed["run_status"] == "completed"
     assert replayed["model_calls"] == 0
     assert replayed["metrics"] == {"refunded_minor": 250000}
     assert len(api.script.requests) == 1  # nothing after the proposal reached the provider

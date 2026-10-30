@@ -83,7 +83,7 @@ def published():
     "WorldCampaignSpec", "WorldCampaignRecord", "WorldRunResult", "WorldRealityDiff",
     "WorldInvariantFinding", "WorldExperimentProposal", "CapsuleV2", "CapsuleV1",
     "ApprovalRequest", "ApprovalDecision", "ApprovalSubmission", "ExperimentEvent", "ErrorInfo",
-    "TaskSpec", "Ref", "Principal"])
+    "TaskSpec", "Ref", "Principal", "Coverage", "RealityDiffView"])
 def test_shared_contracts_appear_under_their_m00_names(name):
     assert name in spec()["components"]["schemas"]
 

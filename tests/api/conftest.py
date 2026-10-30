@@ -116,11 +116,11 @@ def build_lab(root, script, **options):
     return lab
 
 
-def build_app(lab, *, sessions=None, approvers=None, **options):
+def build_app(lab, *, sessions=None, approvers=None, redactor=None, **options):
     return create_app(ApiConfig(
         services=lab.services(), sessions=sessions or TokenSessions(TOKENS),
         approvers=approvers or lab.approvals._approvers, graph_db=lab.paths.graph_db,
-        app_db=lab.paths.app_db, redactor=Redactor([SECRET]), **options))
+        app_db=lab.paths.app_db, redactor=redactor or Redactor([SECRET]), **options))
 
 
 @pytest.fixture

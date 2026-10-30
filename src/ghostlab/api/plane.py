@@ -45,12 +45,13 @@ from ghostlab.storage.interfaces import Conflict
 from .errors import ApiError, describe, not_found
 from .jobs import Job, JobRegistry
 from .models import (ApprovalSummary, ApprovalView, CampaignView, CapsuleImport, CapsuleInfo,
-                     DecisionResult, ErrorResponse, EventPage, ExecutionRecord, ExperimentSummary,
-                     ExperimentView, GuardDenial, JobStatus, ReplayResult, RepairView, RunName,
-                     RunView, SessionInfo)
+                     Coverage, DecisionResult, ErrorResponse, EventPage, ExecutionRecord,
+                     ExperimentSummary, ExperimentView, GuardDenial, JobStatus, RealityDiffView,
+                     ReplayResult, RepairView, RunName, RunView, SessionInfo)
 from .sessions import ApiSession
 
 MAX_LISTED_ERRORS = 256
+MAX_TEXT = 2_000  # the contracts' Text limit; a redaction marker can lengthen a short match
 
 
 @dataclass(frozen=True)
@@ -119,7 +120,18 @@ class ControlPlane:
         return self.jobs.submit(key, kind, work, cancel=cancel, follow=follow)
 
     def _text(self, value: str) -> str:
-        return self.redactor.text(value)
+        return self.redactor.text(value)[:MAX_TEXT]
+
+    def _refuse_secrets(self, *texts: str | None) -> None:
+        """Client text is M07's to keep clean: M05 redacts only what models write.
+
+        Refused rather than rewritten, so a stored spec is what the client sent and a
+        retry still compares equal. The response never repeats the text.
+        """
+        if any(text and self.redactor.text(text) != text for text in texts):
+            raise ApiError(422, "validation_failed", "This text looks like it contains a "
+                           "credential. Remove it and retry; nothing was stored.",
+                           reason="secret_shaped_text")
 
     def _scope(self, session: ApiSession):
         return root_scope(session.project_id, session.principal)
@@ -151,6 +163,7 @@ class ControlPlane:
 
     def create_campaign(self, session: ApiSession, spec: WorldCampaignSpec,
                         idempotency_key: str) -> tuple[CampaignView, bool]:
+        self._refuse_secrets(spec.objective, *spec.success_criteria)
         trusted = session.trusted
         campaign_id = "c-" + request_digest(session.project_id, session.principal.principal_id,
                                             idempotency_key)
@@ -210,7 +223,13 @@ class ControlPlane:
                                  iteration=experiment["iteration"],
                                  hypothesis=self._text(proposal["hypothesis"]),
                                  adapter_id=proposal.get("adapter_id") or proposal["adapter"],
+                                 coverage=self._coverage(experiment),
                                  runs=self._runs(state, experiment["experiment_id"]))
+
+    @staticmethod
+    def _coverage(experiment: dict) -> Coverage | None:
+        coverage = experiment.get("coverage")
+        return Coverage(**coverage) if coverage else None
 
     @staticmethod
     def _repaired_experiment(state: dict) -> str | None:
@@ -247,6 +266,7 @@ class ControlPlane:
         approval = state.get("approval")
         return CampaignView(
             record=record, outcome=state["outcome"],
+            fixture_sha256=state.get("fixture_sha256"),
             job=self._job_status(session.project_id, campaign_id, state),
             tasks=[TaskSpec.model_validate(task) for task in state["tasks"]],
             approval=(ApprovalSummary(approval_id=approval["approval_id"],
@@ -341,7 +361,10 @@ class ControlPlane:
         proposal = experiment["proposal"]
         if state["spec"]["world_version"] == REFUND:
             proposal = proposal_to_world(proposal).model_dump(mode="json")
-        return WorldExperimentProposal.model_validate(self.redactor.value(proposal))
+        clean = self.redactor.value(proposal)
+        return WorldExperimentProposal.model_validate({
+            **clean, "hypothesis": clean["hypothesis"][:MAX_TEXT],
+            "expected_signal": clean["expected_signal"][:MAX_TEXT]})
 
     @staticmethod
     def _execution(value: dict | None) -> ExecutionRecord | None:
@@ -356,23 +379,33 @@ class ControlPlane:
             experiment_id=experiment_id, iteration=experiment["iteration"],
             proposal=self._world_proposal(state, experiment),
             execution=self._execution(experiment.get("execution")),
-            diff=self._world_diff(state, experiment),
+            coverage=self._coverage(experiment), diff=self._world_diff(state, experiment),
             findings=self._findings(state, {f"{experiment_id}-{run}" for run in runs}), runs=runs)
 
     def diff(self, session: ApiSession, campaign_id: str,
-             experiment_id: str) -> WorldRealityDiff:
+             experiment_id: str) -> RealityDiffView:
         state = self._controller(session.trusted).state(campaign_id)
-        return self._world_diff(state, self._experiment(state, experiment_id))
+        experiment = self._experiment(state, experiment_id)
+        return RealityDiffView(experiment_id=experiment_id,
+                               diff=self._world_diff(state, experiment),
+                               coverage=self._coverage(experiment))
+
+    def _stored_run(self, session: ApiSession, ref: dict) -> dict:
+        view = self._evidence(session)  # never the unscoped store
+        return json.loads(view.read(view.ref(ref["id"])))
+
+    @staticmethod
+    def _run_ref(state: dict, experiment: dict, run: RunName) -> dict:
+        return (state.get("repair") or {})["run"] if run == "repaired" else experiment[run]
 
     def run(self, session: ApiSession, campaign_id: str, experiment_id: str,
             run: RunName) -> RunView:
         state = self._controller(session.trusted).state(campaign_id)
         experiment = self._require_run(state, experiment_id, run)
-        repair = state.get("repair") or {}
-        ref = repair["run"] if run == "repaired" else experiment[run]
-        execution = repair.get("execution") if run == "repaired" else experiment.get("execution")
-        view = self._evidence(session)  # never the unscoped store
-        data = json.loads(view.read(view.ref(ref["id"])))
+        ref = self._run_ref(state, experiment, run)
+        execution = ((state.get("repair") or {}).get("execution") if run == "repaired"
+                     else experiment.get("execution"))
+        data = self._stored_run(session, ref)
         result = (run_to_world(data) if state["spec"]["world_version"] == REFUND
                   else WorldRunResult.model_validate(data))
         run_id = f"{experiment_id}-{run}"
@@ -404,9 +437,10 @@ class ControlPlane:
                            capsule_schema_version=self._capsule_schema(world_version))
 
     @staticmethod
-    def _replay_result(world_version: str, result: dict) -> ReplayResult:
+    def _replay_result(world_version: str, run_status: str, result: dict) -> ReplayResult:
         metrics = result.get("metrics", {"refunded_minor": result.get("total_refunded_minor", 0)})
-        return ReplayResult(world_version=world_version, reproduced=result["reproduced"],
+        return ReplayResult(world_version=world_version, run_status=run_status,
+                            reproduced=result["reproduced"],
                             matches=result["matches"], checks=result["checks"], metrics=metrics,
                             guarded=result.get("guarded"), model_calls=result["model_calls"])
 
@@ -414,9 +448,11 @@ class ControlPlane:
                                 run: RunName) -> ReplayResult:
         controller = self._controller(session.trusted)
         state = controller.state(campaign_id)
-        self._require_run(state, experiment_id, run)
-        return self._replay_result(state["spec"]["world_version"], self._replaying(
-            lambda: controller.replay_capsule(campaign_id, run=run, experiment_id=experiment_id)))
+        experiment = self._require_run(state, experiment_id, run)
+        recorded = self._stored_run(session, self._run_ref(state, experiment, run))
+        return self._replay_result(state["spec"]["world_version"], recorded["status"],
+                                   self._replaying(lambda: controller.replay_capsule(
+                                       campaign_id, run=run, experiment_id=experiment_id)))
 
     @staticmethod
     def _replaying(call: Callable[[], dict]) -> dict:
@@ -444,7 +480,9 @@ class ControlPlane:
                 path.write_bytes(data)
                 return driver.replay(path)
 
-        return self._replay_result(world_version, self._replaying(replay))
+        result = self._replaying(replay)  # only a capsule that loaded gets this far
+        return self._replay_result(world_version, json.loads(data)["payload"]["run"]["status"],
+                                   result)
 
     def import_capsule(self, session: ApiSession, capsule: CapsuleV1 | CapsuleV2) -> CapsuleImport:
         view = self._evidence(session)
@@ -529,6 +567,7 @@ class ControlPlane:
         if submission.approval_id != approval_id:
             raise ApiError(422, "validation_failed", "approval_id differs from the path",
                            reason="invalid_request")
+        self._refuse_secrets(submission.reason)
         store, project_id = self.services.approval_store, session.project_id
         decision_id = "d-" + request_digest(project_id, session.principal.principal_id,
                                             approval_id, idempotency_key)

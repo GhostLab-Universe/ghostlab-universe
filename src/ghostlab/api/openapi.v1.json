@@ -514,6 +514,18 @@
             "title": "Experiments",
             "type": "array"
           },
+          "fixture_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixture Sha256"
+          },
           "job": {
             "$ref": "#/components/schemas/JobStatus"
           },
@@ -555,6 +567,7 @@
         "required": [
           "record",
           "outcome",
+          "fixture_sha256",
           "job",
           "tasks",
           "approval",
@@ -788,6 +801,39 @@
           "sha256"
         ],
         "title": "CapsuleV2",
+        "type": "object"
+      },
+      "Coverage": {
+        "additionalProperties": false,
+        "description": "Whether an experiment's runs finished. Null only on a checkpoint older than coverage.\n\n``complete: false`` means a run stopped at its tool cap: a clean result from it\nproves nothing, and only the violations it did reach count.",
+        "properties": {
+          "baseline": {
+            "enum": [
+              "completed",
+              "budget_exhausted"
+            ],
+            "title": "Baseline",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "fork": {
+            "enum": [
+              "completed",
+              "budget_exhausted"
+            ],
+            "title": "Fork",
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseline",
+          "fork",
+          "complete"
+        ],
+        "title": "Coverage",
         "type": "object"
       },
       "DecisionResult": {
@@ -1090,6 +1136,16 @@
             "title": "Adapter Id",
             "type": "string"
           },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Coverage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "experiment_id": {
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
             "title": "Experiment Id",
@@ -1126,6 +1182,7 @@
           "iteration",
           "hypothesis",
           "adapter_id",
+          "coverage",
           "runs"
         ],
         "title": "ExperimentSummary",
@@ -1134,6 +1191,16 @@
       "ExperimentView": {
         "additionalProperties": false,
         "properties": {
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Coverage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "diff": {
             "$ref": "#/components/schemas/WorldRealityDiff"
           },
@@ -1188,6 +1255,7 @@
           "iteration",
           "proposal",
           "execution",
+          "coverage",
           "diff",
           "findings",
           "runs"
@@ -1518,6 +1586,37 @@
         "title": "Principal",
         "type": "object"
       },
+      "RealityDiffView": {
+        "additionalProperties": false,
+        "description": "A diff with its coverage: alone, a truncated run's diff would read as clean.",
+        "properties": {
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Coverage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "diff": {
+            "$ref": "#/components/schemas/WorldRealityDiff"
+          },
+          "experiment_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Experiment Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "experiment_id",
+          "diff",
+          "coverage"
+        ],
+        "title": "RealityDiffView",
+        "type": "object"
+      },
       "RecordedRequest": {
         "additionalProperties": false,
         "description": "What the target attempted, recorded even when the world rejected it.",
@@ -1648,7 +1747,7 @@
       },
       "RepairView": {
         "additionalProperties": false,
-        "description": "The repair's recorded assessment; world-specific fields are null elsewhere.",
+        "description": "The repair's recorded assessment; world-specific fields are null elsewhere.\n\nOnly ``verified`` means the repair held. ``held_by`` is null unless it did: passing\nchecks on a run that never got there prove nothing.",
         "properties": {
           "adapter": {
             "anyOf": [
@@ -1850,6 +1949,14 @@
             "title": "Reproduced",
             "type": "boolean"
           },
+          "run_status": {
+            "enum": [
+              "completed",
+              "budget_exhausted"
+            ],
+            "title": "Run Status",
+            "type": "string"
+          },
           "world_version": {
             "enum": [
               "refund-world/1",
@@ -1862,6 +1969,7 @@
         },
         "required": [
           "world_version",
+          "run_status",
           "reproduced",
           "matches",
           "checks",
@@ -3251,7 +3359,7 @@
     },
     "/v1/campaigns": {
       "post": {
-        "description": "Start a campaign in the session's project.\n\nThe campaign id is derived from the session and the key, so a retry finds the same\ncampaign and its current state instead of starting another. Reusing a key with a\ndifferent spec is a 409. The world, budget and inference gates run before anything\nis stored. ``service-relay/1`` is a registered design, not a runnable world: 403.",
+        "description": "Start a campaign in the session's project.\n\nThe campaign id is derived from the session and the key, so a retry finds the same\ncampaign and its current state instead of starting another. Reusing a key with a\ndifferent spec is a 409. The world, budget and inference gates run before anything\nis stored. ``service-relay/1`` is a registered design, not a runnable world: 403.\nText shaped like a credential is refused (422), not stored.",
         "operationId": "createCampaign",
         "parameters": [
           {
@@ -3992,7 +4100,7 @@
     },
     "/v1/campaigns/{campaign_id}/experiments/{experiment_id}/diff": {
       "get": {
-        "description": "Baseline against fork, from the recorded evidence.",
+        "description": "Baseline against fork, from the recorded evidence, with the experiment's coverage.",
         "operationId": "getRealityDiff",
         "parameters": [
           {
@@ -4021,7 +4129,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorldRealityDiff"
+                  "$ref": "#/components/schemas/RealityDiffView"
                 }
               }
             },

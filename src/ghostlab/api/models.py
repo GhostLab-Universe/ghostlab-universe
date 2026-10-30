@@ -25,6 +25,7 @@ from ghostlab.contracts.world_packs import PackVersion
 RunName = Literal["baseline", "fork", "repaired"]
 AuthMode = Literal["local_dev", "configured_tokens"]
 InferenceMode = Literal["disabled", "fixture", "live"]
+RunStatus = Literal["completed", "budget_exhausted"]
 NotProduction = Annotated[Literal[False], _exact_type(bool)]
 
 
@@ -67,6 +68,18 @@ class ApprovalSummary(StrictModel):
     expires_at: UtcTimestamp
 
 
+class Coverage(StrictModel):
+    """Whether an experiment's runs finished. Null only on a checkpoint older than coverage.
+
+    ``complete: false`` means a run stopped at its tool cap: a clean result from it
+    proves nothing, and only the violations it did reach count.
+    """
+
+    baseline: RunStatus
+    fork: RunStatus
+    complete: bool
+
+
 class ExecutionRecord(StrictModel):
     mode: Literal["lab", "enforced"]
     guarded: bool
@@ -78,12 +91,16 @@ class GuardDenial(StrictModel):
 
 
 class RepairView(StrictModel):
-    """The repair's recorded assessment; world-specific fields are null elsewhere."""
+    """The repair's recorded assessment; world-specific fields are null elsewhere.
+
+    Only ``verified`` means the repair held. ``held_by`` is null unless it did: passing
+    checks on a run that never got there prove nothing.
+    """
 
     authorized: bool
     verified: bool
     run: Ref | None
-    run_status: Literal["completed", "budget_exhausted"] | None
+    run_status: RunStatus | None
     safety_held: bool | None
     task_complete: bool | None
     task_outcome: dict[str, bool] | None
@@ -99,6 +116,7 @@ class ExperimentSummary(StrictModel):
     iteration: int = Field(ge=1, le=1_000)
     hypothesis: Text  # model output: untrusted data
     adapter_id: ShortText
+    coverage: Coverage | None
     runs: list[RunName] = Field(max_length=3)
 
 
@@ -106,7 +124,8 @@ class CampaignView(StrictModel):
     """Authoritative status from the campaign's checkpoint. Safe to read after reconnect."""
 
     record: WorldCampaignRecord
-    outcome: ShortText | None
+    outcome: ShortText | None  # final outcomes are listed in docs/modules/M07.md
+    fixture_sha256: Sha256Hex | None  # the pinned fixture; null on an older refund checkpoint
     job: JobStatus
     tasks: list[TaskSpec] = Field(max_length=256)
     approval: ApprovalSummary | None
@@ -130,9 +149,18 @@ class ExperimentView(StrictModel):
     iteration: int = Field(ge=1, le=1_000)
     proposal: WorldExperimentProposal  # model output, validated: untrusted data
     execution: ExecutionRecord | None
+    coverage: Coverage | None
     diff: WorldRealityDiff
     findings: list[WorldInvariantFinding] = Field(max_length=256)
     runs: list[RunName] = Field(max_length=3)
+
+
+class RealityDiffView(StrictModel):
+    """A diff with its coverage: alone, a truncated run's diff would read as clean."""
+
+    experiment_id: Identifier
+    diff: WorldRealityDiff
+    coverage: Coverage | None
 
 
 class RunView(StrictModel):
@@ -157,6 +185,7 @@ class ReplayResult(StrictModel):
     """Recorded-action replay. It never calls a model, so ``model_calls`` is always 0."""
 
     world_version: PackVersion
+    run_status: RunStatus  # what the recorded run did; ``reproduced`` is about the replay only
     reproduced: bool
     matches: dict[str, bool]
     checks: dict[str, bool]

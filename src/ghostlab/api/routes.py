@@ -11,11 +11,11 @@ from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response
 
 from ghostlab.contracts import ApprovalSubmission, CapsuleV1
 from ghostlab.contracts.primitives import Identifier
-from ghostlab.contracts.world import CapsuleV2, WorldCampaignSpec, WorldRealityDiff
+from ghostlab.contracts.world import CapsuleV2, WorldCampaignSpec
 
 from .models import (ApprovalView, CampaignView, CapsuleImport, CapsuleInfo, DecisionResult,
-                     ErrorResponse, EventPage, ExperimentView, ReplayResult, RunName, RunView,
-                     SessionInfo)
+                     ErrorResponse, EventPage, ExperimentView, RealityDiffView, ReplayResult,
+                     RunName, RunView, SessionInfo)
 
 MAX_EVENT_PAGE = 200
 
@@ -70,6 +70,7 @@ def create_campaign(spec: WorldCampaignSpec, key: IdempotencyKey, response: Resp
     campaign and its current state instead of starting another. Reusing a key with a
     different spec is a 409. The world, budget and inference gates run before anything
     is stored. ``service-relay/1`` is a registered design, not a runnable world: 403.
+    Text shaped like a credential is refused (422), not stored.
     """
     view, replayed = control.create_campaign(who, spec, key)
     if replayed:
@@ -125,10 +126,10 @@ def get_experiment(campaign_id: CampaignId, experiment_id: ExperimentId, control
 
 
 @router.get("/campaigns/{campaign_id}/experiments/{experiment_id}/diff",
-            response_model=WorldRealityDiff, operation_id="getRealityDiff", tags=["evidence"])
+            response_model=RealityDiffView, operation_id="getRealityDiff", tags=["evidence"])
 def get_diff(campaign_id: CampaignId, experiment_id: ExperimentId, control: Plane,
              who: Session):
-    """Baseline against fork, from the recorded evidence."""
+    """Baseline against fork, from the recorded evidence, with the experiment's coverage."""
     return control.diff(who, campaign_id, experiment_id)
 
 

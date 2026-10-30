@@ -9,13 +9,14 @@ world; it never imports adapter code and never calls a model.
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from ghostlab.execution.journey_guard import make_world
 
 from .journey import WORLD_VERSION, JourneyFixture, JourneyScenario, ToolError
 from .journey_run import ADAPTER_VERSION, ADAPTERS
-from .journey_verify import metrics, verify
+from .journey_verify import INVARIANTS, metrics, verify
 
 SCHEMA_VERSION = 2
 MAX_CAPSULE_BYTES = 2_000_000
@@ -23,6 +24,11 @@ PAYLOAD_FIELDS = {"schema_version", "world_version", "fixture", "scenario", "act
                   "source", "seed", "recorded_model_outputs", "run"}
 RUN_FIELDS = {"schema_version", "world_version", "adapter_id", "adapter_version", "actor_id",
               "status", "trace", "final_state", "checks"}
+ERROR_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,63}")
+
+
+def _text(value, high):
+    return type(value) is str and 1 <= len(value) <= high
 
 
 def capsule_digest(payload) -> str:
@@ -62,6 +68,37 @@ def load_capsule(path: Path) -> dict:
     return payload
 
 
+def _check_metadata(payload):
+    """Fields replay cannot reproduce, held to the ``capsule_v2`` contract's bounds."""
+    if not _text(payload["source"], 200):
+        raise ValueError("Invalid capsule source")
+    if type(payload["seed"]) is not int or not 0 <= payload["seed"] <= 2**53 - 1:
+        raise ValueError("Invalid capsule seed")
+    outputs = payload["recorded_model_outputs"]
+    if type(outputs) is not list or len(outputs) > 1000:
+        raise ValueError("Invalid recorded model outputs")
+
+
+def _check_event(index, event):
+    if type(event) is not dict or set(event) != {"event_id", "request", "outcome", "state"}:
+        raise ValueError("Invalid recorded event")
+    if type(event["event_id"]) is not int or event["event_id"] != index + 1:
+        raise ValueError("Trace event ids must be 1..n in order")
+    request = event["request"]
+    if (type(request) is not dict or set(request) != {"tool", "arguments"}
+            or type(request["tool"]) is not str or len(request["tool"]) > 200
+            or type(request["arguments"]) is not dict):
+        raise ValueError("Invalid tool request")
+    outcome = event["outcome"]
+    valid = type(outcome) is dict and (
+        (set(outcome) == {"result"} and type(outcome["result"]) is dict)
+        or (set(outcome) == {"error", "message"} and type(outcome["error"]) is str
+            and ERROR_NAME.fullmatch(outcome["error"]) is not None
+            and _text(outcome["message"], 2000)))
+    if not valid or type(event["state"]) is not dict:
+        raise ValueError("Invalid recorded outcome or state")
+
+
 def _check_run(recorded, actor_id, scenario):
     if type(recorded) is not dict or set(recorded) != RUN_FIELDS:
         raise ValueError("Invalid recorded run")
@@ -72,16 +109,22 @@ def _check_run(recorded, actor_id, scenario):
         raise ValueError("Recorded run is not from this world's adapters")
     if recorded["actor_id"] != actor_id:
         raise ValueError("Recorded principal does not match capsule")
+    checks = recorded["checks"]
+    if (type(checks) is not dict or set(checks) != set(INVARIANTS)
+            or any(type(v) is not bool for v in checks.values())):
+        raise ValueError("checks must be exactly the pack's invariants, as booleans")
+    if type(recorded["final_state"]) is not dict:
+        raise ValueError("Invalid final state")
     trace = recorded["trace"]
     if type(trace) is not list or len(trace) > scenario.max_tool_calls:
         raise ValueError("Invalid trace length")
-    for event in trace:
-        if type(event) is not dict or set(event) != {"event_id", "request", "outcome", "state"}:
-            raise ValueError("Invalid recorded event")
-        request = event["request"]
-        if (type(request) is not dict or set(request) != {"tool", "arguments"}
-                or type(request["tool"]) is not str or type(request["arguments"]) is not dict):
-            raise ValueError("Invalid tool request")
+    for index, event in enumerate(trace):
+        _check_event(index, event)
+    if recorded["status"] not in {"completed", "budget_exhausted"}:
+        raise ValueError("Invalid run status")
+    # Stricter than the contract: the budget can only end a run that used all of it.
+    if recorded["status"] == "budget_exhausted" and len(trace) != scenario.max_tool_calls:
+        raise ValueError("budget_exhausted needs a trace that used the whole budget")
     return trace
 
 
@@ -92,8 +135,9 @@ def replay(path: Path) -> dict:
     A replay mismatch means the capsule's claimed evidence was not reproduced.
     """
     payload = load_capsule(path)
+    _check_metadata(payload)
     actor_id = payload["actor_id"]
-    if type(actor_id) is not str or not 1 <= len(actor_id) <= 100:
+    if not _text(actor_id, 100):
         raise ValueError("Invalid capsule principal")
     try:
         fixture = JourneyFixture.from_json(payload["fixture"])

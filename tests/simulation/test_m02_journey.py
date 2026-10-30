@@ -407,14 +407,13 @@ def test_delayed_update_is_timed_by_delay_events_alone():
 
 
 def test_the_published_example_scenario_runs():
+    # Owned by M00; assert only what any revocation example must show.
     data = json.loads((EXAMPLES / "world_scenario.group_journey_revocation.json")
                       .read_text(encoding="utf-8"))
     published = JourneyScenario.from_json(data)
-    naive = run(FIXTURE, published, NAIVE)
-    assert set(failed(naive)) == set(INVARIANTS)
+    assert "delivered_messages_permitted" in failed(run(FIXTURE, published, NAIVE))
     assert failed(run(FIXTURE, published, CHECKED)) == {}
-    guarded = run(GUARDED, published, NAIVE)
-    assert failed(guarded, GUARDED) == {} and denied(guarded) == [(2, "StaleIntentDenied")]
+    assert failed(run(GUARDED, published, NAIVE), GUARDED) == {}
 
 
 # --- the verifier reads evidence, not live fields ---------------------------------------

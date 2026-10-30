@@ -743,6 +743,32 @@ def test_a_repair_that_does_nothing_verifies_nothing(tmp_path):
     assert repair["task_outcome"]["handed_off"] == ["job-1", "job-2"]
 
 
+def test_a_repair_that_never_met_the_fault_proves_nothing(tmp_path):
+    # Local-success leases oversold resources, so job-1's leases complete and the owner takes
+    # over. The repaired adapter correctly leases nothing, so its takeover never lands.
+    lab, state = start(tmp_path, relay_reply(faults=[COMPETITION, TAKEOVER]))
+    assert {f["invariant"] for f in failed(state)} >= {INVARIANT}
+    done = resume_after_approval(lab, state)
+    assert (done["status"], done["outcome"]) == ("failed", "repair_incomplete")
+    repair = done["repair"]
+    assert repair["lost_faults"] == ["takeover_with_queued_confirmation"]
+    assert repair["safety_held"] is True and repair["verified"] is False
+    assert repair["held_by"] is None
+
+
+def test_a_repair_that_met_every_fault_loses_none(tmp_path):
+    lab, state = start(tmp_path, relay_reply(CHECKED, faults=[TAKEOVER_RACE]))
+    done = resume_after_approval(lab, state)
+    assert done["repair"]["lost_faults"] == [] and done["outcome"] == "repair_verified"
+
+
+@pytest.mark.parametrize("faults", [[TAKEOVER], [LOST_ACK], [COMPETITION]])
+def test_every_single_fault_reaches_the_repair_at_its_default_trigger(tmp_path, faults):
+    lab, state = start(tmp_path, relay_reply(faults=faults))
+    done = resume_after_approval(lab, state)
+    assert done["repair"]["lost_faults"] == [] and done["outcome"] == "repair_verified"
+
+
 PASSED = [{"verdict": "passed"}]
 GUARDED = {"mode": "enforced", "guarded": True}
 

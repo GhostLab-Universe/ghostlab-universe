@@ -17,8 +17,8 @@ from ghostlab.execution.journey_guard import (GuardedJourneyWorld, PermissionWit
                                               StaleIntentDenied, make_world)
 from ghostlab.worlds import journey_capsule
 from ghostlab.worlds.journey import (FAULTS, READ_TOOLS, TOOL_SCHEMAS, BudgetExceeded,
-                                     HostDenied, JourneyFixture, JourneyScenario, JourneyWorld,
-                                     ToolError, scenario_json)
+                                     HostDenied, JourneyFixture, JourneyOption, JourneyScenario,
+                                     JourneyWorld, ToolError, scenario_json)
 from ghostlab.worlds.journey_run import (ADAPTERS, experiment, fault_scenarios, findings,
                                          race_scenario, reality_diff, run)
 from ghostlab.worlds.journey_verify import (INVARIANTS, approved_version_at, task_outcome,
@@ -91,7 +91,7 @@ def test_baseline_passes_for_both_adapters_and_completes_the_task(result):
         assert failed(recorded) == {} and denied(recorded) == []
         assert task_outcome(FIXTURE, recorded["final_state"]) == {
             "reservation_confirmed": True, "calendars_updated": True,
-            "mandatory_informed": True}
+            "mandatory_informed": True, "final_itinerary_feasible": True}
 
 
 @pytest.mark.parametrize("fault_id, violated, guard_error, guarded_task_done", [
@@ -450,6 +450,68 @@ def test_verifier_flags_overlapping_calendar_entries():
     assert (detail["passed"], detail["evidence_event_ids"]) == (False, [3])
 
 
+# --- feasibility failures stay recorded after the itinerary is repaired -----------------
+
+TWO_ON_TIME = replace(FIXTURE, outbound=(900, 960), options=(
+    JourneyOption("return-1530", 930, 1050, 2),   # overlaps the 15:00-16:00 outbound entry
+    JourneyOption("return-1630", 990, 1070, 2),   # on time and clear of it
+    JourneyOption("return-1700", 1020, 1140, 2)))  # misses the 18:00 deadline
+
+
+def book(world, option_id, *, calendars=True):
+    hold = world.call("hold_availability", {"journey_id": "journey-1", "option_id": option_id,
+                                            "intent_version": 2})
+    world.call("confirm_reservation", {"hold_id": hold["hold_id"], "intent_version": 2})
+    if calendars:
+        for traveller in ("traveller-a", "traveller-b"):
+            world.call("update_calendar_event", {"participant_id": traveller,
+                                                 "event_id": "return", "intent_version": 2})
+    return hold["hold_id"]
+
+
+def feasibility(fixture, world):
+    state = world.snapshot()
+    detail = verify_details(fixture, state)["mandatory_participants_feasible"]
+    return (detail["passed"], detail["evidence_event_ids"],
+            task_outcome(fixture, state)["final_itinerary_feasible"])
+
+
+def test_a_late_booking_stays_a_failure_after_it_is_released_and_rebooked():
+    world = JourneyWorld(FIXTURE, CLEAN)
+    late = book(world, "return-1700", calendars=False)  # confirmed at event 2: 19:00 > 18:00
+    world.call("release_availability", {"hold_id": late})
+    book(world, "return-1530")
+    assert feasibility(FIXTURE, world) == (False, [2], True)
+
+
+def test_an_overlap_stays_a_failure_after_the_calendar_entry_is_replaced():
+    world = JourneyWorld(TWO_ON_TIME, CLEAN)
+    first = book(world, "return-1530")  # calendar writes at events 3 and 4 overlap the outbound
+    world.call("release_availability", {"hold_id": first})
+    book(world, "return-1630")  # replaces both "return" entries at events 8 and 9
+    state = world.snapshot()
+    assert {e["entry_id"]: e["window"] for e in state["calendar"]["traveller-a"]} == {
+        "outbound": [900, 960], "return": [990, 1070]}
+    assert feasibility(TWO_ON_TIME, world) == (False, [3, 4], True)
+
+
+def test_booking_before_releasing_is_a_recorded_double_booking():
+    world = JourneyWorld(TWO_ON_TIME, CLEAN)
+    first = book(world, "return-1630", calendars=False)  # confirmed at event 2
+    book(world, "return-1530", calendars=False)          # confirmed at event 4, both held
+    world.call("release_availability", {"hold_id": first})
+    assert feasibility(TWO_ON_TIME, world) == (False, [2, 4], True)
+
+
+def test_release_then_rebook_passes_through_a_cancelled_calendar_without_failing():
+    fixture = replace(TWO_ON_TIME, outbound=(480, 600))
+    world = JourneyWorld(fixture, CLEAN)
+    first = book(world, "return-1530")
+    world.call("release_availability", {"hold_id": first})  # calendars point at a cancelled trip
+    book(world, "return-1630")                              # until these writes replace them
+    assert feasibility(fixture, world) == (True, [], True)
+
+
 def test_findings_cover_exactly_the_invariants(result):
     produced = findings(FIXTURE, result["baseline"][CHECKED], "journey-run-0",
                         "2026-10-30T00:00:00Z")
@@ -523,6 +585,30 @@ def test_altered_evidence_with_a_fresh_checksum_is_not_reproduced(exported, muta
     assert journey_capsule.replay(exported)["reproduced"] is False
 
 
+# Metadata replay cannot reproduce, held to the capsule_v2 contract's bounds; the
+# contracts suite checks that the contract rejects each of these too.
+METADATA_MUTATIONS = [
+    lambda p: p["run"].update(status="invented-invalid-status"),
+    lambda p: p.update(seed=True),
+    lambda p: p.update(seed=-1),
+    lambda p: p.update(seed=2**53),
+    lambda p: p.update(recorded_model_outputs={}),
+    lambda p: p.update(recorded_model_outputs=[None] * 1001),
+    lambda p: p.update(source=""),
+    lambda p: p.update(source="x" * 201),
+    lambda p: p["run"]["checks"].update(extra_check=True),
+    lambda p: p["run"]["checks"].update(delivered_messages_permitted="false"),
+    lambda p: p["run"].update(final_state=[]),
+    lambda p: p["run"]["trace"][0].update(event_id=2),
+    lambda p: p["run"]["trace"][0].update(event_id=True),
+    lambda p: p["run"]["trace"][0].update(outcome={"error": "not a class", "message": "m"}),
+    lambda p: p["run"]["trace"][0].update(outcome={"error": "HostDenied", "message": ""}),
+    lambda p: p["run"]["trace"][0].update(outcome={"result": [], "extra": 1}),
+    lambda p: p["run"]["trace"][0].update(state=None),
+    lambda p: p["run"]["trace"][0]["request"].update(tool="t" * 201),
+]
+
+
 @pytest.mark.parametrize("mutate", [
     lambda p: p.update(schema_version=1),
     lambda p: p.update(schema_version=True),
@@ -543,11 +629,28 @@ def test_altered_evidence_with_a_fresh_checksum_is_not_reproduced(exported, muta
     lambda p: p["fixture"].update(intents=[[1]]),
     # the shape of the pre-implementation placeholder example, with a valid checksum
     lambda p: p.update(fixture={"journey_id": "journey-1", "participants": 3}),
+    *METADATA_MUTATIONS,
 ])
 def test_malformed_capsules_fail_cleanly(exported, mutate):
     rewrite(exported, mutate)
     with pytest.raises(ValueError):
         journey_capsule.replay(exported)
+
+
+def test_budget_exhausted_needs_a_trace_that_used_the_whole_budget(exported):
+    # Stricter than the contract, which cannot see the scenario's budget.
+    rewrite(exported, lambda p: p["run"].update(status="budget_exhausted"))
+    with pytest.raises(ValueError, match="budget"):
+        journey_capsule.replay(exported)
+
+
+def test_a_budget_exhausted_capsule_replays(tmp_path):
+    data = scenario_json(max_tool_calls=5)
+    recorded = run(FIXTURE, JourneyScenario.from_json(data), NAIVE)
+    path = tmp_path / "budget.json"
+    journey_capsule.export_capsule(path, FIXTURE, data, recorded)
+    assert recorded["status"] == "budget_exhausted"
+    assert journey_capsule.replay(path)["reproduced"]
 
 
 def test_a_stale_checksum_is_rejected(exported):

@@ -4,9 +4,11 @@ Separate from test_m02_journey.py because these tests need Pydantic; the
 journey engine itself stays stdlib only.
 """
 
+import copy
 import json
 
 import pytest
+from pydantic import ValidationError
 
 from ghostlab.contracts.world import (CapsuleV2, WorldInvariantFinding, WorldRealityDiff,
                                       WorldRunResult, WorldScenario, WorldToolInvocation)
@@ -14,6 +16,7 @@ from ghostlab.contracts.world_refund import capsule_digest
 from ghostlab.worlds import journey_capsule
 from ghostlab.worlds.journey import JourneyFixture, scenario_json
 from ghostlab.worlds.journey_run import experiment, findings
+from test_m02_journey import METADATA_MUTATIONS
 
 FIXTURE = JourneyFixture()
 
@@ -63,3 +66,19 @@ def test_exported_capsules_validate_with_the_same_checksum(result, tmp_path):
         assert CapsuleV2.model_validate(envelope).model_dump(mode="json") == envelope
         assert capsule_digest(envelope["payload"]) == envelope["sha256"]
         assert journey_capsule.capsule_digest(envelope["payload"]) == envelope["sha256"]
+
+
+@pytest.mark.parametrize("mutate", METADATA_MUTATIONS)
+def test_stdlib_replay_and_the_contract_reject_the_same_metadata(result, tmp_path, mutate):
+    """The dependency-free loader stays in step with ``capsule_v2`` for metadata."""
+    case = result["faults"]["sharing_revoked_while_queued"]
+    path = tmp_path / "c.json"
+    journey_capsule.export_capsule(path, FIXTURE, case["scenario"], case["faulted"])
+    payload = copy.deepcopy(json.loads(path.read_text(encoding="utf-8"))["payload"])
+    mutate(payload)
+    envelope = {"payload": payload, "sha256": capsule_digest(payload)}
+    path.write_text(json.dumps(envelope), encoding="utf-8")
+    with pytest.raises(ValueError):
+        journey_capsule.replay(path)
+    with pytest.raises(ValidationError):
+        CapsuleV2.model_validate(envelope)

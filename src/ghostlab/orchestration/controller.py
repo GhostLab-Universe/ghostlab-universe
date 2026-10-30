@@ -307,7 +307,7 @@ class CampaignController:
         repair = state.get("repair") or {}
         repaired = (state.get("approval") or {}).get("action", {}).get("experiment_id")
         if run == "repaired" and repair.get("run") and repaired == experiment_id:
-            return repair["run"], scenario, repair.get("execution")
+            return repair["run"], state["approval"]["action"]["scenario"], repair.get("execution")
         raise NotFound("No such recorded run")
 
     # -- graph ------------------------------------------------------------------------

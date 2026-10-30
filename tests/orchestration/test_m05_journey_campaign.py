@@ -586,6 +586,19 @@ def test_a_run_that_exhausts_its_tool_budget_is_recorded_as_such(tmp_path):
     assert run["status"] == "budget_exhausted" and len(run["trace"]) == 5
 
 
+def test_a_repair_gets_the_calls_its_adapter_needs_whatever_the_experiment_used(tmp_path):
+    lab, state = start(tmp_path, journey_reply(NAIVE, cap=12))  # enough for naive, not the repair
+    assert failed(state)
+    assert state["approval"]["action"]["scenario"]["max_tool_calls"] == 20
+    assert (state["approval"]["action"]["scenario"]["faults"]
+            == only_experiment(state)["proposal"]["scenario"]["faults"])
+    done = resume_after_approval(lab, state)
+    assert done["outcome"] == "repair_verified"
+    with lab.controller() as controller:
+        controller.export_capsule(CID, run="repaired")
+        assert controller.replay_capsule(CID, run="repaired")["reproduced"]
+
+
 def test_a_campaign_budget_that_cannot_cover_the_repair_stops_it(tmp_path):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
     with lab.controller() as controller:
@@ -911,8 +924,23 @@ def test_a_refund_checkpoint_from_before_pinning_still_resumes(tmp_path):
 
 # --- 11. a verified repair has to have run ---------------------------------------------------
 
+class CappedRepair(JourneyDriver):
+    """The repair's cap normally can't fall short, so these tests set one directly."""
+
+    def __init__(self, cap):
+        self.repair_cap = cap
+
+    def repair_action(self, experiment_id, proposal):
+        action = super().repair_action(experiment_id, proposal)
+        return {**action, "scenario": {**action["scenario"], "max_tool_calls": self.repair_cap}}
+
+
+def capped_repair(cap):
+    return {**DEFAULT_WORLDS, J: CappedRepair(cap)}
+
+
 def test_a_truncated_repair_is_incomplete_not_verified(tmp_path):
-    lab, state = start(tmp_path, journey_reply(cap=12))  # enough to detect, too few to repair
+    lab, state = start(tmp_path, journey_reply(cap=12), worlds=capped_repair(12))
     assert failed(state)[0]["evidence_event_ids"] == [12]
     done = resume_after_approval(lab, state)
     assert (done["status"], done["outcome"]) == ("budget_exhausted", "repair_incomplete")
@@ -926,7 +954,7 @@ def test_a_truncated_repair_is_incomplete_not_verified(tmp_path):
 
 
 def test_a_repair_with_exactly_enough_calls_is_verified(tmp_path):
-    lab, state = start(tmp_path, journey_reply(cap=17))
+    lab, state = start(tmp_path, journey_reply(cap=17), worlds=capped_repair(17))
     done = resume_after_approval(lab, state)
     assert done["outcome"] == "repair_verified" and done["repair"]["run_status"] == "completed"
 

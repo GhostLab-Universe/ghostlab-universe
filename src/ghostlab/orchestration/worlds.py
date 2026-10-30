@@ -26,7 +26,7 @@ from ghostlab.contracts.world import (WorldCampaignRecord, WorldCampaignSpec,
                                       WorldExperimentProposal, WorldInvariantFinding,
                                       WorldRealityDiff, WorldRunResult)
 from ghostlab.core import Fixture, Scenario, reality_diff
-from ghostlab.policy import (ExecutionMode, PolicyDenied, delegate, delegate_world,
+from ghostlab.policy import (ExecutionMode, PolicyDenied, ceiling_for, delegate, delegate_world,
                              execution_mode_for, root_scope, supervisor_scope, world_root_scope)
 from ghostlab.policy.authorization import deny
 from ghostlab.worlds import journey_capsule
@@ -265,9 +265,11 @@ class JourneyDriver:
         return True  # a lab failure in either adapter has an enforced repair to try
 
     def repair_action(self, experiment_id: str, proposal: dict) -> dict:
+        # The proposal's cap fits its own adapter, and the repair may need more calls.
+        scenario = {**proposal["scenario"], "max_tool_calls": ceiling_for("target").max_tool_calls}
         return {"kind": "apply_repair", "experiment_id": experiment_id,
                 "adapter": REPAIRED_JOURNEY_ADAPTER, "world_version": JOURNEY_WORLD,
-                "scenario": proposal["scenario"],
+                "scenario": scenario,
                 "execution": execution_mode_for("repair").as_json()}
 
     repair_summary = ("Run the checked-in version-checked adapter on the guarded boundary "

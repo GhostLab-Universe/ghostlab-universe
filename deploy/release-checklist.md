@@ -50,8 +50,12 @@ All of these must hold. Any failure blocks promotion.
 
 Not reachable today. It needs everything above, plus gates 1–4 of
 `docs/acceptance-gates.md` where they apply, and gate 5's live evidence.
-`customer_connected_use_allowed` in a release record stays false until
-`live_capability.status` is `passed` with a report attached.
+`customer_connected_use_allowed` in a release record is false for a local target whatever
+else the record says. A future target of kind `customer_connected` also needs an
+authenticated runtime, evidence for every security gate, and a real compatibility report
+that passes the controller's own check. A status or a path in the targets file proves
+nothing. `customer_connected_blockers` lists what's missing, and none of this changes
+offline promotion.
 
 ## After promotion
 

@@ -65,11 +65,13 @@ def _check_metadata(payload, recorded):
     outputs = payload["recorded_model_outputs"]
     if type(outputs) is not list or len(outputs) > 1_000:
         raise ValueError("Invalid recorded model outputs")
-    if recorded["adapter"] not in {"vulnerable", "repaired"}:
+    if type(recorded["adapter"]) is not str or recorded["adapter"] not in {"vulnerable",
+                                                                            "repaired"}:
         raise ValueError("Unknown recorded adapter")
     if recorded["adapter_version"] != ADAPTER_VERSION:
         raise ValueError("Unknown recorded adapter version")
-    if recorded["status"] not in {"completed", "budget_exhausted"}:
+    if type(recorded["status"]) is not str or recorded["status"] not in {"completed",
+                                                                          "budget_exhausted"}:
         raise ValueError("Invalid recorded run status")
 
 

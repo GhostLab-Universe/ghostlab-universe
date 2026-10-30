@@ -14,9 +14,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from ghostlab.contracts import MemoryQuery, MemoryRecord, Provenance, Ref, TrustedScope
+from ghostlab.contracts.world import WorldMemoryRecord
 
 from ..storage.interfaces import Conflict
-from ..storage.memory_store import SqliteMemoryStore
+from ..storage.memory_store import REFUND_WORLD, SqliteMemoryStore
 
 MAX_CONTENT_CHARS = 8_000
 _TRUSTED_SOURCES = {"verifier", "controller", "human"}
@@ -73,7 +74,8 @@ class MemoryPipeline:
         """Filter, normalize and store; returns the existing record on a duplicate."""
         content = normalize(observation.content)
         record_id = record_id_for(scope, observation, content)
-        record = MemoryRecord.model_validate({
+        model = MemoryRecord if observation.world_version == REFUND_WORLD else WorldMemoryRecord
+        record = model.model_validate({
             "schema_version": 1, "record_id": record_id, "project_id": scope.project_id,
             "campaign_id": observation.campaign_id, "world_version": observation.world_version,
             "kind": observation.kind, "content": content,

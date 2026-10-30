@@ -428,6 +428,34 @@ def test_a_process_lost_mid_run_is_stalled_after_restart_with_no_recorded_error(
         assert len(lab.script.requests) == 1
 
 
+def test_a_decided_approval_reads_as_stalled_after_a_restart(tmp_path):
+    crash = CrashOnce("consume")
+    lab = build_lab(tmp_path, Script(proposal()), on_node=crash)
+    with restart(lab) as client:
+        api = Api(client, lab)
+        paused = api.paused()
+        campaign_id = paused["record"]["campaign_id"]
+        assert api.decide(paused).status_code == 200
+        api.wait(campaign_id, "awaiting_approval")
+    with restart(lab) as client:
+        api = Api(client, lab)
+        view = api.view(campaign_id)
+        assert view["record"]["status"] == "awaiting_approval"
+        assert view["job"] == {"state": "stalled", "cancel_requested": False, "error": None}
+        assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 202
+        assert api.wait(campaign_id, "completed")["outcome"] == "repair_verified"
+        assert len(lab.engine.calls) == 3
+
+
+def test_a_pending_approval_stays_idle_after_a_restart(tmp_path):
+    lab = build_lab(tmp_path, Script(proposal()))
+    with restart(lab) as client:
+        paused = Api(client, lab).paused()
+    with restart(lab) as client:
+        view = Api(client, lab).view(paused["record"]["campaign_id"])
+        assert view["job"]["state"] == "idle"
+
+
 def test_shutdown_lets_a_short_run_reach_its_pause(tmp_path):
     lab = build_lab(tmp_path, Script(proposal()))
     with restart(lab) as client:

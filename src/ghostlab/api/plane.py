@@ -182,9 +182,16 @@ class ControlPlane:
             return JobStatus(state="active", cancel_requested=job.cancel.is_set(), error=None)
         error = self._failures.get(key)
         unfinished = state["paused"]
-        stalled = unfinished and (state["status"] != "awaiting_approval" or error is not None)
+        stalled = unfinished and (state["status"] != "awaiting_approval" or error is not None
+                                  or self._decided(project_id, state))
         return JobStatus(state="stalled" if stalled else "idle", cancel_requested=False,
                          error=error if unfinished else None)
+
+    def _decided(self, project_id: str, state: dict) -> bool:
+        """A decided approval with no worker: only a resume can move this campaign on."""
+        approval = state.get("approval")
+        return approval is not None and self.services.approval_store.get(
+            project_id, approval["approval_id"]).status != "pending"
 
     def _record(self, controller: CampaignController, campaign_id: str,
                 state: dict) -> WorldCampaignRecord:

@@ -1,0 +1,555 @@
+"""Control-plane operations: HTTP-free adapters over M05, M06 and M04.
+
+The controller stays authoritative. Status, tasks, events and evidence come from its
+checkpoint; ``CampaignController`` checks ownership on each call; ``ApprovalService``
+decides; artifacts go through ``FileArtifactStore.for_project``. This module keeps no
+database of its own, so a restart loses nothing but which threads were running.
+
+Request identity needs no table either. A campaign id is derived from the session and
+the ``Idempotency-Key``, and a decision id likewise, so the checkpoint and the approval
+record themselves answer "did this already happen?".
+"""
+
+import dataclasses
+import hashlib
+import json
+import tempfile
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import timedelta
+from pathlib import Path
+
+import httpx
+from fastapi.responses import Response
+
+from ghostlab.contracts import (ApprovalDecision, ApprovalRequest, ApprovalSubmission, CapsuleV1,
+                                ErrorInfo, ExperimentEvent, Provenance, Ref, TaskSpec)
+from ghostlab.contracts.primitives import parse_timestamp
+from ghostlab.contracts.world import (CapsuleV2, WorldCampaignRecord, WorldCampaignSpec,
+                                      WorldExperimentProposal, WorldInvariantFinding,
+                                      WorldRealityDiff, WorldRunResult)
+from ghostlab.contracts.world_packs import PACKS
+from ghostlab.contracts.world_refund import (REFUND, capsule_v2_to_v1, diff_to_world,
+                                             finding_to_world, proposal_to_world, run_to_world)
+from ghostlab.orchestration import CampaignController, Services, TrustedSession
+from ghostlab.orchestration.controller import (CampaignExists, CampaignSettingsChanged,
+                                               ledger_key)
+from ghostlab.orchestration.inference import LiveInferenceRefused
+from ghostlab.policy import (ApprovalDenied, ApproverAuthority, PolicyDenied, action_digest,
+                             authorize_capability, authorize_world, root_scope)
+from ghostlab.policy.authorization import deny
+from ghostlab.capsule import MAX_CAPSULE_BYTES
+from ghostlab.security.redaction import Redactor
+from ghostlab.storage.interfaces import Conflict
+
+from .errors import ApiError, describe, not_found
+from .jobs import Job, JobRegistry
+from .models import (ApprovalSummary, ApprovalView, CampaignView, CapsuleImport, CapsuleInfo,
+                     DecisionResult, ErrorResponse, EventPage, ExecutionRecord, ExperimentSummary,
+                     ExperimentView, GuardDenial, JobStatus, ReplayResult, RepairView, RunName,
+                     RunView, SessionInfo)
+from .sessions import ApiSession
+
+MAX_LISTED_ERRORS = 256
+
+
+@dataclass(frozen=True)
+class ApiConfig:
+    """Server-side wiring. Credentials stay inside ``services``; no response carries them."""
+
+    services: Services
+    sessions: object
+    approvers: ApproverAuthority
+    graph_db: Path
+    app_db: Path | None = None
+    bind_host: str = "127.0.0.1"
+    redactor: Redactor = dataclasses.field(default_factory=Redactor.from_env)
+    max_active_campaigns: int = 4
+    max_iterations: int = 2
+    approval_ttl: timedelta = timedelta(hours=1)
+    environ: dict | None = None
+
+
+def request_digest(*parts: str) -> str:
+    return hashlib.sha256("\x1f".join(parts).encode()).hexdigest()[:32]
+
+
+def _capsule_bytes(envelope: dict) -> bytes:
+    return (json.dumps(envelope, indent=2) + "\n").encode()
+
+
+class ControlPlane:
+    def __init__(self, config: ApiConfig, saver):
+        self.config, self.services, self.saver = config, config.services, saver
+        self.redactor = config.redactor
+        self.jobs = JobRegistry(limit=config.max_active_campaigns,
+                                on_failure=self._record_failure)
+        self._failures: dict[str, ErrorInfo] = {}
+
+    # -- plumbing ---------------------------------------------------------------------
+
+    def _controller(self, session: TrustedSession, *, services: Services | None = None,
+                    cancel=None) -> CampaignController:
+        return CampaignController(session, services or self.services, saver=self.saver,
+                                  max_iterations=self.config.max_iterations,
+                                  approval_ttl=self.config.approval_ttl, cancel=cancel)
+
+    def _record_failure(self, key: str, error: BaseException):
+        _, body, _ = describe(error if isinstance(error, Exception) else RuntimeError(),
+                              self.redactor)
+        self._failures[key] = body.error
+
+    def _launch(self, session: TrustedSession, campaign_id: str, kind: str,
+                call: Callable[[CampaignController], object], *, cancel: bool = False,
+                follow: bool = False) -> tuple[Job, bool]:
+        key = ledger_key(session.project_id, campaign_id)
+
+        def work(job: Job):
+            self._failures.pop(key, None)
+            hook = self.services.on_node
+
+            def on_node(name, state):
+                job.entered = True  # the checkpoint exists: this campaign can be read
+                job.settled.set()
+                hook(name, state)
+
+            services = dataclasses.replace(self.services, on_node=on_node)
+            call(self._controller(session, services=services, cancel=job.cancel))
+
+        return self.jobs.submit(key, kind, work, cancel=cancel, follow=follow)
+
+    def _text(self, value: str) -> str:
+        return self.redactor.text(value)
+
+    def _scope(self, session: ApiSession):
+        return root_scope(session.project_id, session.principal)
+
+    def _evidence(self, session: ApiSession):
+        """This project's artifacts, after the session's evidence capability."""
+        scope = self._scope(session)
+        if not (allowed := authorize_capability(scope, "read_evidence",
+                                                project_id=session.project_id)).allowed:
+            raise PolicyDenied(allowed)
+        return self.services.artifacts.for_project(scope)
+
+    # -- session ----------------------------------------------------------------------
+
+    def session_info(self, session: ApiSession) -> SessionInfo:
+        transport = self.services.runtime.transport
+        inference = ("fixture" if isinstance(transport, httpx.MockTransport)
+                     else "live" if self.services.live is not None else "disabled")
+        worlds = sorted(world for world in PACKS
+                        if world in self.services.worlds and authorize_world(world).allowed)
+        return SessionInfo(schema_version=1, principal=session.principal,
+                           project_id=session.project_id, auth_mode=session.auth_mode,
+                           production_authenticated=False,
+                           can_approve=self.config.approvers.may_approve(session.principal,
+                                                                         session.project_id),
+                           inference=inference, runnable_worlds=worlds)
+
+    # -- campaigns --------------------------------------------------------------------
+
+    def create_campaign(self, session: ApiSession, spec: WorldCampaignSpec,
+                        idempotency_key: str) -> tuple[CampaignView, bool]:
+        trusted = session.trusted
+        campaign_id = "c-" + request_digest(session.project_id, session.principal.principal_id,
+                                            idempotency_key)
+        replayed = self._existing(trusted, campaign_id) is not None
+        if not replayed:
+            job, started = self._launch(trusted, campaign_id, "start",
+                                        lambda controller: controller.start(campaign_id, spec))
+            try:
+                self.jobs.wait_for_first_step(job)  # the controller's gates run and raise here
+            except CampaignExists:
+                started = False
+            replayed = not started
+        state = self._controller(trusted).state(campaign_id)
+        if state["spec"] != spec.model_dump(mode="json"):
+            raise ApiError(409, "conflict", "This Idempotency-Key was used for a different spec",
+                           reason="idempotency_key_reused")
+        return self.campaign_view(session, campaign_id), replayed
+
+    def _existing(self, trusted: TrustedSession, campaign_id: str) -> dict | None:
+        try:
+            return self._controller(trusted).state(campaign_id)
+        except PolicyDenied:
+            return None
+
+    def _job_status(self, project_id: str, campaign_id: str, state: dict) -> JobStatus:
+        key = ledger_key(project_id, campaign_id)
+        job = self.jobs.get(key)
+        if job is not None:
+            return JobStatus(state="active", cancel_requested=job.cancel.is_set(), error=None)
+        error = self._failures.get(key)
+        unfinished = state["paused"]
+        stalled = unfinished and (state["status"] != "awaiting_approval" or error is not None)
+        return JobStatus(state="stalled" if stalled else "idle", cancel_requested=False,
+                         error=error if unfinished else None)
+
+    def _record(self, controller: CampaignController, campaign_id: str,
+                state: dict) -> WorldCampaignRecord:
+        # record() reports any unfinished graph as awaiting_approval, which is wrong
+        # while a worker runs; the checkpoint's own status is the authoritative one.
+        record = controller.record(campaign_id).model_dump(mode="json")
+        return WorldCampaignRecord.model_validate({**record, "status": state["status"]})
+
+    def _errors(self, state: dict) -> list[ErrorInfo]:
+        return [ErrorInfo.model_validate({**error, "message": self._text(error["message"])})
+                for error in state["errors"][-MAX_LISTED_ERRORS:]]
+
+    def _proposal_summary(self, experiment: dict, state: dict) -> ExperimentSummary:
+        proposal = experiment["proposal"]
+        return ExperimentSummary(experiment_id=experiment["experiment_id"],
+                                 iteration=experiment["iteration"],
+                                 hypothesis=self._text(proposal["hypothesis"]),
+                                 adapter_id=proposal.get("adapter_id") or proposal["adapter"],
+                                 runs=self._runs(state, experiment["experiment_id"]))
+
+    @staticmethod
+    def _repaired_experiment(state: dict) -> str | None:
+        repair = state.get("repair") or {}
+        return state["approval"]["action"]["experiment_id"] if repair.get("run") else None
+
+    def _runs(self, state: dict, experiment_id: str) -> list[RunName]:
+        repaired = self._repaired_experiment(state) == experiment_id
+        return ["baseline", "fork", *(["repaired"] if repaired else [])]
+
+    @staticmethod
+    def _repair(state: dict) -> RepairView | None:
+        repair = state.get("repair")
+        if not repair:
+            return None
+        execution = repair.get("execution")
+        denials = repair.get("guard_denials")
+        return RepairView(authorized=repair["authorized"], verified=repair["verified"],
+                          run=Ref.model_validate(repair["run"]) if repair.get("run") else None,
+                          run_status=repair.get("run_status"),
+                          safety_held=repair.get("safety_held"),
+                          task_complete=repair.get("task_complete"),
+                          task_outcome=repair.get("task_outcome"), adapter=repair.get("adapter"),
+                          execution=ExecutionRecord(**execution) if execution else None,
+                          guard_denials=(None if denials is None
+                                         else [GuardDenial(**denial) for denial in denials]),
+                          held_by=repair.get("held_by"),
+                          refunded_minor=repair.get("refunded_minor"))
+
+    def campaign_view(self, session: ApiSession, campaign_id: str) -> CampaignView:
+        controller = self._controller(session.trusted)
+        state = controller.state(campaign_id)  # the owner check: otherwise reads as not found
+        record = self._record(controller, campaign_id, state)
+        approval = state.get("approval")
+        return CampaignView(
+            record=record, outcome=state["outcome"],
+            job=self._job_status(session.project_id, campaign_id, state),
+            tasks=[TaskSpec.model_validate(task) for task in state["tasks"]],
+            approval=(ApprovalSummary(approval_id=approval["approval_id"],
+                                      action_digest=approval["action_digest"],
+                                      expires_at=approval["expires_at"]) if approval else None),
+            experiments=[self._proposal_summary(experiment, state)
+                         for experiment in state["experiments"].values()],
+            repair=self._repair(state), errors=self._errors(state),
+            event_count=len(state["events"]))
+
+    def events(self, session: ApiSession, campaign_id: str, after: int, limit: int) -> EventPage:
+        state = self._controller(session.trusted).state(campaign_id)
+        pending = [event for event in state["events"] if event["sequence"] > after]
+        page = [ExperimentEvent.model_validate({**event, "summary": self._text(event["summary"])})
+                for event in pending[:limit]]
+        return EventPage(campaign_id=campaign_id, events=page,
+                         next_after=page[-1].sequence if page else after,
+                         has_more=len(pending) > limit)
+
+    def cancel(self, session: ApiSession, campaign_id: str) -> CampaignView:
+        """Only an active or stalled campaign has anything to stop.
+
+        ``await_approval`` has no cancellation exit: resuming with the cancel flag set
+        would spend an approved action's single use before stopping (M05 request).
+        """
+        trusted = session.trusted
+        state = self._controller(trusted).state(campaign_id)
+        job = self.jobs.get(ledger_key(session.project_id, campaign_id))
+        waiting = state["status"] == "awaiting_approval"
+        if job is not None and not (waiting and job.kind == "start"):
+            job.cancel.set()
+        elif waiting:
+            raise ApiError(409, "conflict", "Nothing is running: this campaign is awaiting an "
+                           "approval decision. Rejecting the approval ends it.",
+                           reason="awaiting_approval")
+        elif not state["paused"]:
+            if state["status"] != "cancelled":
+                raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
+                               reason="campaign_finished")
+        else:  # stalled: continue from the checkpoint only to reach its cancellation guard
+            self.jobs.wait_for_first_step(self._launch(
+                trusted, campaign_id, "recover",
+                lambda controller: controller.recover(campaign_id), cancel=True)[0])
+        return self.campaign_view(session, campaign_id)
+
+    def resume(self, session: ApiSession, campaign_id: str) -> CampaignView:
+        trusted = session.trusted
+        state = self._controller(trusted).state(campaign_id)
+        if state["paused"]:
+            paused = state["status"] == "awaiting_approval"  # else: from a crash's checkpoint
+
+            def proceed(controller: CampaignController):
+                return (controller.resume if paused else controller.recover)(campaign_id)
+
+            job, started = self._launch(trusted, campaign_id, "resume", proceed, follow=True)
+            if started:
+                self.jobs.wait_for_first_step(job)
+        return self.campaign_view(session, campaign_id)
+
+    # -- evidence ---------------------------------------------------------------------
+
+    def _experiment(self, state: dict, experiment_id: str) -> dict:
+        experiment = state["experiments"].get(experiment_id)
+        if experiment is None:
+            raise not_found()
+        return experiment
+
+    def _require_run(self, state: dict, experiment_id: str, run: str) -> dict:
+        experiment = self._experiment(state, experiment_id)
+        if run not in self._runs(state, experiment_id):  # no repair, or another experiment's
+            raise not_found()
+        return experiment
+
+    @staticmethod
+    def _world_finding(state: dict, finding: dict) -> WorldInvariantFinding:
+        if state["spec"]["world_version"] == REFUND:
+            return finding_to_world(finding)
+        return WorldInvariantFinding.model_validate(finding)
+
+    def _findings(self, state: dict, run_ids: set[str]) -> list[WorldInvariantFinding]:
+        return [self._world_finding(state, finding) for finding in state["findings"]
+                if finding["run_id"] in run_ids]
+
+    @staticmethod
+    def _world_diff(state: dict, experiment: dict) -> WorldRealityDiff:
+        if state["spec"]["world_version"] == REFUND:
+            return diff_to_world(experiment["diff"])
+        return WorldRealityDiff.model_validate(experiment["diff"])
+
+    def _world_proposal(self, state: dict, experiment: dict) -> WorldExperimentProposal:
+        proposal = experiment["proposal"]
+        if state["spec"]["world_version"] == REFUND:
+            proposal = proposal_to_world(proposal).model_dump(mode="json")
+        return WorldExperimentProposal.model_validate(
+            {**proposal, "hypothesis": self._text(proposal["hypothesis"]),
+             "expected_signal": self._text(proposal["expected_signal"])})
+
+    @staticmethod
+    def _execution(value: dict | None) -> ExecutionRecord | None:
+        return ExecutionRecord(**value) if value else None
+
+    def experiment(self, session: ApiSession, campaign_id: str,
+                   experiment_id: str) -> ExperimentView:
+        state = self._controller(session.trusted).state(campaign_id)
+        experiment = self._experiment(state, experiment_id)
+        runs = self._runs(state, experiment_id)
+        return ExperimentView(
+            experiment_id=experiment_id, iteration=experiment["iteration"],
+            proposal=self._world_proposal(state, experiment),
+            execution=self._execution(experiment.get("execution")),
+            diff=self._world_diff(state, experiment),
+            findings=self._findings(state, {f"{experiment_id}-{run}" for run in runs}), runs=runs)
+
+    def diff(self, session: ApiSession, campaign_id: str,
+             experiment_id: str) -> WorldRealityDiff:
+        state = self._controller(session.trusted).state(campaign_id)
+        return self._world_diff(state, self._experiment(state, experiment_id))
+
+    def run(self, session: ApiSession, campaign_id: str, experiment_id: str,
+            run: RunName) -> RunView:
+        state = self._controller(session.trusted).state(campaign_id)
+        experiment = self._require_run(state, experiment_id, run)
+        repair = state.get("repair") or {}
+        ref = repair["run"] if run == "repaired" else experiment[run]
+        execution = repair.get("execution") if run == "repaired" else experiment.get("execution")
+        view = self._evidence(session)  # never the unscoped store
+        data = json.loads(view.read(view.ref(ref["id"])))
+        result = (run_to_world(data) if state["spec"]["world_version"] == REFUND
+                  else WorldRunResult.model_validate(data))
+        run_id = f"{experiment_id}-{run}"
+        return RunView(run_id=run_id, experiment_id=experiment_id, run=run,
+                       artifact=Ref.model_validate(ref), execution=self._execution(execution),
+                       result=result, findings=self._findings(state, {run_id}))
+
+    def artifact_response(self, session: ApiSession, artifact_id: str) -> Response:
+        view = self._evidence(session)
+        ref = view.ref(artifact_id)
+        return Response(view.read(ref), media_type=ref.media_type, headers={
+            "Content-Disposition": f'attachment; filename="{artifact_id}.json"',
+            "ETag": f'"{ref.sha256}"'})
+
+    # -- capsules ---------------------------------------------------------------------
+
+    @staticmethod
+    def _capsule_schema(world_version: str) -> int:
+        return 1 if world_version == REFUND else 2
+
+    def export_capsule(self, session: ApiSession, campaign_id: str, experiment_id: str,
+                       run: RunName) -> CapsuleInfo:
+        controller = self._controller(session.trusted)
+        state = controller.state(campaign_id)
+        self._require_run(state, experiment_id, run)
+        ref = controller.export_capsule(campaign_id, run=run, experiment_id=experiment_id)
+        world_version = state["spec"]["world_version"]
+        return CapsuleInfo(artifact=Ref.model_validate(ref), world_version=world_version,
+                           capsule_schema_version=self._capsule_schema(world_version))
+
+    @staticmethod
+    def _replay_result(world_version: str, result: dict) -> ReplayResult:
+        metrics = result.get("metrics", {"refunded_minor": result.get("total_refunded_minor", 0)})
+        return ReplayResult(world_version=world_version, reproduced=result["reproduced"],
+                            matches=result["matches"], checks=result["checks"], metrics=metrics,
+                            guarded=result.get("guarded"), model_calls=result["model_calls"])
+
+    def replay_campaign_capsule(self, session: ApiSession, campaign_id: str, experiment_id: str,
+                                run: RunName) -> ReplayResult:
+        controller = self._controller(session.trusted)
+        state = controller.state(campaign_id)
+        self._require_run(state, experiment_id, run)
+        return self._replay_result(state["spec"]["world_version"], self._replaying(
+            lambda: controller.replay_capsule(campaign_id, run=run, experiment_id=experiment_id)))
+
+    @staticmethod
+    def _replaying(call: Callable[[], dict]) -> dict:
+        try:
+            return call()
+        except (ValueError, TypeError, KeyError) as error:
+            raise ApiError(422, "validation_failed", "This capsule cannot be replayed",
+                           reason="capsule_invalid") from error
+
+    def _driver(self, world_version: str):
+        """The runnable gate, as for a campaign: a capsule can't name its way past it."""
+        if not (gate := authorize_world(world_version)).allowed:
+            raise PolicyDenied(gate)
+        driver = self.services.worlds.get(world_version)
+        if driver is None:
+            raise PolicyDenied(deny("world_not_runnable", "no checked-in implementation"))
+        return driver
+
+    def _replay_bytes(self, world_version: str, data: bytes) -> ReplayResult:
+        driver = self._driver(world_version)
+
+        def replay() -> dict:
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "capsule.json"
+                path.write_bytes(data)
+                return driver.replay(path)
+
+        return self._replay_result(world_version, self._replaying(replay))
+
+    def import_capsule(self, session: ApiSession, capsule: CapsuleV1 | CapsuleV2) -> CapsuleImport:
+        view = self._evidence(session)
+        world_version = capsule.payload.world_version
+        self._driver(world_version)
+        if isinstance(capsule, CapsuleV2) and world_version == REFUND:
+            capsule = capsule_v2_to_v1(capsule)  # refund replay reads v1
+        data = _capsule_bytes(capsule.model_dump(mode="json"))
+        if len(data) > MAX_CAPSULE_BYTES:
+            raise ApiError(413, "validation_failed", "Capsule too large", reason="too_large")
+        replay = self._replay_bytes(world_version, data)  # refused before anything is stored
+        name, now = f"imported-{capsule.sha256}", self.services.clock()
+        stamp = now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        provenance = Provenance(source_kind="human", source_ref=None, observed_at=stamp,
+                                trust="untrusted")
+        try:
+            ref = view.put(data, name=name, media_type="application/json",
+                           provenance=provenance, created_at=stamp)
+        except Conflict:
+            ref = view.ref(view.artifact_id(name))  # the same checksum: the same capsule
+        artifact = Ref(kind="artifact", id=ref.artifact_id, sha256=ref.sha256)
+        return CapsuleImport(capsule=CapsuleInfo(
+            artifact=artifact, world_version=world_version,
+            capsule_schema_version=self._capsule_schema(world_version)), replay=replay)
+
+    def replay_capsule(self, session: ApiSession, capsule_id: str) -> ReplayResult:
+        view = self._evidence(session)
+        try:
+            data = view.read(view.ref(capsule_id), max_bytes=MAX_CAPSULE_BYTES)
+            world_version = json.loads(data)["payload"]["world_version"]
+        except (ValueError, KeyError, TypeError) as error:
+            raise ApiError(422, "validation_failed", "This artifact is not a capsule",
+                           reason="not_a_capsule") from error
+        return self._replay_bytes(world_version, data)
+
+    # -- approvals --------------------------------------------------------------------
+
+    def _approval_action(self, request: ApprovalRequest, project_id: str) -> dict | None:
+        """The action the digest binds, shown only if the digest still proves it."""
+        owner = TrustedSession(request.scope.principal, project_id)
+        try:
+            state = self._controller(owner).state(request.campaign_id)
+        except PolicyDenied:
+            return None
+        action = (state.get("approval") or {}).get("action")
+        return action if action and action_digest(action) == request.action_digest else None
+
+    def approval(self, session: ApiSession, approval_id: str) -> ApprovalView:
+        store, project_id = self.services.approval_store, session.project_id
+        request = store.get(project_id, approval_id)  # scoped: another project's is not found
+        principal = session.principal
+        if (request.scope.principal.principal_id != principal.principal_id
+                and not self.config.approvers.may_approve(principal, project_id)):
+            raise not_found()
+        expired = (request.status == "pending"
+                   and self.services.clock() >= parse_timestamp(request.expires_at))
+        return ApprovalView(request=request, effective_status="expired" if expired
+                            else request.status,
+                            action=self._approval_action(request, project_id),
+                            decision=store.get_decision(project_id, approval_id))
+
+    def _resume_for_owner(self, request: ApprovalRequest,
+                          project_id: str) -> tuple[bool, ErrorResponse | None]:
+        """Continue the campaign as its owner; the resume itself authorizes nothing.
+
+        The controller only runs a repair past a stored, single-use approval. The owner
+        comes from the approval, which the controller recorded from its session.
+        """
+        owner = TrustedSession(request.scope.principal, project_id)
+        try:
+            job, started = self._launch(
+                owner, request.campaign_id, "resume",
+                lambda controller: controller.resume(request.campaign_id), follow=True)
+            if started:
+                self.jobs.wait_for_first_step(job)
+        except (ApiError, CampaignSettingsChanged, LiveInferenceRefused, PolicyDenied) as error:
+            return False, describe(error, self.redactor)[1]
+        return True, None
+
+    def decide(self, session: ApiSession, approval_id: str, submission: ApprovalSubmission,
+               idempotency_key: str) -> tuple[DecisionResult, bool]:
+        if submission.approval_id != approval_id:
+            raise ApiError(422, "validation_failed", "approval_id differs from the path",
+                           reason="invalid_request")
+        store, project_id = self.services.approval_store, session.project_id
+        decision_id = "d-" + request_digest(project_id, session.principal.principal_id,
+                                            approval_id, idempotency_key)
+        replayed = False
+        try:
+            decision = self.services.approvals.decide(
+                session_principal=session.principal, project_id=project_id,
+                submission=submission, decision_id=decision_id, now=self.services.clock())
+        except ApprovalDenied as denied:
+            if denied.code == "expired":  # the campaign can now end instead of staying paused
+                self._resume_for_owner(store.get(project_id, approval_id), project_id)
+                raise
+            if denied.code != "not_pending":
+                raise
+            decision = store.get_decision(project_id, approval_id)
+            if decision is None or decision.decision_id != decision_id:
+                raise
+            self._require_same_decision(decision, submission)
+            replayed = True
+        request = store.get(project_id, approval_id)
+        resumed, error = self._resume_for_owner(request, project_id)
+        return DecisionResult(decision=decision, approval=request, resumed=resumed,
+                              resume_error=error), replayed
+
+    @staticmethod
+    def _require_same_decision(recorded: ApprovalDecision, submission: ApprovalSubmission):
+        if (recorded.decision, recorded.action_digest, recorded.reason) != (
+                submission.decision, submission.action_digest, submission.reason):
+            raise ApiError(409, "conflict", "This Idempotency-Key was used for another decision",
+                           reason="idempotency_key_reused")

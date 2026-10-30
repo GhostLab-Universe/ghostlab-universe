@@ -1,0 +1,31 @@
+{
+  "allowed_tools": [],
+  "output_schema": {
+    "name": "world_experiment_proposal",
+    "version": 1
+  },
+  "preconditions": [
+    "The campaign targets service-relay/1",
+    "The campaign budget allows at least one more pair of runs"
+  ],
+  "prompt_version": "explorer-relay-prompt-1",
+  "purpose": "Propose one bounded service-relay/1 experiment likely to violate a relay invariant",
+  "schema_version": 1,
+  "skill_id": "propose-relay-scenario",
+  "steps": [
+    "Read the verified findings and questions in this context",
+    "Pick one or more faults service-relay/1 supports, each with its parameters as name and value pairs",
+    "stale_availability_competition: competing_jobs is how many competing jobs take a free resource, from 1 to 8, and the shop has 2; after_event null has them in place before the first call, and a number has them arrive after that event",
+    "lost_reservation_ack: it has no parameters; after_event null loses the acknowledgement of the first new reservation, and a number loses that of the first reservation after that event",
+    "takeover_with_queued_confirmation: it has no parameters; after_event null takes the first job over just after its leases are in place, and a number takes it over after that event",
+    "Pick one adapter of the pack: relay-local-success or relay-lease-checked",
+    "Set max_tool_calls to at most 20",
+    "State the hypothesis and the invariant you expect to fail: allocations_within_capacity, confirmations_backed_by_reservations or no_automation_after_takeover",
+    "Return exactly one world_experiment_proposal object and nothing else"
+  ],
+  "stop_conditions": [
+    "One world_experiment_proposal returned",
+    "No supported fault would test a new hypothesis"
+  ],
+  "version": 1
+}

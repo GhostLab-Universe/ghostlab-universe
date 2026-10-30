@@ -11,8 +11,8 @@ from ghostlab.skills.registry import ROOT
 
 from m03_fakes import scope
 
-INITIAL = {"propose-refund-scenario", "propose-journey-scenario", "interpret-evidence",
-           "suggest-idempotency-repair"}
+INITIAL = {"propose-refund-scenario", "propose-journey-scenario", "propose-relay-scenario",
+           "interpret-evidence", "suggest-idempotency-repair"}
 
 
 @pytest.fixture

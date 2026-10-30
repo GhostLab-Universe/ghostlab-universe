@@ -659,7 +659,14 @@ def relay_spec():
     return type(journey_spec()).model_validate({**data, "world_version": "service-relay/1"})
 
 
-def test_service_relay_is_refused_at_start(tmp_path):
+def only_specified(monkeypatch):
+    designed = PACKS["service-relay/1"].model_copy(update={"status": "specified"})
+    monkeypatch.setattr("ghostlab.contracts.world_packs.PACKS",
+                        {**PACKS, "service-relay/1": designed})
+
+
+def test_a_pack_that_is_only_specified_is_refused_at_start(tmp_path, monkeypatch):
+    only_specified(monkeypatch)
     lab = JourneyLab(tmp_path, Script())
     with lab.controller() as controller:
         with pytest.raises(PolicyDenied) as denied:
@@ -671,9 +678,7 @@ def test_service_relay_is_refused_at_start(tmp_path):
 
 def test_a_driver_cannot_make_an_unimplemented_pack_runnable(tmp_path, monkeypatch):
     # Even a registered driver is refused while the pack is only specified.
-    designed = PACKS["service-relay/1"].model_copy(update={"status": "specified"})
-    monkeypatch.setattr("ghostlab.contracts.world_packs.PACKS",
-                        {**PACKS, "service-relay/1": designed})
+    only_specified(monkeypatch)
     lab = JourneyLab(tmp_path, Script(), worlds={**DEFAULT_WORLDS,
                                                  "service-relay/1": JourneyDriver()})
     with lab.controller() as controller, pytest.raises(PolicyDenied) as denied:

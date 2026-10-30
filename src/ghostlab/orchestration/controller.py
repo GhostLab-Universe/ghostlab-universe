@@ -65,6 +65,7 @@ from ghostlab.security.redaction import Redactor
 from ghostlab.skills import SkillRegistry
 from ghostlab.storage.interfaces import ApprovalStore, Conflict, MemoryStore, NotFound
 from ghostlab.worlds.journey import JourneyFixture
+from ghostlab.worlds.relay import RelayFixture
 
 from . import tasks as board
 from .engine import execute_run
@@ -128,6 +129,7 @@ class Services:
     worlds: Mapping = DEFAULT_WORLDS  # explicit: world_version -> checked-in driver
     world_binding: WorldActorBinding = field(default_factory=lambda: StaticWorldBinding({}))
     journey_fixture: JourneyFixture = field(default_factory=JourneyFixture)
+    relay_fixture: RelayFixture = field(default_factory=RelayFixture)
 
 
 class CampaignState(TypedDict, total=False):

@@ -6,16 +6,18 @@ from .controller import (ORCHESTRATION_VERSION, CampaignController, CampaignExis
 from .engine import (PolicyEnforcedWorld, RunOutcome, ToolDenied, derive_findings, execute_run,
                      ledger_change_events)
 from .journey_engine import (EnforcedJourneyWorld, LabJourneyWorld, execute_journey_run)
+from .relay_engine import EnforcedRelayWorld, LabRelayWorld, execute_relay_run
 from .inference import (REQUIRED_COMPATIBILITY_CHECKS, ExplorerClient,
                         LiveInferenceAuthorization, LiveInferenceRefused,
                         require_inference_allowed)
-from .worlds import DEFAULT_WORLDS, JourneyDriver, RefundDriver, RunRequest
+from .worlds import DEFAULT_WORLDS, JourneyDriver, RefundDriver, RelayDriver, RunRequest
 
 __all__ = ["DEFAULT_WORLDS", "ORCHESTRATION_VERSION", "REQUIRED_COMPATIBILITY_CHECKS",
            "CampaignController", "CampaignExists", "CampaignSettingsChanged", "CampaignState",
-           "EnforcedJourneyWorld",
-           "ExplorerClient", "JourneyDriver", "LabJourneyWorld",
+           "EnforcedJourneyWorld", "EnforcedRelayWorld",
+           "ExplorerClient", "JourneyDriver", "LabJourneyWorld", "LabRelayWorld", "RelayDriver",
            "LiveInferenceAuthorization", "LiveInferenceRefused", "PolicyEnforcedWorld",
            "RefundDriver", "RunOutcome", "RunRequest", "Services", "ToolDenied",
-           "TrustedSession", "derive_findings", "execute_journey_run", "execute_run",
+           "TrustedSession", "derive_findings", "execute_journey_run", "execute_relay_run",
+           "execute_run",
            "ledger_change_events", "ledger_key", "require_inference_allowed"]

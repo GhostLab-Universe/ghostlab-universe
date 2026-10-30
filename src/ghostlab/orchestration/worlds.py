@@ -26,23 +26,33 @@ from ghostlab.contracts.world import (WorldCampaignRecord, WorldCampaignSpec,
                                       WorldExperimentProposal, WorldInvariantFinding,
                                       WorldRealityDiff, WorldRunResult)
 from ghostlab.core import Fixture, Scenario, reality_diff
+from ghostlab.execution.relay_guard import DENIALS as RELAY_DENIALS
 from ghostlab.policy import (ExecutionMode, PolicyDenied, delegate, delegate_world,
                              execution_mode_for, root_scope, supervisor_scope, world_root_scope)
 from ghostlab.policy.authorization import deny
-from ghostlab.worlds import journey_capsule
+from ghostlab.worlds import journey_capsule, relay_capsule
 from ghostlab.worlds.journey import WORLD_VERSION as JOURNEY_WORLD
 from ghostlab.worlds.journey import JourneyFixture, JourneyScenario, scenario_json
 from ghostlab.worlds.journey_run import ADAPTERS as JOURNEY_ADAPTERS
 from ghostlab.worlds.journey_run import findings as journey_findings
 from ghostlab.worlds.journey_run import reality_diff as journey_diff
 from ghostlab.worlds.journey_verify import task_outcome
+from ghostlab.worlds.relay import WORLD_VERSION as RELAY_WORLD
+from ghostlab.worlds.relay import RelayFixture, RelayScenario
+from ghostlab.worlds.relay import scenario_json as relay_scenario_json
+from ghostlab.worlds.relay_run import ADAPTERS as RELAY_ADAPTERS
+from ghostlab.worlds.relay_run import findings as relay_findings
+from ghostlab.worlds.relay_run import reality_diff as relay_diff
+from ghostlab.worlds.relay_verify import task_outcome as relay_task_outcome
 
 from .engine import RunOutcome, derive_findings
 from .journey_engine import execute_journey_run
+from .relay_engine import execute_relay_run
 
 REFUND_WORLD = "refund-world/1"
 TARGET_TOOLS = {"get_order", "issue_refund", "get_refund_status"}
 REPAIRED_JOURNEY_ADAPTER = "journey-version-checked"
+REPAIRED_RELAY_ADAPTER = "relay-lease-checked"
 
 
 @dataclass(frozen=True)
@@ -90,6 +100,9 @@ class RefundDriver:
         return [RunRequest(Scenario(timeout_after_commit=False, max_tool_calls=cap), adapter,
                            cap, None),
                 RunRequest(Scenario(**proposal["scenario"]), adapter, cap, None)]
+
+    def baseline_scenario(self, proposal: dict) -> dict:
+        return {**proposal["scenario"], "timeout_after_commit": False}
 
     def execute(self, services, fixture: Fixture, request: RunRequest, *, scope: TrustedScope,
                 project_id: str, should_stop: Callable[[], str | None]) -> RunOutcome:
@@ -210,6 +223,9 @@ class JourneyDriver:
         return [RunRequest(clean, adapter, cap, mode),
                 RunRequest(JourneyScenario.from_json(proposal["scenario"]), adapter, cap, mode)]
 
+    def baseline_scenario(self, proposal: dict) -> dict:
+        return scenario_json(max_tool_calls=proposal["scenario"]["max_tool_calls"])
+
     def execute(self, services, fixture: JourneyFixture, request: RunRequest, *,
                 scope: TrustedScope, project_id: str,
                 should_stop: Callable[[], str | None]) -> RunOutcome:
@@ -297,15 +313,159 @@ class JourneyDriver:
         return journey_capsule.replay(path)
 
 
+def _relay_denials(run: dict) -> list[dict]:
+    """Guard refusals in the trace. A lost acknowledgement is a fault, not a refusal."""
+    return [{"event_id": event["event_id"], "error": event["outcome"]["error"],
+             "job_id": event["request"]["arguments"].get("job_id")}
+            for event in run["trace"] if event["outcome"].get("error") in RELAY_DENIALS]
+
+
+class RelayDriver:
+    world_version = RELAY_WORLD
+    skill_id = "propose-relay-scenario"
+    spec_model = WorldCampaignSpec
+    record_model = WorldCampaignRecord
+    proposal_model = WorldExperimentProposal
+
+    def current_fixture(self, services) -> RelayFixture:
+        return services.relay_fixture
+
+    def snapshot(self, fixture: RelayFixture) -> dict:
+        # The guard is an execution setting, chosen per run, not part of the world.
+        return replace(fixture, guarded=False).to_json()
+
+    def restore(self, snapshot: dict) -> RelayFixture:
+        return RelayFixture.from_json(snapshot)
+
+    def supervisor(self, project_id: str, principal: Principal) -> TrustedScope:
+        return supervisor_scope(project_id, principal)
+
+    def target(self, project_id: str, principal: Principal) -> TrustedScope:
+        root = world_root_scope(project_id, principal, RELAY_WORLD)
+        return delegate_world(root, "target", root.allowed_tools)
+
+    def cap(self, proposal: dict) -> int:
+        return proposal["scenario"]["max_tool_calls"]
+
+    def problems(self, proposal: dict) -> list[str]:
+        if proposal["world_version"] != RELAY_WORLD:
+            return [f"proposal is for {proposal['world_version']}, not this campaign's world"]
+        if proposal["adapter_id"] not in RELAY_ADAPTERS:
+            return [f"{proposal['adapter_id']} has no checked-in implementation"]
+        try:
+            RelayScenario.from_json(proposal["scenario"])
+        except (ValueError, TypeError) as error:
+            return [f"scenario can't run in this world: {error}"]
+        return []
+
+    def explored(self, proposal: dict) -> str:
+        faults = sorted(f"{f['fault_id']}@{f['after_event']}"
+                        for f in proposal["scenario"]["faults"])
+        return f"adapter={proposal['adapter_id']} faults={faults}"
+
+    def experiment_runs(self, proposal: dict) -> list[RunRequest]:
+        """Baseline and fork share one mode, so a difference comes from the fault alone."""
+        cap, adapter = self.cap(proposal), proposal["adapter_id"]
+        mode = execution_mode_for("experiment")
+        clean = RelayScenario.from_json(relay_scenario_json(max_tool_calls=cap))
+        return [RunRequest(clean, adapter, cap, mode),
+                RunRequest(RelayScenario.from_json(proposal["scenario"]), adapter, cap, mode)]
+
+    def baseline_scenario(self, proposal: dict) -> dict:
+        return relay_scenario_json(max_tool_calls=proposal["scenario"]["max_tool_calls"])
+
+    def execute(self, services, fixture: RelayFixture, request: RunRequest, *,
+                scope: TrustedScope, project_id: str,
+                should_stop: Callable[[], str | None]) -> RunOutcome:
+        return execute_relay_run(fixture, request.scenario, request.adapter, request.mode,
+                                 scope=scope, project_id=project_id,
+                                 binding=services.world_binding, should_stop=should_stop)
+
+    def validate_run(self, run: dict) -> None:
+        WorldRunResult.model_validate(run)
+
+    def diff(self, fixture: RelayFixture, baseline: dict, fork: dict) -> dict:
+        data = relay_diff(fixture, baseline, fork)
+        return WorldRealityDiff.model_validate(data).model_dump(mode="json")
+
+    def run_summary(self, diff: dict) -> str:
+        first = diff["first_divergence"]["event_id"] if diff["first_divergence"] else None
+        return (f"Allocation violations {diff['baseline_metrics']['allocation_violations']} vs "
+                f"{diff['faulted_metrics']['allocation_violations']}; "
+                f"violated {diff['violated_invariants'] or 'none'}; first divergence {first}")
+
+    def findings(self, fixture: RelayFixture, run_id: str, run: dict, recorded_at: str,
+                 execution: dict | None) -> list[dict]:
+        fixture = replace(fixture, guarded=bool(execution["guarded"]))
+        return [WorldInvariantFinding.model_validate(finding).model_dump(mode="json")
+                for finding in relay_findings(fixture, run, run_id, recorded_at)]
+
+    def finding_text(self, finding: dict) -> str:
+        return (f"{finding['invariant']} {finding['verdict']} in run {finding['run_id']}: "
+                f"observed {finding['observed_value']} vs limit {finding['limit_value']} "
+                f"{finding['unit']}")
+
+    def repair_candidate(self, proposal: dict) -> bool:
+        return True  # a lab failure in either adapter has an enforced repair to try
+
+    def repair_action(self, experiment_id: str, proposal: dict) -> dict:
+        return {"kind": "apply_repair", "experiment_id": experiment_id,
+                "adapter": REPAIRED_RELAY_ADAPTER, "world_version": RELAY_WORLD,
+                "scenario": proposal["scenario"],
+                "execution": execution_mode_for("repair").as_json()}
+
+    repair_summary = ("Run the checked-in lease-checked adapter on the guarded boundary "
+                      "under the same faults")
+
+    def repair_request(self, action: dict) -> RunRequest:
+        mode = execution_mode_for("repair")  # from policy; the action only has to agree
+        if action.get("execution") != mode.as_json():
+            raise PolicyDenied(deny("capability_denied", "repair must run on the guarded boundary"))
+        scenario = RelayScenario.from_json(action["scenario"])
+        return RunRequest(scenario, action["adapter"], scenario.max_tool_calls, mode)
+
+    def assess_repair(self, fixture: RelayFixture, run: dict, findings: list[dict],
+                      execution: dict | None) -> dict:
+        """Safety and task completion stay separate; a repair needs a finished run.
+
+        Every job needs its own explanation. It is confirmed, or the evidence shows why
+        it could not be: the owner took it over, other jobs held what it needed, or the
+        guard refused a call for that job. Otherwise the run never tested the repair, and
+        passing checks would mean nothing. A denial for one job excuses no other job.
+        """
+        fixture = replace(fixture, guarded=bool(execution["guarded"]))
+        task = relay_task_outcome(fixture, run["final_state"])
+        refused = {denial["job_id"] for denial in _relay_denials(run)}
+        unexplained = [job_id for job_id, outcome in task["jobs"].items()
+                       if outcome == "unresolved" and job_id not in refused]
+        finished, safe = run["status"] == "completed", _safety_held(findings)
+        return {"run_status": run["status"], "safety_held": safe,
+                "task_complete": task["all_jobs_confirmed"], "task_outcome": task,
+                "verified": finished and safe and not unexplained}
+
+    def repair_result(self, run: dict, action: dict, verified: bool) -> dict:
+        """Tells an adapter improvement from boundary enforcement in the evidence."""
+        denials = _relay_denials(run)
+        held_by = None if not verified else "guarded_boundary" if denials else "adapter"
+        return {"adapter": action["adapter"], "execution": action["execution"],
+                "guard_denials": denials, "held_by": held_by}
+
+    def capsule(self, fixture: RelayFixture, scenario: dict, run: dict,
+                execution: dict | None, path: Path) -> None:
+        relay_capsule.export_capsule(path, replace(fixture, guarded=bool(execution["guarded"])),
+                                     scenario, run)
+
+    def replay(self, path: Path) -> dict:
+        return relay_capsule.replay(path)
+
+
 DEFAULT_WORLDS: Mapping[str, object] = MappingProxyType({
-    REFUND_WORLD: RefundDriver(), JOURNEY_WORLD: JourneyDriver()})
+    REFUND_WORLD: RefundDriver(), JOURNEY_WORLD: JourneyDriver(), RELAY_WORLD: RelayDriver()})
 
 
 def baseline_scenario(driver, proposal: dict) -> dict:
     """The scenario a baseline run recorded, for its capsule."""
-    if driver.world_version == REFUND_WORLD:
-        return {**proposal["scenario"], "timeout_after_commit": False}
-    return scenario_json(max_tool_calls=proposal["scenario"]["max_tool_calls"])
+    return driver.baseline_scenario(proposal)
 
 
 def canonical(value) -> bytes:

@@ -105,7 +105,8 @@ class CompiledContext:
 
 # A world-bound skill compiles only for its own world, so memory can't cross silently.
 SKILL_WORLDS = {"propose-refund-scenario": "refund-world/1",
-                "propose-journey-scenario": "group-journey/1"}
+                "propose-journey-scenario": "group-journey/1",
+                "propose-relay-scenario": "service-relay/1"}
 
 
 class ContextCompiler:

@@ -19,7 +19,7 @@ import {
 import { formatMinor, prettyJson } from "../logic/format.ts";
 import { campaignHref } from "../logic/routes.ts";
 import { differences } from "../logic/stateDiff.ts";
-import { JsonBlock, Mono, Notice, Section, Tag } from "../ui/components.tsx";
+import { FailureNotice, JsonBlock, Mono, Notice, Section, Tag } from "../ui/components.tsx";
 import { EvidenceLinks } from "./EvidencePage.tsx";
 import { ExperimentGate, ExperimentPicker, useExperiment, useRun } from "./experimentData.tsx";
 
@@ -40,6 +40,8 @@ export function DiffPage({
       {(experiment, origins) => (
         <>
           <ExperimentPicker view={view} current={experiment.experiment_id} target="diff" />
+          {baseline.status === "failed" ? <FailureNotice failure={baseline.failure} /> : null}
+          {fork.status === "failed" ? <FailureNotice failure={fork.failure} /> : null}
           <DiffPanel
             campaignId={view.record.campaign_id}
             experiment={experiment}
@@ -78,6 +80,7 @@ export function DiffPanel({
   const violated = violatedInvariants(diff, findings);
   const link = (eventId: number) => campaignHref(campaignId, { view: "evidence", experimentId, run: "fork", eventId });
   const rows = alignTraces(baseline?.result ?? null, fork?.result ?? null);
+  const runsMissing = baseline === null || fork === null;
   const baselineLedger = refundLedger(baseline?.result ?? null);
   const forkLedger = refundLedger(fork?.result ?? null);
 
@@ -189,8 +192,8 @@ export function DiffPanel({
       )}
 
       <Section title="Every event, side by side" origins={runOrigins}>
-        {rows.length === 0 ? (
-          <Notice state="loading" title="Loading the recorded runs" />
+        {runsMissing ? (
+          <Notice state="loading" title="Waiting for both recorded runs" />
         ) : (
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Baseline and fork events">
             <table className="aligned">
@@ -288,7 +291,7 @@ function LedgerColumn({ side, title, ledger }: { side: string; title: string; le
     <article className="side" data-side={side}>
       <h3>{title}</h3>
       {ledger === null ? (
-        <p className="muted">Loading the recorded run</p>
+        <p className="muted">Waiting for this recorded run</p>
       ) : (
         <>
           <p>

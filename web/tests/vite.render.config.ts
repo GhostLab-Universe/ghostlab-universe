@@ -6,6 +6,7 @@ const path = (relative: string) => fileURLToPath(new URL(relative, import.meta.u
 /**
  * Bundles the TSX render tests for Node, because Node strips TypeScript but not JSX.
  * Output goes to M08_RENDER_OUT, or node_modules/.m08-render, and is run by node:test.
+ * M08_RENDER_ENTRY picks the test file, relative to web/tests.
  */
 export default defineConfig({
   root: path("../src"),
@@ -13,7 +14,7 @@ export default defineConfig({
   logLevel: "warn",
   oxc: { jsx: { runtime: "automatic" } },
   build: {
-    ssr: path("./render/panels.test.tsx"),
+    ssr: path(`./${process.env.M08_RENDER_ENTRY ?? "render/panels.test.tsx"}`),
     outDir: process.env.M08_RENDER_OUT ?? path("../node_modules/.m08-render"),
     emptyOutDir: true,
     minify: false,

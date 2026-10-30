@@ -12,6 +12,7 @@ function run(label, command, args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
+run("generated API types", process.execPath, ["src/api/generate.mjs", "--check"]);
 run("unit", process.execPath, ["--test", "tests/unit/*.test.ts"]);
 run("render bundle", process.execPath, [
   "node_modules/vite/bin/vite.js",

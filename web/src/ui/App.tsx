@@ -3,6 +3,7 @@ import type { CampaignView, SessionInfo } from "../api/api.generated.ts";
 import type { FixtureHarness } from "../data/fixtureSource.ts";
 import type { DataSource } from "../data/source.ts";
 import type { LiveState } from "../logic/live.ts";
+import { failureState } from "../logic/failure.ts";
 import { campaignHref, VIEWS, type Route } from "../logic/routes.ts";
 import { campaignStatus } from "../logic/status.ts";
 import { HomePage } from "../views/HomePage.tsx";
@@ -14,11 +15,20 @@ import { EvidencePage } from "../views/EvidencePage.tsx";
 import { FailureNotice, Loading, Mono, Notice, OriginNote, Tag } from "./components.tsx";
 import { useCampaignLive, useResource, useRoute } from "./hooks.ts";
 
+const SESSION_RETRY_MS = 5000;
+
 export function App({ source, harness }: { source: DataSource; harness: FixtureHarness | null }) {
   const route = useRoute();
-  const { resource: session } = useResource("session", 0, () => source.getSession());
+  const { resource: session, reload: reloadSession } = useResource("session", 0, () => source.getSession());
   const main = useRef<HTMLElement | null>(null);
   const sessionInfo = session.status === "ready" ? session.data : null;
+  const unreachable = session.status === "failed" && failureState(session.failure) === "reconnecting";
+
+  useEffect(() => {
+    if (!unreachable) return;
+    const timer = setTimeout(reloadSession, SESSION_RETRY_MS);
+    return () => clearTimeout(timer);
+  });
 
   return (
     <>
@@ -69,8 +79,11 @@ function SessionFacts({ session }: { session: SessionInfo | null }) {
   if (session === null) return null;
   return (
     <p className="session">
-      <Mono>{session.principal.principal_id}</Mono> in <Mono>{session.project_id}</Mono>
-      <span className="muted"> {session.auth_mode}, not production authentication</span>
+      <Mono>{session.principal.principal_id}</Mono> in <Mono>{session.project_id}</Mono>{" "}
+      <span className="muted">
+        <Mono>auth_mode</Mono> {session.auth_mode}, <Mono>production_authenticated</Mono>{" "}
+        {String(session.production_authenticated)}, <Mono>inference</Mono> {session.inference}
+      </span>
     </p>
   );
 }

@@ -17,7 +17,10 @@ declare module "node:assert/strict" {
     deepEqual(actual: unknown, expected: unknown, message?: string): void;
     match(value: string, pattern: RegExp, message?: string): void;
     doesNotMatch(value: string, pattern: RegExp, message?: string): void;
+    fail(message?: string): never;
   }
   const assert: Assert;
   export default assert;
 }
+
+declare const process: { env: Record<string, string | undefined> };

@@ -3,6 +3,7 @@ import type { BudgetLimits, BudgetUsage, CampaignView, RepairView } from "../api
 import type { DataSource, Failure, Origin, Result } from "../data/source.ts";
 import { formatCount, formatTimestamp } from "../logic/format.ts";
 import { presentRepair } from "../logic/repair.ts";
+import { campaignHref } from "../logic/routes.ts";
 import { taskStatus } from "../logic/status.ts";
 import { orderTasks } from "../logic/timeline.ts";
 import { Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
@@ -70,7 +71,7 @@ function AwaitingApproval({ view }: { view: CampaignView }) {
       <p>The campaign is paused until a person decides on the repair.</p>
       {view.approval === null ? null : (
         <p>
-          <a href={`#/campaign/${encodeURIComponent(view.record.campaign_id)}/approval`}>Review the approval</a>
+          <a href={campaignHref(view.record.campaign_id, { view: "approval" })}>Review the approval</a>
         </p>
       )}
     </Notice>

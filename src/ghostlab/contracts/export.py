@@ -74,7 +74,7 @@ def contract_schemas() -> dict[str, str]:
 
 
 def core_examples() -> dict[str, str]:
-    """Examples produced by executing the synthetic refund core, not hand-written."""
+    """Examples produced by executing the synthetic worlds, not hand-written."""
     fixture = Fixture()
     result = experiment(fixture)
     files = {
@@ -108,7 +108,32 @@ def core_examples() -> dict[str, str]:
         "examples/contracts/core/capsule_v2.refund_failure.json":
             dump(world_refund.capsule_v1_to_v2(capsule)),
     })
+    files.update(_journey_examples())
     return files
+
+
+def _journey_examples() -> dict[str, str]:
+    """``group-journey/1`` evidence from executing M02's engine: the naive adapter
+    delivers a message queued before its recipient's sharing was revoked."""
+    from ..worlds import journey_capsule
+    from ..worlds.journey import JourneyFixture, JourneyScenario, scenario_json
+    from ..worlds.journey_run import fault_scenarios, findings, reality_diff, run
+    fixture = JourneyFixture()
+    data = fault_scenarios(fixture)["sharing_revoked_while_queued"]
+    baseline = run(fixture, JourneyScenario.from_json(scenario_json()), "journey-naive")
+    faulted = run(fixture, JourneyScenario.from_json(data), "journey-naive")
+    [finding] = [f for f in findings(fixture, faulted, "journey-run-1", "2026-10-29T10:00:05Z")
+                 if f["invariant"] == "delivered_messages_permitted"]
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "capsule.json"
+        journey_capsule.export_capsule(path, fixture, data, faulted)
+        capsule = json.loads(path.read_text(encoding="utf-8"))
+    core = "examples/contracts/core"
+    return {f"{core}/world_run_result.journey_fixture.json": _json(faulted),
+            f"{core}/world_reality_diff.journey_fixture.json":
+                _json(reality_diff(fixture, baseline, faulted)),
+            f"{core}/world_invariant_finding.journey_revoked_delivery.json": _json(finding),
+            f"{core}/capsule_v2.journey_fixture.json": _json(capsule)}
 
 
 def example_files(root: Path, generated: dict[str, str]) -> dict[str, str]:

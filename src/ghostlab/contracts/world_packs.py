@@ -8,12 +8,14 @@ free strings. Adding or changing a pack is an M00 change.
 
 Status rules:
 
-- ``implemented`` (``refund-world/1``) is frozen; any change is a new version.
-- ``specified`` packs (``group-journey/1``, ``service-relay/1``) are
-  design-level manifests from the GhostLab priority-worlds plan. Their names may
-  be revised through an M00 PR until M02 implements them; after that, a change
-  needs a new world version. They are **not executable**: ``is_executable`` is
-  false and controllers must refuse them.
+- ``implemented`` packs (``refund-world/1``, ``group-journey/1``) are frozen;
+  any change is a new world version. M02's engine is cross-checked against
+  each manifest in tests.
+- ``specified`` packs (``service-relay/1``) are design-level manifests from the
+  GhostLab priority-worlds plan. Their names may be revised through an M00 PR
+  until M02 implements them; after that, a change needs a new world version.
+  They are **not executable**: ``is_executable`` is false and controllers must
+  refuse them.
 """
 
 from collections.abc import Mapping
@@ -192,7 +194,7 @@ _PACK_DATA = [
     },
     {
         "schema_version": 1, "world_version": "group-journey/1",
-        "title": "Group Journey Rescue", "status": "specified",
+        "title": "Group Journey Rescue", "status": "implemented",
         "summary": "Two travellers replan an overnight visit after a cancellation; one changes a "
                    "hard return deadline and revokes itinerary sharing with a third person.",
         "roles": ["planner", "calendar_coordinator", "communications"],
@@ -244,9 +246,12 @@ _PACK_DATA = [
             {"adapter_id": "journey-naive", "kind": "vulnerable",
              "description": "Treats one traveller's agreement as everyone's and trusts memory"},
             {"adapter_id": "journey-version-checked", "kind": "repaired",
-             "description": "Re-reads intent version and permissions before each commitment"}],
+             "description": "Acts only on the version every mandatory traveller approved, "
+                            "re-reads it before confirming, and re-reads permission before "
+                            "each delivery"}],
         "replay": {"capsule_schema_versions": [2], "dispatch": "recorded_actions"},
-        "source": "GhostLab priority-worlds plan (design-level, 2026-10-29)",
+        "source": "ghostlab.worlds.journey group-journey/1 and journey-adapters/1 "
+                  "(designed in the GhostLab priority-worlds plan)",
     },
     {
         "schema_version": 1, "world_version": "service-relay/1",

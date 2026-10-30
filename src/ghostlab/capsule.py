@@ -4,11 +4,13 @@ import hashlib
 import json
 from pathlib import Path
 
-from .core import Fixture, RefundWorld, Scenario, ToolError, WORLD_VERSION, verify
+from .core import (ADAPTER_VERSION, Fixture, RefundWorld, Scenario, ToolError, WORLD_VERSION,
+                   verify)
 
 
 SCHEMA_VERSION = 1
 MAX_CAPSULE_BYTES = 2_000_000
+SOURCE = "trusted-synthetic-refund-adapter"
 
 
 def _digest(payload):
@@ -22,7 +24,7 @@ def export_capsule(path: Path, fixture: Fixture, scenario: Scenario, recorded_ru
         "schema_version": SCHEMA_VERSION, "world_version": WORLD_VERSION,
         "fixture": asdict(fixture), "scenario": asdict(scenario),
         "actor_id": recorded_run["actor_id"],
-        "source": "trusted-synthetic-refund-adapter", "seed": 0,
+        "source": SOURCE, "seed": 0,
         "recorded_model_outputs": [], "run": recorded_run,
     }
     envelope = {"payload": payload, "sha256": _digest(payload)}
@@ -53,6 +55,26 @@ def load_capsule(path: Path):
     return payload
 
 
+def _check_metadata(payload, recorded):
+    """Fields replay cannot reproduce, held to the ``capsule_v1`` contract's values."""
+    if payload["source"] != SOURCE:
+        raise ValueError("Invalid capsule source")
+    seed = payload["seed"]
+    if type(seed) is not int or not 0 <= seed <= 2**53 - 1:
+        raise ValueError("Invalid capsule seed")
+    outputs = payload["recorded_model_outputs"]
+    if type(outputs) is not list or len(outputs) > 1_000:
+        raise ValueError("Invalid recorded model outputs")
+    if type(recorded["adapter"]) is not str or recorded["adapter"] not in {"vulnerable",
+                                                                            "repaired"}:
+        raise ValueError("Unknown recorded adapter")
+    if recorded["adapter_version"] != ADAPTER_VERSION:
+        raise ValueError("Unknown recorded adapter version")
+    if type(recorded["status"]) is not str or recorded["status"] not in {"completed",
+                                                                          "budget_exhausted"}:
+        raise ValueError("Invalid recorded run status")
+
+
 def replay(path: Path):
     """Re-execute recorded tool requests; never import code or call a model.
 
@@ -76,6 +98,7 @@ def replay(path: Path):
         raise ValueError("Invalid trace length")
     if recorded["actor_id"] != payload["actor_id"]:
         raise ValueError("Recorded principal does not match capsule")
+    _check_metadata(payload, recorded)
     world = RefundWorld(fixture, scenario, actor_id=payload["actor_id"])
     for event in trace:
         if type(event) is not dict or set(event) != {"event_id", "request", "outcome", "state"}:

@@ -5,22 +5,12 @@
   "scenario": {
     "faults": [
       {
-        "after_event": 4,
+        "after_event": null,
         "fault_id": "sharing_revoked_while_queued",
         "parameters": [
           {
             "name": "recipient_id",
             "value": "participant-c"
-          }
-        ]
-      },
-      {
-        "after_event": null,
-        "fault_id": "stale_preference_memory",
-        "parameters": [
-          {
-            "name": "preference_version",
-            "value": 1
           }
         ]
       }

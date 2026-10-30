@@ -154,7 +154,7 @@ def test_invalid_proposal_never_executes(tmp_path):
     with lab.controller(max_iterations=1) as controller:
         state = controller.start(CID, spec())
     assert lab.engine.calls == []
-    assert state["status"] == "completed" and state["outcome"] == "no_failure_found"
+    assert state["status"] == "failed" and state["outcome"] == "no_experiment_ran"
     assert any(e["code"] == "validation_failed" for e in state["errors"])
     statuses = {t["kind"]: t["status"] for t in state["tasks"]}
     assert statuses["validate_proposal"] == "failed" and statuses["execute_run"] == "skipped"
@@ -194,7 +194,7 @@ def test_tool_budget_is_reserved_before_runs(tmp_path):
     lab = Lab(tmp_path, Script(proposal()))
     with lab.controller(max_iterations=1) as controller:
         state = controller.start(CID, spec(max_tool_calls=30))  # two runs at cap 20 = 40
-    assert lab.engine.calls == [] and state["outcome"] == "no_failure_found"
+    assert lab.engine.calls == [] and state["outcome"] == "no_experiment_ran"
     assert "remaining tool budget" in state["errors"][0]["message"]
 
 

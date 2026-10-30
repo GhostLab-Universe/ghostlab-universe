@@ -45,13 +45,13 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from ghostlab.budgets import BudgetAccountant, BudgetExhausted, utc_timestamp
 from ghostlab.context import ContextCompiler, ContextError
 from ghostlab.contracts import (BudgetLimits, CampaignRecord, CampaignSpec, ExperimentEvent,
                                 Principal, Provenance, Ref)
-from ghostlab.contracts.primitives import parse_timestamp
+from ghostlab.contracts.primitives import Identifier, parse_timestamp
 from ghostlab.core import Fixture
 from ghostlab.memory import MemoryPipeline
 from ghostlab.memory.pipeline import Observation as MemoryObservation
@@ -157,6 +157,9 @@ class CampaignState(TypedDict, total=False):
     fixture: dict           # world fixture pinned at start
     fixture_sha256: str     # bound into any approved action
     task_baselines: dict    # ledger totals when each model task was planned
+    rejected: list          # fixed controller sentences on why the last proposal failed
+    repair_at: str          # when the repair was authorized; its findings keep this time
+    finished_at: str        # when the campaign stopped
 
 
 class CampaignController:
@@ -177,13 +180,20 @@ class CampaignController:
 
     def start(self, campaign_id: str, spec: CampaignSpec) -> dict:
         driver = self._driver(spec.world_version)  # refused before any checkpoint exists
+        # The longest derived id, so a legal but long campaign id can't strand a checkpoint.
+        TypeAdapter(Identifier).validate_python(
+            f"bundle-{campaign_id}-i{self.max_iterations}-propose-attempts")
         if self.graph.get_state(self._config(campaign_id)).values:
             raise CampaignExists(f"campaign {campaign_id} already exists in this project")
         within = check_within_ceiling("supervisor", spec.budget)
         if not within.allowed:
             raise PolicyDenied(within)
         config = self.s.adapter_factory(self.s.runtime).config
-        limits = require_inference_allowed(self.s.runtime, config, spec.budget, self.s.live)
+        limits = require_inference_allowed(self.s.runtime, config, spec.budget, self.s.live,
+                                           schema=driver.output_schema)
+        spec = driver.spec_model.model_validate({
+            **spec.model_dump(mode="json"), "objective": self.redactor.text(spec.objective),
+            "success_criteria": [self.redactor.text(c) for c in spec.success_criteria]})
         now = utc_timestamp(self.s.clock())
         fixture = driver.snapshot(driver.current_fixture(self.s))
         state: CampaignState = {
@@ -207,8 +217,10 @@ class CampaignController:
         self._check_owner(campaign_id)
         if not self.graph.get_state(self._config(campaign_id)).next:
             return self._snapshot(campaign_id)  # finished: nothing to resume
-        self._check_settings(self._snapshot(campaign_id))
-        self._inference_limits(self._snapshot(campaign_id))  # re-authorize before any call
+        state = self._snapshot(campaign_id)
+        if not self._decision_closes_it(state):  # closing runs nothing, so it needs no check
+            self._check_settings(state)
+            self._inference_limits(state)  # re-authorize before any call
         return self._invoke(Command(resume="check"), campaign_id)
 
     def recover(self, campaign_id: str) -> dict:
@@ -231,14 +243,13 @@ class CampaignController:
 
     def record(self, campaign_id: str) -> CampaignRecord:
         state = self.state(campaign_id)
-        status = "awaiting_approval" if state["paused"] else state["status"]
         return self._world_driver(state).record_model.model_validate({
             "schema_version": 1, "campaign_id": campaign_id, "project_id": state["project_id"],
             "created_by": self.session.principal.model_dump(), "spec": state["spec"],
-            "status": status, "usage": self._accountant(state).usage(
+            "status": state["status"], "usage": self._accountant(state).usage(
                 wall_clock_ms=self._elapsed_ms(state)).model_dump(mode="json"),
             "trace_id": state["trace_id"], "created_at": state["started_at"],
-            "updated_at": utc_timestamp(self.s.clock())})
+            "updated_at": state["events"][-1]["occurred_at"]})
 
     def export_capsule(self, campaign_id: str, *, run: str = "fork",
                        experiment_id: str | None = None) -> dict:
@@ -249,7 +260,7 @@ class CampaignController:
         if not (allowed := authorize_capability(
                 scope, "export_capsule", project_id=self.session.project_id)).allowed:
             raise PolicyDenied(allowed)
-        experiment_id = experiment_id or list(state["experiments"])[-1]
+        experiment_id = self._experiment_id(state, experiment_id)
         ref, scenario, execution = self._recorded_run(state, experiment_id, run)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "capsule.json"
@@ -267,13 +278,20 @@ class CampaignController:
         if not (allowed := authorize_capability(
                 scope, "read_evidence", project_id=self.session.project_id)).allowed:
             raise PolicyDenied(allowed)
-        experiment_id = experiment_id or list(state["experiments"])[-1]
+        experiment_id = self._experiment_id(state, experiment_id)
+        self._recorded_run(state, experiment_id, run)  # only this campaign's recorded runs
         view = self._artifacts()
         stored = view.ref(view.artifact_id(f"{experiment_id}-{run}-capsule"))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "capsule.json"
             path.write_bytes(view.read(stored))
             return driver.replay(path)
+
+    @staticmethod
+    def _experiment_id(state, experiment_id):
+        if experiment_id is None and not state["experiments"]:
+            raise NotFound("This campaign ran no experiments")
+        return experiment_id or list(state["experiments"])[-1]
 
     def _recorded_run(self, state, experiment_id, run):
         experiment = state["experiments"].get(experiment_id)
@@ -287,7 +305,8 @@ class CampaignController:
                                                               experiment["proposal"]),
                     experiment.get("execution"))
         repair = state.get("repair") or {}
-        if run == "repaired" and repair.get("run"):
+        repaired = (state.get("approval") or {}).get("action", {}).get("experiment_id")
+        if run == "repaired" and repair.get("run") and repaired == experiment_id:
             return repair["run"], scenario, repair.get("execution")
         raise NotFound("No such recorded run")
 
@@ -355,6 +374,15 @@ class CampaignController:
             return "the approved action names a different fixture"
         return None
 
+    def _decision_closes_it(self, state) -> bool:
+        """A rejected or lapsed approval ends the campaign without running anything."""
+        approval = state.get("approval")
+        if approval is None:
+            return False
+        stored = self.s.approval_store.get(self.session.project_id, approval["approval_id"])
+        return stored.status in {"rejected", "expired"} or (
+            stored.status == "pending" and self.s.clock() >= parse_timestamp(stored.expires_at))
+
     def _check_settings(self, state):
         """The runnable gate plus the pinned settings, before any node can run."""
         if (problem := self._settings_problem(state)) is not None:
@@ -378,7 +406,9 @@ class CampaignController:
         return utc_timestamp(self.s.clock())
 
     def _elapsed_ms(self, state) -> int:
-        delta = self.s.clock() - parse_timestamp(state["started_at"])
+        finished = state.get("finished_at")
+        end = parse_timestamp(finished) if finished else self.s.clock()
+        delta = end - parse_timestamp(state["started_at"])
         return max(0, int(delta.total_seconds() * 1000))
 
     def _limits(self, state) -> BudgetLimits:
@@ -397,7 +427,8 @@ class CampaignController:
         if state.get("provider") != current:
             raise LiveInferenceRefused("provider, endpoint or model changed since start")
         stored = self._limits(state)
-        allowed = require_inference_allowed(self.s.runtime, config, stored, self.s.live)
+        allowed = require_inference_allowed(self.s.runtime, config, stored, self.s.live,
+                                            schema=self._world_driver(state).output_schema)
         return stored.model_validate({**stored.model_dump(), "max_model_calls": min(
             stored.max_model_calls, allowed.max_model_calls)})
 
@@ -425,7 +456,8 @@ class CampaignController:
         tasks = board.cancel_open(tasks if tasks is not None else state["tasks"]) \
             if status in {"cancelled", "budget_exhausted", "failed"} else \
             (tasks if tasks is not None else state["tasks"])
-        update = {"status": status, "outcome": outcome, "next": "end", "tasks": tasks}
+        update = {"status": status, "outcome": outcome, "next": "end", "tasks": tasks,
+                  "finished_at": self._now()}
         events = self._event({**state, "tasks": tasks}, kind or "campaign_status_changed",
                              f"Campaign {status}: {outcome}")
         update["events"] = events
@@ -493,6 +525,9 @@ class CampaignController:
         driver, fixture = self._world_driver(state), self._fixture(state)
         target = driver.target(self.session.project_id, self.session.principal)
         accountant = self._accountant(state)
+        # Re-entry after a crash discards the earlier runs, so only these are charged.
+        # World runs are in-process and spend no money. Model attempts are never voided.
+        accountant.void_task(task_id, "tool_calls")
         task_cap = ceiling_for("target").max_tool_calls * len(runs)
         reservations, settled = [], False
         try:
@@ -542,13 +577,16 @@ class CampaignController:
         if state["iteration"] >= state["max_iterations"]:
             if any(f["verdict"] == "failed" for f in state["findings"]):
                 return self._stop(state, "completed", "failure_found_repair_pending")
-            truncated = [experiment_id for experiment_id, experiment in state["experiments"].items()
-                         if not experiment.get("coverage", {}).get("complete", True)]
-            if truncated:  # no failure seen in a run that stopped early proves nothing
+            if not state["experiments"]:  # nothing ran, so nothing was tested
+                return self._stop(state, "failed", "no_experiment_ran", error=self._error(
+                    "validation_failed", "No proposal reached execution"))
+            untested = [experiment_id for experiment_id, experiment in state["experiments"].items()
+                        if not experiment.get("coverage", {}).get("complete", True)]
+            if untested:  # a run cut short, or a fault that never fired, proves nothing
                 return self._stop(state, "budget_exhausted", "coverage_incomplete",
                                   kind="budget_exhausted", error=self._error(
-                                      "budget_exhausted", f"{len(truncated)} experiment(s) stopped "
-                                      "at their tool cap before finishing"))
+                                      "budget_exhausted", f"{len(untested)} experiment(s) stopped "
+                                      "at their tool cap or never triggered a fault"))
             return self._stop(state, "completed", "no_failure_found")
         iteration = state["iteration"] + 1
         prefix = f"{state['campaign_id']}-i{iteration}"
@@ -588,10 +626,14 @@ class CampaignController:
         driver = self._world_driver(state)
         spec = driver.spec_model.model_validate(state["spec"])
         explored = [driver.explored(e["proposal"]) for e in state["experiments"].values()]
-        questions = (("Already explored: " + "; ".join(explored) + ". Propose something new.",)
-                     if explored else ())
         limits = self._inference_limits(state)  # refuses an unauthorized runtime
         accountant = self._accountant(state, limits)
+        questions = (
+            *(("Already explored: " + "; ".join(explored) + ". Propose something new.",)
+              if explored else ()),
+            *(("Your last proposal was rejected: " + "; ".join(state["rejected"]) + ".",)
+              if state.get("rejected") else ()),
+            f"Set max_tool_calls to at most {self._usable_cap(state, accountant)}.")
         baseline = state.get("task_baselines", {}).get(task_id, {})
         # Task usage continues across task retries and crash recovery: everything the
         # ledger committed since the task was planned belongs to this task (it is the
@@ -640,6 +682,11 @@ class CampaignController:
         tasks = board.fail_dependents(board.finish(tasks, task_id, "failed"))
         return self._stop(state, "failed", "explorer_failed", tasks=tasks, error=error)
 
+    def _usable_cap(self, state, accountant) -> int:
+        """The largest cap that passes ``validate``: both runs must fit what's left."""
+        remaining = self._limits(state).max_tool_calls - accountant.usage(wall_clock_ms=0).tool_calls
+        return max(0, min(ceiling_for("target").max_tool_calls, remaining // 2))
+
     def _redacted_proposal(self, driver, proposal):
         """Scrub model output here, before anything stores it. Benign text is unchanged."""
         if proposal is None:
@@ -662,22 +709,27 @@ class CampaignController:
         experiment_id = "exp-" + hashlib.sha256(
             f"{state['campaign_id']}\x1f{canonical}".encode()).hexdigest()[:16]
         problems = driver.problems(proposal.model_dump(mode="json"))
+        # Questions reach the model as controller text, so these name no model strings.
+        hints = ["it doesn't fit this world's adapters and faults"] if problems else []
         if cap > ceiling_for("target").max_tool_calls:
             problems.append(f"max_tool_calls {cap} exceeds the target role ceiling")
+            hints.append("max_tool_calls is over the target role's limit")
         if used_tools + 2 * cap > limits.max_tool_calls:
             problems.append("two runs at this cap exceed the remaining tool budget")
+            hints.append("two runs at that cap don't fit the remaining tool budget")
         if experiment_id in state["experiments"]:
             problems.append("this experiment was already run")
+            hints.append("that experiment was already run")
         if problems:
             tasks = board.fail_dependents(board.finish(tasks, task_id, "failed"))
             error = self._error("validation_failed", "; ".join(problems))
-            return {"tasks": tasks, "proposal": None, "next": "plan",
+            return {"tasks": tasks, "proposal": None, "next": "plan", "rejected": hints,
                     "errors": [*state["errors"], error],
                     "events": self._event(state, "task_status_changed",
                                           "Proposal rejected: " + "; ".join(problems),
                                           task_id=task_id)}
         return {"tasks": board.finish(tasks, task_id, "succeeded"), "experiment_id": experiment_id,
-                "next": "execute",
+                "next": "execute", "rejected": [],
                 "events": self._event(state, "task_status_changed", "Proposal validated",
                                       task_id=task_id)}
 
@@ -709,9 +761,11 @@ class CampaignController:
         record = {"experiment_id": experiment_id, "proposal": state["proposal"],
                   "baseline": baseline_ref, "fork": fork_ref, "diff": diff,
                   "iteration": state["iteration"]}
+        triggered = driver.faults_triggered(state["proposal"], fork.run)
         record["coverage"] = {"baseline": baseline.run["status"], "fork": fork.run["status"],
-                              "complete": {baseline.run["status"], fork.run["status"]}
-                              == {"completed"}}
+                              "faults_triggered": triggered,
+                              "complete": triggered and {baseline.run["status"],
+                                                         fork.run["status"]} == {"completed"}}
         if runs[0].mode is not None:  # the same mode for both, recorded with the evidence
             record["execution"] = runs[0].mode.as_json()
         tasks = board.finish(tasks, task_id, "succeeded", output_ref=fork_ref)
@@ -787,6 +841,8 @@ class CampaignController:
         Deterministic: the Analyst model step needs M00 output contracts that are
         not published yet. The id is deterministic so a re-run finds the request.
         """
+        if (stop := self._guard(state)) is not None:
+            return stop
         action = self._repair_action(state)
         approval_id = f"approval-{state['experiment_id']}"
         cid = state["campaign_id"]
@@ -838,6 +894,8 @@ class CampaignController:
                 tasks = board.fail_dependents(board.finish(state["tasks"], wait_id, "failed"))
                 return self._stop(state, "failed", "approval_expired", tasks=tasks,
                                   error=self._error("approval_invalid", "Approval expired"))
+            if (stop := self._guard(state)) is not None:
+                return stop
             return {"next": "await_approval"}  # still pending: pause again
         if stored.status == "approved":
             return {"next": "consume", "events": self._event(
@@ -850,13 +908,26 @@ class CampaignController:
                           error=self._error("approval_invalid", f"Approval is {stored.status}"))
 
     def _consume(self, state):
-        """Single-use consumption, checkpointed before the repaired run executes."""
+        """Single-use consumption, checkpointed before the repaired run executes.
+
+        An approval is spent only on a repair that can start, so everything that
+        would stop the repair is checked first.
+        """
         approval = state["approval"]
         wait_id = f"{state['campaign_id']}-await-approval"
-        if (problem := self._settings_problem(state)) is not None:  # before single use
+        if (stop := self._guard(state)) is not None:
+            return stop
+        if (problem := self._settings_problem(state)) is not None:
             tasks = board.fail_dependents(board.finish(state["tasks"], wait_id, "failed"))
             return self._stop(state, "failed", "settings_changed", tasks=tasks,
                               error=self._error("approval_invalid", problem))
+        try:
+            request = self._world_driver(state).repair_request(approval["action"])
+        except PolicyDenied as denied:
+            return self._denied(state, state["tasks"], wait_id, denied.decision)
+        used = self._accountant(state).usage(wall_clock_ms=0).tool_calls
+        if used + request.cap > self._limits(state).max_tool_calls:
+            return self._exhausted(state, "tool_calls")
         try:
             self.s.approvals.consume(project_id=self.session.project_id,
                                      approval_id=approval["approval_id"],
@@ -868,7 +939,7 @@ class CampaignController:
         tasks = board.finish(board.finish(state["tasks"], wait_id, "running"), wait_id,
                              "succeeded")
         return {"tasks": tasks, "status": "running", "next": "execute_repair",
-                "repair": {"authorized": True, "verified": False}}
+                "repair": {"authorized": True, "verified": False}, "repair_at": self._now()}
 
     def _execute_repair(self, state):
         if (stop := self._guard(state)) is not None:
@@ -894,7 +965,9 @@ class CampaignController:
         ref = self._store_json(run_id, outcome.run, {"kind": "run", "id": run_id, "sha256": None})
         execution = request.mode.as_json() if request.mode is not None else None
         fixture = self._fixture(state)
-        findings = driver.findings(fixture, run_id, outcome.run, self._now(), execution)
+        # A fixed time, so a re-run after a crash derives the same findings and memory ids.
+        recorded_at = state.get("repair_at") or self._now()
+        findings = driver.findings(fixture, run_id, outcome.run, recorded_at, execution)
         assessment = driver.assess_repair(fixture, outcome.run, findings, execution)
         verified = assessment["verified"]
         ids = self._capture(state, [f for f in findings if f["evidence_event_ids"]], ref)

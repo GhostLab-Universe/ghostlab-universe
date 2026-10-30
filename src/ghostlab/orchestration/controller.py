@@ -326,18 +326,20 @@ class CampaignController:
 
     def _fixture(self, state):
         """The fixture this campaign's evidence came from, never the current setting."""
-        snapshot = state.get("fixture")
-        if snapshot is None:  # a refund checkpoint from before fixtures were pinned
-            driver = self._world_driver(state)
-            return driver.current_fixture(self.s)
+        driver, snapshot = self._world_driver(state), state.get("fixture")
+        if snapshot is None:
+            if driver.world_version != "refund-world/1":
+                raise CampaignSettingsChanged("this campaign has no recorded fixture")
+            return driver.current_fixture(self.s)  # a checkpoint from before pinning
         if hashlib.sha256(canonical(snapshot)).hexdigest() != state["fixture_sha256"]:
             raise CampaignSettingsChanged("the recorded fixture failed its digest")
-        return self._world_driver(state).restore(snapshot)
+        return driver.restore(snapshot)
 
     def _settings_problem(self, state) -> str | None:
         driver, snapshot = self._world_driver(state), state.get("fixture")
         if snapshot is None:
-            return None
+            return (None if driver.world_version == "refund-world/1"
+                    else "this campaign has no recorded fixture")
         if hashlib.sha256(canonical(snapshot)).hexdigest() != state["fixture_sha256"]:
             return "the recorded fixture failed its digest"
         if driver.snapshot(driver.current_fixture(self.s)) != snapshot:

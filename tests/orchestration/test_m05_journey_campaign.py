@@ -874,6 +874,17 @@ def test_a_refund_campaign_pins_its_fixture_too(tmp_path):
     assert lab.approval_store.get(PROJECT, state["approval"]["approval_id"]).status == "approved"
 
 
+def test_a_journey_campaign_without_a_recorded_fixture_is_refused(tmp_path):
+    lab, state = start(tmp_path)
+    with lab.controller() as controller:
+        controller.graph.update_state(controller._config(CID),
+                                      {"fixture": None, "fixture_sha256": None})
+        with pytest.raises(CampaignSettingsChanged, match="no recorded fixture"):
+            controller.resume(CID)
+        with pytest.raises(CampaignSettingsChanged, match="no recorded fixture"):
+            controller.export_capsule(CID)
+
+
 def test_a_refund_checkpoint_from_before_pinning_still_resumes(tmp_path):
     lab = JourneyLab(tmp_path, Script(proposal()))
     with lab.controller() as controller:
@@ -938,6 +949,51 @@ def test_a_repair_that_does_nothing_verifies_nothing(tmp_path):
     repair = done["repair"]
     assert repair["safety_held"] and repair["run_status"] == "completed"
     assert repair["verified"] is False and repair["held_by"] is None
+
+
+PASSED = [{"verdict": "passed"}]
+DRIVER = JourneyDriver()
+GUARDED = {"mode": "enforced", "guarded": True}
+
+
+def repaired_run(faults):
+    return run_directly(CHECKED, faults, ENFORCED).run
+
+
+def assess(run):
+    return DRIVER.assess_repair(JourneyFixture(), run, PASSED, GUARDED)
+
+
+def test_one_withdrawn_traveller_does_not_excuse_the_other():
+    run = repaired_run([("sharing_revoked_while_queued", None, {"recipient_id": "traveller-b"})])
+    assert assess(run)["verified"]  # traveller-a was told; traveller-b lost permission
+    run["final_state"]["delivery_log"] = [row for row in run["final_state"]["delivery_log"]
+                                          if row["recipient_id"] != ORGANIZER]
+    assert assess(run)["verified"] is False
+
+
+def test_a_delivery_denial_does_not_excuse_a_missing_booking():
+    run = repaired_run([("sharing_revoked_while_queued", RACE_AFTER_EVENT, RECIPIENT)])
+    assert assess(run)["verified"]
+    run["final_state"]["reservations"] = {}
+    assert assess(run)["verified"] is False
+
+
+def test_a_stale_intent_denial_can_explain_a_missing_booking():
+    run = repaired_run([("sharing_revoked_while_queued", RACE_AFTER_EVENT, RECIPIENT)])
+    run["final_state"]["reservations"] = {}
+    run["trace"][1]["outcome"] = {"error": "StaleIntentDenied", "message": "stale"}
+    assert assess(run)["verified"]
+
+
+def test_a_denial_in_a_truncated_run_is_not_credited_to_the_boundary():
+    run = repaired_run([("sharing_revoked_while_queued", RACE_AFTER_EVENT, RECIPIENT)])
+    run["status"] = "budget_exhausted"
+    assessment = assess(run)
+    assert assessment["verified"] is False
+    result = DRIVER.repair_result(run, {"adapter": CHECKED, "execution": GUARDED},
+                                  assessment["verified"])
+    assert result["held_by"] is None and result["guard_denials"]
 
 
 def test_a_truncated_refund_repair_is_not_verified():

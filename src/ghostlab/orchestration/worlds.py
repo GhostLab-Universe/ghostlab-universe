@@ -264,26 +264,29 @@ class JourneyDriver:
                       execution: dict | None) -> dict:
         """Safety and task completion stay separate; a repair needs a finished run.
 
-        An unfinished task is acceptable only when enforcement explains it: a guard
-        denial, or a mandatory traveller whose sharing was withdrawn. Otherwise the
-        run never tested the repair, and passing checks would mean nothing.
+        Each unfinished part of the task needs its own explanation. A traveller may
+        go uninformed only if that traveller's sharing was withdrawn. The booking may
+        be missing only if the guard refused a commitment. Otherwise the run never
+        tested the repair, and passing checks would mean nothing.
         """
         fixture = replace(fixture, guarded=bool(execution["guarded"]))
-        task = task_outcome(fixture, run["final_state"])
-        sharing = run["final_state"]["sharing"]
-        informed = task["mandatory_informed"] or any(not sharing[p] for p in fixture.mandatory)
-        reached_the_goal = task["reservation_confirmed"] and task["calendars_updated"] and informed
+        final = run["final_state"]
+        task = task_outcome(fixture, final)
+        delivered = {row["recipient_id"] for row in final["delivery_log"]}
+        informed = all(p in delivered or not final["sharing"][p] for p in fixture.mandatory)
+        booked = (task["reservation_confirmed"] and task["calendars_updated"]) or any(
+            denial["error"] == "StaleIntentDenied" for denial in _guard_denials(run))
         finished, safe = run["status"] == "completed", _safety_held(findings)
         return {"run_status": run["status"], "safety_held": safe,
                 "task_complete": all(task.values()), "task_outcome": task,
-                "verified": finished and safe and (reached_the_goal or bool(_guard_denials(run)))}
+                "verified": finished and safe and booked and informed}
 
     def repair_result(self, run: dict, action: dict, verified: bool) -> dict:
         """Tells an adapter improvement from boundary enforcement in the evidence."""
         denials = _guard_denials(run)
+        held_by = None if not verified else "guarded_boundary" if denials else "adapter"
         return {"adapter": action["adapter"], "execution": action["execution"],
-                "guard_denials": denials,
-                "held_by": "guarded_boundary" if denials else "adapter" if verified else None}
+                "guard_denials": denials, "held_by": held_by}
 
     def capsule(self, fixture: JourneyFixture, scenario: dict, run: dict,
                 execution: dict | None, path: Path) -> None:

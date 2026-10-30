@@ -25,6 +25,7 @@ import { createApiClient } from "../../src/api/client.ts";
 import type { DataSource, Failure, Result, RunName } from "../../src/data/source.ts";
 import { SERVICE_ORIGIN } from "../../src/data/source.ts";
 import { actionFacts, buildSubmission, IdempotencyKeys } from "../../src/logic/approval.ts";
+import { coverageOf } from "../../src/logic/coverage.ts";
 import { violatingEventIds } from "../../src/logic/evidence.ts";
 import { describeFailure } from "../../src/logic/failure.ts";
 import { CampaignLive } from "../../src/logic/live.ts";
@@ -143,6 +144,8 @@ test("refund: create, diff, replay, approve, verified repair", async () => {
   assert.equal(experiment.diff.faulted_metrics.refunded_minor, 500000);
   assert.equal(experiment.diff.first_divergence?.event_id, 2);
   assert.equal(fork.result.checks.total_refund_within_payment, false);
+  const coverage = coverageOf(experiment, paused.baseline, fork);
+  assert.equal(coverage?.coverage.complete, true, "both scripted runs finish");
   const page = diffText(paused);
   assert.match(page, /First divergence Event 2/);
   assert.match(page, /Total refunded 500000 minor units/);

@@ -2,10 +2,13 @@ import { useRef, useState } from "react";
 import type { ApprovalView, CampaignView, DecisionResult, SessionInfo } from "../api/api.generated.ts";
 import type { DataSource, Failure, Origin } from "../data/source.ts";
 import { actionFacts, buildSubmission, decisionGate, IdempotencyKeys, type Decision } from "../logic/approval.ts";
+import { readCoverage } from "../logic/coverage.ts";
+import { BLOCKED_HELP, describeFailure } from "../logic/failure.ts";
 import { formatTimestamp, prettyJson } from "../logic/format.ts";
 import { Digest, Facts, FailureNotice, Loading, Mono, Notice, RefLabel, Section, Tag } from "../ui/components.tsx";
 import { useResource } from "../ui/hooks.ts";
 import { RepairResult } from "./CampaignPage.tsx";
+import { CoverageNotice } from "./experimentData.tsx";
 
 export function ApprovalPage({
   source,
@@ -34,6 +37,11 @@ export function ApprovalPage({
   }
   if (resource.status === "loading") return <Loading what="approval" />;
   if (resource.status === "failed") return <FailureNotice failure={resource.failure} />;
+  const truncated = view.experiments.flatMap((experiment) => readCoverage(experiment) ?? []).find((item) => !item.complete);
+  // Approved but never consumed, so a reload still shows why nothing has run.
+  const unspent =
+    resource.data.effective_status === "approved" && view.repair === null && view.job.state !== "active";
+  const blocked = view.outcome === "settings_changed";
 
   async function decide(approval: ApprovalView, decision: Decision, reason: string) {
     setBusy(true);
@@ -61,6 +69,8 @@ export function ApprovalPage({
 
   return (
     <>
+      {/* An approval is only requested after a failed finding, so a violation exists. */}
+      {truncated === undefined ? null : <CoverageNotice coverage={truncated} violations={1} />}
       <ApprovalDetail approval={resource.data} origins={resource.origins} />
       <DecisionPanel
         approval={resource.data}
@@ -69,6 +79,8 @@ export function ApprovalPage({
         failure={failure}
         result={result}
         origins={resource.origins}
+        unspent={unspent}
+        blocked={blocked}
         onDecide={(decision, reason) => void decide(resource.data, decision, reason)}
         onResume={() => void resume()}
       />
@@ -159,6 +171,8 @@ export function DecisionPanel({
   failure,
   result,
   origins,
+  unspent = false,
+  blocked = false,
   onDecide,
   onResume,
 }: {
@@ -168,6 +182,8 @@ export function DecisionPanel({
   failure: Failure | null;
   result: DecisionResult | null;
   origins: readonly Origin[];
+  unspent?: boolean;
+  blocked?: boolean;
   onDecide: (decision: Decision, reason: string) => void;
   onResume: () => void;
 }) {
@@ -175,6 +191,10 @@ export function DecisionPanel({
   const gate = decisionGate(approval, session);
   const canSubmit = gate.open && approval.action !== null && !busy;
   const preview = buildSubmission(approval, "approve", reason);
+  const refused = result !== null && !result.resumed;
+  const resumeFailure = refused && result.resume_error !== null
+    ? describeFailure({ kind: "service", status: 409, ...result.resume_error })
+    : null;
   return (
     <Section title="Decision" origins={origins}>
       {approval.decision === null ? null : (
@@ -219,14 +239,30 @@ export function DecisionPanel({
         </form>
       ) : null}
       {failure === null ? null : <FailureNotice failure={failure} />}
-      {result !== null && !result.resumed ? (
-        <Notice state="conflict" title="Decision recorded, campaign not resumed" live>
-          <p>{result.resume_error?.error.message ?? "The service gave no reason."}</p>
-          {result.resume_error?.reason ? (
+      {refused ? (
+        <Notice
+          state={resumeFailure?.state === "blocked" ? "blocked" : "conflict"}
+          title="Decision recorded, campaign not resumed"
+          live
+        >
+          <p>{resumeFailure?.message ?? "The service gave no reason."}</p>
+          {resumeFailure?.help === null || resumeFailure?.help === undefined ? null : <p>{resumeFailure.help}</p>}
+          {resumeFailure?.reason ? (
             <p className="muted">
-              Reason <Mono>{result.resume_error.reason}</Mono>
+              Reason <Mono>{resumeFailure.reason}</Mono>
             </p>
           ) : null}
+          <button type="button" disabled={busy} onClick={onResume}>
+            Resume campaign
+          </button>
+        </Notice>
+      ) : blocked ? (
+        <Notice state="blocked" title="Blocked: settings changed" live>
+          <p>{BLOCKED_HELP}</p>
+        </Notice>
+      ) : unspent ? (
+        <Notice state="conflict" title="Approved, not yet used">
+          <p>The decision is recorded, but the campaign has not resumed. A resume is refused while its settings differ.</p>
           <button type="button" disabled={busy} onClick={onResume}>
             Resume campaign
           </button>

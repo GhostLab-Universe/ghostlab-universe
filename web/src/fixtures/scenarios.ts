@@ -23,6 +23,7 @@ import type {
   WorldRealityDiff,
   WorldRunResult,
 } from "../api/api.generated.ts";
+import type { Coverage, WithCoverage } from "../api/pending.ts";
 import type { Failure, Origin, RunName } from "../data/source.ts";
 import {
   approval_decision__approved,
@@ -41,7 +42,7 @@ import {
   world_run_result__refund_faulted,
 } from "../../../schemas/typescript/examples.check.ts";
 import { recorded } from "./recorded.generated.ts";
-import type { RecordedAction, RecordedRepair } from "./recordedTypes.ts";
+import type { RecordedAction, RecordedRepair, RecordedTruncation } from "./recordedTypes.ts";
 
 const published = (file: string, note: string | null = null): Origin => ({
   kind: "published_example",
@@ -68,6 +69,7 @@ export interface ExperimentFixture {
   execution: ExecutionRecord | null;
   diff: WorldRealityDiff;
   findings: WorldInvariantFinding[];
+  coverage: Coverage;
   runs: Partial<Record<RunName, RunFixture>>;
   replay: ReplayResult;
   capsule: CapsuleV1 | CapsuleV2;
@@ -155,6 +157,7 @@ function tasks(campaignId: string, statuses: StatusList, repair: StatusList = []
 }
 
 const DONE = ["succeeded", "succeeded", "succeeded", "succeeded", "succeeded"] as const;
+const COMPLETE: Coverage = { baseline: "completed", fork: "completed", complete: true };
 
 function event(
   campaignId: string,
@@ -285,6 +288,7 @@ const REFUND: World = {
     execution: null,
     diff: world_reality_diff__refund_demo,
     findings: recorded.refund_fork_findings,
+    coverage: COMPLETE,
     runs: {
       ...refundRuns,
       ...(repaired ? { repaired: repairedRun("run-repaired-1", repaired, "refund_repair") } : {}),
@@ -316,6 +320,7 @@ const JOURNEY: World = {
     execution: { mode: "lab", guarded: false },
     diff: world_reality_diff__journey_fixture,
     findings: recorded.journey_fork_findings,
+    coverage: COMPLETE,
     runs: {
       ...journeyRuns,
       ...(repaired ? { repaired: repairedRun("journey-repair-1", repaired, "journey repair") } : {}),
@@ -332,13 +337,39 @@ const JOURNEY: World = {
   }),
 };
 
+function truncatedWorld(truncation: RecordedTruncation, name: string): World {
+  return {
+    ...JOURNEY,
+    action: recorded.journey_truncated_action,
+    experiment: () => ({
+      ...JOURNEY.experiment(null),
+      proposal: {
+        ...world_experiment_proposal__group_journey_revocation,
+        adapter_id: truncation.fork.adapter_id,
+        scenario: truncation.scenario,
+      },
+      diff: truncation.diff,
+      findings: truncation.findings,
+      coverage: truncation.coverage,
+      runs: {
+        baseline: { run_id: "journey-run-1-baseline", result: truncation.baseline, findings: [], origins: [core(`${name}.baseline`)] },
+        fork: { run_id: "journey-run-1", result: truncation.fork, findings: truncation.findings, origins: [core(`${name}.fork`)] },
+      },
+      origins: [core(name, "Real truncated runs; coverage built as M05's Controller._execute does")],
+    }),
+  };
+}
+
+const TRUNCATED_CLEAN = truncatedWorld(recorded.journey_truncated_clean, "journey_truncated_clean");
+const TRUNCATED_VIOLATION = truncatedWorld(recorded.journey_truncated_violation, "journey_truncated_violation");
+
 const AUTHORED_STATE = authored("Task list, event list and this campaign state are hand-authored in M05's shape");
 
 function originsFor(world: World, note: string): readonly Origin[] {
   return [published(world.recordFile, note), AUTHORED_STATE];
 }
 
-function summaryOf(experiment: ExperimentFixture) {
+function summaryOf(experiment: ExperimentFixture): WithCoverage<CampaignView["experiments"][number]>[] {
   return [
     {
       experiment_id: experiment.experiment_id,
@@ -346,6 +377,7 @@ function summaryOf(experiment: ExperimentFixture) {
       hypothesis: experiment.proposal.hypothesis,
       adapter_id: experiment.proposal.adapter_id,
       runs: Object.keys(experiment.runs) as CampaignView["experiments"][number]["runs"],
+      coverage: experiment.coverage,
     },
   ];
 }
@@ -468,6 +500,114 @@ function runningStage(campaignId: string, world: World, status: CampaignView["re
   };
 }
 
+function coverageIncomplete(id: string): Scenario {
+  const experiment = TRUNCATED_CLEAN.experiment(null);
+  const events = [
+    ...runEvents(id, TRUNCATED_CLEAN).filter((item) => item.kind !== "finding_recorded"),
+    event(id, 6, "budget_exhausted", "Campaign budget_exhausted: coverage_incomplete"),
+  ];
+  return {
+    id,
+    group: "state",
+    title: "Coverage incomplete",
+    shows: "budget_exhausted / coverage_incomplete: a truncated run with no failure proves nothing.",
+    stage: {
+      view: campaign(TRUNCATED_CLEAN.record, id, {
+        status: "budget_exhausted",
+        outcome: "coverage_incomplete",
+        updatedAt: "2026-10-29T10:10:00Z",
+        tasks: tasks(id, DONE),
+        experiments: summaryOf(experiment),
+        errors: [
+          {
+            code: "budget_exhausted",
+            message: "1 experiment(s) stopped at their tool cap before finishing",
+            ref: null,
+            retryable: false,
+            side_effect: "none",
+          },
+        ],
+        event_count: events.length,
+      }),
+      events,
+      approval: null,
+      experiment,
+      origins: originsFor(TRUNCATED_CLEAN, "Id and status replaced for this scenario"),
+    },
+  };
+}
+
+/** Failed with the approval approved and unspent, as Controller._consume leaves it. */
+function settingsBlocked(id: string): Scenario {
+  const { stage, request } = awaitingStage(id, JOURNEY);
+  const approved = { ...request, status: "approved" as const };
+  const events = [...stage.events, event(id, 8, "campaign_status_changed", "Campaign failed: settings_changed")];
+  return {
+    id,
+    group: "state",
+    title: "Blocked: settings changed",
+    shows: "failed / settings_changed: the recorded fixture no longer matches. The approval is unspent.",
+    stage: {
+      ...stage,
+      view: campaign(JOURNEY.record, id, {
+        status: "failed",
+        outcome: "settings_changed",
+        updatedAt: "2026-10-29T10:10:00Z",
+        tasks: tasks(id, DONE, ["failed", "skipped"]),
+        approval: stage.view.approval,
+        experiments: stage.view.experiments,
+        errors: [
+          {
+            code: "approval_invalid",
+            message: "the world fixture changed since this campaign started",
+            ref: null,
+            retryable: false,
+            side_effect: "none",
+          },
+        ],
+        event_count: events.length,
+      }),
+      events,
+      approval: {
+        request: approved,
+        effective_status: "approved",
+        action: JOURNEY.action.action,
+        decision: decision(request, "approve", null),
+      },
+    },
+  };
+}
+
+function redacted(id: string): Scenario {
+  const stage = runningStage(id, REFUND, "running", {}, "Id and text replaced for this scenario");
+  const experiment = stage.experiment!;
+  const hypothesis = "Retrying with key [REDACTED] issues a second refund";
+  const withText: ExperimentFixture = { ...experiment, proposal: { ...experiment.proposal, hypothesis } };
+  const events = [
+    ...stage.events,
+    event(id, 6, "task_status_changed", `Explorer proposed: ${hypothesis} (secret-shaped text redacted)`),
+  ];
+  return {
+    id,
+    group: "state",
+    title: "Redacted text",
+    shows: "[REDACTED] and (secret-shaped text redacted) appear as plain text.",
+    stage: {
+      ...stage,
+      experiment: withText,
+      events,
+      view: {
+        ...stage.view,
+        experiments: summaryOf(withText),
+        errors: [
+          { code: "provider_permanent", message: "Provider said token=[REDACTED]", ref: null, retryable: false, side_effect: "none" },
+        ],
+        event_count: events.length,
+      },
+    },
+  };
+}
+
 function flow(id: string, world: World, name: string, title: string, shows: string): Scenario {
   const { stage, request } = awaitingStage(id, world);
   return {
@@ -534,6 +674,11 @@ export const SCENARIOS: readonly Scenario[] = [
   flow("fx-journey", JOURNEY, "journey_repair_held_by_adapter", "Group journey: sharing revoked while queued", "Full flow. The first divergence and the violating event are different events."),
   finished("fx-journey-boundary", JOURNEY, recorded.journey_repair_held_by_boundary, "journey_repair_held_by_boundary", "Repair held by the boundary", "A verified repair where the guard denied a delivery at event 18."),
   finished("fx-journey-truncated", JOURNEY, recorded.journey_repair_truncated, "journey_repair_truncated", "Repair incomplete", "budget_exhausted / repair_incomplete: safety held, but the run never finished."),
+  finished("fx-journey-idle", JOURNEY, recorded.journey_repair_idle, "journey_repair_idle", "Repair incomplete, nothing attempted", "failed / repair_incomplete: the run finished without booking, so nothing was tested."),
+  coverageIncomplete("fx-coverage-incomplete"),
+  awaiting("fx-coverage-violation", TRUNCATED_VIOLATION, "Violation before truncation", "Coverage is incomplete, but the violation stands and still goes to approval.", {}),
+  settingsBlocked("fx-settings-blocked"),
+  redacted("fx-redacted"),
   runningScenario("fx-running"),
   {
     id: "fx-empty",
@@ -569,7 +714,7 @@ export const SCENARIOS: readonly Scenario[] = [
   awaiting("fx-resume-failed", JOURNEY, "Decision recorded, resume failed", "The decision stands, but the campaign could not continue yet.", {
     resumeError: {
       reason: "settings_changed",
-      error: { code: "approval_invalid", message: "The world settings changed after the campaign started", ref: null, retryable: true, side_effect: "none" },
+      error: { code: "conflict", message: "the world fixture changed since this campaign started", ref: null, retryable: false, side_effect: "none" },
     },
   }),
   expired("fx-approval-expired"),

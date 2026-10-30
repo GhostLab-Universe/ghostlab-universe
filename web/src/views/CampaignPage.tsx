@@ -1,12 +1,15 @@
 import { useState } from "react";
 import type { BudgetLimits, BudgetUsage, CampaignView, RepairView } from "../api/api.generated.ts";
 import type { DataSource, Failure, Origin, Result } from "../data/source.ts";
+import { readCoverage } from "../logic/coverage.ts";
+import { BLOCKED_HELP } from "../logic/failure.ts";
 import { formatCount, formatTimestamp } from "../logic/format.ts";
 import { presentRepair } from "../logic/repair.ts";
 import { campaignHref } from "../logic/routes.ts";
 import { taskStatus } from "../logic/status.ts";
 import { orderTasks } from "../logic/timeline.ts";
 import { Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
+import { CoverageLine, CoverageNotice } from "./experimentData.tsx";
 
 export function CampaignPanel({
   view,
@@ -28,7 +31,20 @@ export function CampaignPanel({
           It stopped at a guarded step. Evidence recorded before the stop is still shown.
         </Notice>
       ) : null}
-      {record.status === "failed" ? <Notice state="failed" title="Campaign failed" /> : null}
+      {view.outcome === "settings_changed" ? (
+        <Notice state="blocked" title="Blocked: settings changed" live>
+          <p>The campaign's recorded fixture no longer matches, so it stopped before using the approval.</p>
+          <p>{BLOCKED_HELP}</p>
+        </Notice>
+      ) : record.status === "failed" ? (
+        <Notice state="failed" title="Campaign failed" />
+      ) : null}
+      {view.outcome === "coverage_incomplete" ? (
+        <Notice state="incomplete" title="Coverage incomplete" live>
+          An experiment stopped before finishing. A run that stopped early proves nothing, so finding no failure here
+          is not a pass.
+        </Notice>
+      ) : null}
       {view.errors.length > 0 ? (
         <Section title="Recorded errors" origins={origins}>
           <RecordedErrors errors={view.errors} />
@@ -55,6 +71,9 @@ export function CampaignPanel({
           ]}
         />
       </Section>
+      <Section title="Experiments" origins={origins}>
+        <ExperimentList view={view} />
+      </Section>
       <Section title="Budget" origins={origins}>
         <BudgetTable limits={record.spec.budget} usage={record.usage} />
       </Section>
@@ -62,6 +81,31 @@ export function CampaignPanel({
         <TaskTimeline view={view} />
       </Section>
     </>
+  );
+}
+
+function ExperimentList({ view }: { view: CampaignView }) {
+  if (view.experiments.length === 0) return <Notice state="empty" title="No experiments yet" />;
+  return (
+    <ul className="findings">
+      {view.experiments.map((experiment) => {
+        const coverage = readCoverage(experiment);
+        return (
+          <li key={experiment.experiment_id} data-tone={coverage?.complete === false ? "warn" : "neutral"}>
+            <p>
+              Iteration {experiment.iteration}, adapter <Mono>{experiment.adapter_id}</Mono>
+            </p>
+            <p className="muted">Hypothesis (model output, untrusted): {experiment.hypothesis}</p>
+            {coverage === null ? (
+              <p className="muted">Coverage is not reported by this service.</p>
+            ) : (
+              <CoverageLine coverage={coverage} recorded />
+            )}
+            {coverage?.complete === false ? <Tag tone="warn">Stopped before finishing</Tag> : null}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -84,6 +128,7 @@ function JobControls({ view, source, refresh }: { view: CampaignView; source: Da
   const { status } = view.record;
   const canCancel = (status === "running" || status === "queued") && !view.job.cancel_requested;
   const stalled = view.job.state === "stalled";
+  const blocked = view.outcome === "settings_changed";
 
   async function act(run: () => Promise<Result<CampaignView>>) {
     setBusy(true);
@@ -94,7 +139,7 @@ function JobControls({ view, source, refresh }: { view: CampaignView; source: Da
     setBusy(false);
   }
 
-  if (!canCancel && !stalled && !view.job.cancel_requested && failure === null) return null;
+  if (!canCancel && !stalled && !blocked && !view.job.cancel_requested && failure === null) return null;
   const id = view.record.campaign_id;
   return (
     <Section title="Execution">
@@ -111,7 +156,7 @@ function JobControls({ view, source, refresh }: { view: CampaignView; source: Da
             Cancel campaign
           </button>
         ) : null}
-        {stalled ? (
+        {stalled || blocked ? (
           <button type="button" disabled={busy} onClick={() => void act(() => source.resumeCampaign(id))}>
             Resume campaign
           </button>

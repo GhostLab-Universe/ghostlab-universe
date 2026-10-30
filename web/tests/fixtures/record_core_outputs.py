@@ -29,7 +29,8 @@ from ghostlab.orchestration.engine import derive_findings
 from ghostlab.orchestration.worlds import DEFAULT_WORLDS, canonical
 from ghostlab.policy import action_digest, execution_mode_for
 from ghostlab.worlds import journey_capsule
-from ghostlab.worlds.journey import JourneyFixture, JourneyScenario, scenario_json
+from ghostlab.worlds.journey import (JourneyFixture, JourneyOption, JourneyScenario,
+                                     scenario_json)
 from ghostlab.worlds.journey_run import run
 
 JOURNEY = "group-journey/1"
@@ -43,14 +44,14 @@ def dumped(model):
     return model.model_dump(mode="json")
 
 
-def revocation(after_event=None):
+def revocation(after_event=None, recipient="participant-c"):
     return {"fault_id": "sharing_revoked_while_queued", "after_event": after_event,
-            "parameters": [{"name": "recipient_id", "value": "participant-c"}]}
+            "parameters": [{"name": "recipient_id", "value": recipient}]}
 
 
-def faulted_scenario(cap, after_event=None):
+def faulted_scenario(cap, after_event=None, *, faults=None):
     data = json.loads(json.dumps(scenario_json(max_tool_calls=cap)))
-    data["faults"] = [revocation(after_event)]
+    data["faults"] = [revocation(after_event)] if faults is None else faults
     return data
 
 
@@ -74,9 +75,9 @@ def repair_view(run_id, assessment, result):
             "refunded_minor": result.get("refunded_minor")}
 
 
-def journey_repair(run_id, scenario):
+def journey_repair(run_id, scenario, fixture=None):
     driver = DEFAULT_WORLDS[JOURNEY]
-    fixture = JourneyFixture()
+    fixture = fixture or JourneyFixture()
     recorded = run(replace(fixture, guarded=True), JourneyScenario.from_json(scenario), CHECKED)
     WorldRunResult.model_validate(recorded)
     found = driver.findings(fixture, run_id, recorded, RECORDED_AT, ENFORCED)
@@ -97,6 +98,22 @@ def refund_repair(run_id, recorded):
     return {"campaign_status": status, "outcome": outcome, "run": dumped(run_to_world(recorded)),
             "findings": [dumped(finding_to_world(finding)) for finding in found],
             "repair": repair_view(run_id, assessment, result)}
+
+
+def truncated_experiment(scenario):
+    """A baseline and fork that hit their tool cap, as Controller._execute records them."""
+    driver = DEFAULT_WORLDS[JOURNEY]
+    fixture = JourneyFixture()
+    cap = scenario["max_tool_calls"]
+    baseline = run(fixture, JourneyScenario.from_json(scenario_json(max_tool_calls=cap)), NAIVE)
+    fork = run(fixture, JourneyScenario.from_json(scenario), NAIVE)
+    lab = execution_mode_for("experiment").as_json()
+    statuses = {baseline["status"], fork["status"]}
+    return {"baseline": baseline, "fork": fork, "scenario": scenario,
+            "diff": driver.diff(fixture, baseline, fork),
+            "findings": driver.findings(fixture, "journey-run-1", fork, RECORDED_AT, lab),
+            "coverage": {"baseline": baseline["status"], "fork": fork["status"],
+                         "complete": statuses == {"completed"}}}
 
 
 def bound_action(driver, fixture, proposal):
@@ -132,6 +149,11 @@ def record(examples: Path, source_commit: str) -> dict:
                        "scenario": {"max_tool_calls": 20, "timeout_after_commit": True}}
     journey_proposal = {"adapter_id": NAIVE, "scenario": faulted_scenario(20)}
     lab = execution_mode_for("experiment").as_json()
+    truncated_violation = faulted_scenario(
+        11, faults=[revocation(after_event=2, recipient=fixture.organizer)])
+    late_options = JourneyFixture(options=(JourneyOption("return-1830", 1110, 1190, 2),))
+    stale_memory = [{"fault_id": "stale_preference_memory", "after_event": None,
+                     "parameters": [{"name": "preference_version", "value": 1}]}]
     refund_findings = derive_findings("run-faulted-1", experiment["faulted"],
                                       recorded_at=RECORDED_AT)
     return {
@@ -150,7 +172,14 @@ def record(examples: Path, source_commit: str) -> dict:
             journey_repair("journey-repair-boundary", faulted_scenario(20, after_event=17)),
         "journey_repair_truncated":
             journey_repair("journey-repair-truncated", faulted_scenario(12)),
+        "journey_repair_idle":
+            journey_repair("journey-repair-idle", faulted_scenario(20, faults=stale_memory),
+                           late_options),
         "journey_repair_action": bound_action(journey, fixture, journey_proposal),
+        "journey_truncated_clean": truncated_experiment(faulted_scenario(3)),
+        "journey_truncated_violation": truncated_experiment(truncated_violation),
+        "journey_truncated_action": bound_action(journey, fixture, {
+            "adapter_id": NAIVE, "scenario": truncated_violation}),
         "journey_replay": journey_replay(examples / "capsule_v2.journey_fixture.json"),
     }
 

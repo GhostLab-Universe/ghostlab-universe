@@ -2,8 +2,11 @@ import type {
   ReplayResult,
   RepairView,
   WorldInvariantFinding,
+  WorldRealityDiff,
   WorldRunResult,
+  WorldScenario,
 } from "../api/api.generated.ts";
+import type { Coverage } from "../api/pending.ts";
 
 export interface RecordedRepair {
   campaign_status: "completed" | "failed" | "budget_exhausted";
@@ -11,6 +14,15 @@ export interface RecordedRepair {
   run: WorldRunResult;
   findings: WorldInvariantFinding[];
   repair: RepairView;
+}
+
+export interface RecordedTruncation {
+  baseline: WorldRunResult;
+  fork: WorldRunResult;
+  scenario: WorldScenario;
+  diff: WorldRealityDiff;
+  findings: WorldInvariantFinding[];
+  coverage: Coverage;
 }
 
 export interface RecordedAction {
@@ -31,6 +43,10 @@ export interface RecordedCoreOutputs {
   journey_repair_held_by_adapter: RecordedRepair;
   journey_repair_held_by_boundary: RecordedRepair;
   journey_repair_truncated: RecordedRepair;
+  journey_repair_idle: RecordedRepair;
   journey_repair_action: RecordedAction;
+  journey_truncated_clean: RecordedTruncation;
+  journey_truncated_violation: RecordedTruncation;
+  journey_truncated_action: RecordedAction;
   journey_replay: ReplayResult;
 }

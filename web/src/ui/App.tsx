@@ -75,7 +75,7 @@ export function TestDataBanner() {
   );
 }
 
-function SessionFacts({ session }: { session: SessionInfo | null }) {
+export function SessionFacts({ session }: { session: SessionInfo | null }) {
   if (session === null) return null;
   return (
     <p className="session">
@@ -89,7 +89,7 @@ function SessionFacts({ session }: { session: SessionInfo | null }) {
 }
 
 /** What this service can actually do. "fixture" inference is scripted, never a model. */
-function ServiceModeNotice({ session }: { session: SessionInfo }) {
+export function ServiceModeNotice({ session }: { session: SessionInfo }) {
   if (session.inference === "live") return null;
   return (
     <div className="service-mode" role="note">
@@ -221,7 +221,7 @@ function CampaignHeading({
   state: LiveState;
   heading: { current: HTMLHeadingElement | null };
 }) {
-  const status = campaignStatus(view.record.status);
+  const status = campaignStatus(view.record.status, view.outcome);
   return (
     <header className="campaign-head">
       <p className="eyebrow">

@@ -19,7 +19,8 @@ const CAMPAIGN: Record<CampaignStatus, StatusLabel> = {
   budget_exhausted: { label: "Budget exhausted", tone: "warn" },
 };
 
-export function campaignStatus(status: CampaignStatus): StatusLabel {
+export function campaignStatus(status: CampaignStatus, outcome: string | null = null): StatusLabel {
+  if (outcome === "settings_changed") return { label: "Blocked: settings changed", tone: "warn" };
   return CAMPAIGN[status];
 }
 

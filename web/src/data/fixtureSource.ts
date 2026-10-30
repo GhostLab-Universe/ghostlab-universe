@@ -173,7 +173,12 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
         if (next === undefined) return refused(409, "conflict", "This campaign has finished", "campaign_finished");
         return move(id, next);
       }),
-    resumeCampaign: (id) => respond(id, () => move(id, scenarioOf(id)?.resumed)),
+    resumeCampaign: (id) =>
+      respond(id, () => {
+        const error = scenarioOf(id)?.resumeError;
+        if (error !== undefined) return { ok: false, failure: { kind: "service", status: 409, ...error } };
+        return move(id, scenarioOf(id)?.resumed);
+      }),
     getExperiment: (id, experimentId) =>
       respond(id, () =>
         withExperiment(id, experimentId, (experiment) =>
@@ -186,6 +191,7 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
               diff: experiment.diff,
               findings: experiment.findings,
               runs: Object.keys(experiment.runs) as ExperimentView["runs"],
+              coverage: experiment.coverage,
             },
             experiment.origins,
           ),

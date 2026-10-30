@@ -75,7 +75,7 @@ export function EvidencePage({
   );
 }
 
-function ProposalSection({ experiment, origins }: { experiment: ExperimentView; origins: readonly Origin[] }) {
+export function ProposalSection({ experiment, origins }: { experiment: ExperimentView; origins: readonly Origin[] }) {
   const { proposal, execution } = experiment;
   return (
     <Section title="Experiment" origins={origins}>
@@ -145,6 +145,12 @@ export function RunEvidence({
   return (
     <>
       <Section title={`${RUN_LABEL[run.run]} run`} origins={origins}>
+        {result.status === "completed" ? null : (
+          <Notice state="incomplete" title="This run stopped before finishing">
+            Its status is <Mono>{result.status}</Mono>. Passing checks on it prove nothing. A failure recorded before it
+            stopped still stands.
+          </Notice>
+        )}
         <Facts
           facts={[
             { term: "Run", detail: <Mono>{run.run_id}</Mono> },

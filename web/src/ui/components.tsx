@@ -114,6 +114,8 @@ export function RefLabel({ value }: { value: Ref }) {
 }
 
 export type NoticeState =
+  | "blocked"
+  | "incomplete"
   | "loading"
   | "empty"
   | "denied"
@@ -126,6 +128,8 @@ export type NoticeState =
   | "awaiting_approval";
 
 const NOTICE_TONE: Record<NoticeState, Tone> = {
+  blocked: "warn",
+  incomplete: "warn",
   loading: "neutral",
   empty: "neutral",
   denied: "fail",
@@ -168,6 +172,7 @@ export function FailureNotice({ failure, children }: { failure: Failure; childre
   return (
     <Notice state={summary.state} title={summary.title} live>
       <p>{summary.message}</p>
+      {summary.help === null ? null : <p>{summary.help}</p>}
       {summary.code === null ? null : (
         <p className="muted">
           Service code <Mono>{summary.code}</Mono>

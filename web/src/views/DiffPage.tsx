@@ -7,6 +7,7 @@ import type {
   WorldTraceEvent,
 } from "../api/api.generated.ts";
 import type { DataSource, Origin } from "../data/source.ts";
+import { coverageOf } from "../logic/coverage.ts";
 import {
   alignTraces,
   isErrorOutcome,
@@ -21,7 +22,14 @@ import { campaignHref } from "../logic/routes.ts";
 import { differences } from "../logic/stateDiff.ts";
 import { FailureNotice, JsonBlock, Mono, Notice, Section, Tag } from "../ui/components.tsx";
 import { EvidenceLinks } from "./EvidencePage.tsx";
-import { ExperimentGate, ExperimentPicker, useExperiment, useRun } from "./experimentData.tsx";
+import {
+  CoverageLine,
+  CoverageNotice,
+  ExperimentGate,
+  ExperimentPicker,
+  useExperiment,
+  useRun,
+} from "./experimentData.tsx";
 
 export function DiffPage({
   source,
@@ -83,10 +91,13 @@ export function DiffPanel({
   const runsMissing = baseline === null || fork === null;
   const baselineLedger = refundLedger(baseline?.result ?? null);
   const forkLedger = refundLedger(fork?.result ?? null);
+  const coverage = coverageOf(experiment, baseline, fork);
 
   return (
     <>
+      {coverage === null ? null : <CoverageNotice coverage={coverage.coverage} violations={violating.length} />}
       <Section title="Where the worlds separate" origins={origins}>
+        {coverage === null ? null : <CoverageLine coverage={coverage.coverage} recorded={coverage.recorded} />}
         <div className="callouts">
           <div className="callout" data-testid="first-divergence">
             <h3>First divergence</h3>

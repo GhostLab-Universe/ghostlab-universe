@@ -20,4 +20,8 @@ run("render bundle", process.execPath, [
   "--config",
   "tests/vite.render.config.ts",
 ]);
-run("render", process.execPath, ["--test", `${out.replaceAll("\\", "/")}/panels.test.js`]);
+run("render", process.execPath, [
+  "--test",
+  `${out.replaceAll("\\", "/")}/panels.test.js`,
+  `${out.replaceAll("\\", "/")}/outcomes.test.js`,
+]);

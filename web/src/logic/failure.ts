@@ -1,6 +1,7 @@
 import type { Failure } from "../data/source.ts";
 
 export type FailureState =
+  | "blocked"
   | "denied"
   | "validation_error"
   | "not_found"
@@ -9,9 +10,13 @@ export type FailureState =
   | "failed"
   | "reconnecting";
 
+/** M07's stable reason for a campaign whose recorded fixture no longer matches. */
+export const SETTINGS_CHANGED = "settings_changed";
+
 export function failureState(failure: Failure): FailureState {
   if (failure.kind === "transport") return "reconnecting";
   if (failure.kind === "invalid_response") return "failed";
+  if (failure.reason === SETTINGS_CHANGED) return "blocked";
   switch (failure.error.code) {
     case "unauthenticated":
     case "forbidden":
@@ -33,6 +38,7 @@ export function failureState(failure: Failure): FailureState {
 }
 
 const TITLES: Record<FailureState, string> = {
+  blocked: "Blocked: settings changed",
   denied: "Denied",
   validation_error: "Validation error",
   not_found: "Not found",
@@ -42,10 +48,15 @@ const TITLES: Record<FailureState, string> = {
   reconnecting: "Reconnecting",
 };
 
+export const BLOCKED_HELP =
+  "The approval has not been used. Restoring the campaign's original settings lets it resume.";
+
 export interface FailureSummary {
   state: FailureState;
   title: string;
   message: string;
+  /** What this state means for the reader, when it means more than the message says. */
+  help: string | null;
   /** The service's stable code and reason. Empty when no service answered. */
   code: string | null;
   reason: string | null;
@@ -55,7 +66,7 @@ export interface FailureSummary {
 
 export function describeFailure(failure: Failure): FailureSummary {
   const state = failureState(failure);
-  const base = { state, title: TITLES[state] };
+  const base = { state, title: TITLES[state], help: state === "blocked" ? BLOCKED_HELP : null };
   if (failure.kind === "service") {
     return {
       ...base,

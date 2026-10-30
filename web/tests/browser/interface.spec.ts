@@ -68,6 +68,30 @@ test("repair_incomplete never looks like success", async ({ page }) => {
   await expect(page.getByTestId("repair-fields")).toContainText("budget_exhausted");
 });
 
+test("coverage_incomplete is never success, in the campaign or the diff", async ({ page }) => {
+  await open(page, "campaign/fx-coverage-incomplete");
+  await expect(page.getByTestId("state-incomplete")).toBeVisible();
+  await view(page, "Reality Diff");
+  await expect(page.getByTestId("state-incomplete")).toBeVisible();
+  await expect(page.getByTestId("coverage")).toContainText("complete false");
+});
+
+test("a violation before truncation stays visible and reaches approval", async ({ page }) => {
+  await open(page, "campaign/fx-coverage-violation/diff");
+  await expect(page.getByTestId("violating-events")).toContainText("Event 10");
+  await view(page, "Approval");
+  await expect(page.getByTestId("state-incomplete")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Approve this action" })).toBeVisible();
+});
+
+test("settings_changed is blocked, with the approval unspent after a reload", async ({ page }) => {
+  await open(page, "campaign/fx-resume-failed/approval");
+  await page.getByRole("button", { name: "Approve this action" }).click();
+  await expect(page.getByTestId("state-blocked")).toBeVisible();
+  await page.getByRole("button", { name: "Resume campaign" }).click();
+  await expect(page.getByTestId("state-blocked")).toBeVisible();
+});
+
 test("a denied decision stays denied", async ({ page }) => {
   await open(page, "campaign/fx-approval-denied/approval");
   await page.getByRole("button", { name: "Approve this action" }).click();

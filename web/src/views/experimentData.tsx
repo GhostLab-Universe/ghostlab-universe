@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import type { CampaignView, ExperimentView } from "../api/api.generated.ts";
+import type { Coverage } from "../api/pending.ts";
 import type { DataSource, Origin, RunName } from "../data/source.ts";
+import { coverageNote } from "../logic/coverage.ts";
 import { campaignHref, type ViewName } from "../logic/routes.ts";
-import { FailureNotice, Loading, Notice } from "../ui/components.tsx";
+import { FailureNotice, Loading, Mono, Notice } from "../ui/components.tsx";
 import { useResource, type Resource } from "../ui/hooks.ts";
 
 export function useExperiment(source: DataSource, view: CampaignView, experimentId: string | null) {
@@ -48,6 +50,27 @@ export function ExperimentGate({
   if (resource.status === "loading") return <Loading what="experiment" />;
   if (resource.status === "failed") return <FailureNotice failure={resource.failure} />;
   return <>{children(resource.data, resource.origins)}</>;
+}
+
+/** Warns about a truncated experiment. A complete one needs no notice. */
+export function CoverageNotice({ coverage, violations }: { coverage: Coverage; violations: number }) {
+  const note = coverageNote(coverage, violations);
+  if (note === null) return null;
+  return (
+    <Notice state="incomplete" title={note.headline} live>
+      {note.detail}
+    </Notice>
+  );
+}
+
+export function CoverageLine({ coverage, recorded }: { coverage: Coverage; recorded: boolean }) {
+  return (
+    <p data-testid="coverage">
+      Coverage: baseline <Mono>{coverage.baseline}</Mono>, fork <Mono>{coverage.fork}</Mono>, complete{" "}
+      <Mono>{String(coverage.complete)}</Mono>
+      {recorded ? null : <span className="muted"> (read from the two recorded runs)</span>}
+    </p>
+  );
 }
 
 /** Only shown when a campaign has more than one experiment. */

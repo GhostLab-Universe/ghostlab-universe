@@ -1,8 +1,8 @@
 """Group Journey Rescue (``group-journey/1``): a trusted synthetic world, stdlib only.
 
 Two travellers (both mandatory) replan an overnight visit after a cancellation.
-The approved intent is version 2 (return by 18:00); version 1 (return by 20:00)
-is superseded. A third participant only views the itinerary and may lose sharing
+The approved intent is version 2 (return by 18:00), approved by both; version 1
+(return by 20:00) was agreed by the organizer alone and is superseded. A third participant only views the itinerary and may lose sharing
 permission while a message to them waits in the queue.
 
 Faults: stale memory resurfaces version 1 as a remembered preference; a delayed
@@ -25,7 +25,7 @@ on event indexes, so recorded actions replay deterministically.
 """
 
 from copy import deepcopy
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 WORLD_VERSION = "group-journey/1"
@@ -92,11 +92,21 @@ class JourneyFixture:
             raise ValueError("Invalid fixture identifier")
         if self.organizer not in self.mandatory:
             raise ValueError("The organizer must be a mandatory traveller")
+        numbers = [*(n for pair in self.intents for n in pair), self.current_version,
+                   *self.outbound, *(n for o in self.options for n in (o.depart, o.arrive, o.seats))]
+        if not all(type(n) is int for n in numbers):
+            raise ValueError("Fixture numbers must be integers")
         versions = [v for v, _ in self.intents]
-        if self.current_version not in versions or len(set(versions)) != len(versions):
+        if (self.current_version not in versions or len(set(versions)) != len(versions)
+                or not all(1 <= v <= 1_000_000 and 0 <= r <= 24 * 60 for v, r in self.intents)):
             raise ValueError("Invalid intent versions")
         if type(self.guarded) is not bool:
             raise ValueError("guarded must be boolean")
+        if len(self.outbound) != 2 or not 0 <= self.outbound[0] < self.outbound[1] <= 24 * 60:
+            raise ValueError("Invalid outbound window")
+        ids = [o.option_id for o in self.options]
+        if len(set(ids)) != len(ids) or len(set(self.participants)) != len(self.participants):
+            raise ValueError("Duplicate fixture identifier")
         for option in self.options:
             if not (0 <= option.depart < option.arrive <= 24 * 60 and option.seats >= 1):
                 raise ValueError("Invalid option")
@@ -148,7 +158,8 @@ class JourneyScenario:
     @classmethod
     def from_json(cls, data: dict) -> "JourneyScenario":
         if (type(data) is not dict or data.get("world_version") != WORLD_VERSION
-                or set(data) != {"schema_version", "world_version", "faults", "max_tool_calls"}):
+                or set(data) != {"schema_version", "world_version", "faults", "max_tool_calls"}
+                or type(data["schema_version"]) is not int or data["schema_version"] != 1):
             raise ValueError("Invalid journey scenario")
         budget = data["max_tool_calls"]
         if type(budget) is not int or not 1 <= budget <= 1000:
@@ -160,14 +171,20 @@ class JourneyScenario:
         for fault in faults:
             if type(fault) is not dict:
                 raise ValueError("Invalid fault")
-            fault_id, after = fault.get("fault_id"), fault.get("after_event")
+            if set(fault) != {"fault_id", "after_event", "parameters"}:
+                raise ValueError("Invalid fault")
+            fault_id, after = fault["fault_id"], fault["after_event"]
             if fault_id not in FAULTS or fault_id in seen:
                 raise ValueError(f"Unknown or repeated fault {fault_id!r}")
             seen.add(fault_id)
             if after is not None and (type(after) is not int or not 1 <= after <= 1000):
                 raise ValueError("after_event must be an event index")
-            params = {p.get("name"): p.get("value") for p in fault.get("parameters", [])}
-            if set(params) != set(FAULTS[fault_id]) or any(
+            entries = fault["parameters"]
+            if type(entries) is not list or not all(
+                    type(p) is dict and set(p) == {"name", "value"} for p in entries):
+                raise ValueError("Invalid fault parameters")
+            params = {p["name"]: p["value"] for p in entries}
+            if len(params) != len(entries) or set(params) != set(FAULTS[fault_id]) or any(
                     type(params[k]) is not t for k, t in FAULTS[fault_id].items()):
                 raise ValueError(f"Invalid parameters for {fault_id}")
             if fault_id == "delayed_itinerary_update" and (
@@ -193,14 +210,6 @@ def scenario_json(faults=(), max_tool_calls: int = 40) -> dict:
                        for fid, after, params in faults]}
 
 
-@dataclass
-class _Pending:
-    """Timeline changes that take effect from a given event index."""
-
-    approvals: list[tuple[int, int]] = field(default_factory=list)    # (from_event, version)
-    revocations: list[tuple[int, str]] = field(default_factory=list)  # (from_event, recipient)
-
-
 class JourneyWorld:
     """Authoritative journey state; one instance per baseline or faulted branch."""
 
@@ -213,7 +222,9 @@ class JourneyWorld:
             raise ValueError("Invalid actor_id")
         self.calls = 0
         self.trace: list[dict] = []
-        self._pending = _Pending()
+        # Revocations that take effect from an event index: (from_event, recipient).
+        # Approved intent never changes mid-run, so it has no pending queue.
+        self._pending_revocations: list[tuple[int, str]] = []
         initial = fixture.current_version
         self.state: dict[str, Any] = {
             "journey_id": fixture.journey_id,
@@ -230,7 +241,7 @@ class JourneyWorld:
         }
         revoked = scenario.params("sharing_revoked_while_queued")
         if revoked and revoked["after_event"] is not None:
-            self._pending.revocations.append((revoked["after_event"] + 1,
+            self._pending_revocations.append((revoked["after_event"] + 1,
                                               revoked["recipient_id"]))
 
     def snapshot(self) -> dict:
@@ -260,14 +271,9 @@ class JourneyWorld:
     # -- timeline ---------------------------------------------------------------------
 
     def _apply_pending(self, at: int):
-        for from_event, version in list(self._pending.approvals):
+        for from_event, recipient in list(self._pending_revocations):
             if from_event <= at:
-                self._pending.approvals.remove((from_event, version))
-                self.state["current_intent_version"] = version
-                self.state["approval_timeline"].append({"from_event": at, "version": version})
-        for from_event, recipient in list(self._pending.revocations):
-            if from_event <= at:
-                self._pending.revocations.remove((from_event, recipient))
+                self._pending_revocations.remove((from_event, recipient))
                 if self.state["sharing"].get(recipient):
                     self.state["sharing"][recipient] = False
                     self.state["permission_timeline"].append(
@@ -305,6 +311,7 @@ class JourneyWorld:
         result = {
             "journey_id": journey_id, "intent_version": version,
             "return_by": self.fixture.return_by(version),
+            "approved_by": list(self.fixture.mandatory),
             "options": [{"option_id": o.option_id, "depart": o.depart, "arrive": o.arrive,
                          "seats_left": o.seats - self._seats_used(o.option_id)}
                         for o in self.fixture.options],
@@ -317,18 +324,19 @@ class JourneyWorld:
             remembered = stale["preference_version"]
             if remembered in dict(self.fixture.intents):
                 # Contaminated memory: an observation, never an authority.
-                result["remembered_intent"] = {"intent_version": remembered,
-                                               "return_by": self.fixture.return_by(remembered),
-                                               "source": "memory"}
+                result["remembered_intent"] = self._unapproved(remembered, "memory")
         delayed = self.scenario.params("delayed_itinerary_update")
         if delayed and at > delayed["delay_events"]:
             older = min(v for v, _ in self.fixture.intents)
             if older != version:
                 # A late-arriving older update: newer by arrival, older by version.
-                result["incoming_update"] = {"intent_version": older,
-                                             "return_by": self.fixture.return_by(older),
-                                             "source": "delayed_message"}
+                result["incoming_update"] = self._unapproved(older, "delayed_message")
         return result
+
+    def _unapproved(self, version, source):
+        # A superseded version carries only the organizer's agreement, never both.
+        return {"intent_version": version, "return_by": self.fixture.return_by(version),
+                "agreed_by": [self.fixture.organizer], "source": source}
 
     def _seats_used(self, option_id):
         held = sum(1 for h in self.state["holds"].values()
@@ -389,8 +397,10 @@ class JourneyWorld:
         if participant_id not in self.fixture.mandatory:
             raise HostDenied("Participant has no journey calendar")
         self._known_version(intent_version)
-        reservation = next((r for r in self.state["reservations"].values()
-                            if r["status"] == "confirmed"), None)
+        # The most recently confirmed reservation, so a rebooking is what gets scheduled.
+        reservation = max((r for r in self.state["reservations"].values()
+                           if r["status"] == "confirmed"),
+                          key=lambda r: r["confirmed_at"], default=None)
         if reservation is None:
             raise ToolError("No confirmed reservation to put in the calendar")
         option = self.fixture.option(reservation["option_id"])
@@ -418,7 +428,7 @@ class JourneyWorld:
         if (revoked and revoked["after_event"] is None
                 and revoked["recipient_id"] == recipient_id):
             # Default trigger: sharing is withdrawn right after this message is queued.
-            self._pending.revocations.append((at + 1, recipient_id))
+            self._pending_revocations.append((at + 1, recipient_id))
         return {"message_id": message_id, "status": "queued"}
 
     def _deliver_message(self, at, message_id):

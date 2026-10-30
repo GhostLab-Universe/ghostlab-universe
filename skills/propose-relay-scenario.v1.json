@@ -22,11 +22,11 @@
     "Set max_tool_calls to at most 20",
     "Leave room for the adapter to finish: relay-local-success needs at least 8 tool calls, and relay-lease-checked needs at least 12",
     "State the hypothesis and the invariant you expect to fail: allocations_within_capacity, confirmations_backed_by_reservations or no_automation_after_takeover",
+    "These values describe the default fixture; where the context states jobs, competing jobs or tool-call needs for this campaign, use those instead",
     "Return exactly one world_experiment_proposal object and nothing else"
   ],
   "stop_conditions": [
-    "One world_experiment_proposal returned",
-    "No supported fault would test a new hypothesis"
+    "One world_experiment_proposal returned"
   ],
   "version": 1
 }

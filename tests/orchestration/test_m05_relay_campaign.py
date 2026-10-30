@@ -17,7 +17,8 @@ from ghostlab.orchestration.relay_engine import RelayToolDenied
 from ghostlab.policy import (ENFORCED, LAB, ApprovalDenied, PolicyDenied, StaticWorldBinding,
                              supervisor_scope)
 from ghostlab.storage import NotFound
-from ghostlab.worlds.relay import RelayFixture, RelayJob, RelayScenario, ToolError, scenario_json
+from ghostlab.worlds.relay import (RelayFixture, RelayJob, RelayResource, RelayScenario, ToolError,
+                                   scenario_json)
 
 from m05_harness import OPERATOR, PROJECT, STRANGER, Script, meta_reply, proposal, spec
 from m05_journey_harness import J, journey_reply, journey_spec
@@ -904,12 +905,57 @@ def test_a_fault_that_fired_counts(tmp_path, faults):
     assert next(iter(state["experiments"].values()))["coverage"]["faults_triggered"] is True
 
 
+def fired(faults, proposal_faults, adapter=CHECKED):
+    run = run_directly(adapter, faults, LAB).run
+    return DRIVER.faults_triggered(proposal_json(adapter, faults=proposal_faults), run)
+
+
+def test_competition_counts_only_if_someone_read_the_frozen_counters():
+    late = fault("stale_availability_competition", 8, competing_jobs=1)  # arrives at the last call
+    assert not fired([("stale_availability_competition", 8, {"competing_jobs": 1})], [late])
+    early = fault("stale_availability_competition", 2, competing_jobs=1)
+    assert fired([("stale_availability_competition", 2, {"competing_jobs": 1})], [early])
+
+
 def test_a_competition_that_found_nothing_free_still_fired():
-    # job-3 and job-4 lose out at the counter, but the counters still froze.
-    fixture = RelayFixture(competitors=())
-    run = run_directly(CHECKED, [("stale_availability_competition", None,
-                                  {"competing_jobs": 2})], LAB, fixture=fixture).run
+    # There's nobody to arrive, but the counters froze, and the adapter read them.
+    run = run_directly(CHECKED, [("stale_availability_competition", None, {"competing_jobs": 2})],
+                       LAB, fixture=RelayFixture(competitors=())).run
     assert DRIVER.faults_triggered(proposal_json(CHECKED, faults=[COMPETITION]), run)
+
+
+def test_a_takeover_after_the_confirmation_is_not_coverage():
+    done = fault("takeover_with_queued_confirmation", FIRST_CONFIRM_EVENT)
+    assert not fired([("takeover_with_queued_confirmation", FIRST_CONFIRM_EVENT, {})], [done])
+    assert fired(RACE, [TAKEOVER_RACE])  # landing on the confirmation does count
+
+
+def test_the_explorer_is_told_the_pinned_fixture(tmp_path):
+    fixture = RelayFixture(jobs=(RelayJob("job-1", "conversation-1", "part-compressor"),
+                                 RelayJob("job-2", "conversation-2", None),
+                                 RelayJob("job-7", "conversation-7", None)),
+                           resources=(*RelayFixture().resources,
+                                      RelayResource("tech-c-0900", "technician", 1)))
+    lab, _ = start(tmp_path, relay_fixture=fixture)
+    sent = lab.script.requests[0].content.decode()
+    assert "job-1 (needs part-compressor), job-2, job-7" in sent
+    assert "Competing jobs available: 2" in sent
+    assert "relay-local-success 10, relay-lease-checked 13" in sent
+
+
+def test_no_call_is_paid_for_when_no_adapter_could_finish(tmp_path):
+    lab = RelayLab(tmp_path, Script())
+    with lab.controller() as controller:
+        state = controller.start(CID, relay_spec(max_tool_calls=13))  # a usable cap of 6
+    assert len(lab.script.requests) == 0
+    assert (state["status"], state["outcome"]) == ("failed", "no_experiment_ran")
+
+
+def test_the_smallest_workable_budget_still_asks_the_model(tmp_path):
+    lab = RelayLab(tmp_path, Script(relay_reply(cap=7)))
+    with lab.controller() as controller:
+        state = controller.start(CID, relay_spec(max_tool_calls=14))  # a usable cap of 7
+    assert len(lab.script.requests) == 1 and len(state["experiments"]) == 1
 
 
 # --- 15. three worlds side by side ----------------------------------------------------------

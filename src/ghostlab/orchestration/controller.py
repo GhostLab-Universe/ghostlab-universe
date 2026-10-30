@@ -183,8 +183,9 @@ class CampaignController:
     def start(self, campaign_id: str, spec: CampaignSpec) -> dict:
         driver = self._driver(spec.world_version)  # refused before any checkpoint exists
         # The longest derived id, so a legal but long campaign id can't strand a checkpoint.
-        TypeAdapter(Identifier).validate_python(
-            f"bundle-{campaign_id}-i{self.max_iterations}-propose-attempts")
+        for derived in (f"bundle-{campaign_id}-i{self.max_iterations}-propose-attempts",
+                        ledger_key(self.session.project_id, campaign_id)):
+            TypeAdapter(Identifier).validate_python(derived)
         if self.graph.get_state(self._config(campaign_id)).values:
             raise CampaignExists(f"campaign {campaign_id} already exists in this project")
         within = check_within_ceiling("supervisor", spec.budget)
@@ -219,10 +220,7 @@ class CampaignController:
         self._check_owner(campaign_id)
         if not self.graph.get_state(self._config(campaign_id)).next:
             return self._snapshot(campaign_id)  # finished: nothing to resume
-        state = self._snapshot(campaign_id)
-        if not self._decision_closes_it(state):  # closing runs nothing, so it needs no check
-            self._check_settings(state)
-            self._inference_limits(state)  # re-authorize before any call
+        self._check_entry(self._snapshot(campaign_id))
         return self._invoke(Command(resume="check"), campaign_id)
 
     def recover(self, campaign_id: str) -> dict:
@@ -231,8 +229,7 @@ class CampaignController:
         Completed nodes are not re-run; the interrupted node runs again.
         """
         self._check_owner(campaign_id)
-        self._check_settings(self._snapshot(campaign_id))
-        self._inference_limits(self._snapshot(campaign_id))  # re-authorize before any call
+        self._check_entry(self._snapshot(campaign_id))
         return self._invoke(None, campaign_id)
 
     def state(self, campaign_id: str) -> dict:
@@ -376,14 +373,23 @@ class CampaignController:
             return "the approved action names a different fixture"
         return None
 
-    def _decision_closes_it(self, state) -> bool:
-        """A rejected or lapsed approval ends the campaign without running anything."""
+    def _can_only_close(self, state) -> bool:
+        """Cancellation, the deadline or a dead approval stop the campaign at its next node."""
+        if self.cancel.is_set() or self._deadline_passed(state):
+            return True
         approval = state.get("approval")
         if approval is None:
             return False
         stored = self.s.approval_store.get(self.session.project_id, approval["approval_id"])
         return stored.status in {"rejected", "expired"} or (
-            stored.status == "pending" and self.s.clock() >= parse_timestamp(stored.expires_at))
+            stored.status in {"pending", "approved"}
+            and self.s.clock() >= parse_timestamp(stored.expires_at))
+
+    def _check_entry(self, state):
+        """Re-authorize before any call. Closing runs nothing, so it needs neither check."""
+        if not self._can_only_close(state):
+            self._check_settings(state)
+            self._inference_limits(state)
 
     def _check_settings(self, state):
         """The runnable gate plus the pinned settings, before any node can run."""
@@ -531,7 +537,7 @@ class CampaignController:
         # World runs are in-process and spend no money. Model attempts are never voided.
         accountant.void_task(task_id, "tool_calls")
         task_cap = ceiling_for("target").max_tool_calls * len(runs)
-        reservations, settled = [], False
+        reservations = []
         try:
             for run in runs:
                 reservations.append(accountant.reserve(
@@ -543,14 +549,13 @@ class CampaignController:
                                                project_id=self.session.project_id,
                                                should_stop=lambda: self._stop_reason(state)),
                     runs))
-            for reservation, outcome in zip(reservations, outcomes):
-                accountant.reconcile(reservation, outcome.tool_calls)
-            settled = True
+            for outcome in outcomes:
+                accountant.reconcile(reservations[0], outcome.tool_calls)
+                reservations.pop(0)
             return outcomes
         finally:
-            if not settled:  # a refused reservation or a raising run: leave nothing open
-                for reservation in reservations:
-                    accountant.release(reservation)
+            for reservation in reservations:  # a refused reservation or a raising run
+                accountant.release(reservation)
 
     def _denied(self, state, tasks, task_id, decision):
         """A policy refusal stops the campaign. The run left no world mutation."""
@@ -576,7 +581,9 @@ class CampaignController:
             return stop
         if state.get("repair", {}) and state["repair"].get("verified"):
             return self._stop(state, "completed", "repair_verified")
-        if state["iteration"] >= state["max_iterations"]:
+        driver, accountant = self._world_driver(state), self._accountant(state)
+        room = self._usable_cap(state, accountant) >= driver.minimum_cap(self._fixture(state))
+        if state["iteration"] >= state["max_iterations"] or not room:
             if any(f["verdict"] == "failed" for f in state["findings"]):
                 return self._stop(state, "completed", "failure_found_repair_pending")
             if not state["experiments"]:  # nothing ran, so nothing was tested
@@ -611,7 +618,6 @@ class CampaignController:
                  board.new_task(cid, names["remember"], "record_memory", "supervisor",
                                 depends_on=[names["verify"]],
                                 exit_condition="Verified findings stored in memory")]
-        accountant = self._accountant(state)
         baselines = {**state.get("task_baselines", {}),
                      names["propose"]: {r: accountant.committed(r) for r in MODEL_RESOURCES}}
         return {"iteration": iteration, "tasks": tasks, "proposal": None,
@@ -635,6 +641,7 @@ class CampaignController:
               if explored else ()),
             *(("Your last proposal was rejected: " + "; ".join(state["rejected"]) + ".",)
               if state.get("rejected") else ()),
+            *driver.explorer_facts(self._fixture(state)),
             f"Set max_tool_calls to at most {self._usable_cap(state, accountant)}.")
         baseline = state.get("task_baselines", {}).get(task_id, {})
         # Task usage continues across task retries and crash recovery: everything the
@@ -658,6 +665,11 @@ class CampaignController:
             tasks = board.fail_dependents(board.finish(tasks, task_id, "failed"))
             return self._stop(state, "failed", "context_error", tasks=tasks,
                               error=self._error("validation_failed", str(error)))
+        if outcome.budget_error:  # a failed check isn't an exhausted budget
+            tasks = board.fail_dependents(board.finish(tasks, task_id, "failed"))
+            return self._stop(state, "failed", "budget_check_failed", tasks=tasks,
+                              error=self._error("internal", "The budget check failed: "
+                                                f"{outcome.budget_error}"))
         if outcome.exhausted:
             return self._exhausted(state, outcome.exhausted,
                                    board.finish(tasks, task_id, "failed"))
@@ -912,8 +924,10 @@ class CampaignController:
     def _consume(self, state):
         """Single-use consumption, checkpointed before the repaired run executes.
 
-        An approval is spent only on a repair that can start, so everything that
-        would stop the repair is checked first.
+        An approval is spent only on a repair that can start, so the stop conditions,
+        the settings, the mode and the budget are checked first. The store and the
+        checkpoint are separate databases, so a crash can land between them. This
+        campaign's own approval, found consumed for this same action, is that crash.
         """
         approval = state["approval"]
         wait_id = f"{state['campaign_id']}-await-approval"
@@ -935,13 +949,19 @@ class CampaignController:
                                      approval_id=approval["approval_id"],
                                      action=approval["action"], now=self.s.clock())
         except ApprovalDenied as error:
-            tasks = board.fail_dependents(board.finish(state["tasks"], wait_id, "failed"))
-            return self._stop(state, "failed", f"approval_{error.code}", tasks=tasks,
-                              error=self._error("approval_invalid", str(error)))
+            if not self._consumed_here(state, approval):
+                tasks = board.fail_dependents(board.finish(state["tasks"], wait_id, "failed"))
+                return self._stop(state, "failed", f"approval_{error.code}", tasks=tasks,
+                                  error=self._error("approval_invalid", str(error)))
         tasks = board.finish(board.finish(state["tasks"], wait_id, "running"), wait_id,
                              "succeeded")
         return {"tasks": tasks, "status": "running", "next": "execute_repair",
                 "repair": {"authorized": True, "verified": False}, "repair_at": self._now()}
+
+    def _consumed_here(self, state, approval) -> bool:
+        stored = self.s.approval_store.get(self.session.project_id, approval["approval_id"])
+        return (stored.status == "consumed" and stored.campaign_id == state["campaign_id"]
+                and stored.action_digest == action_digest(approval["action"]))
 
     def _execute_repair(self, state):
         if (stop := self._guard(state)) is not None:

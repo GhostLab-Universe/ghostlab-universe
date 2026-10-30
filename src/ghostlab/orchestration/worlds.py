@@ -26,19 +26,22 @@ from ghostlab.contracts.world import (WorldCampaignRecord, WorldCampaignSpec,
                                       WorldExperimentProposal, WorldInvariantFinding,
                                       WorldRealityDiff, WorldRunResult)
 from ghostlab.core import Fixture, Scenario, reality_diff
+from ghostlab.core import run as refund_run
 from ghostlab.execution.relay_guard import DENIALS as RELAY_DENIALS
 from ghostlab.policy import (ExecutionMode, PolicyDenied, ceiling_for, delegate, delegate_world,
                              execution_mode_for, root_scope, supervisor_scope, world_root_scope)
 from ghostlab.policy.authorization import deny
 from ghostlab.worlds import journey_capsule, relay_capsule
 from ghostlab.worlds.journey import WORLD_VERSION as JOURNEY_WORLD
-from ghostlab.worlds.journey import JourneyFixture, JourneyScenario, scenario_json
+from ghostlab.worlds.journey import (BudgetExceeded, JourneyFixture, JourneyScenario,
+                                     JourneyWorld, scenario_json)
 from ghostlab.worlds.journey_run import ADAPTERS as JOURNEY_ADAPTERS
 from ghostlab.worlds.journey_run import findings as journey_findings
 from ghostlab.worlds.journey_run import reality_diff as journey_diff
 from ghostlab.worlds.journey_verify import task_outcome
 from ghostlab.worlds.relay import WORLD_VERSION as RELAY_WORLD
-from ghostlab.worlds.relay import RelayFixture, RelayScenario
+from ghostlab.worlds.relay import BudgetExceeded as RelayBudgetExceeded
+from ghostlab.worlds.relay import RelayFixture, RelayScenario, RelayWorld
 from ghostlab.worlds.relay import scenario_json as relay_scenario_json
 from ghostlab.worlds.relay_run import ADAPTERS as RELAY_ADAPTERS
 from ghostlab.worlds.relay_run import findings as relay_findings
@@ -98,6 +101,13 @@ class RefundDriver:
 
     def faults_triggered(self, proposal: dict, fork: dict) -> bool:
         return any(event["outcome"].get("error") == "PaymentTimeout" for event in fork["trace"])
+
+    def minimum_cap(self, fixture: Fixture) -> int:
+        return min(len(refund_run(fixture, Scenario(timeout_after_commit=True), adapter)["trace"])
+                   for adapter in ("vulnerable", "repaired"))
+
+    def explorer_facts(self, fixture: Fixture) -> tuple[str, ...]:
+        return ()
 
     def experiment_runs(self, proposal: dict) -> list[RunRequest]:
         cap, adapter = self.cap(proposal), proposal["adapter"]
@@ -177,13 +187,22 @@ def _guard_denials(run: dict) -> list[dict]:
 
 
 def _journey_fault_fired(fault: dict, run: dict) -> bool:
+    """A fault counts only if it changed something the run could have acted on."""
+    final = run["final_state"]
     if fault["fault_id"] == "sharing_revoked_while_queued":
         recipient = next(p["value"] for p in fault["parameters"] if p["name"] == "recipient_id")
-        return any(row["participant"] == recipient and not row["sharing"]
-                   for row in run["final_state"]["permission_timeline"])
+        revoked = [row["from_event"] for row in final["permission_timeline"]
+                   if row["participant"] == recipient and not row["sharing"]]
+        if not revoked:
+            return False
+        sent = [m for m in final["messages"].values() if m["recipient_id"] == recipient]
+        return not sent or any(m["delivered_at"] is None or m["delivered_at"] >= revoked[0]
+                               for m in sent)  # not a revocation after everything arrived
     seen = {"stale_preference_memory": "remembered_intent",
             "delayed_itinerary_update": "incoming_update"}[fault["fault_id"]]
-    return any(seen in event["outcome"].get("result", {}) for event in run["trace"])
+    versions = [event["outcome"].get("result", {}).get(seen, {}).get("intent_version")
+                for event in run["trace"]]
+    return any(v not in (None, final["current_intent_version"]) for v in versions)
 
 
 class JourneyDriver:
@@ -234,6 +253,33 @@ class JourneyDriver:
         """True when every fault demonstrably took effect, read from the run itself."""
         faults = proposal["scenario"]["faults"]
         return bool(faults) and all(_journey_fault_fired(fault, fork) for fault in faults)
+
+    @staticmethod
+    def _adapter_calls(fixture: JourneyFixture) -> dict[str, int]:
+        """Tool calls each adapter makes on this fixture, measured with no fault."""
+        counts = {}
+        for name, adapter in JOURNEY_ADAPTERS.items():
+            world = JourneyWorld(replace(fixture, guarded=False),
+                                 JourneyScenario.from_json(scenario_json()),
+                                 actor_id=fixture.organizer)
+            try:
+                adapter(world)
+            except BudgetExceeded:
+                pass  # past any cap a proposal can use
+            counts[name] = world.calls
+        return counts
+
+    def minimum_cap(self, fixture: JourneyFixture) -> int:
+        return min(self._adapter_calls(fixture).values())
+
+    def explorer_facts(self, fixture: JourneyFixture) -> tuple[str, ...]:
+        """Facts of the pinned fixture, which may not be the one the skill describes."""
+        superseded = [v for v, _ in fixture.intents if v != fixture.current_version]
+        needs = ", ".join(f"{name} {calls}" for name, calls in self._adapter_calls(fixture).items())
+        return (f"Mandatory travellers: {', '.join(fixture.mandatory)}. "
+                f"Viewers: {', '.join(fixture.viewers) or 'none'}.",
+                f"Superseded intent versions: {superseded or 'none'}.",
+                f"Tool calls each adapter needs with no fault: {needs}.")
 
     def experiment_runs(self, proposal: dict) -> list[RunRequest]:
         """Baseline and fork share one mode, so a difference comes from the fault alone."""
@@ -343,13 +389,19 @@ def _relay_denials(run: dict) -> list[dict]:
 
 
 def _relay_fault_fired(fault: dict, run: dict) -> bool:
+    """A fault counts only if it changed something the run could have acted on."""
     state = run["final_state"]
-    if fault["fault_id"] == "stale_availability_competition":
-        return state["cached_availability"] is not None
+    if fault["fault_id"] == "stale_availability_competition":  # someone read the frozen counters
+        return any(event["outcome"].get("result", {}).get("availability_as_of",
+                                                          event["event_id"]) != event["event_id"]
+                   for event in run["trace"])
     if fault["fault_id"] == "lost_reservation_ack":
         return any(event["outcome"].get("error") == "ReservationAckLost"
                    for event in run["trace"])
-    return any(row["source"] == "takeover" for row in state["ownership_timeline"])
+    taken = [row for row in state["ownership_timeline"] if row["source"] == "takeover"]
+    confirmed = {row["conversation_id"]: row["event_id"] for row in state["confirmation_log"]}
+    return any(row["from_event"] <= confirmed.get(row["conversation_id"], row["from_event"])
+               for row in taken)  # not a takeover of a job already promised
 
 
 class RelayDriver:
@@ -411,6 +463,32 @@ class RelayDriver:
         """True when every fault demonstrably took effect, read from the run itself."""
         faults = proposal["scenario"]["faults"]
         return bool(faults) and all(_relay_fault_fired(fault, fork) for fault in faults)
+
+    @staticmethod
+    def _adapter_calls(fixture: RelayFixture) -> dict[str, int]:
+        """Tool calls each adapter makes on this fixture, measured with no fault."""
+        counts = {}
+        for name, adapter in RELAY_ADAPTERS.items():
+            world = RelayWorld(replace(fixture, guarded=False),
+                               RelayScenario.from_json(relay_scenario_json()),
+                               actor_id=fixture.operator)
+            try:
+                adapter(world)
+            except RelayBudgetExceeded:
+                pass  # past any cap a proposal can use
+            counts[name] = world.calls
+        return counts
+
+    def minimum_cap(self, fixture: RelayFixture) -> int:
+        return min(self._adapter_calls(fixture).values())
+
+    def explorer_facts(self, fixture: RelayFixture) -> tuple[str, ...]:
+        """Facts of the pinned fixture, which may not be the one the skill describes."""
+        jobs = ", ".join(job.job_id if job.part is None else f"{job.job_id} (needs {job.part})"
+                         for job in fixture.jobs)
+        needs = ", ".join(f"{name} {calls}" for name, calls in self._adapter_calls(fixture).items())
+        return (f"Jobs: {jobs}. Competing jobs available: {len(fixture.competitors)}.",
+                f"Tool calls each adapter needs with no fault: {needs}.")
 
     def execute(self, services, fixture: RelayFixture, request: RunRequest, *,
                 scope: TrustedScope, project_id: str,

@@ -124,7 +124,7 @@ def test_baseline_passes_for_both_adapters_and_completes_the_task(result):
         assert failed(recorded) == {} and denied(recorded) == []
         assert task_outcome(FIXTURE, recorded["final_state"]) == {
             "jobs": {"job-1": "confirmed", "job-2": "confirmed"},
-            "all_jobs_confirmed": True, "leases_left_open": 0}
+            "all_jobs_confirmed": True, "handed_off": [], "leases_left_open": 0}
 
 
 @pytest.mark.parametrize("fault_id, evidence, errors, guarded_errors, jobs", [
@@ -171,9 +171,15 @@ def test_stale_counters_sell_the_part_twice_and_the_lease_list_shows_it(result):
 def test_the_lease_checked_adapter_makes_no_promise_it_cannot_keep(result):
     repaired = result["faults"][STALE]["repaired"]
     state = repaired["final_state"]
-    assert state["confirmation_log"][0]["job_id"] == "job-2"
     assert [row["job_id"] for row in state["confirmation_log"]] == ["job-2"]
     assert all(lease["job_id"] != "job-1" for lease in state["leases"].values())
+    # it says so: the customer goes to a person instead of waiting on a promise
+    assert [e["request"]["tool"] for e in repaired["trace"][:2]] == ["inspect_availability",
+                                                                     "hand_off_to_owner"]
+    assert owner_at(state, "conversation-1", 3) == "business_owner"
+    assert [row["source"] for row in state["ownership_timeline"][2:]] == ["handoff"]
+    assert task_outcome(FIXTURE, state)["handed_off"] == ["job-1"]
+    assert verify(FIXTURE, state)["no_automation_after_takeover"] is True
 
 
 def test_a_lost_acknowledgement_is_a_committed_lease(result):
@@ -208,6 +214,7 @@ def test_after_a_takeover_the_automation_leaves_the_job_alone(result):
     assert tools == ["inspect_availability", "reserve_resource", "reserve_resource",
                      "inspect_availability"]
     assert task_outcome(FIXTURE, repaired["final_state"])["leases_left_open"] == 2  # the owner's
+    assert task_outcome(FIXTURE, repaired["final_state"])["handed_off"] == []
 
 
 # --- the check-then-act races: only the guard closes them -------------------------------
@@ -242,6 +249,7 @@ def test_capacity_race_stays_a_failure_after_the_adapter_backs_out(result):
     assert {lease["status"] for lease in lab["final_state"]["leases"].values()
             if lease["job_id"] == "job-1"} == {"released"}
     assert [row["job_id"] for row in lab["final_state"]["confirmation_log"]] == ["job-2"]
+    assert task_outcome(FIXTURE, lab["final_state"])["handed_off"] == ["job-1"]
     assert failed(lab) == {"allocations_within_capacity": [grant]}
     assert denied(race["guarded"]) == [(grant, "CapacityDenied")]
     assert failed(race["guarded"], GUARDED) == {}
@@ -770,6 +778,9 @@ def test_a_lease_that_lapsed_before_the_re_read_stops_the_confirmation():
     recorded = run(fixture, CLEAN, CHECKED)
     assert failed(recorded, fixture) == {}
     assert recorded["final_state"]["confirmation_log"] == []
+    outcome = task_outcome(fixture, recorded["final_state"])
+    assert outcome["handed_off"] == ["job-1", "job-2"]
+    assert set(outcome["jobs"].values()) == {"unresolved"}  # handing everything off isn't done
 
 
 def test_a_lease_can_be_released_and_taken_again():
@@ -926,7 +937,8 @@ def test_one_taken_technician_is_not_capacity_lost():
 def test_a_hand_off_is_not_an_excuse_by_itself():
     world = RelayWorld(FIXTURE, CLEAN)
     world.call("hand_off_to_owner", {"conversation_id": "conversation-1"})
-    assert task_outcome(FIXTURE, world.snapshot())["jobs"]["job-1"] == "unresolved"
+    outcome = task_outcome(FIXTURE, world.snapshot())
+    assert outcome["jobs"]["job-1"] == "unresolved" and outcome["handed_off"] == ["job-1"]
 
 
 def test_open_leases_are_counted_and_confirmed_ones_are_not():

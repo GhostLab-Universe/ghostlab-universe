@@ -109,14 +109,16 @@ def _still_good(check, job_id, leases):
                for lease in leases)
 
 
-def _back_out(world, check, leases):
-    """Give back what this job holds, unless the owner holds it now: their call, not ours."""
+def _give_up(world, check, leases):
+    """Give back what this job holds and pass the customer to a person. If the owner
+    already holds the conversation, the leases are theirs to decide on, so do nothing."""
     if check is None or check["conversation_owner"] != AUTOMATION:
         return
     held = {lease["lease_id"] for lease in check["leases"]}
     for lease in leases:
         if lease["lease_id"] in held:
             _attempt(world, "release_resource", {"lease_id": lease["lease_id"]})
+    _attempt(world, "hand_off_to_owner", {"conversation_id": check["conversation_id"]})
 
 
 def _book_checked(world, job_id, keys):
@@ -125,27 +127,29 @@ def _book_checked(world, job_id, keys):
         return
     plan = _plan(seen)
     if plan is None:
-        return  # the promise can't be kept, so it isn't made
+        _give_up(world, seen, [])  # the promise can't be kept, so it isn't made
+        return
     leases = []
     for resource_id in plan:
         lease = _reserve_checked(world, job_id, resource_id, keys)
         if lease is None:
-            _back_out(world, _inspect(world, job_id), leases)
+            _give_up(world, _inspect(world, job_id), leases)
             return
         leases.append(lease)
     check = _inspect(world, job_id)
     if not _still_good(check, job_id, leases):
-        _back_out(world, check, leases)
+        _give_up(world, check, leases)
         return
     confirmed = _attempt(world, "confirm_service", {"job_id": job_id,
                                                     "promise_version": check["promise_version"]})
     if confirmed is None:
-        _back_out(world, _inspect(world, job_id), leases)
+        _give_up(world, _inspect(world, job_id), leases)
 
 
 def relay_lease_checked(world):
     """Plans from the lease list instead of the counters, re-reads leases, the promise
-    version and conversation ownership before confirming, and backs out otherwise.
+    version and conversation ownership before confirming, and otherwise gives back what
+    it holds and hands the conversation to the owner.
 
     Check-then-act still leaves one event between the re-read and the action: a
     takeover, competing lease or lease expiry that lands exactly on that action gets

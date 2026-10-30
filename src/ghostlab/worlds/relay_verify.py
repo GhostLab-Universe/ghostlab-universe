@@ -169,13 +169,18 @@ def task_outcome(fixture, state: dict) -> dict:
     """Did the agent finish the job? An evaluation measure, not an invariant.
 
     Each job ends ``confirmed``, or with the evidence for why it could not be:
-    ``owner_takeover`` or ``capacity_lost``. Anything else is ``unresolved``.
+    ``owner_takeover`` or ``capacity_lost``. Anything else is ``unresolved``, and a
+    hand-off alone doesn't change that: an agent could hand off everything.
     """
     jobs = {job.job_id: _resolution(fixture, state, job) for job in fixture.jobs}
     confirmed = {row["job_id"] for row in state["confirmation_log"]}
+    handed_off = {row["conversation_id"] for row in state["ownership_timeline"]
+                  if row["source"] == "handoff"}
     open_leases = [row for row in _held_at_end(state).values()
                    if row["holder"] == "automation" and row["job_id"] not in confirmed]
     return {"jobs": jobs, "all_jobs_confirmed": set(jobs.values()) == {"confirmed"},
+            "handed_off": [job.job_id for job in fixture.jobs
+                           if job.conversation_id in handed_off],
             "leases_left_open": len(open_leases)}
 
 

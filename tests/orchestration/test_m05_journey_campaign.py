@@ -16,6 +16,7 @@ from ghostlab.orchestration import (DEFAULT_WORLDS, JourneyDriver, TrustedSessio
 from ghostlab.policy import (ENFORCED, LAB, ApprovalDenied, PolicyDenied, StaticPrincipalBinding,
                              StaticWorldBinding, delegate_world, supervisor_scope,
                              world_root_scope)
+from ghostlab.policy.authorization import deny
 from ghostlab.storage import NotFound
 from ghostlab.worlds.journey import JourneyFixture, JourneyScenario, scenario_json
 
@@ -232,6 +233,34 @@ def test_a_guarded_run_refuses_a_stale_intent_commitment():
     assert outcome.run["final_state"]["commitment_log"] == []
 
 
+def m06_refuses_delivery(monkeypatch):
+    monkeypatch.setattr("ghostlab.orchestration.journey_engine.authorize_delivery",
+                        lambda *args, **kwargs: deny("permission_withdrawn", "policy says no"))
+
+
+def test_m06_can_stop_a_delivery_the_guard_would_allow(monkeypatch):
+    # Sharing is still on, so M02's guard passes: only M06's decision stands in the way.
+    m06_refuses_delivery(monkeypatch)
+    outcome = run_directly(NAIVE, [], ENFORCED)
+    assert outcome.run is None and outcome.denial.code == "permission_withdrawn"
+
+
+def test_a_repair_stops_when_m06_refuses_a_delivery(tmp_path, monkeypatch):
+    lab, state = start(tmp_path)
+    lab.approve(state)
+    m06_refuses_delivery(monkeypatch)
+    with lab.controller() as controller:
+        done = controller.resume(CID)
+    assert (done["status"], done["outcome"]) == ("failed", "policy_denied")
+    assert "permission_withdrawn" in done["errors"][-1]["message"]
+    assert not done["repair"].get("run") and open_reservations(lab) == []
+
+
+def test_m06_does_not_gate_delivery_in_the_lab(monkeypatch):
+    m06_refuses_delivery(monkeypatch)  # the lab relaxes this business rule, and only this
+    assert run_directly(NAIVE, [], LAB).run
+
+
 def test_lab_runs_open_no_connection(monkeypatch):
     def refuse(*args, **kwargs):
         raise AssertionError("a world run opened a network connection")
@@ -385,6 +414,10 @@ def test_the_same_campaign_in_two_projects_stays_separate(tmp_path):
 
 def test_project_ids_with_colons_do_not_share_checkpoints_or_budgets():
     assert ledger_key("a:b", "c") != ledger_key("a", "b:c")
+    assert ledger_key("a:b", "c") != ledger_key("a:b:c", "")
+    hashed = ledger_key("a:b", "c")
+    assert ":" not in hashed  # every raw key contains ":", so the forms can't overlap
+    assert ledger_key(hashed, "c") != hashed  # nor can a project named after a hashed key
     assert ledger_key(PROJECT, CID) == f"{PROJECT}:{CID}"  # existing rows keep their keys
 
 

@@ -77,17 +77,16 @@ ROUTES = ("plan", "propose", "validate", "execute", "verify", "remember", "reque
           "await_approval", "consume", "execute_repair")
 
 
-def _project_key(project_id: str) -> str:
-    # Identifiers may contain ":". A digest keeps "a:b" + "c" apart from "a" + "b:c",
-    # and projects without a colon keep their existing ledger rows and checkpoints.
-    if ":" not in project_id:
-        return project_id
-    return hashlib.sha256(project_id.encode()).hexdigest()[:32]
-
-
 def ledger_key(project_id: str, campaign_id: str) -> str:
-    """Budget ledger campaign key: ``<project>:<campaign>``."""
-    return f"{_project_key(project_id)}:{campaign_id}"
+    """Key for a campaign's checkpoints and budget rows: ``<project>:<campaign>``.
+
+    Identifiers may contain ":", so a project id with one would be ambiguous. Those
+    keys hash the pair instead. A raw key always contains ":" and a hashed key never
+    does, so the two forms can't collide, and other projects keep their existing keys.
+    """
+    if ":" not in project_id:
+        return f"{project_id}:{campaign_id}"
+    return "h." + hashlib.sha256(f"{project_id}\x1f{campaign_id}".encode()).hexdigest()[:32]
 
 
 @dataclass(frozen=True)

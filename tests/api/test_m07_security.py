@@ -20,6 +20,7 @@ from ghostlab.api.plane import ApiConfig
 from ghostlab.api.sessions import (LocalDevSessions, TokenSessions, require_local_deployment)
 from ghostlab.contracts import Principal
 from ghostlab.core import Fixture
+from ghostlab.orchestration import CampaignController
 from ghostlab.policy import (ApprovalService, ProjectApproverAllowlist, StaticPrincipalBinding,
                              StaticWorldBinding)
 from ghostlab.security.local_dev import LOCAL_DEV_PRINCIPAL_ID, LocalDevRefused
@@ -495,6 +496,32 @@ def test_model_text_with_a_secret_is_redacted_in_every_view(stack):
     assert SECRET not in json.dumps(paused)
     for page in crawl(api, paused)[:3]:
         assert SECRET not in page.text
+
+
+def test_stored_text_is_redacted_on_the_way_out_whatever_wrote_it(stack, monkeypatch):
+    # M01 scrubs what it returns, so only a secret already in the checkpoint reaches this layer.
+    api = stack(proposal())
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    experiment_id = paused["experiments"][0]["experiment_id"]
+    read = CampaignController.state
+
+    def leaky(self, campaign):
+        state = read(self, campaign)
+        state["events"][0]["summary"] = f"event {SECRET}"
+        state["errors"] = [{"code": "internal", "message": f"error {SECRET}", "retryable": False,
+                            "side_effect": "none", "ref": None}]
+        state["experiments"][experiment_id]["proposal"]["hypothesis"] = f"model {SECRET}"
+        return state
+
+    monkeypatch.setattr(CampaignController, "state", leaky)
+    base = f"/v1/campaigns/{campaign_id}"
+    pages = {"view": api.get(base), "events": api.get(f"{base}/events"),
+             "experiment": api.get(f"{base}/experiments/{experiment_id}")}
+    for name, page in pages.items():
+        assert page.status_code == 200, name
+        assert SECRET not in page.text, name
+        assert "[REDACTED]" in page.text, name
 
 
 def test_validation_errors_do_not_echo_the_input(stack):

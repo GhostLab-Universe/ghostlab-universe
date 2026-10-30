@@ -104,6 +104,7 @@ class ProposalOutcome:
     bundle_sha256: str
     attempts: int
     exhausted: str | None        # resource whose budget stopped the call
+    budget_error: str | None = None  # the check itself failed; nothing was exhausted
 
 
 class ExplorerClient:
@@ -161,7 +162,10 @@ class ExplorerClient:
         if reply.status == "completed" and reply.structured_output is not None:
             proposal = proposal_model.model_validate(reply.structured_output)
         invocation = dataclasses.asdict(compiled.invocation)
+        stopped = gate.exhausted
+        broken = stopped is not None and stopped.scope in {"ledger", "deadline"}
         return ProposalOutcome(
             proposal.model_dump(mode="json") if proposal else None,
             reply.model_dump(mode="json"), invocation, compiled.sha256, len(gate.attempts),
-            gate.exhausted.resource if gate.exhausted else None)
+            stopped.resource if stopped and not broken else None,
+            stopped.resource if broken else None)

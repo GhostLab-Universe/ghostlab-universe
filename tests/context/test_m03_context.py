@@ -134,6 +134,18 @@ def test_only_recent_observations_are_kept(skills):
         f"obs-{n}" for n in range(12)}
 
 
+def test_findings_that_share_only_a_run_or_artifact_do_not_disagree(skills):
+    def shared(record_id, content):
+        built = record(record_id, content=content, evidence=("finding-" + record_id,))
+        evidence = [*built.evidence, Ref(kind="artifact", id="exp-1-fork", sha256=None),
+                    Ref(kind="run", id="exp-1-fork", sha256=None)]
+        return built.model_copy(update={"evidence": evidence})
+    compiled = compile_with(skills, FakeMemoryStore([
+        shared("memory-a", "commitments_use_approved_intent failed"),
+        shared("memory-b", "mandatory_participants_feasible failed")]))
+    assert not any(i.item_id.startswith("conflict-") for i in compiled.bundle.items)
+
+
 def test_conflicting_sources_stay_visible(skills):
     store = FakeMemoryStore([
         record("memory-a", content="The retry refunded twice.", evidence=("finding-1",)),

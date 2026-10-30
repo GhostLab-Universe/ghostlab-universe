@@ -103,6 +103,11 @@ class CompiledContext:
     sha256: str                     # digest of the bundle's canonical JSON
 
 
+# A world-bound skill compiles only for its own world, so memory can't cross silently.
+SKILL_WORLDS = {"propose-refund-scenario": "refund-world/1",
+                "propose-journey-scenario": "group-journey/1"}
+
+
 class ContextCompiler:
     def __init__(self, skills: SkillRegistry, memory: MemoryStore, *,
                  allow_unpublished_output_schema: bool = False):
@@ -114,6 +119,7 @@ class ContextCompiler:
         scope = request.scope
         if scope.role != request.role:
             raise ContextError("Scope was not issued for this role")
+        self._check_world(request)
         skill = self.skills.get(request.skill_id, request.skill_version)
         invocation = self.skills.authorize(skill, scope)
         if not skill.output_contract_registered and not self.allow_unpublished_output_schema:
@@ -164,6 +170,17 @@ class ContextCompiler:
         return CompiledContext(bundle, invocation, tuple(dropped), tuple(excluded), digest)
 
     # -- pieces -----------------------------------------------------------------
+
+    @staticmethod
+    def _check_world(request):
+        world = SKILL_WORLDS.get(request.skill_id)
+        if world is None:
+            return
+        if request.memory.world_version != world:
+            raise ContextError(f"{request.skill_id} needs {world} memory, "
+                               f"not {request.memory.world_version}")
+        if getattr(request.scope, "world_version", world) != world:
+            raise ContextError(f"{request.skill_id} can't run in a scope for another world")
 
     @staticmethod
     def _controller_item(item_id, kind, content, at) -> ContextItem:

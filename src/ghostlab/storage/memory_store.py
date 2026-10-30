@@ -24,10 +24,15 @@ def _model_for(world_version: str) -> type[MemoryRecord]:
     return MemoryRecord if world_version == REFUND_WORLD else WorldMemoryRecord
 
 
-def _load(world_version: str, body: str) -> MemoryRecord:
+COLUMNS = "world_version, project_id, record_id, body"
+
+
+def _load(world_version: str, project_id: str, record_id: str, body: str) -> MemoryRecord:
+    """Columns and body must agree, so an edited row can't move a record between scopes."""
     record = db.load(_model_for(world_version), body)
-    if record.world_version != world_version:
-        raise IntegrityError("Stored memory record names a different world")
+    if (record.world_version, record.project_id, record.record_id) != (
+            world_version, project_id, record_id):
+        raise IntegrityError("Stored memory record disagrees with its row")
     return record
 
 
@@ -58,7 +63,7 @@ class SqliteMemoryStore:
 
     def get(self, scope: TrustedScope, record_id: str) -> MemoryRecord:
         with db.read(self.path) as conn:
-            row = conn.execute("SELECT world_version, body FROM memory_records "
+            row = conn.execute(f"SELECT {COLUMNS} FROM memory_records "
                                "WHERE project_id = ? AND record_id = ?",
                                (scope.project_id, record_id)).fetchone()
         if row is None:
@@ -69,7 +74,7 @@ class SqliteMemoryStore:
         if query.project_id != scope.project_id:
             raise ScopeViolation("Query project does not match the caller's scope")
         as_of = db.timestamp_us(query.as_of)
-        sql = ["SELECT world_version, body FROM memory_records WHERE project_id = ?",
+        sql = [f"SELECT {COLUMNS} FROM memory_records WHERE project_id = ?",
                f"AND kind IN ({','.join('?' * len(query.kinds))})",
                f"AND status IN ({','.join('?' * len(query.statuses))})",
                "AND effective_from_us <= ?",
@@ -91,7 +96,7 @@ class SqliteMemoryStore:
     def transition(self, scope: TrustedScope, record_id: str, *,
                    expected_status, new_status) -> MemoryRecord:
         with db.write(self.path) as conn:
-            row = conn.execute("SELECT world_version, body FROM memory_records "
+            row = conn.execute(f"SELECT {COLUMNS} FROM memory_records "
                                "WHERE project_id = ? AND record_id = ?",
                                (scope.project_id, record_id)).fetchone()
             if row is None:
@@ -116,7 +121,7 @@ class SqliteMemoryStore:
         """Records past retention that are not expired yet and not on audit hold."""
         with db.read(self.path) as conn:
             rows = conn.execute(
-                "SELECT world_version, body FROM memory_records "
+                f"SELECT {COLUMNS} FROM memory_records "
                 "WHERE project_id = ? AND expires_us IS NOT NULL "
                 "AND expires_us <= ? AND status != 'expired' AND audit_hold = 0 "
                 "ORDER BY record_id", (scope.project_id, db.timestamp_us(as_of))).fetchall()
@@ -129,9 +134,9 @@ class SqliteMemoryStore:
         that explains a newer record remains consistent.
         """
         with db.write(self.path) as conn:
-            rows = conn.execute("SELECT record_id, world_version, body FROM memory_records "
-                                "WHERE project_id = ?", (scope.project_id,)).fetchall()
-            records = {rid: _load(world, body) for rid, world, body in rows}
+            rows = conn.execute(f"SELECT {COLUMNS} FROM memory_records WHERE project_id = ?",
+                                (scope.project_id,)).fetchall()
+            records = {row[2]: _load(*row) for row in rows}
             referenced = {old for r in records.values() for old in r.supersedes}
             doomed = [rid for rid, r in records.items()
                       if r.status == "expired" and not r.retention.audit_hold

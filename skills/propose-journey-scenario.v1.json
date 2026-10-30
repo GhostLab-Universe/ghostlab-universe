@@ -1,6 +1,9 @@
 {
   "allowed_tools": [],
-  "output_schema": {"name": "world_experiment_proposal", "version": 1},
+  "output_schema": {
+    "name": "world_experiment_proposal",
+    "version": 1
+  },
   "preconditions": [
     "The campaign targets group-journey/1",
     "The campaign budget allows at least one more pair of runs"
@@ -11,10 +14,13 @@
   "skill_id": "propose-journey-scenario",
   "steps": [
     "Read the verified findings and questions in this context",
-    "Pick one or more faults group-journey/1 supports: stale_preference_memory, delayed_itinerary_update, sharing_revoked_while_queued",
+    "Pick one or more faults group-journey/1 supports, each with its parameters as name and value pairs",
+    "stale_preference_memory: preference_version is the superseded intent version, which is 1; after_event may be null",
+    "delayed_itinerary_update: delay_events is how many events late the update arrives; after_event must be null",
+    "sharing_revoked_while_queued: recipient_id is a participant, such as participant-c; after_event null revokes just after that recipient's message is queued, and a number revokes after that event",
     "Pick one adapter of the pack: journey-naive or journey-version-checked",
-    "Set max_tool_calls to at most 20; the controller rejects a larger value",
-    "State the hypothesis and the invariant you expect to fail",
+    "Set max_tool_calls to at most 20",
+    "State the hypothesis and the invariant you expect to fail: commitments_use_approved_intent, mandatory_participants_feasible or delivered_messages_permitted",
     "Return exactly one world_experiment_proposal object and nothing else"
   ],
   "stop_conditions": [

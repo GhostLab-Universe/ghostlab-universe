@@ -71,6 +71,7 @@ def migrate(path: Path, directory: Path = MIGRATIONS_DIR, *, target: int | None 
             except sqlite3.Error:
                 if conn.in_transaction:
                     conn.execute("ROLLBACK")
-                raise
+                if _applied(conn)[1].get(number) != digest:  # another process got here first
+                    raise
             version = number
     return version

@@ -3,14 +3,16 @@
   "campaigns": {
    "journey_tool_cap": {
     "approval": null,
-    "errors": [],
-    "outcome": "no_failure_found",
+    "errors": [
+     "budget_exhausted"
+    ],
+    "outcome": "coverage_incomplete",
     "paused": false,
     "runs": {
      "exp-c216d65bf5f1736f/baseline": "8cc9cfb53d740c1d44a0445740984d85107a98ecbaffa8e677153a0188d769e7",
      "exp-c216d65bf5f1736f/fork": "8cc9cfb53d740c1d44a0445740984d85107a98ecbaffa8e677153a0188d769e7"
     },
-    "status": "completed",
+    "status": "budget_exhausted",
     "tasks": [
      [
       "propose_experiment",

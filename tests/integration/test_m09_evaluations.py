@@ -7,12 +7,13 @@ import pytest
 
 from evals import gate
 from evals.cases import CASES
-from evals.evidence import canonical_sha256
-from evals.harness import SECRET
-from evals.release import build_record, target_problems
+from evals.evidence import canonical_sha256, scan_stores
+from evals.harness import SECRET, SYNTHETIC_SECRET
+from evals.release import SECURITY_GATES, build_record, target_problems
 from evals.run import DEFAULT_EXPECTED, run_all
 from evals.score import score_directory
 from ghostlab.core import run_agent
+from ghostlab.orchestration import REQUIRED_COMPATIBILITY_CHECKS, CampaignController
 from ghostlab.policy import LAB
 
 from conftest import ROOT
@@ -149,13 +150,40 @@ def test_a_new_or_missing_case_blocks_promotion(evaluated, tmp_path):
 def test_a_credential_in_evidence_or_telemetry_blocks_promotion(evaluated, tmp_path):
     out = copy_of(evaluated, tmp_path)
     edit_evidence(out, "flow.refund", lambda data: data["observations"].update(leak=SECRET))
-    assert any("no_credential_in_evidence" in item for item in failures(out))
+    assert any("no_secret_in_evidence" in item for item in failures(out))
 
     out = tmp_path / "second"
     shutil.copytree(evaluated[0], out)
     path = out / "telemetry" / "flow.journey.main.jsonl"
     path.write_text(path.read_text("utf-8").replace("fixture-model", SECRET), "utf-8")
-    assert any("no_credential_in_telemetry" in item for item in failures(out))
+    assert any("no_secret_in_telemetry" in item for item in failures(out))
+
+
+def test_the_synthetic_secret_counts_as_a_leak_too(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+    edit_evidence(out, "flow.refund",
+                  lambda data: data["observations"].update(leak=SYNTHETIC_SECRET))
+    assert any("no_secret_in_evidence" in item for item in failures(out))
+
+
+def test_store_scan_finds_both_secrets_and_names_neither(tmp_path):
+    (tmp_path / "plain.bin").write_bytes(b"nothing")
+    (tmp_path / "a.sqlite").write_bytes(b"\x00" + SECRET.encode())
+    (tmp_path / "b.sqlite").write_bytes(SYNTHETIC_SECRET.encode() + b"\x00")
+    scan = scan_stores(tmp_path)
+    assert scan == {"files_scanned": 3,
+                    "files_with_secret": ["a.sqlite:secret[0]", "b.sqlite:secret[1]"]}
+
+
+def test_coverage_that_disagrees_with_the_stored_runs_blocks(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+
+    def claim_full_coverage(data):
+        for item in data["campaigns"]["journey_tool_cap"]["coverage"].values():
+            item["complete"] = True
+
+    edit_evidence(out, "adversarial.budget_exhaustion", claim_full_coverage)
+    assert any("coverage_matches_the_stored_runs" in item for item in failures(out))
 
 
 def test_a_report_claiming_live_inference_is_refused(evaluated):
@@ -180,6 +208,36 @@ def test_a_real_behaviour_regression_blocks_promotion(tmp_path, monkeypatch):
     case = next(c for c in report["cases"] if c["case_id"] == "flow.refund")
     assert errors or "repair_checks_status_and_refunds_once" in case["failed_expectations"]
     assert any(item.startswith("flow.refund") for item in gate.check(report, EXPECTED))
+
+
+def test_storing_model_text_unredacted_blocks_promotion(tmp_path, monkeypatch):
+    """The proposal scrub goes away: the store scan must catch the secret on disk."""
+    monkeypatch.setattr("ghostlab.orchestration.controller.CampaignController"
+                        "._redacted_proposal", lambda self, driver, proposal: proposal)
+    assert run_all(tmp_path, only="model_echoed_secret.refund") == []
+    report = score_directory(tmp_path)
+    case = next(c for c in report["cases"]
+                if c["case_id"] == "adversarial.model_echoed_secret.refund")
+    assert "no_secret_in_stores" in case["failed_expectations"]
+    assert "absent_from_returned_state" in case["failed_expectations"]
+
+
+def test_calling_a_truncated_experiment_clean_blocks_promotion(tmp_path, monkeypatch):
+    """Back to the old outcome: the experiment looks complete, so the campaign is clean."""
+    real = CampaignController._execute
+
+    def pretend_complete(self, state):
+        update = real(self, state)
+        for experiment in update.get("experiments", {}).values():
+            experiment["coverage"]["complete"] = True
+        return update
+
+    monkeypatch.setattr(CampaignController, "_execute", pretend_complete)
+    assert run_all(tmp_path, only="budget_exhaustion") == []
+    report = score_directory(tmp_path)
+    case = next(c for c in report["cases"] if c["case_id"] == "adversarial.budget_exhaustion")
+    assert "a_truncated_experiment_proves_nothing" in case["failed_expectations"]
+    assert "coverage_matches_the_stored_runs" in case["failed_expectations"]
 
 
 def test_removing_the_guard_blocks_promotion(tmp_path, monkeypatch):
@@ -225,12 +283,181 @@ def test_targets_must_be_explicit(change, message):
     assert any(message in item for item in target_problems({**TARGETS, **change}))
 
 
-def test_mocked_evidence_cannot_claim_a_live_pass():
+def test_a_live_claim_without_a_report_proves_nothing_and_leaves_promotion_alone(evaluated):
     statuses = {**TARGETS["statuses"], "live_capability": {"status": "passed"}}
-    assert any("compatibility report" in item
-               for item in target_problems({**TARGETS, "statuses": statuses}))
+    record = release(score_directory(evaluated[0]), targets={**TARGETS, "statuses": statuses})
+    assert record["live_evidence"]["validated"] is False
+    assert record["customer_connected_use_allowed"] is False
+    assert record["promotable"] is True
 
 
 def test_the_candidate_cant_be_its_own_rollback(evaluated):
     record = release(score_directory(evaluated[0]), commit=TARGETS["rollback_target"]["commit"])
     assert "the candidate equals its own rollback target" in record["blockers"]
+
+
+# --- customer-connected use ----------------------------------------------------------------
+
+PROVIDER, ENDPOINT, MODEL = "meta_responses", "https://api.meta.ai/v1", "fixture-live-model"
+
+
+@pytest.fixture(scope="module")
+def clean_report(evaluated):
+    return score_directory(evaluated[0])
+
+
+def valid_report() -> dict:
+    """A labeled test fixture shaped like a passing live M01 report. No call was made."""
+    return {"live": True, "mode": "live", "transport": "network", "provider": PROVIDER,
+            "endpoint": ENDPOINT, "model": MODEL,
+            "checks": [{"check": name, "status": "passed"}
+                       for name in sorted(REQUIRED_COMPATIBILITY_CHECKS)]}
+
+
+def customer_target(root) -> dict:
+    """A fully evidenced future target: the positive control for every test below."""
+    (root / "web").mkdir(exist_ok=True)
+    (root / "uv.lock").write_text("lock", "utf-8")
+    (root / "web" / "package-lock.json").write_text("{}", "utf-8")
+    evidence = root / "evidence"
+    evidence.mkdir(exist_ok=True)
+    gates = {}
+    for gate in SECURITY_GATES:
+        (evidence / f"{gate}.md").write_text("reviewed", "utf-8")
+        gates[gate] = {"status": "passed", "evidence": f"evidence/{gate}.md"}
+    (evidence / "report.json").write_text(json.dumps(valid_report()), "utf-8")
+    return {**json.loads(json.dumps(TARGETS)), "security_gates": gates,
+            "release_target": {"kind": "customer_connected"},
+            "statuses": {**TARGETS["statuses"],
+                         "runtime": {"status": "authenticated_service"},
+                         "live_capability": {
+                             "status": "passed", "provider": PROVIDER, "endpoint": ENDPOINT,
+                             "model": MODEL, "max_model_calls": 5, "confirm_paid_calls": True,
+                             "compatibility_report": "evidence/report.json"}}}
+
+
+def live_of(targets):
+    return targets["statuses"]["live_capability"]
+
+
+def rewrite_report(root, **changes):
+    (root / "evidence" / "report.json").write_text(
+        json.dumps({**valid_report(), **changes}), "utf-8")
+
+
+def test_a_fully_evidenced_customer_target_is_allowed(clean_report, tmp_path):
+    record = release(clean_report, targets=customer_target(tmp_path), root=tmp_path)
+    assert record["customer_connected_use_allowed"] is True
+    assert record["customer_connected_blockers"] == []
+    assert record["live_evidence"] == {"validated": True, "problems": []}
+
+
+def test_the_reviewers_reproduction_stays_false(clean_report):
+    """Live status "passed", a report path that doesn't exist, a local runtime."""
+    statuses = {**TARGETS["statuses"], "live_capability": {
+        "status": "passed", "provider": PROVIDER, "endpoint": ENDPOINT, "model": MODEL,
+        "compatibility_report": "does/not/exist.json"}}
+    record = release(clean_report, targets={**TARGETS, "statuses": statuses})
+    assert record["customer_connected_use_allowed"] is False
+    assert record["live_evidence"]["validated"] is False
+    assert record["promotable"] is True  # offline promotion isn't this decision
+
+
+def test_a_local_target_stays_false_even_with_perfect_evidence(clean_report, tmp_path):
+    targets = customer_target(tmp_path)
+    targets["release_target"] = {"kind": "local_single_user"}
+    record = release(clean_report, targets=targets, root=tmp_path)
+    assert record["live_evidence"]["validated"] is True
+    assert record["customer_connected_use_allowed"] is False
+    assert record["customer_connected_blockers"] == ["this release target is local-only"]
+    assert record["promotable"] is True
+
+
+def _set(path, value):
+    def change(targets, root):
+        node = targets
+        for key in path[:-1]:
+            node = node[key]
+        node[path[-1]] = value
+    return change
+
+
+def _drop_gate(gate):
+    return lambda targets, root: targets["security_gates"].pop(gate)
+
+
+def _report(**changes):
+    return lambda targets, root: rewrite_report(root, **changes)
+
+
+def _raw_report(content):
+    def change(targets, root):
+        (root / "evidence" / "report.json").write_text(content, "utf-8")
+    return change
+
+
+def _checks(*statuses):
+    names = sorted(REQUIRED_COMPATIBILITY_CHECKS)
+    return _report(checks=[{"check": name, "status": status}
+                           for name, status in zip(names, statuses)])
+
+
+LIVE = ("statuses", "live_capability")
+FIRST_GATE = ("security_gates", SECURITY_GATES[0])
+MUTATIONS = {
+    "local_kind": _set(("release_target", "kind"), "local_single_user"),
+    "local_runtime": _set(("statuses", "runtime", "status"), "local_development_only"),
+    "live_not_started": _set((*LIVE, "status"), "not_started"),
+    "no_provider": _set((*LIVE, "provider"), None),
+    "no_endpoint": _set((*LIVE, "endpoint"), None),
+    "no_model": _set((*LIVE, "model"), None),
+    "nonexistent_report": _set((*LIVE, "compatibility_report"), "evidence/missing.json"),
+    "empty_report_path": _set((*LIVE, "compatibility_report"), ""),
+    "report_path_is_a_directory": _set((*LIVE, "compatibility_report"), "evidence"),
+    "report_outside_the_root": _set((*LIVE, "compatibility_report"), "../outside.json"),
+    "paid_calls_unconfirmed": _set((*LIVE, "confirm_paid_calls"), False),
+    "no_spending_cap": _set((*LIVE, "max_model_calls"), None),
+    "cap_above_the_ceiling": _set((*LIVE, "max_model_calls"), 10**9),
+    "report_not_json": _raw_report("not json"),
+    "report_not_an_object": _raw_report("[]"),
+    "report_is_mocked": _report(live=False, mode="mock", transport="mock"),
+    "report_transport_mock": _report(transport="mock"),
+    "report_for_another_model": _report(model="another-model"),
+    "report_for_another_provider": _report(provider="baseten_chat_completions"),
+    "report_for_another_endpoint": _report(endpoint="https://example.invalid/v1"),
+    "report_with_no_checks": _report(checks=[]),
+    "report_with_a_missing_check": _checks("passed"),
+    "report_with_a_failed_check": _checks("failed", *["passed"] * 4),
+    "report_with_a_skipped_check": _checks("skipped", *["passed"] * 4),
+    "report_holds_a_secret": _report(note=f"key {SECRET}"),
+    "gate_marked_failed": _set((*FIRST_GATE, "status"), "failed"),
+    "gate_evidence_missing": _set((*FIRST_GATE, "evidence"), "evidence/missing.md"),
+    "gate_evidence_blank": _set((*FIRST_GATE, "evidence"), " "),
+    **{f"no_{gate}": _drop_gate(gate) for gate in SECURITY_GATES},
+}
+
+
+@pytest.mark.parametrize("name", sorted(MUTATIONS))
+def test_any_missing_requirement_blocks_customer_use_and_nothing_else(clean_report, tmp_path,
+                                                                      name):
+    (tmp_path / "root").mkdir()
+    root = tmp_path / "root"
+    (tmp_path / "outside.json").write_text(json.dumps(valid_report()), "utf-8")
+    targets = customer_target(root)
+    MUTATIONS[name](targets, root)
+    record = release(clean_report, targets=targets, root=root)
+    assert record["customer_connected_use_allowed"] is False
+    assert record["customer_connected_blockers"]
+    assert record["promotable"] is True, record["blockers"]
+
+
+def test_a_failed_offline_gate_also_blocks_customer_use(clean_report, tmp_path):
+    bad = {**clean_report, "live_provider_contacted": True}
+    record = release(bad, targets=customer_target(tmp_path), root=tmp_path)
+    assert record["promotable"] is False
+    assert record["customer_connected_use_allowed"] is False
+
+
+def test_an_unknown_target_kind_blocks_promotion():
+    assert any("unknown release target kind" in item for item in target_problems(
+        {**TARGETS, "release_target": {"kind": "production"}}))

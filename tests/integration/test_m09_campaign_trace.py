@@ -3,8 +3,9 @@
 import json
 
 from evals.cases import approve_and_resume, plant_memory, start
-from evals.harness import (CHECKED, JOURNEY, REFUND, SECRET, Stack, Transport, journey_proposal,
-                           refund_proposal, reply, revocation)
+from evals.evidence import scan_stores
+from evals.harness import (CHECKED, JOURNEY, REFUND, SECRET, SYNTHETIC_SECRET, Stack, Transport,
+                           journey_proposal, refund_proposal, reply, revocation)
 from ghostlab.observability import (FanOutSink, FileSink, InMemorySink, Telemetry, Usage, Versions,
                                     emit_campaign_trace, find_secrets, read_records, to_otlp,
                                     validate_record)
@@ -12,7 +13,7 @@ from ghostlab.orchestration import ORCHESTRATION_VERSION
 from ghostlab.security.redaction import Redactor
 
 CID = "campaign-eval"
-ECHOED = "sk-model-echoed-token-abcdefghijklmnop"
+ECHOED = SYNTHETIC_SECRET
 
 
 def traced(stack, state, tmp_path, *, usage=Usage(input_tokens=700, output_tokens=120)):
@@ -39,8 +40,10 @@ def test_a_complete_refund_campaign_is_traced_without_secret_leakage(tmp_path):
     paused = start(stack, REFUND)
     done = approve_and_resume(stack, paused)
     assert done["outcome"] == "repair_verified"
-    # The raw campaign really held the secret-shaped text, so this test can fail.
-    assert ECHOED in json.dumps(done)
+    # The fixture really held the secret-shaped text. M05 scrubs it before storing anything.
+    assert ECHOED in json.dumps(proposal)
+    assert ECHOED not in json.dumps(paused) and ECHOED not in json.dumps(done)
+    assert scan_stores(stack.root)["files_with_secret"] == []
 
     root, memory, path = traced(stack, done, tmp_path)
     stored, problems = read_records(path)
@@ -77,11 +80,28 @@ def test_a_complete_journey_campaign_is_traced_without_secret_leakage(tmp_path):
                                 hypothesis=f"Race, password={ECHOED}")
     stack = Stack(tmp_path / "store", Transport(reply(proposal)))
     done = approve_and_resume(stack, start(stack, JOURNEY))
-    assert done["outcome"] == "repair_verified" and ECHOED in json.dumps(done)
+    assert done["outcome"] == "repair_verified" and ECHOED in json.dumps(proposal)
+    assert ECHOED not in json.dumps(done)
+    assert scan_stores(stack.root)["files_with_secret"] == []
     _, memory, path = traced(stack, done, tmp_path)
     assert find_secrets(memory.dump() + path.read_text("utf-8"), [SECRET, ECHOED]) == []
     (span,) = by_name(memory, "campaign.run")
     assert span.world_version == JOURNEY and span.outcome == "repair_verified"
+
+
+def test_telemetry_doesnt_rely_on_the_controller_having_redacted(tmp_path):
+    """Second layer: even state holding raw text gives a clean trace."""
+    stack = Stack(tmp_path / "store", Transport(reply(refund_proposal())))
+    state = start(stack, REFUND)
+    raw = f"Bearer {ECHOED} api_key={ECHOED}"
+    dirty = {**state,
+             "events": [{**event, "summary": raw} for event in state["events"]],
+             "errors": [{"code": "internal", "message": raw, "retryable": False,
+                         "side_effect": "none", "ref": None}],
+             "proposal": {**state["proposal"], "hypothesis": raw}}
+    assert ECHOED in json.dumps(dirty)
+    _, memory, path = traced(stack, dirty, tmp_path)
+    assert find_secrets(memory.dump() + path.read_text("utf-8"), [SECRET, ECHOED]) == []
 
 
 def test_unknown_usage_stays_unknown_in_the_trace(tmp_path):

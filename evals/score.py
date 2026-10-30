@@ -17,7 +17,7 @@ from ghostlab.observability import find_secrets, read_records
 
 from .cases import CASES
 from .evidence import canonical_sha256
-from .harness import FIXTURE_LABEL, REFUND, SECRET
+from .harness import FIXTURE_LABEL, REFUND, SECRETS
 from .oracles import agrees_with_controller, journey_oracle, refund_oracle, tool_counts
 
 SCHEMA = "ghostlab-evaluation/1"
@@ -65,6 +65,28 @@ def _agreement(campaign: dict) -> bool:
     return True
 
 
+def _coverage_matches(campaign: dict) -> bool:
+    """Each experiment's recorded coverage must say what its stored runs say."""
+    for experiment_id, coverage in campaign["coverage"].items():
+        statuses = [campaign["runs"][f"{experiment_id}/{name}"]["body"]["status"]
+                    for name in ("baseline", "fork")]
+        if coverage != {"baseline": statuses[0], "fork": statuses[1],
+                        "complete": statuses == ["completed", "completed"]}:
+            return False
+    return True
+
+
+def _coverage_matches(campaign: dict) -> bool:
+    """Each experiment's recorded coverage must say what its stored runs say."""
+    for experiment_id, coverage in campaign["coverage"].items():
+        statuses = [campaign["runs"][f"{experiment_id}/{name}"]["body"]["status"]
+                    for name in ("baseline", "fork")]
+        if coverage != {"baseline": statuses[0], "fork": statuses[1],
+                        "complete": statuses == ["completed", "completed"]}:
+            return False
+    return True
+
+
 def _trace_problems(telemetry_dir: Path, case_id: str, evidence: dict) -> dict:
     files = {name: telemetry_dir / f"{case_id}.{name}.jsonl" for name in evidence["campaigns"]}
     records, problems, leaks = 0, [], []
@@ -81,7 +103,7 @@ def _trace_problems(telemetry_dir: Path, case_id: str, evidence: dict) -> dict:
             problems.append(f"{name}: root span missing or from another trace")
         if {r["trace_id"] for r in stored} != {campaign["trace_id"]}:
             problems.append(f"{name}: records from another trace")
-        leaks.extend(find_secrets(path.read_text("utf-8"), [SECRET]))
+        leaks.extend(find_secrets(path.read_text("utf-8"), SECRETS))
     return {"records": records, "problems": problems, "leaks": sorted(set(leaks))}
 
 
@@ -153,11 +175,13 @@ def score_case(case, evidence: dict, telemetry_dir: Path) -> dict:
         "evidence_digests_match": broken == [],
         "findings_match_the_independent_oracle": all(
             _agreement(c) for c in evidence["campaigns"].values()),
-        "no_credential_in_stores": evidence["store_scan"]["files_with_credential"] == []
+        "coverage_matches_the_stored_runs": all(
+            _coverage_matches(c) for c in evidence["campaigns"].values()),
+        "no_secret_in_stores": evidence["store_scan"]["files_with_secret"] == []
         and evidence["store_scan"]["files_scanned"] > 0,
-        "no_credential_in_evidence": find_secrets(text, [SECRET]) == [],
+        "no_secret_in_evidence": find_secrets(text, SECRETS) == [],
         "trace_valid_and_complete": trace["problems"] == [],
-        "no_credential_in_telemetry": trace["leaks"] == []}
+        "no_secret_in_telemetry": trace["leaks"] == []}
     try:
         expectations.update(case.expect({**evidence, "oracles": oracles}))
     except (KeyError, IndexError, TypeError, AttributeError) as error:

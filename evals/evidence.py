@@ -14,7 +14,7 @@ from ghostlab.orchestration import DEFAULT_WORLDS, ORCHESTRATION_VERSION, ledger
 from ghostlab.policy import root_scope
 from ghostlab.security.redaction import Redactor
 
-from .harness import OPERATOR, PROJECT, SECRET, Stack
+from .harness import OPERATOR, PROJECT, SECRET, SECRETS, Stack
 
 RESOURCES = ("model_calls", "tool_calls", "input_tokens", "output_tokens")
 
@@ -80,6 +80,10 @@ def campaign_evidence(stack: Stack, campaign_id: str) -> dict:
         "repair": {key: value for key, value in (state.get("repair") or {}).items()
                    if key != "run"} or None,
         "approval": _approval(stack, state),
+        "coverage": {experiment_id: experiment.get("coverage")
+                     for experiment_id, experiment in state.get("experiments", {}).items()},
+        "coverage": {experiment_id: experiment.get("coverage")
+                     for experiment_id, experiment in state.get("experiments", {}).items()},
         "runs": _runs(stack, state), "ledger": _ledger(stack, state),
         "memory_ids": len(state["memory_ids"])}
 
@@ -111,10 +115,14 @@ def write_trace(stack: Stack, campaign_id: str, evidence: dict, path: Path) -> N
 
 
 def scan_stores(root: Path) -> dict:
-    """Search every byte of a local store for the fixture credential."""
-    needle, scanned, hits = SECRET.encode(), 0, []
+    """Search every byte of a local store for the fixture credential and synthetic secret.
+
+    Reports the file and which secret by position, never the secret itself.
+    """
+    scanned, hits = 0, []
     for path in sorted(item for item in Path(root).rglob("*") if item.is_file()):
         scanned += 1
-        if needle in path.read_bytes():
-            hits.append(path.name)
-    return {"files_scanned": scanned, "files_with_credential": hits}
+        data = path.read_bytes()
+        hits.extend(f"{path.name}:secret[{index}]" for index, secret in enumerate(SECRETS)
+                    if secret.encode() in data)
+    return {"files_scanned": scanned, "files_with_secret": hits}

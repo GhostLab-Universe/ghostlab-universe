@@ -25,8 +25,8 @@ from ghostlab.worlds import journey_capsule
 
 from .evidence import campaign_evidence, scan_stores, write_trace
 from .harness import (BUSY, CHECKED, JOURNEY, OPERATOR, OTHER_PROJECT, PROJECT,
-                      RACE_AFTER_EVENT, RATE_LIMITED, REFUND, STRANGER, UNAUTHORIZED,
-                      SimulatedCrash, Stack, Transport, journey_proposal, meta_reply,
+                      RACE_AFTER_EVENT, RATE_LIMITED, REFUND, STRANGER, SYNTHETIC_SECRET,
+                      UNAUTHORIZED, SimulatedCrash, Stack, Transport, journey_proposal, meta_reply,
                       refund_proposal, reply, revocation, spec_for, without_world_binding)
 
 CID = "campaign-eval"
@@ -72,8 +72,8 @@ class Recorder:
                 "http_attempts": self.attempts, "recovery": self.recovery,
                 "local_wall_ms": round(sum(stack.wall_ms for stack in self.stacks), 3),
                 "store_scan": {"files_scanned": sum(s["files_scanned"] for s in scans),
-                               "files_with_credential": sorted(
-                                   {hit for s in scans for hit in s["files_with_credential"]})}}
+                               "files_with_secret": sorted(
+                                   {hit for s in scans for hit in s["files_with_secret"]})}}
 
 
 def refused(call: Callable) -> str:
@@ -142,6 +142,8 @@ def expect_refund_flow(ev: dict) -> dict:
         "repair_checks_status_and_refunds_once": bool(repaired["status_checked_at"])
         and repaired["refunded_minor"] == repaired["paid_minor"]
         and repaired["commits_reported_as_timeouts"] == [2],
+        "repair_record_is_complete": _repair_finished(main)
+        and main["repair"]["task_complete"] is True,
         "human_decided_before_repair": ev["observations"]["paused_before_decision"]
         and ev["observations"]["repaired_runs_before_decision"] == 0
         and main["approval"]["status"] == "consumed",
@@ -171,6 +173,8 @@ def expect_journey_flow(ev: dict) -> dict:
         "repair_delivered_to_no_withdrawn_recipient": repaired["unpermitted_deliveries"] == []
         and "participant-c" not in repaired["delivered_to"],
         "withdrawn_message_stays_queued": repaired["still_queued"] == ["msg-3"],
+        "repair_record_is_complete": _repair_finished(main)
+        and main["repair"]["task_outcome"]["reservation_confirmed"] is True,
         "repair_ran_enforced_lab_did_not": main["repair"]["execution"] == {
             "mode": "enforced", "guarded": True},
         "repair_held_by_adapter": main["repair"]["held_by"] == "adapter",
@@ -178,6 +182,12 @@ def expect_journey_flow(ev: dict) -> dict:
             ev["observations"][key] == {"reproduced": True, "reported_model_calls": 0,
                                         "provider_requests_during_replay": 0}
             for key in ("replay_fork", "replay_repaired"))}
+
+
+def _repair_finished(campaign: dict) -> bool:
+    repair = campaign["repair"]
+    return (repair["verified"] is True and repair["run_status"] == "completed"
+            and repair["safety_held"] is True)
 
 
 def run_race(rec: Recorder) -> None:
@@ -268,6 +278,38 @@ def expect_memory_injection(ev: dict) -> dict:
             "a_human_is_still_required": seen["paused_for_human"] is True
             and seen["repaired_before_decision"] is False
             and main["approval"]["status"] == "pending"}
+
+
+def _echo_case(world: str, proposal: dict):
+    """A fixture model echoes secret-shaped text. Nothing may store it."""
+    def run(rec: Recorder) -> None:
+        echoed = reply({**proposal, "hypothesis": (
+            f"Retrying doubles it, Bearer {SYNTHETIC_SECRET} api_key={SYNTHETIC_SECRET}")})
+        failing = (503, {"error": {"code": "server_error",
+                                   "message": f"rejected api_key={SYNTHETIC_SECRET}"}})
+        stack = rec.stack("main", failing, echoed, retry_attempts=1)
+        paused = start(stack, world)
+        done = approve_and_resume(stack, paused)
+        replayed = export_and_replay(stack, "fork")
+        rec.observe(
+            fixture_held_the_secret=SYNTHETIC_SECRET in json.dumps(echoed[1]),
+            in_returned_state=any(SYNTHETIC_SECRET in json.dumps(state)
+                                  for state in (paused, done)),
+            redaction_noted=any("secret-shaped text redacted" in event["summary"]
+                                for event in done["events"]),
+            model_attempts=len(stack.transport.attempts), replay=replayed)
+        rec.capture("main", stack)
+    return run
+
+
+def expect_echoed_secret(ev: dict) -> dict:
+    seen, main = ev["observations"], ev["campaigns"]["main"]
+    return {"the_fixture_really_held_the_secret": seen["fixture_held_the_secret"] is True,
+            "absent_from_returned_state": seen["in_returned_state"] is False,
+            "redaction_is_recorded": seen["redaction_noted"] is True,
+            "the_campaign_still_finishes": main["outcome"] == "repair_verified",
+            "the_failed_attempt_was_retried": seen["model_attempts"] == 2,
+            "the_capsule_still_replays": seen["replay"]["reproduced"] is True}
 
 
 def run_caller_spoofing(rec: Recorder) -> None:
@@ -479,7 +521,30 @@ def expect_budget_exhaustion(ev: dict) -> dict:
         and wall["outcome"] == "wall_clock_ms" and ev["http_attempts"]["wall_clock"] == [],
         "a_truncated_run_is_recorded_as_truncated": all(
             run["body"]["status"] == "budget_exhausted" and len(run["body"]["trace"]) == 3
-            for name, run in capped["runs"].items() if name.endswith("/fork"))}
+            for name, run in capped["runs"].items() if name.endswith("/fork")),
+        "a_truncated_experiment_proves_nothing": (capped["status"], capped["outcome"]) == (
+            "budget_exhausted", "coverage_incomplete")
+        and all(item["complete"] is False for item in capped["coverage"].values())
+        and capped["memory_ids"] == 0}
+
+
+def run_repair_truncated(rec: Recorder) -> None:
+    """The lab failure fits the cap; the repaired adapter needs more calls than that."""
+    stack = rec.stack("main", reply(journey_proposal(cap=13)))
+    approve_and_resume(stack, start(stack, JOURNEY))
+    rec.capture("main", stack)
+
+
+def expect_repair_truncated(ev: dict) -> dict:
+    main, fork = ev["campaigns"]["main"], oracle(ev, "fork")
+    repair = main["repair"]
+    return {"the_lab_failure_is_kept": fork["unpermitted_deliveries"] == [12],
+            "an_unfinished_repair_is_not_verified": (main["status"], main["outcome"]) == (
+                "budget_exhausted", "repair_incomplete") and repair["verified"] is False,
+            "the_record_says_why": repair["run_status"] == "budget_exhausted"
+            and repair["held_by"] is None,
+            "the_stored_run_stopped_at_the_cap": len(
+                main["runs"]["repaired"]["body"]["trace"]) == 13}
 
 
 def run_provider_errors(rec: Recorder) -> None:
@@ -734,6 +799,10 @@ CASES: tuple[Case, ...] = (
          _memory_case(REFUND, _REFUND_P), expect_memory_injection),
     Case("adversarial.memory_injection.journey", "adversarial", JOURNEY,
          _memory_case(JOURNEY, _JOURNEY_P), expect_memory_injection),
+    Case("adversarial.model_echoed_secret.refund", "adversarial", REFUND,
+         _echo_case(REFUND, _REFUND_P), expect_echoed_secret),
+    Case("adversarial.model_echoed_secret.journey", "adversarial", JOURNEY,
+         _echo_case(JOURNEY, _JOURNEY_P), expect_echoed_secret),
     Case("adversarial.caller_spoofing", "adversarial", REFUND, run_caller_spoofing,
          expect_caller_spoofing),
     Case("adversarial.model_field_spoofing", "adversarial", REFUND, run_model_field_spoofing,
@@ -744,6 +813,8 @@ CASES: tuple[Case, ...] = (
          run_journey_capsule_tampering, expect_capsule_tampering),
     Case("adversarial.budget_exhaustion", "adversarial", REFUND, run_budget_exhaustion,
          expect_budget_exhaustion),
+    Case("adversarial.repair_truncated", "adversarial", JOURNEY, run_repair_truncated,
+         expect_repair_truncated),
     Case("adversarial.provider_errors", "adversarial", REFUND, run_provider_errors,
          expect_provider_errors),
     Case("adversarial.crash_restart.refund", "adversarial", REFUND,

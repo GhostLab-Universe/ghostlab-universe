@@ -26,7 +26,7 @@ from ghostlab.contracts.world import (WorldCampaignRecord, WorldCampaignSpec,
                                       WorldExperimentProposal, WorldInvariantFinding,
                                       WorldRealityDiff, WorldRunResult)
 from ghostlab.core import Fixture, Scenario, reality_diff
-from ghostlab.policy import (ExecutionMode, PolicyDenied, delegate, delegate_world,
+from ghostlab.policy import (ExecutionMode, PolicyDenied, ceiling_for, delegate, delegate_world,
                              execution_mode_for, root_scope, supervisor_scope, world_root_scope)
 from ghostlab.policy.authorization import deny
 from ghostlab.worlds import journey_capsule
@@ -59,6 +59,7 @@ class RefundDriver:
     spec_model = CampaignSpec
     record_model = CampaignRecord
     proposal_model = ExperimentProposal
+    output_schema = "experiment_proposal"
 
     def current_fixture(self, services) -> Fixture:
         return services.fixture
@@ -84,6 +85,9 @@ class RefundDriver:
     def explored(self, proposal: dict) -> str:
         return (f"adapter={proposal['adapter']} "
                 f"timeout_after_commit={proposal['scenario']['timeout_after_commit']}")
+
+    def faults_triggered(self, proposal: dict, fork: dict) -> bool:
+        return any(event["outcome"].get("error") == "PaymentTimeout" for event in fork["trace"])
 
     def experiment_runs(self, proposal: dict) -> list[RunRequest]:
         cap, adapter = self.cap(proposal), proposal["adapter"]
@@ -159,12 +163,23 @@ def _guard_denials(run: dict) -> list[dict]:
                                                  "PermissionWithdrawnDenied"}]
 
 
+def _journey_fault_fired(fault: dict, run: dict) -> bool:
+    if fault["fault_id"] == "sharing_revoked_while_queued":
+        recipient = next(p["value"] for p in fault["parameters"] if p["name"] == "recipient_id")
+        return any(row["participant"] == recipient and not row["sharing"]
+                   for row in run["final_state"]["permission_timeline"])
+    seen = {"stale_preference_memory": "remembered_intent",
+            "delayed_itinerary_update": "incoming_update"}[fault["fault_id"]]
+    return any(seen in event["outcome"].get("result", {}) for event in run["trace"])
+
+
 class JourneyDriver:
     world_version = JOURNEY_WORLD
     skill_id = "propose-journey-scenario"
     spec_model = WorldCampaignSpec
     record_model = WorldCampaignRecord
     proposal_model = WorldExperimentProposal
+    output_schema = "world_experiment_proposal"
 
     def current_fixture(self, services) -> JourneyFixture:
         return services.journey_fixture
@@ -201,6 +216,11 @@ class JourneyDriver:
         faults = sorted(f"{f['fault_id']}@{f['after_event']}"
                         for f in proposal["scenario"]["faults"])
         return f"adapter={proposal['adapter_id']} faults={faults}"
+
+    def faults_triggered(self, proposal: dict, fork: dict) -> bool:
+        """True when every fault demonstrably took effect, read from the run itself."""
+        faults = proposal["scenario"]["faults"]
+        return bool(faults) and all(_journey_fault_fired(fault, fork) for fault in faults)
 
     def experiment_runs(self, proposal: dict) -> list[RunRequest]:
         """Baseline and fork share one mode, so a difference comes from the fault alone."""
@@ -245,9 +265,11 @@ class JourneyDriver:
         return True  # a lab failure in either adapter has an enforced repair to try
 
     def repair_action(self, experiment_id: str, proposal: dict) -> dict:
+        # The proposal's cap fits its own adapter, and the repair may need more calls.
+        scenario = {**proposal["scenario"], "max_tool_calls": ceiling_for("target").max_tool_calls}
         return {"kind": "apply_repair", "experiment_id": experiment_id,
                 "adapter": REPAIRED_JOURNEY_ADAPTER, "world_version": JOURNEY_WORLD,
-                "scenario": proposal["scenario"],
+                "scenario": scenario,
                 "execution": execution_mode_for("repair").as_json()}
 
     repair_summary = ("Run the checked-in version-checked adapter on the guarded boundary "

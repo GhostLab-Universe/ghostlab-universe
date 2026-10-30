@@ -55,6 +55,10 @@ class ExecutionMode:
     mode: Literal["lab", "enforced"]
     guarded: bool
 
+    def __post_init__(self):
+        if self.guarded != (self.mode == "enforced"):
+            raise ValueError("The enforced mode is always guarded, and no other mode is")
+
     def as_json(self) -> dict:
         return asdict(self)
 

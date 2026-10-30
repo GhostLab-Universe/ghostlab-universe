@@ -21,6 +21,9 @@ Trust rules:
 - A world runs only through a driver in ``Services.worlds`` and only past the
   runnable gate, checked on start, resume, recovery and before each execution.
   The world comes from the checkpointed spec, never from a proposal.
+- Model-controlled text is redacted before its first persistence, with M06's rules.
+  ``propose`` scrubs the proposal, so every later copy inherits clean text; event
+  summaries and error messages are scrubbed where they are written.
 - The world's fixture is pinned at start. Execution, verification and capsule
   export use that record, an approval binds its digest, and resume or recovery
   under a different fixture is refused before an approval can be consumed.
@@ -42,6 +45,7 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
+from pydantic import ValidationError
 
 from ghostlab.budgets import BudgetAccountant, BudgetExhausted, utc_timestamp
 from ghostlab.context import ContextCompiler, ContextError
@@ -57,6 +61,7 @@ from ghostlab.policy import (ApprovalDenied, ApprovalService, PolicyDenied, Prin
                              check_within_ceiling, delegate, root_scope)
 from ghostlab.policy.authorization import deny
 from ghostlab.providers import ProviderAdapter, Runtime
+from ghostlab.security.redaction import Redactor
 from ghostlab.skills import SkillRegistry
 from ghostlab.storage.interfaces import ApprovalStore, Conflict, MemoryStore, NotFound
 from ghostlab.worlds.journey import JourneyFixture
@@ -165,6 +170,7 @@ class CampaignController:
         self.explorer = ExplorerClient(ContextCompiler(services.skills, services.memory_store),
                                        services.adapter_factory, services.runtime)
         self.memory = MemoryPipeline(services.memory_store)
+        self.redactor = Redactor.from_env()
         self.graph = self._build().compile(checkpointer=saver)
 
     # -- public API -----------------------------------------------------------------
@@ -409,7 +415,7 @@ class CampaignController:
             "schema_version": 1, "campaign_id": state["campaign_id"],
             "sequence": len(state.get("events", [])) + 1, "kind": kind, "task_id": task_id,
             "run_id": run_id, "trace_id": state["trace_id"], "occurred_at": self._now(),
-            "refs": list(refs), "summary": summary[:2000]})
+            "refs": list(refs), "summary": self.redactor.text(summary)[:2000]})
         return [*state.get("events", []), event.model_dump(mode="json")]
 
     def _prefix(self, state) -> str:
@@ -424,7 +430,7 @@ class CampaignController:
                              f"Campaign {status}: {outcome}")
         update["events"] = events
         if error is not None:
-            update["errors"] = [*state.get("errors", []), error]
+            update["errors"] = [*state.get("errors", []), self.redactor.value(error)]
         return update
 
     @staticmethod
@@ -534,9 +540,16 @@ class CampaignController:
         if state.get("repair", {}) and state["repair"].get("verified"):
             return self._stop(state, "completed", "repair_verified")
         if state["iteration"] >= state["max_iterations"]:
-            found = any(f["verdict"] == "failed" for f in state["findings"])
-            return self._stop(state, "completed",
-                              "failure_found_repair_pending" if found else "no_failure_found")
+            if any(f["verdict"] == "failed" for f in state["findings"]):
+                return self._stop(state, "completed", "failure_found_repair_pending")
+            truncated = [experiment_id for experiment_id, experiment in state["experiments"].items()
+                         if not experiment.get("coverage", {}).get("complete", True)]
+            if truncated:  # no failure seen in a run that stopped early proves nothing
+                return self._stop(state, "budget_exhausted", "coverage_incomplete",
+                                  kind="budget_exhausted", error=self._error(
+                                      "budget_exhausted", f"{len(truncated)} experiment(s) stopped "
+                                      "at their tool cap before finishing"))
+            return self._stop(state, "completed", "no_failure_found")
         iteration = state["iteration"] + 1
         prefix = f"{state['campaign_id']}-i{iteration}"
         cid = state["campaign_id"]
@@ -604,11 +617,13 @@ class CampaignController:
         if outcome.exhausted:
             return self._exhausted(state, outcome.exhausted,
                                    board.finish(tasks, task_id, "failed"))
-        if outcome.proposal is not None:
+        proposal = self._redacted_proposal(driver, outcome.proposal)
+        if proposal is not None:
             tasks = board.finish(tasks, task_id, "succeeded")
-            return {"proposal": outcome.proposal, "tasks": tasks, "next": "validate",
+            note = "" if proposal == outcome.proposal else " (secret-shaped text redacted)"
+            return {"proposal": proposal, "tasks": tasks, "next": "validate",
                     "events": self._event(state, "task_status_changed",
-                                          f"Explorer proposed: {outcome.proposal['hypothesis']}",
+                                          f"Explorer proposed: {proposal['hypothesis']}{note}",
                                           task_id=task_id)}
         error = outcome.reply.get("error") or self._error(
             "provider_invalid_output", f"Explorer reply status {outcome.reply['status']}")
@@ -618,12 +633,22 @@ class CampaignController:
         if task["attempt"] < task["max_attempts"] and (
                 error["retryable"] or error["code"] == "provider_invalid_output"):
             return {"tasks": board.retry(tasks, task_id), "next": "propose",
-                    "errors": [*state["errors"], error],
+                    "errors": [*state["errors"], self.redactor.value(error)],
                     "events": self._event(state, "task_status_changed",
                                           f"Explorer attempt {attempt} failed: {error['code']}",
                                           task_id=task_id)}
         tasks = board.fail_dependents(board.finish(tasks, task_id, "failed"))
         return self._stop(state, "failed", "explorer_failed", tasks=tasks, error=error)
+
+    def _redacted_proposal(self, driver, proposal):
+        """Scrub model output here, before anything stores it. Benign text is unchanged."""
+        if proposal is None:
+            return None
+        try:
+            return driver.proposal_model.model_validate(
+                self.redactor.value(proposal)).model_dump(mode="json")
+        except ValidationError:  # redaction can lengthen text past a contract limit
+            return None
 
     def _validate(self, state):
         task_id = f"{self._prefix(state)}-validate"
@@ -684,6 +709,9 @@ class CampaignController:
         record = {"experiment_id": experiment_id, "proposal": state["proposal"],
                   "baseline": baseline_ref, "fork": fork_ref, "diff": diff,
                   "iteration": state["iteration"]}
+        record["coverage"] = {"baseline": baseline.run["status"], "fork": fork.run["status"],
+                              "complete": {baseline.run["status"], fork.run["status"]}
+                              == {"completed"}}
         if runs[0].mode is not None:  # the same mode for both, recorded with the evidence
             record["execution"] = runs[0].mode.as_json()
         tasks = board.finish(tasks, task_id, "succeeded", output_ref=fork_ref)
@@ -736,8 +764,9 @@ class CampaignController:
         run_id = f"{state['experiment_id']}-fork"
         mine = [f for f in state["findings"] if f["run_id"] == run_id]
         failed = [f for f in mine if f["verdict"] == "failed"]
-        ids = self._capture(state, failed or [f for f in mine if f["evidence_event_ids"]],
-                            experiment["fork"])
+        passed = ([f for f in mine if f["evidence_event_ids"]]
+                  if experiment.get("coverage", {}).get("complete", True) else [])
+        ids = self._capture(state, failed or passed, experiment["fork"])  # a violation stays
         tasks = board.finish(tasks, task_id, "succeeded")
         repair_candidate = (failed and state.get("approval") is None
                             and self._world_driver(state).repair_candidate(experiment["proposal"]))

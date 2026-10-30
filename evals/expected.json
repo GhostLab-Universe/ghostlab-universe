@@ -1193,6 +1193,218 @@
    "stored_status": "unverified"
   }
  },
+ "adversarial.model_echoed_secret.journey": {
+  "campaigns": {
+   "main": {
+    "approval": "consumed",
+    "errors": [
+     "provider_transient"
+    ],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-2860eec557ff1876/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-2860eec557ff1876/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08",
+     "repaired": "02981ee91114eeb8eb5bc72604ad31be4ea19893bf2da3a7ebc07962f8da4a35"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    503,
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 0,
+     "unknown_count": 1
+    },
+    "output": {
+     "known_sum": 0,
+     "unknown_count": 1
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 1,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 2,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 1,
+   "tasks": {
+    "succeeded": 7,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 0,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 0,
+    "succeeded": 41,
+    "total": 41
+   }
+  },
+  "observations": {
+   "fixture_held_the_secret": true,
+   "in_returned_state": false,
+   "model_attempts": 2,
+   "redaction_noted": true,
+   "replay": {
+    "provider_requests_during_replay": 0,
+    "reported_model_calls": 0,
+    "reproduced": true
+   }
+  }
+ },
+ "adversarial.model_echoed_secret.refund": {
+  "campaigns": {
+   "main": {
+    "approval": "consumed",
+    "errors": [
+     "provider_transient"
+    ],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-d7ec6a08173e50e6/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-d7ec6a08173e50e6/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6",
+     "repaired": "1f2fe3df29abcc869e36a2dc599a67f0836df00329b9a59d605eab021ecc0b49"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    503,
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 0,
+     "unknown_count": 1
+    },
+    "output": {
+     "known_sum": 0,
+     "unknown_count": 1
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 1,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 2,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 1,
+   "tasks": {
+    "succeeded": 7,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 2,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 2,
+    "succeeded": 6,
+    "total": 8
+   }
+  },
+  "observations": {
+   "fixture_held_the_secret": true,
+   "in_returned_state": false,
+   "model_attempts": 2,
+   "redaction_noted": true,
+   "replay": {
+    "provider_requests_during_replay": 0,
+    "reported_model_calls": 0,
+    "reproduced": true
+   }
+  }
+ },
  "adversarial.model_field_spoofing": {
   "campaigns": {
    "main": {
@@ -1747,6 +1959,99 @@
     "failed_injected_fault": 3,
     "succeeded": 12,
     "total": 15
+   }
+  },
+  "observations": {}
+ },
+ "adversarial.repair_truncated": {
+  "campaigns": {
+   "main": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_incomplete",
+    "paused": false,
+    "runs": {
+     "exp-a0f80dc5d15985fb/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-a0f80dc5d15985fb/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08",
+     "repaired": "7484912df8d8a5e284fec1501fbed2353fc626a731832c70491838fe95aebec1"
+    },
+    "status": "budget_exhausted",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "failed"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "main": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 700,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 120,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 1,
+    "total": 5
+   },
+   "human_decisions": {
+    "decided": 1,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 1,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 0,
+   "tasks": {
+    "succeeded": 6,
+    "total": 7
+   },
+   "tool_calls": {
+    "failed": 0,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 0,
+    "succeeded": 37,
+    "total": 37
    }
   },
   "observations": {}

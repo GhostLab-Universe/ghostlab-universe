@@ -142,6 +142,17 @@ class FileArtifactStore:
                 time.sleep(0.005 * 2 ** attempt)
         raise StorageError("Artifact bytes could not be stored")
 
+    def _read_blob(self, blob: Path, limit: int) -> bytes:
+        for attempt in range(_BLOB_ATTEMPTS):
+            try:
+                with blob.open("rb") as handle:
+                    return handle.read(limit)
+            except FileNotFoundError as error:
+                raise IntegrityError("Artifact bytes are missing") from error
+            except PermissionError:  # another writer is replacing this shared blob
+                time.sleep(0.005 * 2 ** attempt)
+        raise StorageError("Artifact bytes could not be read")
+
     def _ref(self, artifact_id: str, project_id: str | None) -> ArtifactRef:
         with db.read(self.db_path) as conn:
             row = conn.execute("SELECT sha256, size_bytes, body FROM artifacts "
@@ -160,12 +171,7 @@ class FileArtifactStore:
             raise IntegrityError("Artifact reference does not match stored metadata")
         if ref.size_bytes > max_bytes:
             raise ArtifactTooLarge("Artifact exceeds the requested read limit")
-        blob = self._blob(ref.sha256)
-        try:
-            with blob.open("rb") as handle:
-                data = handle.read(ref.size_bytes + 1)
-        except FileNotFoundError as error:
-            raise IntegrityError("Artifact bytes are missing") from error
+        data = self._read_blob(self._blob(ref.sha256), ref.size_bytes + 1)
         if len(data) != ref.size_bytes or hashlib.sha256(data).hexdigest() != ref.sha256:
             raise IntegrityError("Artifact bytes do not match their digest")
         return data

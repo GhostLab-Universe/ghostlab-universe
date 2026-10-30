@@ -989,6 +989,12 @@ class CampaignController:
         recorded_at = state.get("repair_at") or self._now()
         findings = driver.findings(fixture, run_id, outcome.run, recorded_at, execution)
         assessment = driver.assess_repair(fixture, outcome.run, findings, execution)
+        # Adapters number events differently, so a fault timed by event can miss the repair.
+        proposal = state["experiments"][state["experiment_id"]]
+        lost = sorted(driver.faults_fired(proposal["proposal"], self._load_json(proposal["fork"]))
+                      - driver.faults_fired(proposal["proposal"], outcome.run))
+        assessment = {**assessment, "lost_faults": lost,
+                      "verified": assessment["verified"] and not lost}
         verified = assessment["verified"]
         ids = self._capture(state, [f for f in findings if f["evidence_event_ids"]], ref)
         tasks = board.finish(tasks, repair_id, "succeeded" if verified else "failed",

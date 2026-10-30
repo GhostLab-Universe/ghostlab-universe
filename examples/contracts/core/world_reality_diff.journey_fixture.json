@@ -88,13 +88,23 @@
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -255,13 +265,23 @@
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,

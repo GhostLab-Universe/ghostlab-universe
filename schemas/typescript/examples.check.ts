@@ -581,13 +581,23 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -1080,7 +1090,12 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
                 "event_id": 4,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-a:return-journey"
+                "ref": "traveller-a:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               }
             ],
             "current_intent_version": 2,
@@ -1212,13 +1227,23 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
                 "event_id": 4,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-a:return-journey"
+                "ref": "traveller-a:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               },
               {
                 "event_id": 5,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-b:return-journey"
+                "ref": "traveller-b:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               }
             ],
             "current_intent_version": 2,
@@ -1389,13 +1414,23 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
                 "event_id": 4,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-a:return-journey"
+                "ref": "traveller-a:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               },
               {
                 "event_id": 5,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-b:return-journey"
+                "ref": "traveller-b:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               }
             ],
             "current_intent_version": 2,
@@ -1525,13 +1560,23 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
                 "event_id": 4,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-a:return-journey"
+                "ref": "traveller-a:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               },
               {
                 "event_id": 5,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-b:return-journey"
+                "ref": "traveller-b:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               }
             ],
             "current_intent_version": 2,
@@ -1670,13 +1715,23 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
                 "event_id": 4,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-a:return-journey"
+                "ref": "traveller-a:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               },
               {
                 "event_id": 5,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-b:return-journey"
+                "ref": "traveller-b:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               }
             ],
             "current_intent_version": 2,
@@ -1823,13 +1878,23 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
                 "event_id": 4,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-a:return-journey"
+                "ref": "traveller-a:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               },
               {
                 "event_id": 5,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-b:return-journey"
+                "ref": "traveller-b:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               }
             ],
             "current_intent_version": 2,
@@ -1983,13 +2048,23 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
                 "event_id": 4,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-a:return-journey"
+                "ref": "traveller-a:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               },
               {
                 "event_id": 5,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-b:return-journey"
+                "ref": "traveller-b:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               }
             ],
             "current_intent_version": 2,
@@ -2154,13 +2229,23 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
                 "event_id": 4,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-a:return-journey"
+                "ref": "traveller-a:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               },
               {
                 "event_id": 5,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-b:return-journey"
+                "ref": "traveller-b:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               }
             ],
             "current_intent_version": 2,
@@ -2330,13 +2415,23 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
                 "event_id": 4,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-a:return-journey"
+                "ref": "traveller-a:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               },
               {
                 "event_id": 5,
                 "intent_version": 2,
                 "kind": "calendar",
-                "ref": "traveller-b:return-journey"
+                "ref": "traveller-b:return-journey",
+                "reservation_id": "res-hold-1",
+                "window": [
+                  930,
+                  1050
+                ]
               }
             ],
             "current_intent_version": 2,
@@ -2462,7 +2557,7 @@ export const capsule_v2__journey_fixture: C.CapsuleV2 = {
     "source": "trusted-synthetic-journey-adapter",
     "world_version": "group-journey/1"
   },
-  "sha256": "2598d1b9d72bdbbc25602e90451342cede9e7669229a875c1d95d8402f68be53"
+  "sha256": "024e4f3884b81bde7c2453a3e8072397786dfba7bd466f7aa2e1d26111d095c1"
 };
 
 export const capsule_v2__refund_failure: C.CapsuleV2 = {
@@ -4109,13 +4204,23 @@ export const world_reality_diff__journey_fixture: C.WorldRealityDiff = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -4276,13 +4381,23 @@ export const world_reality_diff__journey_fixture: C.WorldRealityDiff = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -4541,13 +4656,23 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
         "event_id": 4,
         "intent_version": 2,
         "kind": "calendar",
-        "ref": "traveller-a:return-journey"
+        "ref": "traveller-a:return-journey",
+        "reservation_id": "res-hold-1",
+        "window": [
+          930,
+          1050
+        ]
       },
       {
         "event_id": 5,
         "intent_version": 2,
         "kind": "calendar",
-        "ref": "traveller-b:return-journey"
+        "ref": "traveller-b:return-journey",
+        "reservation_id": "res-hold-1",
+        "window": [
+          930,
+          1050
+        ]
       }
     ],
     "current_intent_version": 2,
@@ -5040,7 +5165,12 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -5172,13 +5302,23 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -5349,13 +5489,23 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -5485,13 +5635,23 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -5630,13 +5790,23 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -5783,13 +5953,23 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -5943,13 +6123,23 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -6114,13 +6304,23 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,
@@ -6290,13 +6490,23 @@ export const world_run_result__journey_fixture: C.WorldRunResult = {
             "event_id": 4,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-a:return-journey"
+            "ref": "traveller-a:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           },
           {
             "event_id": 5,
             "intent_version": 2,
             "kind": "calendar",
-            "ref": "traveller-b:return-journey"
+            "ref": "traveller-b:return-journey",
+            "reservation_id": "res-hold-1",
+            "window": [
+              930,
+              1050
+            ]
           }
         ],
         "current_intent_version": 2,

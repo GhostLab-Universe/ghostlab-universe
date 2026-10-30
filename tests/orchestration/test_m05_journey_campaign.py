@@ -15,6 +15,7 @@ from ghostlab.contracts.world import (CapsuleV2, WorldCampaignRecord, WorldInvar
                                       WorldMemoryQuery, WorldRunResult)
 from ghostlab.core import Fixture
 from ghostlab.orchestration import (DEFAULT_WORLDS, CampaignSettingsChanged, JourneyDriver,
+                                    LiveInferenceAuthorization, LiveInferenceRefused,
                                     TrustedSession, execute_journey_run, ledger_key)
 from ghostlab.policy import (ENFORCED, LAB, ApprovalDenied, PolicyDenied, StaticPrincipalBinding,
                              StaticWorldBinding, delegate_world, supervisor_scope,
@@ -998,6 +999,19 @@ def test_a_denial_in_a_truncated_run_is_not_credited_to_the_boundary():
     assert result["held_by"] is None and result["guard_denials"]
 
 
+@pytest.mark.parametrize("report", ["[]", "null", "1", '"text"'])
+def test_a_report_that_is_not_an_object_is_refused(tmp_path, report):
+    path = tmp_path / "report.json"
+    path.write_text(report, encoding="utf-8")
+    authorization = LiveInferenceAuthorization(model="m", max_model_calls=1,
+                                               compatibility_report=path,
+                                               confirm_paid_calls=True)
+    config = type("Config", (), {"model": "m", "provider": "p", "base_url": "u"})()
+    limits = journey_spec().budget
+    with pytest.raises(LiveInferenceRefused, match="not a JSON object"):
+        authorization.check(config, limits)
+
+
 def test_a_truncated_refund_repair_is_not_verified():
     driver = DEFAULT_WORLDS["refund-world/1"]
     passed = [{"verdict": "passed"}]
@@ -1074,6 +1088,24 @@ def test_a_secret_in_a_provider_error_is_redacted(tmp_path):
     assert SECRET.encode() not in stored_bytes(tmp_path)
 
 
+def test_a_secret_in_a_retried_provider_error_is_redacted(tmp_path):
+    busy = (503, {"error": {"code": "server_error", "message": f"busy {SECRET}"}})
+    lab, state = start(tmp_path, busy, busy, retry_attempts=1)
+    assert len(state["errors"]) >= 2  # the retried attempt was recorded as well
+    assert_clean(json.dumps(state))
+    assert SECRET.encode() not in stored_bytes(tmp_path)
+
+
+def test_event_summaries_and_errors_are_scrubbed_where_they_are_written(tmp_path):
+    lab, state = start(tmp_path)
+    with lab.controller() as controller:
+        (event,) = controller._event({**state, "events": []}, "task_status_changed",
+                                     f"Saw {SECRET}")
+        stopped = controller._stop(state, "failed", "x",
+                                   error=controller._error("internal", f"Saw {SECRET}"))
+    assert_clean(json.dumps(event), json.dumps(stopped))
+
+
 def test_a_proposal_too_long_once_redacted_is_rejected_not_stored(tmp_path):
     long_text = " ".join(f"token={i:04d}" for i in range(190))  # grows past the 2000 limit
     lab = JourneyLab(tmp_path, Script(journey_reply(), journey_reply()))
@@ -1114,6 +1146,16 @@ def test_a_truncated_experiment_reports_incomplete_coverage(tmp_path):
     assert "stopped at their tool cap" in state["errors"][-1]["message"]
     with lab.controller() as controller:
         assert controller.record(CID).status == "budget_exhausted"
+
+
+def test_a_truncated_baseline_alone_makes_coverage_incomplete(tmp_path):
+    # The viewer's skipped delivery makes the fork one call shorter than the baseline.
+    lab, state = start(tmp_path, journey_reply(CHECKED, cap=17),
+                       journey_reply(CHECKED, faults=[], cap=20))
+    first = list(state["experiments"].values())[0]
+    assert first["coverage"] == {"baseline": "budget_exhausted", "fork": "completed",
+                                 "complete": False}
+    assert state["outcome"] == "coverage_incomplete"
 
 
 def test_a_truncated_refund_experiment_reports_incomplete_coverage(tmp_path):

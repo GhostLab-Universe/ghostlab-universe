@@ -50,6 +50,8 @@ class LiveInferenceAuthorization:
             report = json.loads(self.compatibility_report.read_text(encoding="utf-8"))
         except (OSError, ValueError) as error:
             raise LiveInferenceRefused("compatibility report is missing or unreadable") from error
+        if not isinstance(report, dict):
+            raise LiveInferenceRefused("compatibility report is not a JSON object")
         if (report.get("live") is not True or report.get("transport") != "network"
                 or report.get("mode") != "live"):
             raise LiveInferenceRefused("compatibility report is not from a live run")

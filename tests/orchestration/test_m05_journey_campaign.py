@@ -1,6 +1,8 @@
 """World-aware campaigns end to end: real SQLite stores, real worlds, mocked inference."""
 
+import hashlib
 import json
+import re
 import socket
 import sqlite3
 import threading
@@ -1004,7 +1006,167 @@ def test_a_truncated_refund_repair_is_not_verified():
     assert driver.assess_repair(None, {"status": "completed"}, passed, None)["verified"]
 
 
-# --- 12. refund and journey side by side --------------------------------------------------
+# --- 12. model-controlled text is redacted before it is stored ------------------------------
+
+SECRET = "sk-synthetic0123456789abcdef"
+BEARER = "Bearer synthetic-bearer-value-0123"
+LEAKY = {"hypothesis": f"Replay with {SECRET} to reach delivery",
+         "expected_signal": f"{INVARIANT} fails; use {BEARER}"}
+
+
+def leaky_reply(**changes):
+    return meta_reply(json.dumps(proposal_json(**{**LEAKY, **changes})))
+
+
+def stored_bytes(root):
+    """Every byte the campaign left on disk: databases, WAL files and artifacts."""
+    return b"".join(path.read_bytes() for path in sorted(root.rglob("*")) if path.is_file())
+
+
+def assert_clean(*texts):
+    for text in texts:
+        for secret in (SECRET, BEARER, "synthetic-bearer-value-0123"):
+            assert secret not in text
+
+
+def test_a_secret_in_a_proposal_never_reaches_state_or_storage(tmp_path):
+    lab, state = start(tmp_path, leaky_reply())
+    done = resume_after_approval(lab, state)
+    with lab.controller() as controller:
+        record = controller.record(CID).model_dump_json()
+        controller.export_capsule(CID, run="fork")
+        controller.export_capsule(CID, run="repaired")
+        replayed = controller.replay_capsule(CID, run="fork")
+    assert replayed["reproduced"]
+    assert_clean(json.dumps(state), json.dumps(done), record)
+    experiment = only_experiment(done)
+    assert "[REDACTED]" in experiment["proposal"]["hypothesis"]
+    assert "[REDACTED]" in experiment["proposal"]["expected_signal"]
+    assert any("secret-shaped text redacted" in e["summary"] for e in done["events"])
+    data = stored_bytes(tmp_path)
+    for secret in (SECRET, BEARER):
+        assert secret.encode() not in data
+
+
+def test_the_first_checkpoint_is_already_clean(tmp_path):
+    # The crash is before validate, so only propose has written anything.
+    lab = JourneyLab(tmp_path, Script(leaky_reply()), on_node=CrashOnce("validate"))
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.start(CID, journey_spec())
+    assert SECRET.encode() not in stored_bytes(tmp_path)
+    with lab.controller() as controller:
+        assert_clean(json.dumps(controller.state(CID)))
+
+
+def test_a_secret_in_a_scenario_value_is_redacted_too(tmp_path):
+    faults = [{"fault_id": "sharing_revoked_while_queued", "after_event": None,
+               "parameters": [{"name": "recipient_id", "value": SECRET}]}]
+    lab, state = start(tmp_path, journey_reply(faults=faults), journey_reply(faults=faults))
+    assert SECRET.encode() not in stored_bytes(tmp_path)
+    assert_clean(json.dumps(state))
+
+
+def test_a_secret_in_a_provider_error_is_redacted(tmp_path):
+    rejected = (400, {"error": {"code": "invalid_request", "message": f"rejected {SECRET}"}})
+    lab, state = start(tmp_path, rejected, rejected)
+    assert state["status"] == "failed" and state["errors"]
+    assert_clean(json.dumps(state))
+    assert SECRET.encode() not in stored_bytes(tmp_path)
+
+
+def test_a_proposal_too_long_once_redacted_is_rejected_not_stored(tmp_path):
+    long_text = " ".join(f"token={i:04d}" for i in range(190))  # grows past the 2000 limit
+    lab = JourneyLab(tmp_path, Script(journey_reply(), journey_reply()))
+    lab.script.responses = [meta_reply(json.dumps(proposal_json(hypothesis=long_text)))] * 2
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    assert state["experiments"] == {} and state["status"] == "failed"
+    assert b"token=0001" not in stored_bytes(tmp_path)
+
+
+def test_benign_proposals_and_their_digests_are_unchanged(tmp_path):
+    lab, state = start(tmp_path)
+    experiment = only_experiment(state)
+    assert experiment["proposal"] == proposal_json()
+    assert not any("redacted" in e["summary"] for e in state["events"])
+    ref = experiment["fork"]
+    run_bytes = lab.artifacts.for_project(supervisor_scope(PROJECT, OPERATOR)).read(
+        lab.artifacts.for_project(supervisor_scope(PROJECT, OPERATOR)).ref(ref["id"]))
+    assert hashlib.sha256(run_bytes).hexdigest() == ref["sha256"]
+
+
+def test_evidence_digests_are_not_touched_by_redaction(tmp_path):
+    lab, state = start(tmp_path, leaky_reply())
+    assert re.fullmatch("[0-9a-f]{64}", state["fixture_sha256"])
+    assert state["approval"]["action"]["fixture_sha256"] == state["fixture_sha256"]
+    assert re.fullmatch("[0-9a-f]{64}", state["approval"]["action_digest"])
+
+
+# --- 13. a truncated experiment is inconclusive ---------------------------------------------
+
+def test_a_truncated_experiment_reports_incomplete_coverage(tmp_path):
+    lab, state = start(tmp_path, journey_reply(cap=3), journey_reply(cap=4))
+    assert (state["status"], state["outcome"]) == ("budget_exhausted", "coverage_incomplete")
+    assert not failed(state)
+    for experiment in state["experiments"].values():
+        assert experiment["coverage"] == {"baseline": "budget_exhausted",
+                                          "fork": "budget_exhausted", "complete": False}
+    assert "stopped at their tool cap" in state["errors"][-1]["message"]
+    with lab.controller() as controller:
+        assert controller.record(CID).status == "budget_exhausted"
+
+
+def test_a_truncated_refund_experiment_reports_incomplete_coverage(tmp_path):
+    lab = JourneyLab(tmp_path, Script(proposal(max_tool_calls=2), proposal(max_tool_calls=1)))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    assert (state["status"], state["outcome"]) == ("budget_exhausted", "coverage_incomplete")
+
+
+def test_a_passing_truncated_run_leaves_no_verified_memory(tmp_path):
+    lab = JourneyLab(tmp_path, Script(proposal(max_tool_calls=2), proposal(max_tool_calls=1)))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    assert state["memory_ids"] == []
+
+
+def test_a_violation_seen_before_truncation_is_retained(tmp_path):
+    # Sharing with traveller-a ends at event 3, so the delivery at event 10 breaks the rule,
+    # and the cap of 11 stops the run before it can finish.
+    faults = [{"fault_id": "sharing_revoked_while_queued", "after_event": 2,
+               "parameters": [{"name": "recipient_id", "value": ORGANIZER}]}]
+    lab, state = start(tmp_path, journey_reply(faults=faults, cap=11))
+    (finding,) = failed(state)
+    assert (finding["invariant"], finding["evidence_event_ids"]) == (INVARIANT, [10])
+    assert only_experiment(state)["coverage"]["complete"] is False
+    assert state["paused"] and state["status"] == "awaiting_approval"  # still goes to a human
+    scope = supervisor_scope(PROJECT, OPERATOR)
+    assert [r for r in lab.memory_store.query(scope, memory_query())
+            if f"{INVARIANT} failed" in r.content]
+
+
+def test_one_complete_experiment_does_not_hide_a_truncated_one(tmp_path):
+    lab, state = start(tmp_path, journey_reply(CHECKED, faults=[], cap=3),
+                       journey_reply(CHECKED, faults=[], cap=20))
+    coverage = [e["coverage"]["complete"] for e in state["experiments"].values()]
+    assert sorted(coverage) == [False, True]
+    assert state["outcome"] == "coverage_incomplete"
+
+
+def test_a_finished_experiment_with_no_failure_is_still_no_failure_found(tmp_path):
+    _, state = start(tmp_path, journey_reply(CHECKED, faults=[]), journey_reply(CHECKED,
+                                                                                faults=[], cap=19))
+    assert (state["status"], state["outcome"]) == ("completed", "no_failure_found")
+    assert all(e["coverage"]["complete"] for e in state["experiments"].values())
+
+
+def test_a_checkpoint_from_before_coverage_counts_as_complete(tmp_path):
+    lab, state = start(tmp_path, journey_reply(CHECKED, faults=[]),
+                       journey_reply(CHECKED, faults=[], cap=19))
+    assert state["outcome"] == "no_failure_found"
+
+
+# --- 14. refund and journey side by side --------------------------------------------------
 
 def test_refund_and_journey_campaigns_stay_distinguishable(tmp_path):
     lab = JourneyLab(tmp_path, Script(proposal(), journey_reply()))

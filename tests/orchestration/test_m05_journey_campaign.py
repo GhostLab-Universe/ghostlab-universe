@@ -21,7 +21,8 @@ from ghostlab.orchestration import (DEFAULT_WORLDS, CampaignController,
                                     CampaignSettingsChanged, JourneyDriver,
                                     LiveInferenceAuthorization, LiveInferenceRefused,
                                     TrustedSession, execute_journey_run, ledger_key)
-from ghostlab.policy import (ENFORCED, LAB, ApprovalDenied, PolicyDenied, StaticPrincipalBinding,
+from ghostlab.policy import (ENFORCED, LAB, ApprovalDenied, ApprovalService, PolicyDenied,
+                             StaticPrincipalBinding,
                              StaticWorldBinding, delegate_world, supervisor_scope,
                              world_root_scope)
 from ghostlab.policy.authorization import deny
@@ -1265,7 +1266,9 @@ def revoke(recipient, after_event=None):
     ([revoke("nobody")], [revoke("nobody", 2)]),
     ([stale(999)], [stale(998)]),
     ([], [revoke("nobody")]),
-    ([revoke(VIEWER), stale(999)], [revoke(VIEWER, 2), stale(998)])])
+    ([revoke(VIEWER), stale(999)], [revoke(VIEWER, 2), stale(998)]),
+    ([stale(2)], [stale(2), revoke("nobody")]),  # the approved version isn't stale
+    ([revoke(ORGANIZER, 10)], [revoke(ORGANIZER, 11)])])  # after everything arrived
 def test_a_fault_that_never_fired_is_not_coverage(tmp_path, faults, other):
     lab, state = start(tmp_path, journey_reply(CHECKED, faults=faults),
                        journey_reply(CHECKED, faults=other))
@@ -1322,6 +1325,45 @@ def questions_sent(lab, index):
     return lab.script.requests[index].content.decode()
 
 
+def test_the_explorer_is_told_the_pinned_fixture(tmp_path):
+    fixture = JourneyFixture(viewers=("observer-z", "observer-y"))
+    lab, _ = start(tmp_path, journey_reply(faults=[revoke("observer-z")]), journey_fixture=fixture)
+    sent = questions_sent(lab, 0)
+    assert "observer-z, observer-y" in sent and "Superseded intent versions: [1]" in sent
+    assert "journey-naive 14, " in sent
+    assert "journey-version-checked 22." in sent
+
+
+def test_no_call_is_paid_for_when_no_adapter_could_finish(tmp_path):
+    lab = JourneyLab(tmp_path, Script())
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec(max_tool_calls=23))
+    assert len(lab.script.requests) == 0
+    assert (state["status"], state["outcome"]) == ("failed", "no_experiment_ran")
+
+
+def test_a_clean_campaign_ends_when_the_budget_has_no_room_left(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply(CHECKED, cap=18)))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec(max_tool_calls=36))
+    assert len(lab.script.requests) == 1
+    assert (state["status"], state["outcome"]) == ("completed", "no_failure_found")
+
+
+def test_the_budget_for_exactly_one_pair_is_enough_to_start(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply(cap=12)))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec(max_tool_calls=24))
+    assert len(lab.script.requests) == 1 and failed(state)
+
+
+def test_a_refund_campaign_with_no_room_makes_no_call(tmp_path):
+    lab = JourneyLab(tmp_path, Script())
+    with lab.controller() as controller:
+        state = controller.start(CID, spec(max_tool_calls=3))
+    assert len(lab.script.requests) == 0 and state["outcome"] == "no_experiment_ran"
+
+
 def test_the_explorer_is_told_the_usable_cap(tmp_path):
     lab = JourneyLab(tmp_path, Script(journey_reply(cap=20), journey_reply(cap=15)))
     with lab.controller() as controller:
@@ -1349,6 +1391,54 @@ def test_a_valid_proposal_clears_the_rejection(tmp_path):
 
 
 # --- 13c. an approval is spent only on a repair that can start ---------------------------
+
+@pytest.mark.parametrize("make, reply, budget", [
+    (lambda: journey_spec(), journey_reply, 41), (lambda: spec(), proposal, 8)])
+def test_a_crash_right_after_consuming_still_runs_the_repair(tmp_path, monkeypatch, make, reply,
+                                                             budget):
+    lab = JourneyLab(tmp_path, Script(reply()))
+    with lab.controller() as controller:
+        state = controller.start(CID, make())
+    lab.approve(state)
+    real, calls = ApprovalService.consume, []
+
+    def crash_after(self, **kwargs):
+        calls.append(real(self, **kwargs))
+        raise RuntimeError("process died before the checkpoint")
+    monkeypatch.setattr(ApprovalService, "consume", crash_after)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    monkeypatch.undo()
+    assert len(calls) == 1 and stored_approval(lab, state).status == "consumed"
+    with lab.controller() as controller:
+        done = controller.recover(CID)
+    assert done["outcome"] == "repair_verified" and tool_calls(lab) == budget
+
+
+def test_an_approval_consumed_for_another_action_is_not_taken_as_a_crash(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    with lab.controller() as controller:
+        done = controller.resume(CID)
+        changed = {**state["approval"], "action": {**state["approval"]["action"], "adapter": "x"}}
+        with pytest.raises(ApprovalDenied):
+            lab.approvals.consume(project_id=PROJECT, approval_id=changed["approval_id"],
+                                  action=changed["action"], now=lab.clock())
+        assert not controller._consumed_here(state, changed)
+        assert not controller._consumed_here({**state, "campaign_id": "other"}, state["approval"])
+    assert done["outcome"] == "repair_verified"
+
+
+def test_an_unconsumed_approval_that_fails_still_stops_the_campaign(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+        assert not controller._consumed_here(state, state["approval"])
+        stopped = controller._consume({**state, "tasks": state["tasks"]})
+    assert stopped["outcome"] == "approval_not_approved"
+
 
 def test_a_repair_past_the_deadline_keeps_its_approval(tmp_path):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
@@ -1428,6 +1518,63 @@ def test_an_expired_approval_closes_even_though_the_fixture_changed(tmp_path):
     lab.journey_fixture = CHANGED
     with lab.controller() as controller:
         assert controller.resume(CID)["outcome"] == "approval_expired"
+
+
+@pytest.mark.parametrize("stop", ["cancel", "deadline"])
+@pytest.mark.parametrize("entry", ["resume", "recover"])
+def test_a_stopped_campaign_closes_even_though_the_fixture_changed(tmp_path, stop, entry):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller() as controller:
+        controller.start(CID, journey_spec())
+    lab.journey_fixture = CHANGED
+    cancel = threading.Event()
+    if stop == "cancel":
+        cancel.set()
+    else:
+        lab.clock.advance(minutes=30)
+    with lab.controller(cancel=cancel) as controller:
+        done = getattr(controller, entry)(CID)
+    if entry == "resume":
+        assert done["status"] in {"cancelled", "budget_exhausted"}
+    else:  # the campaign is paused, so recovering pauses it again
+        assert done["paused"]
+
+
+def test_a_stopped_campaign_closes_even_though_the_model_changed(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+        cancel = threading.Event()
+        cancel.set()
+    pinned = {**state["provider"], "model": "another"}
+    with lab.controller(cancel=cancel) as controller:
+        controller.graph.update_state(controller._config(CID), {"provider": pinned})
+        assert controller.resume(CID)["status"] == "cancelled"
+
+
+def test_an_approved_approval_that_lapsed_closes_under_changed_settings(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller(approval_ttl=timedelta(minutes=5)) as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    lab.clock.advance(minutes=6)
+    lab.journey_fixture = CHANGED
+    with lab.controller() as controller:
+        assert controller.resume(CID)["status"] == "failed"
+
+
+def test_a_cancelled_recovery_closes_after_a_crash_past_consume(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=CrashOnce("execute_repair"))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    lab.journey_fixture = CHANGED
+    cancel = threading.Event()
+    cancel.set()
+    with lab.controller(cancel=cancel) as controller:
+        assert controller.recover(CID)["status"] == "cancelled"
 
 
 def test_a_changed_fixture_still_blocks_a_pending_approval(tmp_path):
@@ -1576,6 +1723,43 @@ def test_a_finished_campaign_stops_its_clock(tmp_path):
         after = controller.record(CID)
     assert after.usage.wall_clock_ms == before.usage.wall_clock_ms
     assert after.updated_at == before.updated_at
+
+
+def test_a_project_and_campaign_too_long_together_never_reach_a_checkpoint(tmp_path):
+    lab = JourneyLab(tmp_path, Script())
+    session = TrustedSession(OPERATOR, "p" * 40)
+    with lab.controller(session=session) as controller:
+        with pytest.raises(ValidationError):
+            controller.start("c" * 100, journey_spec())
+        with pytest.raises(PolicyDenied):
+            controller.state("c" * 100)
+
+
+def test_a_failed_budget_check_is_not_reported_as_exhaustion(tmp_path, monkeypatch):
+    def broken(*_, **__):
+        raise sqlite3.OperationalError("disk I/O error")
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    monkeypatch.setattr(BudgetAccountant, "reserve", broken)
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    assert (state["status"], state["outcome"]) == ("failed", "budget_check_failed")
+    assert "OperationalError" in state["errors"][-1]["message"]
+
+
+def test_a_failed_reconcile_keeps_its_own_error(tmp_path, monkeypatch):
+    calls = []
+    real = BudgetAccountant.reconcile
+
+    def fail_second(self, reservation, actual):
+        calls.extend([reservation] if reservation.resource == "tool_calls" else [])
+        if len(calls) == 2:
+            raise sqlite3.OperationalError("disk I/O error")
+        return real(self, reservation, actual)
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    monkeypatch.setattr(BudgetAccountant, "reconcile", fail_second)
+    with lab.controller() as controller, pytest.raises(sqlite3.OperationalError):
+        controller.start(CID, journey_spec())
+    assert open_reservations(lab) == []
 
 
 @pytest.mark.parametrize("length", [110, 118, 128])

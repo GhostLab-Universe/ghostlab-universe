@@ -52,8 +52,10 @@ def journey_spec(**budget):
 
 
 class JourneyLab(Lab):
-    def __init__(self, root, script, *, world_binding=None, worlds=None, **options):
+    def __init__(self, root, script, *, world_binding=None, worlds=None, journey_fixture=None,
+                 refund_fixture=None, **options):
         super().__init__(root, script, **options)
+        self.journey_fixture, self.refund_fixture = journey_fixture, refund_fixture
         self.world_binding = world_binding or StaticWorldBinding(
             {(PROJECT, OPERATOR.principal_id, J): ORGANIZER})
         self.worlds = worlds
@@ -62,4 +64,8 @@ class JourneyLab(Lab):
         services = dataclasses.replace(super().services(), world_binding=self.world_binding)
         if self.worlds is not None:
             services = dataclasses.replace(services, worlds=self.worlds)
+        if self.journey_fixture is not None:
+            services = dataclasses.replace(services, journey_fixture=self.journey_fixture)
+        if self.refund_fixture is not None:
+            services = dataclasses.replace(services, fixture=self.refund_fixture)
         return services

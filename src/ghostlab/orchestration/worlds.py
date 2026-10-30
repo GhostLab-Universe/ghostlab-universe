@@ -7,11 +7,15 @@ nothing here is loaded by name from a proposal, a record or a request.
 
 A driver turns a validated proposal into run requests. The execution mode comes
 from ``execution_mode_for``, never from the proposal, the state or a capsule.
+
+A driver never reads the current fixture while running a campaign. The controller
+pins a snapshot at start and passes it in, so evidence, approvals and capsules all
+describe the world the campaign actually ran against.
 """
 
 import json
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from types import MappingProxyType
 
@@ -21,16 +25,17 @@ from ghostlab.contracts import (CampaignRecord, CampaignSpec, ExperimentProposal
 from ghostlab.contracts.world import (WorldCampaignRecord, WorldCampaignSpec,
                                       WorldExperimentProposal, WorldInvariantFinding,
                                       WorldRealityDiff, WorldRunResult)
-from ghostlab.core import Scenario, reality_diff
+from ghostlab.core import Fixture, Scenario, reality_diff
 from ghostlab.policy import (ExecutionMode, PolicyDenied, delegate, delegate_world,
                              execution_mode_for, root_scope, supervisor_scope, world_root_scope)
 from ghostlab.policy.authorization import deny
 from ghostlab.worlds import journey_capsule
 from ghostlab.worlds.journey import WORLD_VERSION as JOURNEY_WORLD
-from ghostlab.worlds.journey import JourneyScenario, scenario_json
+from ghostlab.worlds.journey import JourneyFixture, JourneyScenario, scenario_json
 from ghostlab.worlds.journey_run import ADAPTERS as JOURNEY_ADAPTERS
 from ghostlab.worlds.journey_run import findings as journey_findings
 from ghostlab.worlds.journey_run import reality_diff as journey_diff
+from ghostlab.worlds.journey_verify import task_outcome
 
 from .engine import RunOutcome, derive_findings
 from .journey_engine import execute_journey_run
@@ -55,6 +60,15 @@ class RefundDriver:
     record_model = CampaignRecord
     proposal_model = ExperimentProposal
 
+    def current_fixture(self, services) -> Fixture:
+        return services.fixture
+
+    def snapshot(self, fixture: Fixture) -> dict:
+        return asdict(fixture)
+
+    def restore(self, snapshot: dict) -> Fixture:
+        return Fixture(**snapshot)
+
     def supervisor(self, project_id: str, principal: Principal) -> TrustedScope:
         return root_scope(project_id, principal)
 
@@ -77,15 +91,15 @@ class RefundDriver:
                            cap, None),
                 RunRequest(Scenario(**proposal["scenario"]), adapter, cap, None)]
 
-    def execute(self, services, request: RunRequest, *, scope: TrustedScope, project_id: str,
-                should_stop: Callable[[], str | None]) -> RunOutcome:
-        return services.engine(services.fixture, request.scenario, request.adapter, scope=scope,
+    def execute(self, services, fixture: Fixture, request: RunRequest, *, scope: TrustedScope,
+                project_id: str, should_stop: Callable[[], str | None]) -> RunOutcome:
+        return services.engine(fixture, request.scenario, request.adapter, scope=scope,
                                project_id=project_id, binding=services.binding)
 
     def validate_run(self, run: dict) -> None:
         RunResult.model_validate(run)
 
-    def diff(self, services, baseline: dict, fork: dict) -> dict:
+    def diff(self, fixture: Fixture, baseline: dict, fork: dict) -> dict:
         return RealityDiff.model_validate(reality_diff(baseline, fork)).model_dump(mode="json")
 
     def run_summary(self, diff: dict) -> str:
@@ -93,7 +107,7 @@ class RefundDriver:
         return (f"Baseline {diff['baseline_refunded_minor']} vs fork "
                 f"{diff['faulted_refunded_minor']} minor units; first divergence {first}")
 
-    def findings(self, services, run_id: str, run: dict, recorded_at: str,
+    def findings(self, fixture: Fixture, run_id: str, run: dict, recorded_at: str,
                  execution: dict | None) -> list[dict]:
         return derive_findings(run_id, run, recorded_at=recorded_at)
 
@@ -117,15 +131,25 @@ class RefundDriver:
         scenario = Scenario(**action["scenario"])
         return RunRequest(scenario, action["adapter"], scenario.max_tool_calls, None)
 
-    def repair_result(self, run: dict, action: dict) -> dict:
+    def assess_repair(self, fixture: Fixture, run: dict, findings: list[dict],
+                      execution: dict | None) -> dict:
+        finished, safe = run["status"] == "completed", _safety_held(findings)
+        return {"run_status": run["status"], "safety_held": safe, "task_complete": finished,
+                "verified": finished and safe}
+
+    def repair_result(self, run: dict, action: dict, verified: bool) -> dict:
         return {"refunded_minor": run["final_state"]["total_refunded_minor"]}
 
-    def capsule(self, services, scenario: dict, run: dict, execution: dict | None,
+    def capsule(self, fixture: Fixture, scenario: dict, run: dict, execution: dict | None,
                 path: Path) -> None:
-        refund_capsule.export_capsule(path, services.fixture, Scenario(**scenario), run)
+        refund_capsule.export_capsule(path, fixture, Scenario(**scenario), run)
 
     def replay(self, path: Path) -> dict:
         return refund_capsule.replay(path)
+
+
+def _safety_held(findings: list[dict]) -> bool:
+    return all(finding["verdict"] == "passed" for finding in findings)
 
 
 def _guard_denials(run: dict) -> list[dict]:
@@ -141,6 +165,16 @@ class JourneyDriver:
     spec_model = WorldCampaignSpec
     record_model = WorldCampaignRecord
     proposal_model = WorldExperimentProposal
+
+    def current_fixture(self, services) -> JourneyFixture:
+        return services.journey_fixture
+
+    def snapshot(self, fixture: JourneyFixture) -> dict:
+        # The guard is an execution setting, chosen per run, not part of the world.
+        return replace(fixture, guarded=False).to_json()
+
+    def restore(self, snapshot: dict) -> JourneyFixture:
+        return JourneyFixture.from_json(snapshot)
 
     def supervisor(self, project_id: str, principal: Principal) -> TrustedScope:
         return supervisor_scope(project_id, principal)
@@ -176,17 +210,18 @@ class JourneyDriver:
         return [RunRequest(clean, adapter, cap, mode),
                 RunRequest(JourneyScenario.from_json(proposal["scenario"]), adapter, cap, mode)]
 
-    def execute(self, services, request: RunRequest, *, scope: TrustedScope, project_id: str,
+    def execute(self, services, fixture: JourneyFixture, request: RunRequest, *,
+                scope: TrustedScope, project_id: str,
                 should_stop: Callable[[], str | None]) -> RunOutcome:
-        return execute_journey_run(services.journey_fixture, request.scenario, request.adapter,
-                                   request.mode, scope=scope, project_id=project_id,
+        return execute_journey_run(fixture, request.scenario, request.adapter, request.mode,
+                                   scope=scope, project_id=project_id,
                                    binding=services.world_binding, should_stop=should_stop)
 
     def validate_run(self, run: dict) -> None:
         WorldRunResult.model_validate(run)
 
-    def diff(self, services, baseline: dict, fork: dict) -> dict:
-        data = journey_diff(services.journey_fixture, baseline, fork)
+    def diff(self, fixture: JourneyFixture, baseline: dict, fork: dict) -> dict:
+        data = journey_diff(fixture, baseline, fork)
         return WorldRealityDiff.model_validate(data).model_dump(mode="json")
 
     def run_summary(self, diff: dict) -> str:
@@ -195,9 +230,9 @@ class JourneyDriver:
                 f" vs {diff['faulted_metrics']['messages_delivered_without_permission']}; "
                 f"violated {diff['violated_invariants'] or 'none'}; first divergence {first}")
 
-    def findings(self, services, run_id: str, run: dict, recorded_at: str,
+    def findings(self, fixture: JourneyFixture, run_id: str, run: dict, recorded_at: str,
                  execution: dict | None) -> list[dict]:
-        fixture = replace(services.journey_fixture, guarded=bool(execution["guarded"]))
+        fixture = replace(fixture, guarded=bool(execution["guarded"]))
         return [WorldInvariantFinding.model_validate(finding).model_dump(mode="json")
                 for finding in journey_findings(fixture, run, run_id, recorded_at)]
 
@@ -225,17 +260,35 @@ class JourneyDriver:
         scenario = JourneyScenario.from_json(action["scenario"])
         return RunRequest(scenario, action["adapter"], scenario.max_tool_calls, mode)
 
-    def repair_result(self, run: dict, action: dict) -> dict:
+    def assess_repair(self, fixture: JourneyFixture, run: dict, findings: list[dict],
+                      execution: dict | None) -> dict:
+        """Safety and task completion stay separate; a repair needs a finished run.
+
+        An unfinished task is acceptable only when enforcement explains it: a guard
+        denial, or a mandatory traveller whose sharing was withdrawn. Otherwise the
+        run never tested the repair, and passing checks would mean nothing.
+        """
+        fixture = replace(fixture, guarded=bool(execution["guarded"]))
+        task = task_outcome(fixture, run["final_state"])
+        sharing = run["final_state"]["sharing"]
+        informed = task["mandatory_informed"] or any(not sharing[p] for p in fixture.mandatory)
+        reached_the_goal = task["reservation_confirmed"] and task["calendars_updated"] and informed
+        finished, safe = run["status"] == "completed", _safety_held(findings)
+        return {"run_status": run["status"], "safety_held": safe,
+                "task_complete": all(task.values()), "task_outcome": task,
+                "verified": finished and safe and (reached_the_goal or bool(_guard_denials(run)))}
+
+    def repair_result(self, run: dict, action: dict, verified: bool) -> dict:
         """Tells an adapter improvement from boundary enforcement in the evidence."""
         denials = _guard_denials(run)
         return {"adapter": action["adapter"], "execution": action["execution"],
                 "guard_denials": denials,
-                "held_by": "guarded_boundary" if denials else "adapter"}
+                "held_by": "guarded_boundary" if denials else "adapter" if verified else None}
 
-    def capsule(self, services, scenario: dict, run: dict, execution: dict | None,
-                path: Path) -> None:
-        fixture = replace(services.journey_fixture, guarded=bool(execution["guarded"]))
-        journey_capsule.export_capsule(path, fixture, scenario, run)
+    def capsule(self, fixture: JourneyFixture, scenario: dict, run: dict,
+                execution: dict | None, path: Path) -> None:
+        journey_capsule.export_capsule(path, replace(fixture, guarded=bool(execution["guarded"])),
+                                       scenario, run)
 
     def replay(self, path: Path) -> dict:
         return journey_capsule.replay(path)

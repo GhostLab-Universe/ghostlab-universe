@@ -11,14 +11,16 @@ from pydantic import ValidationError
 
 from ghostlab.contracts.world import (CapsuleV2, WorldCampaignRecord, WorldInvariantFinding,
                                       WorldMemoryQuery, WorldRunResult)
-from ghostlab.orchestration import (DEFAULT_WORLDS, JourneyDriver, TrustedSession,
-                                    execute_journey_run, ledger_key)
+from ghostlab.core import Fixture
+from ghostlab.orchestration import (DEFAULT_WORLDS, CampaignSettingsChanged, JourneyDriver,
+                                    TrustedSession, execute_journey_run, ledger_key)
 from ghostlab.policy import (ENFORCED, LAB, ApprovalDenied, PolicyDenied, StaticPrincipalBinding,
                              StaticWorldBinding, delegate_world, supervisor_scope,
                              world_root_scope)
 from ghostlab.policy.authorization import deny
 from ghostlab.storage import NotFound
-from ghostlab.worlds.journey import JourneyFixture, JourneyScenario, scenario_json
+from ghostlab.worlds.journey import (JourneyFixture, JourneyOption, JourneyScenario,
+                                     scenario_json)
 
 from m05_harness import OPERATOR, PROJECT, STRANGER, Lab, Script, meta_reply, proposal, spec
 from m05_journey_harness import (CHECKED, DELIVERY_RACE_EVENT, J, NAIVE, ORGANIZER,
@@ -732,7 +734,221 @@ def test_the_gate_is_rechecked_before_the_repair(tmp_path, monkeypatch):
     assert not done["repair"].get("run")
 
 
-# --- 10. refund and journey side by side --------------------------------------------------
+# --- 10. the campaign's fixture is pinned ---------------------------------------------------
+
+CHANGED = JourneyFixture(mandatory=(ORGANIZER, "new-traveller"))
+
+
+def pinned_participants(state):
+    return state["fixture"]["mandatory"]
+
+
+def test_the_fixture_is_recorded_when_the_campaign_starts(tmp_path):
+    _, state = start(tmp_path)
+    assert pinned_participants(state) == [ORGANIZER, "traveller-b"]
+    assert len(state["fixture_sha256"]) == 64
+    assert state["approval"]["action"]["fixture_sha256"] == state["fixture_sha256"]
+
+
+def test_a_changed_fixture_cannot_use_an_existing_approval(tmp_path):
+    lab, state = start(tmp_path)
+    lab.approve(state)
+    lab.journey_fixture = CHANGED  # a restart with a different world
+    with lab.controller() as controller:
+        with pytest.raises(CampaignSettingsChanged, match="fixture changed"):
+            controller.resume(CID)
+        assert controller.state(CID)["repair"] is None
+    approval = lab.approval_store.get(PROJECT, state["approval"]["approval_id"])
+    assert approval.status == "approved"  # not consumed, so nothing was spent
+    lab.journey_fixture = None  # the original settings still work
+    with lab.controller() as controller:
+        done = controller.resume(CID)
+    assert done["outcome"] == "repair_verified"
+    run = load(lab, done["repair"]["run"])
+    assert "new-traveller" not in run["final_state"]["calendar"]
+
+
+def test_recovery_refuses_a_changed_fixture(tmp_path):
+    crash = CrashOnce("verify")
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=crash)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.start(CID, journey_spec())
+    lab.journey_fixture = CHANGED
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.recover(CID)
+    lab.journey_fixture = None
+    with lab.controller() as controller:
+        assert controller.recover(CID)["paused"]
+
+
+def test_a_changed_fixture_cannot_reach_a_paused_campaign_even_undecided(tmp_path):
+    lab, _ = start(tmp_path)
+    lab.journey_fixture = CHANGED
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.resume(CID)
+
+
+def test_consumption_rechecks_the_fixture(tmp_path):
+    lab, state = start(tmp_path)
+    lab.approve(state)
+    held = {}
+
+    def swap(name, _):
+        if name == "consume":
+            held["controller"].s.journey_fixture = CHANGED
+
+    lab.on_node = swap
+    with lab.controller() as controller:
+        held["controller"] = controller
+        done = controller.resume(CID)
+    assert (done["status"], done["outcome"]) == ("failed", "settings_changed")
+    assert lab.approval_store.get(PROJECT, state["approval"]["approval_id"]).status == "approved"
+
+
+def test_the_run_and_its_verification_use_the_pinned_fixture(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    held = {}
+
+    def swap(name, _):
+        if name == "execute":
+            held["controller"].s.journey_fixture = CHANGED
+
+    lab.on_node = swap
+    with lab.controller() as controller:
+        held["controller"] = controller
+        state = controller.start(CID, journey_spec())
+    fork = load(lab, only_experiment(state)["fork"])
+    assert "new-traveller" not in fork["final_state"]["calendar"]
+    assert failed(state)[0]["evidence_event_ids"] == [12]
+
+
+@pytest.mark.parametrize("run", ["baseline", "fork", "repaired"])
+def test_an_export_after_a_fixture_change_still_reproduces(tmp_path, run):
+    lab, state = start(tmp_path)
+    resume_after_approval(lab, state)
+    lab.journey_fixture = CHANGED
+    with lab.controller() as controller:
+        ref = controller.export_capsule(CID, run=run)
+        replayed = controller.replay_capsule(CID, run=run)
+    assert replayed["reproduced"] and replayed["model_calls"] == 0
+    assert load(lab, ref)["payload"]["fixture"]["mandatory"] == [ORGANIZER, "traveller-b"]
+
+
+def test_the_guard_flag_is_not_part_of_the_pinned_world(tmp_path):
+    lab, state = start(tmp_path, journey_fixture=JourneyFixture(guarded=True))
+    assert state["fixture"]["guarded"] is False
+    assert only_experiment(state)["execution"] == LAB.as_json()
+
+
+def test_a_tampered_snapshot_is_refused(tmp_path):
+    lab, state = start(tmp_path)
+    with lab.controller() as controller:
+        config = controller._config(CID)
+        controller.graph.update_state(config, {
+            "fixture": {**state["fixture"], "organizer": "traveller-b"}})
+        with pytest.raises(CampaignSettingsChanged, match="digest"):
+            controller.resume(CID)
+        with pytest.raises(CampaignSettingsChanged, match="digest"):
+            controller.export_capsule(CID)
+
+
+def test_an_action_for_another_fixture_is_refused(tmp_path):
+    lab, state = start(tmp_path)
+    with lab.controller() as controller:
+        approval = {**state["approval"],
+                    "action": {**state["approval"]["action"], "fixture_sha256": "0" * 64}}
+        controller.graph.update_state(controller._config(CID), {"approval": approval})
+        with pytest.raises(CampaignSettingsChanged, match="different fixture"):
+            controller.resume(CID)
+
+
+def test_a_refund_campaign_pins_its_fixture_too(tmp_path):
+    lab = JourneyLab(tmp_path, Script(proposal()))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    assert state["approval"]["action"]["fixture_sha256"] == state["fixture_sha256"]
+    lab.approve(state)
+    lab.refund_fixture = Fixture(paid_minor=100_000)
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.resume(CID)
+    assert lab.approval_store.get(PROJECT, state["approval"]["approval_id"]).status == "approved"
+
+
+def test_a_refund_checkpoint_from_before_pinning_still_resumes(tmp_path):
+    lab = JourneyLab(tmp_path, Script(proposal()))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+        controller.graph.update_state(controller._config(CID),
+                                      {"fixture": None, "fixture_sha256": None})
+    lab.approve(state)
+    with lab.controller() as controller:
+        assert controller.resume(CID)["outcome"] == "repair_verified"
+
+
+# --- 11. a verified repair has to have run ---------------------------------------------------
+
+def test_a_truncated_repair_is_incomplete_not_verified(tmp_path):
+    lab, state = start(tmp_path, journey_reply(cap=12))  # enough to detect, too few to repair
+    assert failed(state)[0]["evidence_event_ids"] == [12]
+    done = resume_after_approval(lab, state)
+    assert (done["status"], done["outcome"]) == ("budget_exhausted", "repair_incomplete")
+    repair = done["repair"]
+    assert repair["verified"] is False and repair["run_status"] == "budget_exhausted"
+    assert repair["safety_held"] is True and repair["held_by"] is None  # no violation, no proof
+    run = load(lab, repair["run"])  # the evidence is kept, and it says what happened
+    assert run["status"] == "budget_exhausted" and len(run["trace"]) == 12
+    with lab.controller() as controller:
+        assert controller.record(CID).status == "budget_exhausted"
+
+
+def test_a_repair_with_exactly_enough_calls_is_verified(tmp_path):
+    lab, state = start(tmp_path, journey_reply(cap=17))
+    done = resume_after_approval(lab, state)
+    assert done["outcome"] == "repair_verified" and done["repair"]["run_status"] == "completed"
+
+
+def test_a_guard_denial_stays_successful_enforcement(tmp_path):
+    lab, state = start(tmp_path, journey_reply(CHECKED, faults=RACE, cap=DELIVERY_RACE_EVENT))
+    done = resume_after_approval(lab, state)
+    repair = done["repair"]
+    assert done["outcome"] == "repair_verified" and repair["held_by"] == "guarded_boundary"
+    assert repair["run_status"] == "completed" and repair["safety_held"]
+
+
+def test_a_withdrawn_mandatory_recipient_is_safe_but_not_a_finished_task(tmp_path):
+    faults = [{"fault_id": "sharing_revoked_while_queued", "after_event": None,
+               "parameters": [{"name": "recipient_id", "value": "traveller-b"}]}]
+    lab, state = start(tmp_path, journey_reply(faults=faults))
+    done = resume_after_approval(lab, state)
+    repair = done["repair"]
+    assert done["outcome"] == "repair_verified" and repair["safety_held"]
+    assert repair["task_complete"] is False
+    assert repair["task_outcome"]["mandatory_informed"] is False
+
+
+def test_a_repair_that_does_nothing_verifies_nothing(tmp_path):
+    # No option arrives by the 18:00 deadline, so the repaired adapter never books.
+    fixture = JourneyFixture(options=(JourneyOption("return-1830", 1110, 1190, 2),))
+    faults = [{"fault_id": "stale_preference_memory", "after_event": None,
+               "parameters": [{"name": "preference_version", "value": 1}]}]
+    lab, state = start(tmp_path, journey_reply(faults=faults), journey_fixture=fixture)
+    assert failed(state)
+    done = resume_after_approval(lab, state)
+    assert (done["status"], done["outcome"]) == ("failed", "repair_incomplete")
+    repair = done["repair"]
+    assert repair["safety_held"] and repair["run_status"] == "completed"
+    assert repair["verified"] is False and repair["held_by"] is None
+
+
+def test_a_truncated_refund_repair_is_not_verified():
+    driver = DEFAULT_WORLDS["refund-world/1"]
+    passed = [{"verdict": "passed"}]
+    truncated = driver.assess_repair(None, {"status": "budget_exhausted"}, passed, None)
+    assert truncated["verified"] is False and truncated["safety_held"] is True
+    assert driver.assess_repair(None, {"status": "completed"}, passed, None)["verified"]
+
+
+# --- 12. refund and journey side by side --------------------------------------------------
 
 def test_refund_and_journey_campaigns_stay_distinguishable(tmp_path):
     lab = JourneyLab(tmp_path, Script(proposal(), journey_reply()))

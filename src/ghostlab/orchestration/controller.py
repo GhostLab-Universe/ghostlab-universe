@@ -21,6 +21,9 @@ Trust rules:
 - A world runs only through a driver in ``Services.worlds`` and only past the
   runnable gate, checked on start, resume, recovery and before each execution.
   The world comes from the checkpointed spec, never from a proposal.
+- The world's fixture is pinned at start. Execution, verification and capsule
+  export use that record, an approval binds its digest, and resume or recovery
+  under a different fixture is refused before an approval can be consumed.
 - The execution mode comes from the driver and M06, and is recorded with the
   run's evidence. Lab mode relaxes only the business rules under test: identity,
   project, ownership, tool validation and budgets hold in every run.
@@ -71,6 +74,10 @@ ORCHESTRATION_VERSION = "ghostlab-orchestration/2"
 
 class CampaignExists(Exception):
     """A campaign id may be started once per project; it is never reused or taken over."""
+
+
+class CampaignSettingsChanged(Exception):
+    """The current world settings differ from the ones this campaign recorded."""
 
 
 ROUTES = ("plan", "propose", "validate", "execute", "verify", "remember", "request_repair",
@@ -142,6 +149,8 @@ class CampaignState(TypedDict, total=False):
     errors: list
     next: str
     provider: dict          # provider, endpoint and model pinned at start
+    fixture: dict           # world fixture pinned at start
+    fixture_sha256: str     # bound into any approved action
     task_baselines: dict    # ledger totals when each model task was planned
 
 
@@ -161,7 +170,7 @@ class CampaignController:
     # -- public API -----------------------------------------------------------------
 
     def start(self, campaign_id: str, spec: CampaignSpec) -> dict:
-        self._driver(spec.world_version)  # refused before any checkpoint exists
+        driver = self._driver(spec.world_version)  # refused before any checkpoint exists
         if self.graph.get_state(self._config(campaign_id)).values:
             raise CampaignExists(f"campaign {campaign_id} already exists in this project")
         within = check_within_ceiling("supervisor", spec.budget)
@@ -170,6 +179,7 @@ class CampaignController:
         config = self.s.adapter_factory(self.s.runtime).config
         limits = require_inference_allowed(self.s.runtime, config, spec.budget, self.s.live)
         now = utc_timestamp(self.s.clock())
+        fixture = driver.snapshot(driver.current_fixture(self.s))
         state: CampaignState = {
             "campaign_id": campaign_id, "project_id": self.session.project_id,
             "principal_id": self.session.principal.principal_id,
@@ -179,7 +189,8 @@ class CampaignController:
             "max_iterations": self.max_iterations, "started_at": now, "tasks": [],
             "proposal": None, "experiment_id": None, "experiments": {}, "findings": [],
             "memory_ids": [], "approval": None, "repair": None, "events": [], "errors": [],
-            "next": "plan", "task_baselines": {},
+            "next": "plan", "task_baselines": {}, "fixture": fixture,
+            "fixture_sha256": hashlib.sha256(canonical(fixture)).hexdigest(),
             "provider": {"provider": config.provider, "endpoint": config.base_url,
                          "model": config.model}}
         state["events"] = self._event(state, "campaign_created", "Campaign created")
@@ -190,7 +201,7 @@ class CampaignController:
         self._check_owner(campaign_id)
         if not self.graph.get_state(self._config(campaign_id)).next:
             return self._snapshot(campaign_id)  # finished: nothing to resume
-        self._world_driver(self._snapshot(campaign_id))
+        self._check_settings(self._snapshot(campaign_id))
         self._inference_limits(self._snapshot(campaign_id))  # re-authorize before any call
         return self._invoke(Command(resume="check"), campaign_id)
 
@@ -200,7 +211,7 @@ class CampaignController:
         Completed nodes are not re-run; the interrupted node runs again.
         """
         self._check_owner(campaign_id)
-        self._world_driver(self._snapshot(campaign_id))
+        self._check_settings(self._snapshot(campaign_id))
         self._inference_limits(self._snapshot(campaign_id))  # re-authorize before any call
         return self._invoke(None, campaign_id)
 
@@ -236,7 +247,7 @@ class CampaignController:
         ref, scenario, execution = self._recorded_run(state, experiment_id, run)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "capsule.json"
-            driver.capsule(self.s, scenario, self._load_json(ref), execution, path)
+            driver.capsule(self._fixture(state), scenario, self._load_json(ref), execution, path)
             data = path.read_bytes()
         return self._store_bytes(f"{experiment_id}-{run}-capsule", data,
                                  {"kind": "run", "id": ref["id"], "sha256": None})
@@ -312,6 +323,34 @@ class CampaignController:
 
     def _world_driver(self, state):
         return self._driver(state["spec"]["world_version"])
+
+    def _fixture(self, state):
+        """The fixture this campaign's evidence came from, never the current setting."""
+        snapshot = state.get("fixture")
+        if snapshot is None:  # a refund checkpoint from before fixtures were pinned
+            driver = self._world_driver(state)
+            return driver.current_fixture(self.s)
+        if hashlib.sha256(canonical(snapshot)).hexdigest() != state["fixture_sha256"]:
+            raise CampaignSettingsChanged("the recorded fixture failed its digest")
+        return self._world_driver(state).restore(snapshot)
+
+    def _settings_problem(self, state) -> str | None:
+        driver, snapshot = self._world_driver(state), state.get("fixture")
+        if snapshot is None:
+            return None
+        if hashlib.sha256(canonical(snapshot)).hexdigest() != state["fixture_sha256"]:
+            return "the recorded fixture failed its digest"
+        if driver.snapshot(driver.current_fixture(self.s)) != snapshot:
+            return "the world fixture changed since this campaign started"
+        action = (state.get("approval") or {}).get("action") or {}
+        if action.get("fixture_sha256") not in (None, state["fixture_sha256"]):
+            return "the approved action names a different fixture"
+        return None
+
+    def _check_settings(self, state):
+        """The runnable gate plus the pinned settings, before any node can run."""
+        if (problem := self._settings_problem(state)) is not None:
+            raise CampaignSettingsChanged(problem)
 
     def _supervisor(self, state):
         return self._world_driver(state).supervisor(self.session.project_id,
@@ -443,7 +482,7 @@ class CampaignController:
 
     def _run_pair(self, state, task_id, runs):
         """Execute run requests in parallel within campaign limits."""
-        driver = self._world_driver(state)
+        driver, fixture = self._world_driver(state), self._fixture(state)
         target = driver.target(self.session.project_id, self.session.principal)
         accountant = self._accountant(state)
         task_cap = ceiling_for("target").max_tool_calls * len(runs)
@@ -455,7 +494,7 @@ class CampaignController:
             workers = max(1, min(self._limits(state).max_parallel_runs, len(runs)))
             with ThreadPoolExecutor(max_workers=workers) as pool:
                 outcomes = list(pool.map(
-                    lambda run: driver.execute(self.s, run, scope=target,
+                    lambda run: driver.execute(self.s, fixture, run, scope=target,
                                                project_id=self.session.project_id,
                                                should_stop=lambda: self._stop_reason(state)),
                     runs))
@@ -636,7 +675,7 @@ class CampaignController:
             return self._denied(state, tasks, task_id, denial)
         driver.validate_run(baseline.run)
         driver.validate_run(fork.run)
-        diff = driver.diff(self.s, baseline.run, fork.run)
+        diff = driver.diff(self._fixture(state), baseline.run, fork.run)
         run_ref = {"kind": "run", "id": f"{experiment_id}-fork", "sha256": None}
         baseline_ref = self._store_json(f"{experiment_id}-baseline", baseline.run, run_ref)
         fork_ref = self._store_json(f"{experiment_id}-fork", fork.run, run_ref)
@@ -658,7 +697,7 @@ class CampaignController:
         experiment = state["experiments"][state["experiment_id"]]
         fork = self._load_json(experiment["fork"])
         findings = self._world_driver(state).findings(
-            self.s, f"{state['experiment_id']}-fork", fork, self._now(),
+            self._fixture(state), f"{state['experiment_id']}-fork", fork, self._now(),
             experiment.get("execution"))
         failed = [f["invariant"] for f in findings if f["verdict"] == "failed"]
         refs = [{"kind": "finding", "id": f["finding_id"], "sha256": None} for f in findings]
@@ -705,8 +744,11 @@ class CampaignController:
 
     def _repair_action(self, state) -> dict:
         experiment = state["experiments"][state["experiment_id"]]
-        return self._world_driver(state).repair_action(state["experiment_id"],
-                                                       experiment["proposal"])
+        action = self._world_driver(state).repair_action(state["experiment_id"],
+                                                         experiment["proposal"])
+        if state.get("fixture_sha256"):
+            action["fixture_sha256"] = state["fixture_sha256"]  # part of the approved digest
+        return action
 
     def _request_repair(self, state):
         """Supervisor requests approval for the checked-in repaired adapter.
@@ -780,6 +822,10 @@ class CampaignController:
         """Single-use consumption, checkpointed before the repaired run executes."""
         approval = state["approval"]
         wait_id = f"{state['campaign_id']}-await-approval"
+        if (problem := self._settings_problem(state)) is not None:  # before single use
+            tasks = board.fail_dependents(board.finish(state["tasks"], wait_id, "failed"))
+            return self._stop(state, "failed", "settings_changed", tasks=tasks,
+                              error=self._error("approval_invalid", problem))
         try:
             self.s.approvals.consume(project_id=self.session.project_id,
                                      approval_id=approval["approval_id"],
@@ -816,15 +862,26 @@ class CampaignController:
         run_id = f"{state['experiment_id']}-repaired"
         ref = self._store_json(run_id, outcome.run, {"kind": "run", "id": run_id, "sha256": None})
         execution = request.mode.as_json() if request.mode is not None else None
-        findings = driver.findings(self.s, run_id, outcome.run, self._now(), execution)
-        held = all(f["verdict"] == "passed" for f in findings)
+        fixture = self._fixture(state)
+        findings = driver.findings(fixture, run_id, outcome.run, self._now(), execution)
+        assessment = driver.assess_repair(fixture, outcome.run, findings, execution)
+        verified = assessment["verified"]
         ids = self._capture(state, [f for f in findings if f["evidence_event_ids"]], ref)
-        tasks = board.finish(tasks, repair_id, "succeeded" if held else "failed", output_ref=ref)
+        tasks = board.finish(tasks, repair_id, "succeeded" if verified else "failed",
+                             output_ref=ref)
         update = self._stop({**state, "findings": [*state["findings"], *findings]},
-                            "completed" if held else "failed",
-                            "repair_verified" if held else "repair_did_not_hold", tasks=tasks)
+                            *self._repair_verdict(assessment), tasks=tasks)
         update.update({"findings": [*state["findings"], *findings],
                        "memory_ids": [*state["memory_ids"], *ids],
-                       "repair": {"authorized": True, "verified": held, "run": ref,
-                                  **driver.repair_result(outcome.run, action)}})
+                       "repair": {"authorized": True, "run": ref, **assessment,
+                                  **driver.repair_result(outcome.run, action, verified)}})
         return update
+
+    def _repair_verdict(self, assessment):
+        """Passing checks on a run that never got there verify nothing."""
+        if assessment["run_status"] != "completed":
+            return "budget_exhausted", "repair_incomplete"
+        if assessment["verified"]:
+            return "completed", "repair_verified"
+        return "failed", "repair_did_not_hold" if not assessment["safety_held"] \
+            else "repair_incomplete"

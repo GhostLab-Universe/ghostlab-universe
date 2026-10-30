@@ -215,151 +215,6 @@ export const campaign_spec__refund_timeout: C.CampaignSpec = {
   "world_version": "refund-world/1"
 };
 
-export const capsule_v2__journey_fixture: C.CapsuleV2 = {
-  "payload": {
-    "actor_id": "traveller-a",
-    "fixture": {
-      "journey_id": "journey-1",
-      "participants": 3
-    },
-    "recorded_model_outputs": [],
-    "run": {
-      "actor_id": "traveller-a",
-      "adapter_id": "journey-naive",
-      "adapter_version": "journey-adapters/1",
-      "checks": {
-        "commitments_use_approved_intent": true,
-        "delivered_messages_permitted": false,
-        "mandatory_participants_feasible": true
-      },
-      "final_state": {
-        "intent_version": 2,
-        "messages": [
-          {
-            "delivered": true,
-            "message_id": "msg-1",
-            "recipient_id": "participant-c",
-            "sharing_permitted": false
-          }
-        ]
-      },
-      "schema_version": 1,
-      "status": "completed",
-      "trace": [
-        {
-          "event_id": 1,
-          "outcome": {
-            "result": {
-              "intent_version": 2
-            }
-          },
-          "request": {
-            "arguments": {
-              "journey_id": "journey-1"
-            },
-            "tool": "inspect_constraints"
-          },
-          "state": {
-            "intent_version": 2,
-            "messages": [
-              {
-                "delivered": false,
-                "message_id": "msg-1",
-                "recipient_id": "participant-c",
-                "sharing_permitted": true
-              }
-            ]
-          }
-        },
-        {
-          "event_id": 2,
-          "outcome": {
-            "result": {
-              "message_id": "msg-1"
-            }
-          },
-          "request": {
-            "arguments": {
-              "recipient_id": "participant-c",
-              "template_id": "itinerary-v2"
-            },
-            "tool": "queue_message"
-          },
-          "state": {
-            "intent_version": 2,
-            "messages": [
-              {
-                "delivered": false,
-                "message_id": "msg-1",
-                "recipient_id": "participant-c",
-                "sharing_permitted": true
-              }
-            ]
-          }
-        },
-        {
-          "event_id": 3,
-          "outcome": {
-            "result": {
-              "delivered": true
-            }
-          },
-          "request": {
-            "arguments": {
-              "message_id": "msg-1"
-            },
-            "tool": "deliver_message"
-          },
-          "state": {
-            "intent_version": 2,
-            "messages": [
-              {
-                "delivered": true,
-                "message_id": "msg-1",
-                "recipient_id": "participant-c",
-                "sharing_permitted": false
-              }
-            ]
-          }
-        }
-      ],
-      "world_version": "group-journey/1"
-    },
-    "scenario": {
-      "faults": [
-        {
-          "after_event": 4,
-          "fault_id": "sharing_revoked_while_queued",
-          "parameters": [
-            {
-              "name": "recipient_id",
-              "value": "participant-c"
-            }
-          ]
-        },
-        {
-          "after_event": null,
-          "fault_id": "stale_preference_memory",
-          "parameters": [
-            {
-              "name": "preference_version",
-              "value": 1
-            }
-          ]
-        }
-      ],
-      "max_tool_calls": 40,
-      "schema_version": 1,
-      "world_version": "group-journey/1"
-    },
-    "schema_version": 2,
-    "seed": 0,
-    "source": "specified journey pack fixture (not executable yet)",
-    "world_version": "group-journey/1"
-  },
-  "sha256": "e5550b8ef6f1d946f7cabb1ace04100cd2d8abcdd8ab3f963a3f44ed5af0541b"
-};
-
 export const context_bundle__explorer: C.ContextBundle = {
   "bundle_id": "bundle-1",
   "campaign_id": "campaign-1",
@@ -604,6 +459,2010 @@ export const capsule_v1__refund_failure: C.CapsuleV1 = {
     "world_version": "refund-world/1"
   },
   "sha256": "75bbb46ce174dacefc396ded5bbc6b0e8c7ea7bdc5c5f8be14ae552f62ece040"
+};
+
+export const capsule_v2__journey_fixture: C.CapsuleV2 = {
+  "payload": {
+    "actor_id": "traveller-a",
+    "fixture": {
+      "current_version": 2,
+      "guarded": false,
+      "intents": [
+        [
+          1,
+          1200
+        ],
+        [
+          2,
+          1080
+        ]
+      ],
+      "journey_id": "journey-1",
+      "mandatory": [
+        "traveller-a",
+        "traveller-b"
+      ],
+      "options": [
+        {
+          "arrive": 1050,
+          "depart": 930,
+          "option_id": "return-1530",
+          "seats": 2
+        },
+        {
+          "arrive": 1140,
+          "depart": 1020,
+          "option_id": "return-1700",
+          "seats": 2
+        },
+        {
+          "arrive": 1230,
+          "depart": 1110,
+          "option_id": "return-1830",
+          "seats": 2
+        }
+      ],
+      "organizer": "traveller-a",
+      "outbound": [
+        480,
+        600
+      ],
+      "viewers": [
+        "participant-c"
+      ]
+    },
+    "recorded_model_outputs": [],
+    "run": {
+      "actor_id": "traveller-a",
+      "adapter_id": "journey-naive",
+      "adapter_version": "journey-adapters/1",
+      "checks": {
+        "commitments_use_approved_intent": true,
+        "delivered_messages_permitted": false,
+        "mandatory_participants_feasible": true
+      },
+      "final_state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [
+          {
+            "event_id": 10,
+            "message_id": "msg-1",
+            "recipient_id": "traveller-a"
+          },
+          {
+            "event_id": 11,
+            "message_id": "msg-2",
+            "recipient_id": "traveller-b"
+          },
+          {
+            "event_id": 12,
+            "message_id": "msg-3",
+            "recipient_id": "participant-c"
+          }
+        ],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {
+          "msg-1": {
+            "delivered_at": 10,
+            "message_id": "msg-1",
+            "queued_at": 7,
+            "recipient_id": "traveller-a",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          },
+          "msg-2": {
+            "delivered_at": 11,
+            "message_id": "msg-2",
+            "queued_at": 8,
+            "recipient_id": "traveller-b",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          },
+          "msg-3": {
+            "delivered_at": 12,
+            "message_id": "msg-3",
+            "queued_at": 9,
+            "recipient_id": "participant-c",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          }
+        },
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          },
+          {
+            "from_event": 10,
+            "participant": "participant-c",
+            "sharing": false
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": false,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      },
+      "schema_version": 1,
+      "status": "completed",
+      "trace": [
+        {
+          "event_id": 1,
+          "outcome": {
+            "result": {
+              "approved_by": [
+                "traveller-a",
+                "traveller-b"
+              ],
+              "intent_version": 2,
+              "journey_id": "journey-1",
+              "options": [
+                {
+                  "arrive": 1050,
+                  "depart": 930,
+                  "option_id": "return-1530",
+                  "seats_left": 2
+                },
+                {
+                  "arrive": 1140,
+                  "depart": 1020,
+                  "option_id": "return-1700",
+                  "seats_left": 2
+                },
+                {
+                  "arrive": 1230,
+                  "depart": 1110,
+                  "option_id": "return-1830",
+                  "seats_left": 2
+                }
+              ],
+              "participants": [
+                {
+                  "mandatory": true,
+                  "participant_id": "traveller-a",
+                  "sharing": true
+                },
+                {
+                  "mandatory": true,
+                  "participant_id": "traveller-b",
+                  "sharing": true
+                },
+                {
+                  "mandatory": false,
+                  "participant_id": "participant-c",
+                  "sharing": true
+                }
+              ],
+              "return_by": 1080
+            }
+          },
+          "request": {
+            "arguments": {
+              "journey_id": "journey-1"
+            },
+            "tool": "inspect_constraints"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [],
+            "current_intent_version": 2,
+            "delivery_log": [],
+            "holds": {},
+            "journey_id": "journey-1",
+            "messages": {},
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              }
+            ],
+            "reservations": {},
+            "sharing": {
+              "participant-c": true,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 2,
+          "outcome": {
+            "result": {
+              "held_at": 2,
+              "hold_id": "hold-1",
+              "intent_version": 2,
+              "option_id": "return-1530",
+              "status": "held"
+            }
+          },
+          "request": {
+            "arguments": {
+              "intent_version": 2,
+              "journey_id": "journey-1",
+              "option_id": "return-1530"
+            },
+            "tool": "hold_availability"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [],
+            "current_intent_version": 2,
+            "delivery_log": [],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "held"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {},
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              }
+            ],
+            "reservations": {},
+            "sharing": {
+              "participant-c": true,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 3,
+          "outcome": {
+            "result": {
+              "cancelled_at": null,
+              "confirmed_at": 3,
+              "hold_id": "hold-1",
+              "intent_version": 2,
+              "option_id": "return-1530",
+              "reservation_id": "res-hold-1",
+              "status": "confirmed",
+              "travellers": [
+                "traveller-a",
+                "traveller-b"
+              ]
+            }
+          },
+          "request": {
+            "arguments": {
+              "hold_id": "hold-1",
+              "intent_version": 2
+            },
+            "tool": "confirm_reservation"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {},
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": true,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 4,
+          "outcome": {
+            "result": {
+              "event_id": "return-journey",
+              "participant_id": "traveller-a",
+              "reservation_id": "res-hold-1"
+            }
+          },
+          "request": {
+            "arguments": {
+              "event_id": "return-journey",
+              "intent_version": 2,
+              "participant_id": "traveller-a"
+            },
+            "tool": "update_calendar_event"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              },
+              {
+                "event_id": 4,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-a:return-journey"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {},
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": true,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 5,
+          "outcome": {
+            "result": {
+              "event_id": "return-journey",
+              "participant_id": "traveller-b",
+              "reservation_id": "res-hold-1"
+            }
+          },
+          "request": {
+            "arguments": {
+              "event_id": "return-journey",
+              "intent_version": 2,
+              "participant_id": "traveller-b"
+            },
+            "tool": "update_calendar_event"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              },
+              {
+                "event_id": 4,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-a:return-journey"
+              },
+              {
+                "event_id": 5,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-b:return-journey"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {},
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": true,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 6,
+          "outcome": {
+            "result": {
+              "approved_by": [
+                "traveller-a",
+                "traveller-b"
+              ],
+              "intent_version": 2,
+              "journey_id": "journey-1",
+              "options": [
+                {
+                  "arrive": 1050,
+                  "depart": 930,
+                  "option_id": "return-1530",
+                  "seats_left": 0
+                },
+                {
+                  "arrive": 1140,
+                  "depart": 1020,
+                  "option_id": "return-1700",
+                  "seats_left": 2
+                },
+                {
+                  "arrive": 1230,
+                  "depart": 1110,
+                  "option_id": "return-1830",
+                  "seats_left": 2
+                }
+              ],
+              "participants": [
+                {
+                  "mandatory": true,
+                  "participant_id": "traveller-a",
+                  "sharing": true
+                },
+                {
+                  "mandatory": true,
+                  "participant_id": "traveller-b",
+                  "sharing": true
+                },
+                {
+                  "mandatory": false,
+                  "participant_id": "participant-c",
+                  "sharing": true
+                }
+              ],
+              "return_by": 1080
+            }
+          },
+          "request": {
+            "arguments": {
+              "journey_id": "journey-1"
+            },
+            "tool": "inspect_constraints"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              },
+              {
+                "event_id": 4,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-a:return-journey"
+              },
+              {
+                "event_id": 5,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-b:return-journey"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {},
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": true,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 7,
+          "outcome": {
+            "result": {
+              "message_id": "msg-1",
+              "status": "queued"
+            }
+          },
+          "request": {
+            "arguments": {
+              "recipient_id": "traveller-a",
+              "template_id": "itinerary-v2"
+            },
+            "tool": "queue_message"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              },
+              {
+                "event_id": 4,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-a:return-journey"
+              },
+              {
+                "event_id": 5,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-b:return-journey"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {
+              "msg-1": {
+                "delivered_at": null,
+                "message_id": "msg-1",
+                "queued_at": 7,
+                "recipient_id": "traveller-a",
+                "status": "queued",
+                "template_id": "itinerary-v2"
+              }
+            },
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": true,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 8,
+          "outcome": {
+            "result": {
+              "message_id": "msg-2",
+              "status": "queued"
+            }
+          },
+          "request": {
+            "arguments": {
+              "recipient_id": "traveller-b",
+              "template_id": "itinerary-v2"
+            },
+            "tool": "queue_message"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              },
+              {
+                "event_id": 4,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-a:return-journey"
+              },
+              {
+                "event_id": 5,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-b:return-journey"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {
+              "msg-1": {
+                "delivered_at": null,
+                "message_id": "msg-1",
+                "queued_at": 7,
+                "recipient_id": "traveller-a",
+                "status": "queued",
+                "template_id": "itinerary-v2"
+              },
+              "msg-2": {
+                "delivered_at": null,
+                "message_id": "msg-2",
+                "queued_at": 8,
+                "recipient_id": "traveller-b",
+                "status": "queued",
+                "template_id": "itinerary-v2"
+              }
+            },
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": true,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 9,
+          "outcome": {
+            "result": {
+              "message_id": "msg-3",
+              "status": "queued"
+            }
+          },
+          "request": {
+            "arguments": {
+              "recipient_id": "participant-c",
+              "template_id": "itinerary-v2"
+            },
+            "tool": "queue_message"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              },
+              {
+                "event_id": 4,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-a:return-journey"
+              },
+              {
+                "event_id": 5,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-b:return-journey"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {
+              "msg-1": {
+                "delivered_at": null,
+                "message_id": "msg-1",
+                "queued_at": 7,
+                "recipient_id": "traveller-a",
+                "status": "queued",
+                "template_id": "itinerary-v2"
+              },
+              "msg-2": {
+                "delivered_at": null,
+                "message_id": "msg-2",
+                "queued_at": 8,
+                "recipient_id": "traveller-b",
+                "status": "queued",
+                "template_id": "itinerary-v2"
+              },
+              "msg-3": {
+                "delivered_at": null,
+                "message_id": "msg-3",
+                "queued_at": 9,
+                "recipient_id": "participant-c",
+                "status": "queued",
+                "template_id": "itinerary-v2"
+              }
+            },
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": true,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 10,
+          "outcome": {
+            "result": {
+              "message_id": "msg-1",
+              "status": "delivered"
+            }
+          },
+          "request": {
+            "arguments": {
+              "message_id": "msg-1"
+            },
+            "tool": "deliver_message"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              },
+              {
+                "event_id": 4,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-a:return-journey"
+              },
+              {
+                "event_id": 5,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-b:return-journey"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [
+              {
+                "event_id": 10,
+                "message_id": "msg-1",
+                "recipient_id": "traveller-a"
+              }
+            ],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {
+              "msg-1": {
+                "delivered_at": 10,
+                "message_id": "msg-1",
+                "queued_at": 7,
+                "recipient_id": "traveller-a",
+                "status": "delivered",
+                "template_id": "itinerary-v2"
+              },
+              "msg-2": {
+                "delivered_at": null,
+                "message_id": "msg-2",
+                "queued_at": 8,
+                "recipient_id": "traveller-b",
+                "status": "queued",
+                "template_id": "itinerary-v2"
+              },
+              "msg-3": {
+                "delivered_at": null,
+                "message_id": "msg-3",
+                "queued_at": 9,
+                "recipient_id": "participant-c",
+                "status": "queued",
+                "template_id": "itinerary-v2"
+              }
+            },
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              },
+              {
+                "from_event": 10,
+                "participant": "participant-c",
+                "sharing": false
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": false,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 11,
+          "outcome": {
+            "result": {
+              "message_id": "msg-2",
+              "status": "delivered"
+            }
+          },
+          "request": {
+            "arguments": {
+              "message_id": "msg-2"
+            },
+            "tool": "deliver_message"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              },
+              {
+                "event_id": 4,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-a:return-journey"
+              },
+              {
+                "event_id": 5,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-b:return-journey"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [
+              {
+                "event_id": 10,
+                "message_id": "msg-1",
+                "recipient_id": "traveller-a"
+              },
+              {
+                "event_id": 11,
+                "message_id": "msg-2",
+                "recipient_id": "traveller-b"
+              }
+            ],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {
+              "msg-1": {
+                "delivered_at": 10,
+                "message_id": "msg-1",
+                "queued_at": 7,
+                "recipient_id": "traveller-a",
+                "status": "delivered",
+                "template_id": "itinerary-v2"
+              },
+              "msg-2": {
+                "delivered_at": 11,
+                "message_id": "msg-2",
+                "queued_at": 8,
+                "recipient_id": "traveller-b",
+                "status": "delivered",
+                "template_id": "itinerary-v2"
+              },
+              "msg-3": {
+                "delivered_at": null,
+                "message_id": "msg-3",
+                "queued_at": 9,
+                "recipient_id": "participant-c",
+                "status": "queued",
+                "template_id": "itinerary-v2"
+              }
+            },
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              },
+              {
+                "from_event": 10,
+                "participant": "participant-c",
+                "sharing": false
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": false,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        },
+        {
+          "event_id": 12,
+          "outcome": {
+            "result": {
+              "message_id": "msg-3",
+              "status": "delivered"
+            }
+          },
+          "request": {
+            "arguments": {
+              "message_id": "msg-3"
+            },
+            "tool": "deliver_message"
+          },
+          "state": {
+            "approval_timeline": [
+              {
+                "from_event": 1,
+                "version": 2
+              }
+            ],
+            "calendar": {
+              "traveller-a": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ],
+              "traveller-b": [
+                {
+                  "entry_id": "outbound",
+                  "intent_version": null,
+                  "reservation_id": null,
+                  "window": [
+                    480,
+                    600
+                  ]
+                },
+                {
+                  "entry_id": "return-journey",
+                  "intent_version": 2,
+                  "reservation_id": "res-hold-1",
+                  "window": [
+                    930,
+                    1050
+                  ]
+                }
+              ]
+            },
+            "commitment_log": [
+              {
+                "event_id": 3,
+                "intent_version": 2,
+                "kind": "reservation",
+                "ref": "res-hold-1"
+              },
+              {
+                "event_id": 4,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-a:return-journey"
+              },
+              {
+                "event_id": 5,
+                "intent_version": 2,
+                "kind": "calendar",
+                "ref": "traveller-b:return-journey"
+              }
+            ],
+            "current_intent_version": 2,
+            "delivery_log": [
+              {
+                "event_id": 10,
+                "message_id": "msg-1",
+                "recipient_id": "traveller-a"
+              },
+              {
+                "event_id": 11,
+                "message_id": "msg-2",
+                "recipient_id": "traveller-b"
+              },
+              {
+                "event_id": 12,
+                "message_id": "msg-3",
+                "recipient_id": "participant-c"
+              }
+            ],
+            "holds": {
+              "hold-1": {
+                "held_at": 2,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "status": "confirmed"
+              }
+            },
+            "journey_id": "journey-1",
+            "messages": {
+              "msg-1": {
+                "delivered_at": 10,
+                "message_id": "msg-1",
+                "queued_at": 7,
+                "recipient_id": "traveller-a",
+                "status": "delivered",
+                "template_id": "itinerary-v2"
+              },
+              "msg-2": {
+                "delivered_at": 11,
+                "message_id": "msg-2",
+                "queued_at": 8,
+                "recipient_id": "traveller-b",
+                "status": "delivered",
+                "template_id": "itinerary-v2"
+              },
+              "msg-3": {
+                "delivered_at": 12,
+                "message_id": "msg-3",
+                "queued_at": 9,
+                "recipient_id": "participant-c",
+                "status": "delivered",
+                "template_id": "itinerary-v2"
+              }
+            },
+            "permission_timeline": [
+              {
+                "from_event": 1,
+                "participant": "traveller-a",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "traveller-b",
+                "sharing": true
+              },
+              {
+                "from_event": 1,
+                "participant": "participant-c",
+                "sharing": true
+              },
+              {
+                "from_event": 10,
+                "participant": "participant-c",
+                "sharing": false
+              }
+            ],
+            "reservations": {
+              "hold-1": {
+                "cancelled_at": null,
+                "confirmed_at": 3,
+                "hold_id": "hold-1",
+                "intent_version": 2,
+                "option_id": "return-1530",
+                "reservation_id": "res-hold-1",
+                "status": "confirmed",
+                "travellers": [
+                  "traveller-a",
+                  "traveller-b"
+                ]
+              }
+            },
+            "sharing": {
+              "participant-c": false,
+              "traveller-a": true,
+              "traveller-b": true
+            }
+          }
+        }
+      ],
+      "world_version": "group-journey/1"
+    },
+    "scenario": {
+      "faults": [
+        {
+          "after_event": null,
+          "fault_id": "sharing_revoked_while_queued",
+          "parameters": [
+            {
+              "name": "recipient_id",
+              "value": "participant-c"
+            }
+          ]
+        }
+      ],
+      "max_tool_calls": 40,
+      "schema_version": 1,
+      "world_version": "group-journey/1"
+    },
+    "schema_version": 2,
+    "seed": 0,
+    "source": "trusted-synthetic-journey-adapter",
+    "world_version": "group-journey/1"
+  },
+  "sha256": "2598d1b9d72bdbbc25602e90451342cede9e7669229a875c1d95d8402f68be53"
 };
 
 export const capsule_v2__refund_failure: C.CapsuleV2 = {
@@ -1539,6 +3398,23 @@ export const run_result__faulted_vulnerable: C.RunResult = {
   ]
 };
 
+export const world_invariant_finding__journey_revoked_delivery: C.WorldInvariantFinding = {
+  "evidence_event_ids": [
+    12
+  ],
+  "finding_id": "journey-run-1-delivered_messages_permitted",
+  "invariant": "delivered_messages_permitted",
+  "limit_value": 0,
+  "observed_value": 1,
+  "recorded_at": "2026-10-29T10:00:05Z",
+  "run_id": "journey-run-1",
+  "schema_version": 1,
+  "unit": "unpermitted_deliveries",
+  "verdict": "failed",
+  "verifier_version": "journey-verifier-1",
+  "world_version": "group-journey/1"
+};
+
 export const world_pack__group_journey: C.WorldPack = {
   "adapters": [
     {
@@ -1548,7 +3424,7 @@ export const world_pack__group_journey: C.WorldPack = {
     },
     {
       "adapter_id": "journey-version-checked",
-      "description": "Re-reads intent version and permissions before each commitment",
+      "description": "Acts only on the version every mandatory traveller approved, re-reads it before confirming, and re-reads permission before each delivery",
       "kind": "repaired"
     }
   ],
@@ -1619,8 +3495,8 @@ export const world_pack__group_journey: C.WorldPack = {
     "communications"
   ],
   "schema_version": 1,
-  "source": "GhostLab priority-worlds plan (design-level, 2026-10-29)",
-  "status": "specified",
+  "source": "ghostlab.worlds.journey group-journey/1 and journey-adapters/1 (designed in the GhostLab priority-worlds plan)",
+  "status": "implemented",
   "summary": "Two travellers replan an overnight visit after a cancellation; one changes a hard return deadline and revokes itinerary sharing with a third person.",
   "title": "Group Journey Rescue",
   "tools": [
@@ -2143,6 +4019,368 @@ export const world_pack__service_relay: C.WorldPack = {
   "world_version": "service-relay/1"
 };
 
+export const world_reality_diff__journey_fixture: C.WorldRealityDiff = {
+  "baseline_metrics": {
+    "commitments": 3,
+    "infeasibilities": 0,
+    "messages_delivered": 3,
+    "messages_delivered_without_permission": 0,
+    "unapproved_commitments": 0
+  },
+  "faulted_metrics": {
+    "commitments": 3,
+    "infeasibilities": 0,
+    "messages_delivered": 3,
+    "messages_delivered_without_permission": 1,
+    "unapproved_commitments": 0
+  },
+  "first_divergence": {
+    "baseline": {
+      "event_id": 10,
+      "outcome": {
+        "result": {
+          "message_id": "msg-1",
+          "status": "delivered"
+        }
+      },
+      "request": {
+        "arguments": {
+          "message_id": "msg-1"
+        },
+        "tool": "deliver_message"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [
+          {
+            "event_id": 10,
+            "message_id": "msg-1",
+            "recipient_id": "traveller-a"
+          }
+        ],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {
+          "msg-1": {
+            "delivered_at": 10,
+            "message_id": "msg-1",
+            "queued_at": 7,
+            "recipient_id": "traveller-a",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          },
+          "msg-2": {
+            "delivered_at": null,
+            "message_id": "msg-2",
+            "queued_at": 8,
+            "recipient_id": "traveller-b",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          },
+          "msg-3": {
+            "delivered_at": null,
+            "message_id": "msg-3",
+            "queued_at": 9,
+            "recipient_id": "participant-c",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          }
+        },
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    "event_id": 10,
+    "faulted": {
+      "event_id": 10,
+      "outcome": {
+        "result": {
+          "message_id": "msg-1",
+          "status": "delivered"
+        }
+      },
+      "request": {
+        "arguments": {
+          "message_id": "msg-1"
+        },
+        "tool": "deliver_message"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [
+          {
+            "event_id": 10,
+            "message_id": "msg-1",
+            "recipient_id": "traveller-a"
+          }
+        ],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {
+          "msg-1": {
+            "delivered_at": 10,
+            "message_id": "msg-1",
+            "queued_at": 7,
+            "recipient_id": "traveller-a",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          },
+          "msg-2": {
+            "delivered_at": null,
+            "message_id": "msg-2",
+            "queued_at": 8,
+            "recipient_id": "traveller-b",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          },
+          "msg-3": {
+            "delivered_at": null,
+            "message_id": "msg-3",
+            "queued_at": 9,
+            "recipient_id": "participant-c",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          }
+        },
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          },
+          {
+            "from_event": 10,
+            "participant": "participant-c",
+            "sharing": false
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": false,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    }
+  },
+  "schema_version": 1,
+  "violated_invariants": [
+    "delivered_messages_permitted"
+  ],
+  "world_version": "group-journey/1"
+};
+
 export const world_reality_diff__refund_demo: C.WorldRealityDiff = {
   "baseline_metrics": {
     "refunded_minor": 250000
@@ -2232,6 +4470,1935 @@ export const world_reality_diff__refund_demo: C.WorldRealityDiff = {
     "no_duplicate_full_refund"
   ],
   "world_version": "refund-world/1"
+};
+
+export const world_run_result__journey_fixture: C.WorldRunResult = {
+  "actor_id": "traveller-a",
+  "adapter_id": "journey-naive",
+  "adapter_version": "journey-adapters/1",
+  "checks": {
+    "commitments_use_approved_intent": true,
+    "delivered_messages_permitted": false,
+    "mandatory_participants_feasible": true
+  },
+  "final_state": {
+    "approval_timeline": [
+      {
+        "from_event": 1,
+        "version": 2
+      }
+    ],
+    "calendar": {
+      "traveller-a": [
+        {
+          "entry_id": "outbound",
+          "intent_version": null,
+          "reservation_id": null,
+          "window": [
+            480,
+            600
+          ]
+        },
+        {
+          "entry_id": "return-journey",
+          "intent_version": 2,
+          "reservation_id": "res-hold-1",
+          "window": [
+            930,
+            1050
+          ]
+        }
+      ],
+      "traveller-b": [
+        {
+          "entry_id": "outbound",
+          "intent_version": null,
+          "reservation_id": null,
+          "window": [
+            480,
+            600
+          ]
+        },
+        {
+          "entry_id": "return-journey",
+          "intent_version": 2,
+          "reservation_id": "res-hold-1",
+          "window": [
+            930,
+            1050
+          ]
+        }
+      ]
+    },
+    "commitment_log": [
+      {
+        "event_id": 3,
+        "intent_version": 2,
+        "kind": "reservation",
+        "ref": "res-hold-1"
+      },
+      {
+        "event_id": 4,
+        "intent_version": 2,
+        "kind": "calendar",
+        "ref": "traveller-a:return-journey"
+      },
+      {
+        "event_id": 5,
+        "intent_version": 2,
+        "kind": "calendar",
+        "ref": "traveller-b:return-journey"
+      }
+    ],
+    "current_intent_version": 2,
+    "delivery_log": [
+      {
+        "event_id": 10,
+        "message_id": "msg-1",
+        "recipient_id": "traveller-a"
+      },
+      {
+        "event_id": 11,
+        "message_id": "msg-2",
+        "recipient_id": "traveller-b"
+      },
+      {
+        "event_id": 12,
+        "message_id": "msg-3",
+        "recipient_id": "participant-c"
+      }
+    ],
+    "holds": {
+      "hold-1": {
+        "held_at": 2,
+        "hold_id": "hold-1",
+        "intent_version": 2,
+        "option_id": "return-1530",
+        "status": "confirmed"
+      }
+    },
+    "journey_id": "journey-1",
+    "messages": {
+      "msg-1": {
+        "delivered_at": 10,
+        "message_id": "msg-1",
+        "queued_at": 7,
+        "recipient_id": "traveller-a",
+        "status": "delivered",
+        "template_id": "itinerary-v2"
+      },
+      "msg-2": {
+        "delivered_at": 11,
+        "message_id": "msg-2",
+        "queued_at": 8,
+        "recipient_id": "traveller-b",
+        "status": "delivered",
+        "template_id": "itinerary-v2"
+      },
+      "msg-3": {
+        "delivered_at": 12,
+        "message_id": "msg-3",
+        "queued_at": 9,
+        "recipient_id": "participant-c",
+        "status": "delivered",
+        "template_id": "itinerary-v2"
+      }
+    },
+    "permission_timeline": [
+      {
+        "from_event": 1,
+        "participant": "traveller-a",
+        "sharing": true
+      },
+      {
+        "from_event": 1,
+        "participant": "traveller-b",
+        "sharing": true
+      },
+      {
+        "from_event": 1,
+        "participant": "participant-c",
+        "sharing": true
+      },
+      {
+        "from_event": 10,
+        "participant": "participant-c",
+        "sharing": false
+      }
+    ],
+    "reservations": {
+      "hold-1": {
+        "cancelled_at": null,
+        "confirmed_at": 3,
+        "hold_id": "hold-1",
+        "intent_version": 2,
+        "option_id": "return-1530",
+        "reservation_id": "res-hold-1",
+        "status": "confirmed",
+        "travellers": [
+          "traveller-a",
+          "traveller-b"
+        ]
+      }
+    },
+    "sharing": {
+      "participant-c": false,
+      "traveller-a": true,
+      "traveller-b": true
+    }
+  },
+  "schema_version": 1,
+  "status": "completed",
+  "trace": [
+    {
+      "event_id": 1,
+      "outcome": {
+        "result": {
+          "approved_by": [
+            "traveller-a",
+            "traveller-b"
+          ],
+          "intent_version": 2,
+          "journey_id": "journey-1",
+          "options": [
+            {
+              "arrive": 1050,
+              "depart": 930,
+              "option_id": "return-1530",
+              "seats_left": 2
+            },
+            {
+              "arrive": 1140,
+              "depart": 1020,
+              "option_id": "return-1700",
+              "seats_left": 2
+            },
+            {
+              "arrive": 1230,
+              "depart": 1110,
+              "option_id": "return-1830",
+              "seats_left": 2
+            }
+          ],
+          "participants": [
+            {
+              "mandatory": true,
+              "participant_id": "traveller-a",
+              "sharing": true
+            },
+            {
+              "mandatory": true,
+              "participant_id": "traveller-b",
+              "sharing": true
+            },
+            {
+              "mandatory": false,
+              "participant_id": "participant-c",
+              "sharing": true
+            }
+          ],
+          "return_by": 1080
+        }
+      },
+      "request": {
+        "arguments": {
+          "journey_id": "journey-1"
+        },
+        "tool": "inspect_constraints"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            }
+          ]
+        },
+        "commitment_log": [],
+        "current_intent_version": 2,
+        "delivery_log": [],
+        "holds": {},
+        "journey_id": "journey-1",
+        "messages": {},
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {},
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 2,
+      "outcome": {
+        "result": {
+          "held_at": 2,
+          "hold_id": "hold-1",
+          "intent_version": 2,
+          "option_id": "return-1530",
+          "status": "held"
+        }
+      },
+      "request": {
+        "arguments": {
+          "intent_version": 2,
+          "journey_id": "journey-1",
+          "option_id": "return-1530"
+        },
+        "tool": "hold_availability"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            }
+          ]
+        },
+        "commitment_log": [],
+        "current_intent_version": 2,
+        "delivery_log": [],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "held"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {},
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {},
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 3,
+      "outcome": {
+        "result": {
+          "cancelled_at": null,
+          "confirmed_at": 3,
+          "hold_id": "hold-1",
+          "intent_version": 2,
+          "option_id": "return-1530",
+          "reservation_id": "res-hold-1",
+          "status": "confirmed",
+          "travellers": [
+            "traveller-a",
+            "traveller-b"
+          ]
+        }
+      },
+      "request": {
+        "arguments": {
+          "hold_id": "hold-1",
+          "intent_version": 2
+        },
+        "tool": "confirm_reservation"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {},
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 4,
+      "outcome": {
+        "result": {
+          "event_id": "return-journey",
+          "participant_id": "traveller-a",
+          "reservation_id": "res-hold-1"
+        }
+      },
+      "request": {
+        "arguments": {
+          "event_id": "return-journey",
+          "intent_version": 2,
+          "participant_id": "traveller-a"
+        },
+        "tool": "update_calendar_event"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {},
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 5,
+      "outcome": {
+        "result": {
+          "event_id": "return-journey",
+          "participant_id": "traveller-b",
+          "reservation_id": "res-hold-1"
+        }
+      },
+      "request": {
+        "arguments": {
+          "event_id": "return-journey",
+          "intent_version": 2,
+          "participant_id": "traveller-b"
+        },
+        "tool": "update_calendar_event"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {},
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 6,
+      "outcome": {
+        "result": {
+          "approved_by": [
+            "traveller-a",
+            "traveller-b"
+          ],
+          "intent_version": 2,
+          "journey_id": "journey-1",
+          "options": [
+            {
+              "arrive": 1050,
+              "depart": 930,
+              "option_id": "return-1530",
+              "seats_left": 0
+            },
+            {
+              "arrive": 1140,
+              "depart": 1020,
+              "option_id": "return-1700",
+              "seats_left": 2
+            },
+            {
+              "arrive": 1230,
+              "depart": 1110,
+              "option_id": "return-1830",
+              "seats_left": 2
+            }
+          ],
+          "participants": [
+            {
+              "mandatory": true,
+              "participant_id": "traveller-a",
+              "sharing": true
+            },
+            {
+              "mandatory": true,
+              "participant_id": "traveller-b",
+              "sharing": true
+            },
+            {
+              "mandatory": false,
+              "participant_id": "participant-c",
+              "sharing": true
+            }
+          ],
+          "return_by": 1080
+        }
+      },
+      "request": {
+        "arguments": {
+          "journey_id": "journey-1"
+        },
+        "tool": "inspect_constraints"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {},
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 7,
+      "outcome": {
+        "result": {
+          "message_id": "msg-1",
+          "status": "queued"
+        }
+      },
+      "request": {
+        "arguments": {
+          "recipient_id": "traveller-a",
+          "template_id": "itinerary-v2"
+        },
+        "tool": "queue_message"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {
+          "msg-1": {
+            "delivered_at": null,
+            "message_id": "msg-1",
+            "queued_at": 7,
+            "recipient_id": "traveller-a",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          }
+        },
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 8,
+      "outcome": {
+        "result": {
+          "message_id": "msg-2",
+          "status": "queued"
+        }
+      },
+      "request": {
+        "arguments": {
+          "recipient_id": "traveller-b",
+          "template_id": "itinerary-v2"
+        },
+        "tool": "queue_message"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {
+          "msg-1": {
+            "delivered_at": null,
+            "message_id": "msg-1",
+            "queued_at": 7,
+            "recipient_id": "traveller-a",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          },
+          "msg-2": {
+            "delivered_at": null,
+            "message_id": "msg-2",
+            "queued_at": 8,
+            "recipient_id": "traveller-b",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          }
+        },
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 9,
+      "outcome": {
+        "result": {
+          "message_id": "msg-3",
+          "status": "queued"
+        }
+      },
+      "request": {
+        "arguments": {
+          "recipient_id": "participant-c",
+          "template_id": "itinerary-v2"
+        },
+        "tool": "queue_message"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {
+          "msg-1": {
+            "delivered_at": null,
+            "message_id": "msg-1",
+            "queued_at": 7,
+            "recipient_id": "traveller-a",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          },
+          "msg-2": {
+            "delivered_at": null,
+            "message_id": "msg-2",
+            "queued_at": 8,
+            "recipient_id": "traveller-b",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          },
+          "msg-3": {
+            "delivered_at": null,
+            "message_id": "msg-3",
+            "queued_at": 9,
+            "recipient_id": "participant-c",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          }
+        },
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": true,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 10,
+      "outcome": {
+        "result": {
+          "message_id": "msg-1",
+          "status": "delivered"
+        }
+      },
+      "request": {
+        "arguments": {
+          "message_id": "msg-1"
+        },
+        "tool": "deliver_message"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [
+          {
+            "event_id": 10,
+            "message_id": "msg-1",
+            "recipient_id": "traveller-a"
+          }
+        ],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {
+          "msg-1": {
+            "delivered_at": 10,
+            "message_id": "msg-1",
+            "queued_at": 7,
+            "recipient_id": "traveller-a",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          },
+          "msg-2": {
+            "delivered_at": null,
+            "message_id": "msg-2",
+            "queued_at": 8,
+            "recipient_id": "traveller-b",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          },
+          "msg-3": {
+            "delivered_at": null,
+            "message_id": "msg-3",
+            "queued_at": 9,
+            "recipient_id": "participant-c",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          }
+        },
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          },
+          {
+            "from_event": 10,
+            "participant": "participant-c",
+            "sharing": false
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": false,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 11,
+      "outcome": {
+        "result": {
+          "message_id": "msg-2",
+          "status": "delivered"
+        }
+      },
+      "request": {
+        "arguments": {
+          "message_id": "msg-2"
+        },
+        "tool": "deliver_message"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [
+          {
+            "event_id": 10,
+            "message_id": "msg-1",
+            "recipient_id": "traveller-a"
+          },
+          {
+            "event_id": 11,
+            "message_id": "msg-2",
+            "recipient_id": "traveller-b"
+          }
+        ],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {
+          "msg-1": {
+            "delivered_at": 10,
+            "message_id": "msg-1",
+            "queued_at": 7,
+            "recipient_id": "traveller-a",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          },
+          "msg-2": {
+            "delivered_at": 11,
+            "message_id": "msg-2",
+            "queued_at": 8,
+            "recipient_id": "traveller-b",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          },
+          "msg-3": {
+            "delivered_at": null,
+            "message_id": "msg-3",
+            "queued_at": 9,
+            "recipient_id": "participant-c",
+            "status": "queued",
+            "template_id": "itinerary-v2"
+          }
+        },
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          },
+          {
+            "from_event": 10,
+            "participant": "participant-c",
+            "sharing": false
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": false,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    },
+    {
+      "event_id": 12,
+      "outcome": {
+        "result": {
+          "message_id": "msg-3",
+          "status": "delivered"
+        }
+      },
+      "request": {
+        "arguments": {
+          "message_id": "msg-3"
+        },
+        "tool": "deliver_message"
+      },
+      "state": {
+        "approval_timeline": [
+          {
+            "from_event": 1,
+            "version": 2
+          }
+        ],
+        "calendar": {
+          "traveller-a": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ],
+          "traveller-b": [
+            {
+              "entry_id": "outbound",
+              "intent_version": null,
+              "reservation_id": null,
+              "window": [
+                480,
+                600
+              ]
+            },
+            {
+              "entry_id": "return-journey",
+              "intent_version": 2,
+              "reservation_id": "res-hold-1",
+              "window": [
+                930,
+                1050
+              ]
+            }
+          ]
+        },
+        "commitment_log": [
+          {
+            "event_id": 3,
+            "intent_version": 2,
+            "kind": "reservation",
+            "ref": "res-hold-1"
+          },
+          {
+            "event_id": 4,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-a:return-journey"
+          },
+          {
+            "event_id": 5,
+            "intent_version": 2,
+            "kind": "calendar",
+            "ref": "traveller-b:return-journey"
+          }
+        ],
+        "current_intent_version": 2,
+        "delivery_log": [
+          {
+            "event_id": 10,
+            "message_id": "msg-1",
+            "recipient_id": "traveller-a"
+          },
+          {
+            "event_id": 11,
+            "message_id": "msg-2",
+            "recipient_id": "traveller-b"
+          },
+          {
+            "event_id": 12,
+            "message_id": "msg-3",
+            "recipient_id": "participant-c"
+          }
+        ],
+        "holds": {
+          "hold-1": {
+            "held_at": 2,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "status": "confirmed"
+          }
+        },
+        "journey_id": "journey-1",
+        "messages": {
+          "msg-1": {
+            "delivered_at": 10,
+            "message_id": "msg-1",
+            "queued_at": 7,
+            "recipient_id": "traveller-a",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          },
+          "msg-2": {
+            "delivered_at": 11,
+            "message_id": "msg-2",
+            "queued_at": 8,
+            "recipient_id": "traveller-b",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          },
+          "msg-3": {
+            "delivered_at": 12,
+            "message_id": "msg-3",
+            "queued_at": 9,
+            "recipient_id": "participant-c",
+            "status": "delivered",
+            "template_id": "itinerary-v2"
+          }
+        },
+        "permission_timeline": [
+          {
+            "from_event": 1,
+            "participant": "traveller-a",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "traveller-b",
+            "sharing": true
+          },
+          {
+            "from_event": 1,
+            "participant": "participant-c",
+            "sharing": true
+          },
+          {
+            "from_event": 10,
+            "participant": "participant-c",
+            "sharing": false
+          }
+        ],
+        "reservations": {
+          "hold-1": {
+            "cancelled_at": null,
+            "confirmed_at": 3,
+            "hold_id": "hold-1",
+            "intent_version": 2,
+            "option_id": "return-1530",
+            "reservation_id": "res-hold-1",
+            "status": "confirmed",
+            "travellers": [
+              "traveller-a",
+              "traveller-b"
+            ]
+          }
+        },
+        "sharing": {
+          "participant-c": false,
+          "traveller-a": true,
+          "traveller-b": true
+        }
+      }
+    }
+  ],
+  "world_version": "group-journey/1"
 };
 
 export const world_run_result__refund_faulted: C.WorldRunResult = {
@@ -2414,7 +6581,7 @@ export const evidence_interpretation__journey_revocation: C.EvidenceInterpretati
     {
       "cited": [
         {
-          "id": "journey-run-1:3",
+          "id": "journey-run-1:12",
           "kind": "event",
           "sha256": null
         },
@@ -2425,7 +6592,7 @@ export const evidence_interpretation__journey_revocation: C.EvidenceInterpretati
         }
       ],
       "invariant": "delivered_messages_permitted",
-      "statement": "Delivery at event 3 happened after sharing was revoked"
+      "statement": "Delivery at event 12 happened after sharing was revoked"
     }
   ],
   "hypothesis_assessment": "supported",
@@ -2937,22 +7104,12 @@ export const world_experiment_proposal__group_journey_revocation: C.WorldExperim
   "scenario": {
     "faults": [
       {
-        "after_event": 4,
+        "after_event": null,
         "fault_id": "sharing_revoked_while_queued",
         "parameters": [
           {
             "name": "recipient_id",
             "value": "participant-c"
-          }
-        ]
-      },
-      {
-        "after_event": null,
-        "fault_id": "stale_preference_memory",
-        "parameters": [
-          {
-            "name": "preference_version",
-            "value": 1
           }
         ]
       }
@@ -2983,23 +7140,6 @@ export const world_experiment_proposal__refund_timeout: C.WorldExperimentProposa
   },
   "schema_version": 1,
   "world_version": "refund-world/1"
-};
-
-export const world_invariant_finding__journey_revoked_delivery: C.WorldInvariantFinding = {
-  "evidence_event_ids": [
-    3
-  ],
-  "finding_id": "journey-run-1-delivered_messages_permitted",
-  "invariant": "delivered_messages_permitted",
-  "limit_value": 0,
-  "observed_value": 1,
-  "recorded_at": "2026-10-29T10:00:05Z",
-  "run_id": "journey-run-1",
-  "schema_version": 1,
-  "unit": "unpermitted_deliveries",
-  "verdict": "failed",
-  "verifier_version": "journey-verifier-1",
-  "world_version": "group-journey/1"
 };
 
 export const world_memory_query__journey_findings: C.WorldMemoryQuery = {
@@ -3055,171 +7195,15 @@ export const world_memory_record__journey_finding: C.WorldMemoryRecord = {
   "world_version": "group-journey/1"
 };
 
-export const world_reality_diff__journey_fixture: C.WorldRealityDiff = {
-  "baseline_metrics": {
-    "messages_delivered_without_permission": 0
-  },
-  "faulted_metrics": {
-    "messages_delivered_without_permission": 1
-  },
-  "first_divergence": {
-    "baseline": null,
-    "event_id": 3,
-    "faulted": {
-      "event_id": 3,
-      "outcome": {
-        "result": {
-          "delivered": true
-        }
-      },
-      "request": {
-        "arguments": {
-          "message_id": "msg-1"
-        },
-        "tool": "deliver_message"
-      },
-      "state": {
-        "intent_version": 2,
-        "messages": [
-          {
-            "delivered": true,
-            "message_id": "msg-1",
-            "recipient_id": "participant-c",
-            "sharing_permitted": false
-          }
-        ]
-      }
-    }
-  },
-  "schema_version": 1,
-  "violated_invariants": [
-    "delivered_messages_permitted"
-  ],
-  "world_version": "group-journey/1"
-};
-
-export const world_run_result__journey_fixture: C.WorldRunResult = {
-  "actor_id": "traveller-a",
-  "adapter_id": "journey-naive",
-  "adapter_version": "journey-adapters/1",
-  "checks": {
-    "commitments_use_approved_intent": true,
-    "delivered_messages_permitted": false,
-    "mandatory_participants_feasible": true
-  },
-  "final_state": {
-    "intent_version": 2,
-    "messages": [
-      {
-        "delivered": true,
-        "message_id": "msg-1",
-        "recipient_id": "participant-c",
-        "sharing_permitted": false
-      }
-    ]
-  },
-  "schema_version": 1,
-  "status": "completed",
-  "trace": [
-    {
-      "event_id": 1,
-      "outcome": {
-        "result": {
-          "intent_version": 2
-        }
-      },
-      "request": {
-        "arguments": {
-          "journey_id": "journey-1"
-        },
-        "tool": "inspect_constraints"
-      },
-      "state": {
-        "intent_version": 2,
-        "messages": [
-          {
-            "delivered": false,
-            "message_id": "msg-1",
-            "recipient_id": "participant-c",
-            "sharing_permitted": true
-          }
-        ]
-      }
-    },
-    {
-      "event_id": 2,
-      "outcome": {
-        "result": {
-          "message_id": "msg-1"
-        }
-      },
-      "request": {
-        "arguments": {
-          "recipient_id": "participant-c",
-          "template_id": "itinerary-v2"
-        },
-        "tool": "queue_message"
-      },
-      "state": {
-        "intent_version": 2,
-        "messages": [
-          {
-            "delivered": false,
-            "message_id": "msg-1",
-            "recipient_id": "participant-c",
-            "sharing_permitted": true
-          }
-        ]
-      }
-    },
-    {
-      "event_id": 3,
-      "outcome": {
-        "result": {
-          "delivered": true
-        }
-      },
-      "request": {
-        "arguments": {
-          "message_id": "msg-1"
-        },
-        "tool": "deliver_message"
-      },
-      "state": {
-        "intent_version": 2,
-        "messages": [
-          {
-            "delivered": true,
-            "message_id": "msg-1",
-            "recipient_id": "participant-c",
-            "sharing_permitted": false
-          }
-        ]
-      }
-    }
-  ],
-  "world_version": "group-journey/1"
-};
-
 export const world_scenario__group_journey_revocation: C.WorldScenario = {
   "faults": [
     {
-      "after_event": 4,
+      "after_event": null,
       "fault_id": "sharing_revoked_while_queued",
       "parameters": [
         {
           "name": "recipient_id",
           "value": "participant-c"
-        }
-      ]
-    },
-    {
-      "after_event": null,
-      "fault_id": "stale_preference_memory",
-      "parameters": [
-        {
-          "name": "preference_version",
-          "value": 1
         }
       ]
     }
@@ -3251,7 +7235,7 @@ export const world_tool_definition__journey_deliver_message: C.WorldToolDefiniti
 
 export const world_tool_invocation__journey_deliver_message: C.WorldToolInvocation = {
   "arguments": {
-    "message_id": "msg-1"
+    "message_id": "msg-3"
   },
   "invocation_id": "invocation-j1",
   "provider_call_id": null,
@@ -3263,10 +7247,11 @@ export const world_tool_invocation__journey_deliver_message: C.WorldToolInvocati
 
 export const world_tool_result__journey_delivered: C.WorldToolResult = {
   "error": null,
-  "event_id": 3,
+  "event_id": 12,
   "invocation_id": "invocation-j1",
   "output": {
-    "delivered": true
+    "message_id": "msg-3",
+    "status": "delivered"
   },
   "provider_call_id": null,
   "schema_version": 1,

@@ -1,6 +1,6 @@
 {
   "evidence_event_ids": [
-    3
+    12
   ],
   "finding_id": "journey-run-1-delivered_messages_permitted",
   "invariant": "delivered_messages_permitted",

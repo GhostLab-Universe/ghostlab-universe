@@ -10,13 +10,14 @@ from m06_fakes import FakeApprovalStore
 from pydantic import ValidationError
 
 from ghostlab.contracts import ApprovalSubmission, Principal, TrustedScope
-from ghostlab.contracts.world import WorldExperimentProposal, WorldTrustedScope
+from ghostlab.contracts.world import (WorldExperimentProposal, WorldToolInvocation,
+                                      WorldTrustedScope)
 from ghostlab.contracts.world_packs import PACKS, pack
 from ghostlab.policy import (ENFORCED, LAB, POLICY_VERSION, ROLE_EFFECT_CEILINGS,
                              ApprovalDenied, ApprovalService, PolicyDenied,
                              ProjectApproverAllowlist, StaticWorldBinding, authorize_capability,
                              authorize_delivery, authorize_world, authorize_world_tool,
-                             delegate_world, execution_mode_for, supervisor_scope,
+                             delegate_world, execution_mode_for, root_scope, supervisor_scope,
                              world_root_scope)
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -188,6 +189,96 @@ def test_delivery_is_decided_from_the_permission_at_this_event():
 @pytest.mark.parametrize("value", [None, 1, "true", [True]])
 def test_delivery_is_denied_unless_permission_is_exactly_true(value):
     assert not authorize_delivery(target(), project_id=PROJECT, sharing_permitted=value).allowed
+
+
+REFUND = "refund-world/1"
+CUSTOMER = "synthetic-customer-1"
+REFUND_BINDING = StaticWorldBinding({(PROJECT, "operator-1", REFUND): CUSTOMER})
+
+
+def refund_target():
+    root = world_root_scope(PROJECT, OPERATOR, REFUND)
+    return delegate_world(root, "target", root.allowed_tools)
+
+
+@pytest.mark.parametrize("tool, arguments", [
+    ("get_order", {"order_id": "order-1", "customer_id": "victim"}),
+    ("issue_refund", {"order_id": "order-1", "customer_id": "victim", "amount_minor": 250_000,
+                      "idempotency_key": "k"}),
+    ("get_refund_status", {"order_id": "order-1", "customer_id": "victim",
+                           "idempotency_key": "k"}),
+])
+def test_an_identity_argument_must_match_the_binding(tool, arguments):
+    refused = decide(refund_target(), tool, arguments, binding=REFUND_BINDING, owner=CUSTOMER)
+    assert refused.code == "identity_mismatch"
+    own = {**arguments, "customer_id": CUSTOMER}
+    assert decide(refund_target(), tool, own, binding=REFUND_BINDING, owner=CUSTOMER).allowed
+
+
+def world_scope(role, tools, world=J):
+    return WorldTrustedScope.model_validate({
+        **world_root_scope(PROJECT, OPERATOR, J).model_dump(), "role": role,
+        "delegated_by": "supervisor", "allowed_tools": tools, "world_version": world})
+
+
+@pytest.mark.parametrize("scope, code", [
+    (supervisor_scope(PROJECT, OPERATOR), "tool_not_in_scope"),
+    (root_scope(PROJECT, OPERATOR), "tool_not_in_scope"),
+    (world_scope("explorer", []), "tool_not_in_role_ceiling"),
+    (world_scope("verifier", []), "tool_not_in_role_ceiling"),
+    (world_scope("analyst", ["inspect_constraints"]), "tool_not_in_role_ceiling"),
+    (world_scope("target", ["inspect_constraints"]), "tool_not_in_scope"),
+    (world_scope("target", [], world="refund-world/1"), "tool_not_in_scope"),
+    (world_scope("target", [], world="service-relay/1"), "world_not_runnable"),
+])
+def test_only_a_scope_that_can_deliver_may_deliver(scope, code):
+    assert authorize_delivery(scope, project_id=PROJECT, sharing_permitted=True).code == code
+
+
+def test_the_role_ceiling_is_checked_for_tools():
+    analyst = world_scope("analyst", ["deliver_message"])
+    assert decide(analyst, "deliver_message", DELIVER).code == "tool_not_in_role_ceiling"
+
+
+def test_a_validated_invocation_is_accepted():
+    invocation = WorldToolInvocation.model_validate(
+        example("world_tool_invocation.journey_deliver_message"))
+    assert decide(target(), invocation.tool, invocation.arguments).allowed
+
+
+def test_delegation_checks_the_world_and_the_parent():
+    root = world_root_scope(PROJECT, OPERATOR, J)
+    relay = WorldTrustedScope.model_validate({**root.model_dump(),
+                                              "world_version": "service-relay/1",
+                                              "allowed_tools": []})
+    with pytest.raises(PolicyDenied) as refused:
+        delegate_world(relay, "target", [])
+    assert refused.value.decision.code == "world_not_runnable"
+    stale = WorldTrustedScope.model_validate({**root.model_dump(), "policy_version": "policy-0"})
+    with pytest.raises(PolicyDenied) as refused:
+        delegate_world(stale, "target", [])
+    assert refused.value.decision.code == "unknown_policy"
+    delegated = WorldTrustedScope.model_validate({**root.model_dump(),
+                                                  "delegated_by": "supervisor"})
+    with pytest.raises(PolicyDenied) as refused:
+        delegate_world(delegated, "target", [])
+    assert refused.value.decision.code == "delegation_denied"
+    with pytest.raises(PolicyDenied):
+        delegate_world(supervisor_scope(PROJECT, OPERATOR), "target", [])
+    with pytest.raises(PolicyDenied):
+        delegate_world(root, "not-a-role", ALL_TOOLS)
+
+
+def test_duplicate_tools_are_collapsed_not_an_error():
+    root = world_root_scope(PROJECT, OPERATOR, J)
+    scope = delegate_world(root, "target", ["inspect_constraints", "inspect_constraints"])
+    assert scope.allowed_tools == ["inspect_constraints"]
+
+
+def test_every_declared_effect_has_a_ceiling_decision():
+    from ghostlab.contracts.world_packs import PACKS
+    effects = {tool.effect for world in PACKS.values() for tool in world.tools}
+    assert effects <= ROLE_EFFECT_CEILINGS["supervisor"]
 
 
 def test_delivery_outside_the_project_is_denied():

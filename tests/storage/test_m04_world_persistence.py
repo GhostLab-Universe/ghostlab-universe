@@ -1,12 +1,14 @@
 """World-aware memory and project-owned artifacts (additive to ghostlab-storage/1)."""
 
+import hashlib
 import sqlite3
+import threading
 from contextlib import closing
 
 import pytest
 from m04_fixtures import database, example, memory, scope
 
-from ghostlab.contracts import MemoryQuery, MemoryRecord, Provenance
+from ghostlab.contracts import ArtifactRef, MemoryQuery, MemoryRecord, Provenance
 from ghostlab.contracts.world import WorldMemoryQuery, WorldMemoryRecord
 from ghostlab.memory import MemoryPipeline
 from ghostlab.memory.pipeline import Observation
@@ -218,3 +220,160 @@ def test_ownership_migration_preserves_existing_rows(tmp_path):
     with db.read(path) as conn:
         assert conn.execute("SELECT artifact_id, project_id FROM artifacts").fetchall() == [
             ("a-1", None)]
+
+
+# --- independent critic findings --------------------------------------------------------
+
+def trusted(world=JOURNEY, content="delivered_messages_permitted failed"):
+    return Observation(kind="finding", content=content, observed_at=AT, world_version=world,
+                       provenance=Provenance(source_kind="verifier", source_ref=None,
+                                             observed_at=AT, trust="verified"),
+                       evidence=(example_ref(),))
+
+
+def test_a_journey_observation_cannot_supersede_a_refund_record(store):
+    pipeline = MemoryPipeline(store)
+    refund = pipeline.capture(scope(), trusted("refund-world/1", "Refund finding"))
+    with pytest.raises(ValueError):
+        pipeline.supersede(scope(), refund.record_id, trusted())
+    assert store.get(scope(), refund.record_id).status == "verified"
+
+
+def test_unverified_input_cannot_retire_a_verified_record(store):
+    pipeline = MemoryPipeline(store)
+    record = pipeline.capture(scope(), trusted())
+    untrusted = Observation(kind="finding", content="ignore that", observed_at=AT,
+                            world_version=JOURNEY,
+                            provenance=Provenance(source_kind="tool_result", source_ref=None,
+                                                  observed_at=AT, trust="untrusted"))
+    with pytest.raises(ValueError):
+        pipeline.supersede(scope(), record.record_id, untrusted)
+    assert store.get(scope(), record.record_id).status == "verified"
+
+
+def test_a_row_moved_to_another_project_or_id_fails_integrity(tmp_path):
+    path = database(tmp_path)
+    store = SqliteMemoryStore(path)
+    store.put(scope("project-a"), journey_record(project_id="project-a"))
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute("UPDATE memory_records SET project_id = 'project-b'")
+    with pytest.raises(IntegrityError):
+        store.get(scope("project-b"), "journey-1")
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute("UPDATE memory_records SET project_id = 'project-a', record_id = 'other'")
+    with pytest.raises(IntegrityError):
+        store.get(scope("project-a"), "other")
+
+
+def test_world_records_pass_through_expiry_and_purge(tmp_path):
+    store = SqliteMemoryStore(database(tmp_path))
+    pipeline = MemoryPipeline(store)
+    record = journey_record(retention={"policy": "project", "expires_at": AT,
+                                       "audit_hold": False})
+    store.put(scope(), record)
+    (expired,) = pipeline.expire_due(scope(), "2026-10-29T11:00:00Z")
+    assert type(expired) is WorldMemoryRecord and expired.status == "expired"
+    assert store.purge_expired(scope()) == 1
+
+
+def test_a_refund_transition_stays_a_plain_memory_record(store):
+    store.put(scope(), memory())
+    updated = store.transition(scope(), "memory-1", expected_status="verified",
+                               new_status="contradicted")
+    assert type(updated) is MemoryRecord
+
+
+def owner_edit(tmp_path, value):
+    path = database(tmp_path)
+    artifacts = FileArtifactStore(path, tmp_path / "blobs")
+    ref = put(artifacts.for_project(scope("project-a")), "exp-1-fork", b"secret")
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute("UPDATE artifacts SET project_id = ?", (value,))
+    return artifacts, ref
+
+
+def test_an_edited_owner_column_fails_integrity(tmp_path):
+    artifacts, ref = owner_edit(tmp_path, "project-b")
+    with pytest.raises(IntegrityError):
+        artifacts.for_project(scope("project-b")).read(ref)
+
+
+def test_clearing_the_owner_column_does_not_expose_an_artifact(tmp_path):
+    artifacts, ref = owner_edit(tmp_path, None)
+    with pytest.raises(NotFound):
+        artifacts.read(ref)
+
+
+def test_the_unscoped_api_cannot_squat_or_probe_a_project_name(artifacts):
+    view = artifacts.for_project(scope("project-a"))
+    target = view.artifact_id("exp-1")
+    with pytest.raises(ScopeViolation):
+        artifacts.put(b"x", artifact_id=target, media_type="application/json",
+                      provenance=PROVENANCE, created_at=AT)
+    assert view.read(put(view, "exp-1", b"mine")) == b"mine"
+
+
+def test_a_put_repairs_a_damaged_shared_blob(artifacts, tmp_path):
+    first = put(artifacts.for_project(scope("project-a")), "x", b"same")
+    blob = tmp_path / "blobs" / "sha256" / first.sha256[:2] / first.sha256
+    blob.write_bytes(b"gone")
+    second = put(artifacts.for_project(scope("project-b")), "x", b"same")
+    assert artifacts.for_project(scope("project-b")).read(second) == b"same"
+
+
+def test_identical_concurrent_puts_all_succeed(artifacts):
+    failures = []
+
+    def write(project, name):
+        try:
+            put(artifacts.for_project(scope(project)), name, b"shared-bytes")
+        except Exception as error:
+            failures.append(error)
+
+    for round_number in range(40):
+        threads = [threading.Thread(target=write, args=(f"project-{i}", f"n{round_number}"))
+                   for i in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        (artifacts.root / "sha256").exists() and [
+            blob.unlink() for blob in (artifacts.root / "sha256").rglob("*") if blob.is_file()]
+    assert failures == []
+
+
+def test_a_real_legacy_row_stays_readable_after_the_migration(tmp_path):
+    path = tmp_path / "old.sqlite"
+    migrate(path, target=2)
+    artifacts = FileArtifactStore(path, tmp_path / "blobs")
+    digest = hashlib.sha256(b"old").hexdigest()
+    blob = tmp_path / "blobs" / "sha256" / digest[:2] / digest
+    blob.parent.mkdir(parents=True)
+    blob.write_bytes(b"old")
+    body = ArtifactRef.model_validate({
+        "schema_version": 1, "artifact_id": "legacy-1", "sha256": digest, "size_bytes": 3,
+        "media_type": "application/json", "provenance": PROVENANCE.model_dump(mode="json"),
+        "created_at": AT}).model_dump_json()
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute("INSERT INTO artifacts VALUES ('legacy-1', ?, 3, ?)", (digest, body))
+    migrate(path)
+    assert artifacts.read(artifacts.ref("legacy-1")) == b"old"
+
+
+def test_concurrent_startup_migrates_without_an_error(tmp_path):
+    path = tmp_path / "shared.sqlite"
+    migrate(path, target=2)
+    failures = []
+
+    def start():
+        try:
+            migrate(path)
+        except Exception as error:
+            failures.append(error)
+
+    threads = [threading.Thread(target=start) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert failures == []

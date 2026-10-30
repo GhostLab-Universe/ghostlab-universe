@@ -101,6 +101,10 @@ class MemoryPipeline:
                   observation: Observation) -> MemoryRecord:
         """Store a replacement and retire the old record. Both stay auditable."""
         old = self.store.get(scope, old_record_id)
+        if observation.world_version != old.world_version:
+            raise ValueError("A record can only be superseded from its own world")
+        if old.status == "verified" and initial_status(observation) != "verified":
+            raise ValueError("Unverified input cannot retire a verified record")
         replacement = self.capture(scope, Observation(**{
             **observation.__dict__, "supersedes": (*observation.supersedes, old_record_id)}))
         if old.status in {"unverified", "verified"}:

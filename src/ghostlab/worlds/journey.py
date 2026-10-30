@@ -406,8 +406,12 @@ class JourneyWorld:
                         "intent_version": intent_version})
         self.state["calendar"][participant_id] = entries
         # The log keeps what was scheduled, so a later replacement can't erase it.
+        # Identifiers may contain ":", so ``ref`` is a display label only; readers use
+        # the separate participant_id and entry_id fields.
         self.state["commitment_log"].append({"event_id": at, "kind": "calendar",
                                              "ref": f"{participant_id}:{event_id}",
+                                             "participant_id": participant_id,
+                                             "entry_id": event_id,
                                              "intent_version": intent_version,
                                              "reservation_id": reservation["reservation_id"],
                                              "window": [option.depart, option.arrive]})

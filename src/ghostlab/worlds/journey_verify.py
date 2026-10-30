@@ -51,10 +51,8 @@ def _final_infeasibilities(fixture, state):
     reservations = state["reservations"]
     confirmed = [r for r in reservations.values() if r["status"] == "confirmed"]
     by_ref = {r["reservation_id"]: r for r in reservations.values()}
-    last_write = {}
-    for row in state["commitment_log"]:
-        if row["kind"] == "calendar":
-            last_write[row["ref"]] = row["event_id"]
+    last_write = {(row["participant_id"], row["entry_id"]): row["event_id"]
+                  for row in state["commitment_log"] if row["kind"] == "calendar"}
     windows = {o.option_id: (o.depart, o.arrive) for o in fixture.options}
 
     for reservation in confirmed:
@@ -72,7 +70,7 @@ def _final_infeasibilities(fixture, state):
                 key = ("double", traveller, first["reservation_id"], second["reservation_id"])
                 problems[key] = {first["confirmed_at"], second["confirmed_at"]}
         entries = state["calendar"][traveller]
-        written = {e["entry_id"]: last_write.get(f"{traveller}:{e['entry_id']}")
+        written = {e["entry_id"]: last_write.get((traveller, e["entry_id"]))
                    for e in entries}
         for entry in entries:
             if entry["reservation_id"] is None:
@@ -122,7 +120,7 @@ def _historical_infeasibilities(fixture, state):
     for row in state["commitment_log"]:
         if row["kind"] != "calendar":
             continue
-        traveller, entry_id = row["ref"].split(":", 1)
+        traveller, entry_id = row["participant_id"], row["entry_id"]
         calendars[traveller][entry_id] = (row["window"], row["event_id"])
         current = [(e, w) for e, (w, _) in calendars[traveller].items()]
         for a, b in _overlapping(current):

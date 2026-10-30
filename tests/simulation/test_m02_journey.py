@@ -512,6 +512,53 @@ def test_release_then_rebook_passes_through_a_cancelled_calendar_without_failing
     assert feasibility(fixture, world) == (True, [], True)
 
 
+# --- identifiers may contain ":" ------------------------------------------------------
+
+COLON = replace(FIXTURE, organizer="traveller:a", mandatory=("traveller:a", "traveller-b"))
+
+
+def outcomes(experiment_result, fixture):
+    """Per run: failed invariants with evidence, and denials (identifier-free)."""
+    runs = {f"baseline/{a}": r for a, r in experiment_result["baseline"].items()}
+    for fault_id, case in experiment_result["faults"].items():
+        runs.update({f"{fault_id}/{k}": case[k] for k in ("faulted", "repaired", "guarded")})
+    runs.update({f"race/{k}": experiment_result["race"][k] for k in ("lab", "guarded")})
+    return {name: (failed(r, replace(fixture, guarded="guarded" in name)), denied(r))
+            for name, r in runs.items()}
+
+
+def test_participant_ids_with_colons_run_and_verify_like_any_other(result):
+    colon = experiment(COLON)
+    assert outcomes(colon, COLON) == outcomes(result, FIXTURE)
+    rows = [row for row in colon["baseline"][CHECKED]["final_state"]["commitment_log"]
+            if row["kind"] == "calendar"]
+    assert [(r["participant_id"], r["entry_id"]) for r in rows] == [
+        ("traveller:a", "return-journey"), ("traveller-b", "return-journey")]
+
+
+def test_colon_ids_do_not_collide_between_participants_and_entries():
+    # "x" + "y:return" and "x:y" + "return" join to the same "x:y:return" label.
+    fixture = replace(FIXTURE, organizer="x", mandatory=("x", "x:y"), viewers=("v",),
+                      outbound=(900, 960))
+    world = JourneyWorld(fixture, CLEAN, actor_id="x")
+    book(world, "return-1530", calendars=False)
+    for participant, entry in (("x:y", "return"), ("x", "y:return")):  # events 3 and 4
+        world.call("update_calendar_event", {"participant_id": participant,
+                                             "event_id": entry, "intent_version": 2})
+    detail = verify_details(fixture, world.snapshot())["mandatory_participants_feasible"]
+    # one overlap with the 15:00-16:00 outbound per traveller, each with its own write
+    assert (detail["observed_value"], detail["evidence_event_ids"]) == (2, [3, 4])
+
+
+def test_capsules_with_colon_ids_replay(tmp_path):
+    for adapter in ADAPTERS:
+        data = fault_scenarios(COLON)["sharing_revoked_while_queued"]
+        recorded = run(COLON, JourneyScenario.from_json(data), adapter)
+        path = tmp_path / f"{adapter}.json"
+        journey_capsule.export_capsule(path, COLON, data, recorded)
+        assert journey_capsule.replay(path)["reproduced"]
+
+
 def test_findings_cover_exactly_the_invariants(result):
     produced = findings(FIXTURE, result["baseline"][CHECKED], "journey-run-0",
                         "2026-10-30T00:00:00Z")

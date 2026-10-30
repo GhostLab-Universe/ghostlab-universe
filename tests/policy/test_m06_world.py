@@ -50,12 +50,23 @@ def decide(scope, tool, arguments, *, binding=BINDING, owner="traveller-a", proj
 
 def test_only_implemented_worlds_pass_the_gate():
     assert authorize_world("refund-world/1").allowed and authorize_world(J).allowed
-    refused = authorize_world("service-relay/1")
-    assert (refused.allowed, refused.code) == (False, "world_not_runnable")
+    assert authorize_world("service-relay/1").allowed
     assert authorize_world("creator-release/1").code == "world_not_runnable"
 
 
-def test_no_scope_is_issued_for_a_world_that_cannot_run():
+def only_specified(monkeypatch, world):
+    designed = PACKS[world].model_copy(update={"status": "specified"})
+    monkeypatch.setattr("ghostlab.contracts.world_packs.PACKS", {**PACKS, world: designed})
+
+
+def test_a_pack_that_is_only_specified_does_not_pass_the_gate(monkeypatch):
+    only_specified(monkeypatch, "service-relay/1")
+    refused = authorize_world("service-relay/1")
+    assert (refused.allowed, refused.code) == (False, "world_not_runnable")
+
+
+def test_no_scope_is_issued_for_a_world_that_cannot_run(monkeypatch):
+    only_specified(monkeypatch, "service-relay/1")
     with pytest.raises(PolicyDenied) as refused:
         world_root_scope(PROJECT, OPERATOR, "service-relay/1")
     assert refused.value.decision.code == "world_not_runnable"
@@ -229,10 +240,17 @@ def world_scope(role, tools, world=J):
     (world_scope("analyst", ["inspect_constraints"]), "tool_not_in_role_ceiling"),
     (world_scope("target", ["inspect_constraints"]), "tool_not_in_scope"),
     (world_scope("target", [], world="refund-world/1"), "tool_not_in_scope"),
-    (world_scope("target", [], world="service-relay/1"), "world_not_runnable"),
+    (world_scope("target", [], world="service-relay/1"), "tool_not_in_scope"),
 ])
 def test_only_a_scope_that_can_deliver_may_deliver(scope, code):
     assert authorize_delivery(scope, project_id=PROJECT, sharing_permitted=True).code == code
+
+
+def test_delivery_is_refused_in_a_world_that_cannot_run(monkeypatch):
+    only_specified(monkeypatch, "service-relay/1")
+    scope = world_scope("target", [], world="service-relay/1")
+    assert authorize_delivery(scope, project_id=PROJECT,
+                              sharing_permitted=True).code == "world_not_runnable"
 
 
 def test_the_role_ceiling_is_checked_for_tools():
@@ -246,14 +264,16 @@ def test_a_validated_invocation_is_accepted():
     assert decide(target(), invocation.tool, invocation.arguments).allowed
 
 
-def test_delegation_checks_the_world_and_the_parent():
+def test_delegation_checks_the_world_and_the_parent(monkeypatch):
     root = world_root_scope(PROJECT, OPERATOR, J)
     relay = WorldTrustedScope.model_validate({**root.model_dump(),
                                               "world_version": "service-relay/1",
                                               "allowed_tools": []})
+    only_specified(monkeypatch, "service-relay/1")
     with pytest.raises(PolicyDenied) as refused:
         delegate_world(relay, "target", [])
     assert refused.value.decision.code == "world_not_runnable"
+    monkeypatch.undo()
     stale = WorldTrustedScope.model_validate({**root.model_dump(), "policy_version": "policy-0"})
     with pytest.raises(PolicyDenied) as refused:
         delegate_world(stale, "target", [])

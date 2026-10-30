@@ -8,14 +8,13 @@ free strings. Adding or changing a pack is an M00 change.
 
 Status rules:
 
-- ``implemented`` packs (``refund-world/1``, ``group-journey/1``) are frozen;
-  any change is a new world version. M02's engine is cross-checked against
-  each manifest in tests.
-- ``specified`` packs (``service-relay/1``) are design-level manifests from the
-  GhostLab priority-worlds plan. Their names may be revised through an M00 PR
-  until M02 implements them; after that, a change needs a new world version.
-  They are **not executable**: ``is_executable`` is false and controllers must
-  refuse them.
+- ``implemented`` packs (``refund-world/1``, ``group-journey/1``,
+  ``service-relay/1``) are frozen; any change is a new world version. M02's engine
+  is cross-checked against each manifest in tests.
+- ``specified`` packs are design-level manifests. Their names may be revised
+  through an M00 PR until M02 implements them; after that, a change needs a new
+  world version. They are **not executable**: ``is_executable`` is false and
+  controllers must refuse them. No registered pack is specified today.
 """
 
 from collections.abc import Mapping
@@ -255,7 +254,7 @@ _PACK_DATA = [
     },
     {
         "schema_version": 1, "world_version": "service-relay/1",
-        "title": "Small Business Relay", "status": "specified",
+        "title": "Small Business Relay", "status": "implemented",
         "summary": "An appliance-repair shop with two technicians, one scarce part and several "
                    "jobs; front desk, inventory and dispatch each succeed locally but together "
                    "promise an impossible appointment.",
@@ -263,7 +262,8 @@ _PACK_DATA = [
         "tools": [
             {"name": "inspect_availability", "effect": "read",
              "parameters": _object(job_id=ID),
-             "description": "Read technician slots, parts and current leases"},
+             "description": "Read technician slots, parts, current leases, the job's "
+                            "promise version and who holds its conversation"},
             {"name": "reserve_resource", "effect": "mutate",
              "parameters": _object(job_id=ID, resource_id=ID, request_key=ID),
              "description": "Lease a technician slot or part with an idempotency key"},
@@ -279,31 +279,36 @@ _PACK_DATA = [
         "faults": [
             {"fault_id": "stale_availability_competition", "fault_pack": "stale_availability",
              "parameters": [{"name": "competing_jobs", "type": "integer",
-                             "description": "Jobs that read the same stale availability"}],
-             "description": "Competing jobs see stale availability"},
+                             "description": "Competing jobs that take a free resource"}],
+             "description": "Competing jobs take resources while the availability counters "
+                            "stay stale; the lease list stays true"},
             {"fault_id": "lost_reservation_ack", "fault_pack": "lost_acknowledgement",
              "parameters": [],
-             "description": "A successful reservation loses its acknowledgement and is retried"},
+             "description": "A reservation commits but its acknowledgement is lost; whether "
+                            "to retry, and under which key, is the adapter's choice"},
             {"fault_id": "takeover_with_queued_confirmation", "fault_pack": "owner_takeover",
              "parameters": [],
-             "description": "The owner takes over while an automated confirmation is queued"}],
+             "description": "The owner takes over the first job's conversation once its "
+                            "leases are in place, while the automated confirmation is pending"}],
         "invariants": [
             {"name": "allocations_within_capacity", "evidence": "resource_leases",
-             "description": "Technician and part allocations never exceed capacity or "
-                            "duplicate ownership"},
+             "description": "No lease, at its grant, takes a technician slot or part past "
+                            "capacity or gives a job a second lease on it"},
             {"name": "confirmations_backed_by_reservations", "evidence": "reservations",
-             "description": "Every confirmed service has valid matching reservations and "
-                            "promise versions"},
+             "description": "Every confirmed service has valid matching reservations and the "
+                            "promise version in force at its event, and keeps them to the end"},
             {"name": "no_automation_after_takeover", "evidence": "conversation_ownership",
-             "description": "Automated mutations stop after effective owner takeover until "
-                            "explicitly resumed"}],
+             "description": "Automated mutations stop on a conversation from the event the "
+                            "owner holds it; no tool in this version gives it back"}],
         "adapters": [
             {"adapter_id": "relay-local-success", "kind": "vulnerable",
              "description": "Each role trusts its own local success and retries blindly"},
             {"adapter_id": "relay-lease-checked", "kind": "repaired",
-             "description": "Checks leases, promise versions and ownership before acting"}],
+             "description": "Plans from the lease list and re-reads leases, the promise "
+                            "version and ownership before confirming"}],
         "replay": {"capsule_schema_versions": [2], "dispatch": "recorded_actions"},
-        "source": "GhostLab priority-worlds plan (design-level, 2026-10-29)",
+        "source": "ghostlab.worlds.relay service-relay/1 and relay-adapters/1 "
+                  "(designed in the GhostLab priority-worlds plan)",
     },
 ]
 

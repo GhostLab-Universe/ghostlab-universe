@@ -7,31 +7,31 @@
     },
     {
       "adapter_id": "relay-lease-checked",
-      "description": "Checks leases, promise versions and ownership before acting",
+      "description": "Plans from the lease list and re-reads leases, the promise version and ownership before confirming",
       "kind": "repaired"
     }
   ],
   "faults": [
     {
-      "description": "Competing jobs see stale availability",
+      "description": "Competing jobs take resources while the availability counters stay stale; the lease list stays true",
       "fault_id": "stale_availability_competition",
       "fault_pack": "stale_availability",
       "parameters": [
         {
-          "description": "Jobs that read the same stale availability",
+          "description": "Competing jobs that take a free resource",
           "name": "competing_jobs",
           "type": "integer"
         }
       ]
     },
     {
-      "description": "A successful reservation loses its acknowledgement and is retried",
+      "description": "A reservation commits but its acknowledgement is lost; whether to retry, and under which key, is the adapter's choice",
       "fault_id": "lost_reservation_ack",
       "fault_pack": "lost_acknowledgement",
       "parameters": []
     },
     {
-      "description": "The owner takes over while an automated confirmation is queued",
+      "description": "The owner takes over the first job's conversation once its leases are in place, while the automated confirmation is pending",
       "fault_id": "takeover_with_queued_confirmation",
       "fault_pack": "owner_takeover",
       "parameters": []
@@ -39,17 +39,17 @@
   ],
   "invariants": [
     {
-      "description": "Technician and part allocations never exceed capacity or duplicate ownership",
+      "description": "No lease, at its grant, takes a technician slot or part past capacity or gives a job a second lease on it",
       "evidence": "resource_leases",
       "name": "allocations_within_capacity"
     },
     {
-      "description": "Every confirmed service has valid matching reservations and promise versions",
+      "description": "Every confirmed service has valid matching reservations and the promise version in force at its event, and keeps them to the end",
       "evidence": "reservations",
       "name": "confirmations_backed_by_reservations"
     },
     {
-      "description": "Automated mutations stop after effective owner takeover until explicitly resumed",
+      "description": "Automated mutations stop on a conversation from the event the owner holds it; no tool in this version gives it back",
       "evidence": "conversation_ownership",
       "name": "no_automation_after_takeover"
     }
@@ -66,13 +66,13 @@
     "dispatch"
   ],
   "schema_version": 1,
-  "source": "GhostLab priority-worlds plan (design-level, 2026-10-29)",
-  "status": "specified",
+  "source": "ghostlab.worlds.relay service-relay/1 and relay-adapters/1 (designed in the GhostLab priority-worlds plan)",
+  "status": "implemented",
   "summary": "An appliance-repair shop with two technicians, one scarce part and several jobs; front desk, inventory and dispatch each succeed locally but together promise an impossible appointment.",
   "title": "Small Business Relay",
   "tools": [
     {
-      "description": "Read technician slots, parts and current leases",
+      "description": "Read technician slots, parts, current leases, the job's promise version and who holds its conversation",
       "effect": "read",
       "name": "inspect_availability",
       "parameters": {

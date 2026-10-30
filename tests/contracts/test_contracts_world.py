@@ -28,6 +28,7 @@ from ghostlab.core import (Fixture, RefundWorld, Scenario, ToolError, experiment
 SCHEMAS = ROOT / "schemas" / "v1"
 EXAMPLES = ROOT / "examples" / "contracts"
 J = "group-journey/1"
+R = "service-relay/1"
 
 
 def ex(name: str) -> dict:
@@ -93,10 +94,17 @@ def test_refund_pack_invariants_faults_and_adapters_match_the_core():
 
 
 def test_only_implemented_packs_are_executable():
-    assert is_executable("refund-world/1") and is_executable(J)
-    assert not is_executable("service-relay/1")
+    assert is_executable("refund-world/1") and is_executable(J) and is_executable(R)
     assert not is_executable("creator-release/1")  # deferred: not registered at all
-    assert {p.status for p in PACKS.values()} == {"implemented", "specified"}
+    assert {p.status for p in PACKS.values()} == {"implemented"}
+
+
+def test_a_pack_that_is_only_specified_is_not_executable(monkeypatch):
+    # No registered pack is specified today, but the rule still has to hold.
+    designed = PACKS[R].model_copy(update={"status": "specified"})
+    monkeypatch.setattr("ghostlab.contracts.world_packs.PACKS", {**PACKS, R: designed})
+    assert not is_executable(R)
+    assert is_executable(J)
 
 
 # --- refund evidence maps losslessly ------------------------------------------------
@@ -192,6 +200,26 @@ def test_non_refund_evidence_does_not_map_to_refund_v1():
      lambda p: p.update(unit=None)),
     (CapsuleV2, "capsule_v2.journey_fixture",
      lambda p: p["payload"].update(world_version="service-relay/1")),
+    (CapsuleV2, "capsule_v2.relay_fixture",
+     lambda p: p["payload"].update(world_version="group-journey/1")),
+    (CapsuleV2, "capsule_v2.relay_fixture",
+     lambda p: p["payload"].update(actor_id="owner-1")),
+    (WorldScenario, "world_scenario.relay_takeover",
+     lambda p: p["faults"][0].update(fault_id="sharing_revoked_while_queued")),
+    (WorldScenario, "world_scenario.relay_takeover",
+     lambda p: p["faults"][0].update(parameters=[{"name": "competing_jobs", "value": 1}])),
+    (WorldExperimentProposal, "world_experiment_proposal.relay_takeover",
+     lambda p: p.update(adapter_id="journey-naive")),
+    (WorldExperimentProposal, "world_experiment_proposal.relay_takeover",
+     lambda p: p.update(actor_id="relay-automation")),
+    (WorldRunResult, "world_run_result.relay_fixture",
+     lambda p: p["checks"].pop("no_automation_after_takeover")),
+    (WorldRunResult, "world_run_result.relay_fixture",
+     lambda p: p["checks"].update(delivered_messages_permitted=True)),
+    (WorldRealityDiff, "world_reality_diff.relay_fixture",
+     lambda p: p.update(violated_invariants=["unique_idempotency_keys"])),
+    (WorldInvariantFinding, "world_invariant_finding.relay_automation_after_takeover",
+     lambda p: p.update(invariant="delivered_messages_permitted")),
     (CapsuleV2, "capsule_v2.journey_fixture",
      lambda p: p["payload"].update(schema_version=True)),
     (CapsuleV2, "capsule_v2.journey_fixture",
@@ -417,6 +445,48 @@ def test_published_journey_capsule_replays_without_a_model():
     result = replay_journey(EXAMPLES / "core" / "capsule_v2.journey_fixture.json")
     assert result["reproduced"] and result["model_calls"] == 0
     assert not result["checks"]["delivered_messages_permitted"]
+
+
+def test_published_relay_capsule_replays_without_a_model():
+    from ghostlab.worlds.relay_capsule import replay as replay_relay
+    result = replay_relay(EXAMPLES / "core" / "capsule_v2.relay_fixture.json")
+    assert result["reproduced"] and result["model_calls"] == 0
+    assert not result["checks"]["no_automation_after_takeover"]
+
+
+def test_relay_examples_are_one_consistent_recorded_failure():
+    run_result = ex("world_run_result.relay_fixture")
+    finding = ex("world_invariant_finding.relay_automation_after_takeover")
+    [event_id] = finding["evidence_event_ids"]
+    confirmation = run_result["trace"][event_id - 1]
+    assert confirmation["request"]["tool"] == "confirm_service"
+    assert confirmation["request"]["arguments"]["job_id"] == "job-1"
+    # the takeover landed after the job's leases were in place, which is the premise
+    [takeover] = [row for row in run_result["final_state"]["ownership_timeline"]
+                  if row["owner"] == "business_owner"]
+    grants = [row["event_id"] for row in run_result["final_state"]["lease_log"]
+              if row["job_id"] == "job-1" and row["kind"] == "granted"]
+    assert takeover["from_event"] == event_id == max(grants) + 1
+    proposal = WorldExperimentProposal.model_validate(ex("world_experiment_proposal.relay_takeover"))
+    capsule = CapsuleV2.model_validate(ex("capsule_v2.relay_fixture"))
+    assert proposal.scenario == WorldScenario.model_validate(ex("world_scenario.relay_takeover"))
+    assert capsule.payload.scenario == proposal.scenario
+    assert capsule.payload.run == WorldRunResult.model_validate(run_result)
+    assert run_result["adapter_id"] == proposal.adapter_id
+    assert ex("world_reality_diff.relay_fixture")["violated_invariants"] == [finding["invariant"]]
+
+
+def test_relay_tool_invocations_match_the_pack():
+    world = pack(R)
+    for tool in world.tools:
+        assert WorldToolDefinition.model_validate({
+            "world_version": R, "name": tool.name, "description": tool.description,
+            "parameters": tool.parameters}).name == tool.name
+    assert world.tool("hand_off_to_owner").effect == "handoff"
+    assert check_arguments(world.tool("reserve_resource").parameters, {
+        "job_id": "job-1", "resource_id": "part-compressor", "request_key": "k"}) == []
+    assert check_arguments(world.tool("confirm_service").parameters, {
+        "job_id": "job-1", "promise_version": True}) == ["argument 'promise_version' must be integer"]
 
 
 def test_journey_examples_cite_the_recorded_delivery():

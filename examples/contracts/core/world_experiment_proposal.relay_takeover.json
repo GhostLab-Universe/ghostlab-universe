@@ -1,0 +1,19 @@
+{
+  "adapter_id": "relay-local-success",
+  "expected_signal": "no_automation_after_takeover fails at the confirmation",
+  "hypothesis": "The front desk confirms a job the owner has just taken over, because no role looks at who holds the conversation",
+  "scenario": {
+    "faults": [
+      {
+        "after_event": null,
+        "fault_id": "takeover_with_queued_confirmation",
+        "parameters": []
+      }
+    ],
+    "max_tool_calls": 20,
+    "schema_version": 1,
+    "world_version": "service-relay/1"
+  },
+  "schema_version": 1,
+  "world_version": "service-relay/1"
+}

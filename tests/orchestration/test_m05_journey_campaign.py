@@ -13,6 +13,7 @@ from pydantic import ValidationError
 
 from ghostlab.contracts.world import (CapsuleV2, WorldCampaignRecord, WorldInvariantFinding,
                                       WorldMemoryQuery, WorldRunResult)
+from ghostlab.contracts.world_packs import PACKS
 from ghostlab.core import Fixture
 from ghostlab.orchestration import (DEFAULT_WORLDS, CampaignSettingsChanged, JourneyDriver,
                                     LiveInferenceAuthorization, LiveInferenceRefused,
@@ -668,8 +669,11 @@ def test_service_relay_is_refused_at_start(tmp_path):
     assert lab.script.requests == []
 
 
-def test_a_driver_cannot_make_an_unimplemented_pack_runnable(tmp_path):
+def test_a_driver_cannot_make_an_unimplemented_pack_runnable(tmp_path, monkeypatch):
     # Even a registered driver is refused while the pack is only specified.
+    designed = PACKS["service-relay/1"].model_copy(update={"status": "specified"})
+    monkeypatch.setattr("ghostlab.contracts.world_packs.PACKS",
+                        {**PACKS, "service-relay/1": designed})
     lab = JourneyLab(tmp_path, Script(), worlds={**DEFAULT_WORLDS,
                                                  "service-relay/1": JourneyDriver()})
     with lab.controller() as controller, pytest.raises(PolicyDenied) as denied:

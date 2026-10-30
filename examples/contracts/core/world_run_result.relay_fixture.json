@@ -1,0 +1,1244 @@
+{
+  "actor_id": "relay-automation",
+  "adapter_id": "relay-local-success",
+  "adapter_version": "relay-adapters/1",
+  "checks": {
+    "allocations_within_capacity": true,
+    "confirmations_backed_by_reservations": true,
+    "no_automation_after_takeover": false
+  },
+  "final_state": {
+    "cached_availability": null,
+    "confirmation_log": [
+      {
+        "conversation_id": "conversation-1",
+        "event_id": 4,
+        "job_id": "job-1",
+        "promise_version": 1
+      },
+      {
+        "conversation_id": "conversation-2",
+        "event_id": 7,
+        "job_id": "job-2",
+        "promise_version": 1
+      }
+    ],
+    "confirmed_jobs": [
+      "job-1",
+      "job-2"
+    ],
+    "conversations": {
+      "conversation-1": "business_owner",
+      "conversation-2": "automation"
+    },
+    "lease_log": [
+      {
+        "event_id": 2,
+        "expires_at": 14,
+        "holder": "automation",
+        "job_id": "job-1",
+        "kind": "granted",
+        "lease_id": "lease-1",
+        "resource_id": "part-compressor",
+        "source": "tool"
+      },
+      {
+        "event_id": 3,
+        "expires_at": 15,
+        "holder": "automation",
+        "job_id": "job-1",
+        "kind": "granted",
+        "lease_id": "lease-2",
+        "resource_id": "tech-a-0900",
+        "source": "tool"
+      },
+      {
+        "event_id": 4,
+        "expires_at": 14,
+        "holder": "automation",
+        "job_id": "job-1",
+        "kind": "committed",
+        "lease_id": "lease-1",
+        "resource_id": "part-compressor",
+        "source": "tool"
+      },
+      {
+        "event_id": 4,
+        "expires_at": 15,
+        "holder": "automation",
+        "job_id": "job-1",
+        "kind": "committed",
+        "lease_id": "lease-2",
+        "resource_id": "tech-a-0900",
+        "source": "tool"
+      },
+      {
+        "event_id": 6,
+        "expires_at": 18,
+        "holder": "automation",
+        "job_id": "job-2",
+        "kind": "granted",
+        "lease_id": "lease-3",
+        "resource_id": "tech-b-0900",
+        "source": "tool"
+      },
+      {
+        "event_id": 7,
+        "expires_at": 18,
+        "holder": "automation",
+        "job_id": "job-2",
+        "kind": "committed",
+        "lease_id": "lease-3",
+        "resource_id": "tech-b-0900",
+        "source": "tool"
+      }
+    ],
+    "leases": {
+      "lease-1": {
+        "expires_at": 14,
+        "granted_at": 2,
+        "holder": "automation",
+        "job_id": "job-1",
+        "lease_id": "lease-1",
+        "request_key": "request-1",
+        "resource_id": "part-compressor",
+        "status": "committed"
+      },
+      "lease-2": {
+        "expires_at": 15,
+        "granted_at": 3,
+        "holder": "automation",
+        "job_id": "job-1",
+        "lease_id": "lease-2",
+        "request_key": "request-2",
+        "resource_id": "tech-a-0900",
+        "status": "committed"
+      },
+      "lease-3": {
+        "expires_at": 18,
+        "granted_at": 6,
+        "holder": "automation",
+        "job_id": "job-2",
+        "lease_id": "lease-3",
+        "request_key": "request-3",
+        "resource_id": "tech-b-0900",
+        "status": "committed"
+      }
+    },
+    "mutation_log": [
+      {
+        "conversation_id": "conversation-1",
+        "event_id": 2,
+        "tool": "reserve_resource"
+      },
+      {
+        "conversation_id": "conversation-1",
+        "event_id": 3,
+        "tool": "reserve_resource"
+      },
+      {
+        "conversation_id": "conversation-1",
+        "event_id": 4,
+        "tool": "confirm_service"
+      },
+      {
+        "conversation_id": "conversation-2",
+        "event_id": 6,
+        "tool": "reserve_resource"
+      },
+      {
+        "conversation_id": "conversation-2",
+        "event_id": 7,
+        "tool": "confirm_service"
+      }
+    ],
+    "ownership_timeline": [
+      {
+        "conversation_id": "conversation-1",
+        "from_event": 1,
+        "owner": "automation",
+        "source": "fixture"
+      },
+      {
+        "conversation_id": "conversation-2",
+        "from_event": 1,
+        "owner": "automation",
+        "source": "fixture"
+      },
+      {
+        "conversation_id": "conversation-1",
+        "from_event": 4,
+        "owner": "business_owner",
+        "source": "takeover"
+      }
+    ],
+    "promise_timeline": [
+      {
+        "from_event": 1,
+        "job_id": "job-1",
+        "version": 1
+      },
+      {
+        "from_event": 1,
+        "job_id": "job-2",
+        "version": 1
+      }
+    ],
+    "promises": {
+      "job-1": 1,
+      "job-2": 1
+    },
+    "request_keys": {
+      "request-1": "lease-1",
+      "request-2": "lease-2",
+      "request-3": "lease-3"
+    },
+    "shop_id": "shop-1"
+  },
+  "schema_version": 1,
+  "status": "completed",
+  "trace": [
+    {
+      "event_id": 1,
+      "outcome": {
+        "result": {
+          "availability_as_of": 1,
+          "confirmed": false,
+          "conversation_id": "conversation-1",
+          "conversation_owner": "automation",
+          "job_id": "job-1",
+          "leases": [],
+          "part_needed": "part-compressor",
+          "promise_version": 1,
+          "resources": [
+            {
+              "available": 1,
+              "capacity": 1,
+              "kind": "technician",
+              "resource_id": "tech-a-0900"
+            },
+            {
+              "available": 1,
+              "capacity": 1,
+              "kind": "technician",
+              "resource_id": "tech-b-0900"
+            },
+            {
+              "available": 1,
+              "capacity": 1,
+              "kind": "part",
+              "resource_id": "part-compressor"
+            }
+          ]
+        }
+      },
+      "request": {
+        "arguments": {
+          "job_id": "job-1"
+        },
+        "tool": "inspect_availability"
+      },
+      "state": {
+        "cached_availability": null,
+        "confirmation_log": [],
+        "confirmed_jobs": [],
+        "conversations": {
+          "conversation-1": "automation",
+          "conversation-2": "automation"
+        },
+        "lease_log": [],
+        "leases": {},
+        "mutation_log": [],
+        "ownership_timeline": [
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          }
+        ],
+        "promise_timeline": [
+          {
+            "from_event": 1,
+            "job_id": "job-1",
+            "version": 1
+          },
+          {
+            "from_event": 1,
+            "job_id": "job-2",
+            "version": 1
+          }
+        ],
+        "promises": {
+          "job-1": 1,
+          "job-2": 1
+        },
+        "request_keys": {},
+        "shop_id": "shop-1"
+      }
+    },
+    {
+      "event_id": 2,
+      "outcome": {
+        "result": {
+          "job_id": "job-1",
+          "lease_id": "lease-1",
+          "replayed": false,
+          "resource_id": "part-compressor",
+          "status": "active"
+        }
+      },
+      "request": {
+        "arguments": {
+          "job_id": "job-1",
+          "request_key": "request-1",
+          "resource_id": "part-compressor"
+        },
+        "tool": "reserve_resource"
+      },
+      "state": {
+        "cached_availability": null,
+        "confirmation_log": [],
+        "confirmed_jobs": [],
+        "conversations": {
+          "conversation-1": "automation",
+          "conversation-2": "automation"
+        },
+        "lease_log": [
+          {
+            "event_id": 2,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          }
+        ],
+        "leases": {
+          "lease-1": {
+            "expires_at": 14,
+            "granted_at": 2,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-1",
+            "request_key": "request-1",
+            "resource_id": "part-compressor",
+            "status": "active"
+          }
+        },
+        "mutation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 2,
+            "tool": "reserve_resource"
+          }
+        ],
+        "ownership_timeline": [
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          }
+        ],
+        "promise_timeline": [
+          {
+            "from_event": 1,
+            "job_id": "job-1",
+            "version": 1
+          },
+          {
+            "from_event": 1,
+            "job_id": "job-2",
+            "version": 1
+          }
+        ],
+        "promises": {
+          "job-1": 1,
+          "job-2": 1
+        },
+        "request_keys": {
+          "request-1": "lease-1"
+        },
+        "shop_id": "shop-1"
+      }
+    },
+    {
+      "event_id": 3,
+      "outcome": {
+        "result": {
+          "job_id": "job-1",
+          "lease_id": "lease-2",
+          "replayed": false,
+          "resource_id": "tech-a-0900",
+          "status": "active"
+        }
+      },
+      "request": {
+        "arguments": {
+          "job_id": "job-1",
+          "request_key": "request-2",
+          "resource_id": "tech-a-0900"
+        },
+        "tool": "reserve_resource"
+      },
+      "state": {
+        "cached_availability": null,
+        "confirmation_log": [],
+        "confirmed_jobs": [],
+        "conversations": {
+          "conversation-1": "automation",
+          "conversation-2": "automation"
+        },
+        "lease_log": [
+          {
+            "event_id": 2,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          },
+          {
+            "event_id": 3,
+            "expires_at": 15,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-2",
+            "resource_id": "tech-a-0900",
+            "source": "tool"
+          }
+        ],
+        "leases": {
+          "lease-1": {
+            "expires_at": 14,
+            "granted_at": 2,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-1",
+            "request_key": "request-1",
+            "resource_id": "part-compressor",
+            "status": "active"
+          },
+          "lease-2": {
+            "expires_at": 15,
+            "granted_at": 3,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-2",
+            "request_key": "request-2",
+            "resource_id": "tech-a-0900",
+            "status": "active"
+          }
+        },
+        "mutation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 2,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 3,
+            "tool": "reserve_resource"
+          }
+        ],
+        "ownership_timeline": [
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          }
+        ],
+        "promise_timeline": [
+          {
+            "from_event": 1,
+            "job_id": "job-1",
+            "version": 1
+          },
+          {
+            "from_event": 1,
+            "job_id": "job-2",
+            "version": 1
+          }
+        ],
+        "promises": {
+          "job-1": 1,
+          "job-2": 1
+        },
+        "request_keys": {
+          "request-1": "lease-1",
+          "request-2": "lease-2"
+        },
+        "shop_id": "shop-1"
+      }
+    },
+    {
+      "event_id": 4,
+      "outcome": {
+        "result": {
+          "job_id": "job-1",
+          "promise_version": 1,
+          "status": "confirmed"
+        }
+      },
+      "request": {
+        "arguments": {
+          "job_id": "job-1",
+          "promise_version": 1
+        },
+        "tool": "confirm_service"
+      },
+      "state": {
+        "cached_availability": null,
+        "confirmation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 4,
+            "job_id": "job-1",
+            "promise_version": 1
+          }
+        ],
+        "confirmed_jobs": [
+          "job-1"
+        ],
+        "conversations": {
+          "conversation-1": "business_owner",
+          "conversation-2": "automation"
+        },
+        "lease_log": [
+          {
+            "event_id": 2,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          },
+          {
+            "event_id": 3,
+            "expires_at": 15,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-2",
+            "resource_id": "tech-a-0900",
+            "source": "tool"
+          },
+          {
+            "event_id": 4,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "committed",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          },
+          {
+            "event_id": 4,
+            "expires_at": 15,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "committed",
+            "lease_id": "lease-2",
+            "resource_id": "tech-a-0900",
+            "source": "tool"
+          }
+        ],
+        "leases": {
+          "lease-1": {
+            "expires_at": 14,
+            "granted_at": 2,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-1",
+            "request_key": "request-1",
+            "resource_id": "part-compressor",
+            "status": "committed"
+          },
+          "lease-2": {
+            "expires_at": 15,
+            "granted_at": 3,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-2",
+            "request_key": "request-2",
+            "resource_id": "tech-a-0900",
+            "status": "committed"
+          }
+        },
+        "mutation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 2,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 3,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 4,
+            "tool": "confirm_service"
+          }
+        ],
+        "ownership_timeline": [
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 4,
+            "owner": "business_owner",
+            "source": "takeover"
+          }
+        ],
+        "promise_timeline": [
+          {
+            "from_event": 1,
+            "job_id": "job-1",
+            "version": 1
+          },
+          {
+            "from_event": 1,
+            "job_id": "job-2",
+            "version": 1
+          }
+        ],
+        "promises": {
+          "job-1": 1,
+          "job-2": 1
+        },
+        "request_keys": {
+          "request-1": "lease-1",
+          "request-2": "lease-2"
+        },
+        "shop_id": "shop-1"
+      }
+    },
+    {
+      "event_id": 5,
+      "outcome": {
+        "result": {
+          "availability_as_of": 5,
+          "confirmed": false,
+          "conversation_id": "conversation-2",
+          "conversation_owner": "automation",
+          "job_id": "job-2",
+          "leases": [
+            {
+              "job_id": "job-1",
+              "lease_id": "lease-1",
+              "resource_id": "part-compressor",
+              "status": "committed"
+            },
+            {
+              "job_id": "job-1",
+              "lease_id": "lease-2",
+              "resource_id": "tech-a-0900",
+              "status": "committed"
+            }
+          ],
+          "part_needed": null,
+          "promise_version": 1,
+          "resources": [
+            {
+              "available": 0,
+              "capacity": 1,
+              "kind": "technician",
+              "resource_id": "tech-a-0900"
+            },
+            {
+              "available": 1,
+              "capacity": 1,
+              "kind": "technician",
+              "resource_id": "tech-b-0900"
+            },
+            {
+              "available": 0,
+              "capacity": 1,
+              "kind": "part",
+              "resource_id": "part-compressor"
+            }
+          ]
+        }
+      },
+      "request": {
+        "arguments": {
+          "job_id": "job-2"
+        },
+        "tool": "inspect_availability"
+      },
+      "state": {
+        "cached_availability": null,
+        "confirmation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 4,
+            "job_id": "job-1",
+            "promise_version": 1
+          }
+        ],
+        "confirmed_jobs": [
+          "job-1"
+        ],
+        "conversations": {
+          "conversation-1": "business_owner",
+          "conversation-2": "automation"
+        },
+        "lease_log": [
+          {
+            "event_id": 2,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          },
+          {
+            "event_id": 3,
+            "expires_at": 15,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-2",
+            "resource_id": "tech-a-0900",
+            "source": "tool"
+          },
+          {
+            "event_id": 4,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "committed",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          },
+          {
+            "event_id": 4,
+            "expires_at": 15,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "committed",
+            "lease_id": "lease-2",
+            "resource_id": "tech-a-0900",
+            "source": "tool"
+          }
+        ],
+        "leases": {
+          "lease-1": {
+            "expires_at": 14,
+            "granted_at": 2,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-1",
+            "request_key": "request-1",
+            "resource_id": "part-compressor",
+            "status": "committed"
+          },
+          "lease-2": {
+            "expires_at": 15,
+            "granted_at": 3,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-2",
+            "request_key": "request-2",
+            "resource_id": "tech-a-0900",
+            "status": "committed"
+          }
+        },
+        "mutation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 2,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 3,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 4,
+            "tool": "confirm_service"
+          }
+        ],
+        "ownership_timeline": [
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 4,
+            "owner": "business_owner",
+            "source": "takeover"
+          }
+        ],
+        "promise_timeline": [
+          {
+            "from_event": 1,
+            "job_id": "job-1",
+            "version": 1
+          },
+          {
+            "from_event": 1,
+            "job_id": "job-2",
+            "version": 1
+          }
+        ],
+        "promises": {
+          "job-1": 1,
+          "job-2": 1
+        },
+        "request_keys": {
+          "request-1": "lease-1",
+          "request-2": "lease-2"
+        },
+        "shop_id": "shop-1"
+      }
+    },
+    {
+      "event_id": 6,
+      "outcome": {
+        "result": {
+          "job_id": "job-2",
+          "lease_id": "lease-3",
+          "replayed": false,
+          "resource_id": "tech-b-0900",
+          "status": "active"
+        }
+      },
+      "request": {
+        "arguments": {
+          "job_id": "job-2",
+          "request_key": "request-3",
+          "resource_id": "tech-b-0900"
+        },
+        "tool": "reserve_resource"
+      },
+      "state": {
+        "cached_availability": null,
+        "confirmation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 4,
+            "job_id": "job-1",
+            "promise_version": 1
+          }
+        ],
+        "confirmed_jobs": [
+          "job-1"
+        ],
+        "conversations": {
+          "conversation-1": "business_owner",
+          "conversation-2": "automation"
+        },
+        "lease_log": [
+          {
+            "event_id": 2,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          },
+          {
+            "event_id": 3,
+            "expires_at": 15,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-2",
+            "resource_id": "tech-a-0900",
+            "source": "tool"
+          },
+          {
+            "event_id": 4,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "committed",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          },
+          {
+            "event_id": 4,
+            "expires_at": 15,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "committed",
+            "lease_id": "lease-2",
+            "resource_id": "tech-a-0900",
+            "source": "tool"
+          },
+          {
+            "event_id": 6,
+            "expires_at": 18,
+            "holder": "automation",
+            "job_id": "job-2",
+            "kind": "granted",
+            "lease_id": "lease-3",
+            "resource_id": "tech-b-0900",
+            "source": "tool"
+          }
+        ],
+        "leases": {
+          "lease-1": {
+            "expires_at": 14,
+            "granted_at": 2,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-1",
+            "request_key": "request-1",
+            "resource_id": "part-compressor",
+            "status": "committed"
+          },
+          "lease-2": {
+            "expires_at": 15,
+            "granted_at": 3,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-2",
+            "request_key": "request-2",
+            "resource_id": "tech-a-0900",
+            "status": "committed"
+          },
+          "lease-3": {
+            "expires_at": 18,
+            "granted_at": 6,
+            "holder": "automation",
+            "job_id": "job-2",
+            "lease_id": "lease-3",
+            "request_key": "request-3",
+            "resource_id": "tech-b-0900",
+            "status": "active"
+          }
+        },
+        "mutation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 2,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 3,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 4,
+            "tool": "confirm_service"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "event_id": 6,
+            "tool": "reserve_resource"
+          }
+        ],
+        "ownership_timeline": [
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 4,
+            "owner": "business_owner",
+            "source": "takeover"
+          }
+        ],
+        "promise_timeline": [
+          {
+            "from_event": 1,
+            "job_id": "job-1",
+            "version": 1
+          },
+          {
+            "from_event": 1,
+            "job_id": "job-2",
+            "version": 1
+          }
+        ],
+        "promises": {
+          "job-1": 1,
+          "job-2": 1
+        },
+        "request_keys": {
+          "request-1": "lease-1",
+          "request-2": "lease-2",
+          "request-3": "lease-3"
+        },
+        "shop_id": "shop-1"
+      }
+    },
+    {
+      "event_id": 7,
+      "outcome": {
+        "result": {
+          "job_id": "job-2",
+          "promise_version": 1,
+          "status": "confirmed"
+        }
+      },
+      "request": {
+        "arguments": {
+          "job_id": "job-2",
+          "promise_version": 1
+        },
+        "tool": "confirm_service"
+      },
+      "state": {
+        "cached_availability": null,
+        "confirmation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 4,
+            "job_id": "job-1",
+            "promise_version": 1
+          },
+          {
+            "conversation_id": "conversation-2",
+            "event_id": 7,
+            "job_id": "job-2",
+            "promise_version": 1
+          }
+        ],
+        "confirmed_jobs": [
+          "job-1",
+          "job-2"
+        ],
+        "conversations": {
+          "conversation-1": "business_owner",
+          "conversation-2": "automation"
+        },
+        "lease_log": [
+          {
+            "event_id": 2,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          },
+          {
+            "event_id": 3,
+            "expires_at": 15,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "granted",
+            "lease_id": "lease-2",
+            "resource_id": "tech-a-0900",
+            "source": "tool"
+          },
+          {
+            "event_id": 4,
+            "expires_at": 14,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "committed",
+            "lease_id": "lease-1",
+            "resource_id": "part-compressor",
+            "source": "tool"
+          },
+          {
+            "event_id": 4,
+            "expires_at": 15,
+            "holder": "automation",
+            "job_id": "job-1",
+            "kind": "committed",
+            "lease_id": "lease-2",
+            "resource_id": "tech-a-0900",
+            "source": "tool"
+          },
+          {
+            "event_id": 6,
+            "expires_at": 18,
+            "holder": "automation",
+            "job_id": "job-2",
+            "kind": "granted",
+            "lease_id": "lease-3",
+            "resource_id": "tech-b-0900",
+            "source": "tool"
+          },
+          {
+            "event_id": 7,
+            "expires_at": 18,
+            "holder": "automation",
+            "job_id": "job-2",
+            "kind": "committed",
+            "lease_id": "lease-3",
+            "resource_id": "tech-b-0900",
+            "source": "tool"
+          }
+        ],
+        "leases": {
+          "lease-1": {
+            "expires_at": 14,
+            "granted_at": 2,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-1",
+            "request_key": "request-1",
+            "resource_id": "part-compressor",
+            "status": "committed"
+          },
+          "lease-2": {
+            "expires_at": 15,
+            "granted_at": 3,
+            "holder": "automation",
+            "job_id": "job-1",
+            "lease_id": "lease-2",
+            "request_key": "request-2",
+            "resource_id": "tech-a-0900",
+            "status": "committed"
+          },
+          "lease-3": {
+            "expires_at": 18,
+            "granted_at": 6,
+            "holder": "automation",
+            "job_id": "job-2",
+            "lease_id": "lease-3",
+            "request_key": "request-3",
+            "resource_id": "tech-b-0900",
+            "status": "committed"
+          }
+        },
+        "mutation_log": [
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 2,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 3,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "event_id": 4,
+            "tool": "confirm_service"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "event_id": 6,
+            "tool": "reserve_resource"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "event_id": 7,
+            "tool": "confirm_service"
+          }
+        ],
+        "ownership_timeline": [
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-2",
+            "from_event": 1,
+            "owner": "automation",
+            "source": "fixture"
+          },
+          {
+            "conversation_id": "conversation-1",
+            "from_event": 4,
+            "owner": "business_owner",
+            "source": "takeover"
+          }
+        ],
+        "promise_timeline": [
+          {
+            "from_event": 1,
+            "job_id": "job-1",
+            "version": 1
+          },
+          {
+            "from_event": 1,
+            "job_id": "job-2",
+            "version": 1
+          }
+        ],
+        "promises": {
+          "job-1": 1,
+          "job-2": 1
+        },
+        "request_keys": {
+          "request-1": "lease-1",
+          "request-2": "lease-2",
+          "request-3": "lease-3"
+        },
+        "shop_id": "shop-1"
+      }
+    }
+  ],
+  "world_version": "service-relay/1"
+}

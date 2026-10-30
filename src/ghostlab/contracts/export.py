@@ -109,6 +109,7 @@ def core_examples() -> dict[str, str]:
             dump(world_refund.capsule_v1_to_v2(capsule)),
     })
     files.update(_journey_examples())
+    files.update(_relay_examples())
     return files
 
 
@@ -134,6 +135,38 @@ def _journey_examples() -> dict[str, str]:
                 _json(reality_diff(fixture, baseline, faulted)),
             f"{core}/world_invariant_finding.journey_revoked_delivery.json": _json(finding),
             f"{core}/capsule_v2.journey_fixture.json": _json(capsule)}
+
+
+def _relay_examples() -> dict[str, str]:
+    """``service-relay/1`` evidence from executing M02's engine: the local-success adapter
+    confirms a job whose conversation the owner took over once its leases were in place."""
+    from ..worlds import relay_capsule
+    from ..worlds.relay import RelayFixture, RelayScenario, scenario_json
+    from ..worlds.relay_run import fault_scenarios, findings, reality_diff, run
+    fixture = RelayFixture()
+    data = {**fault_scenarios(fixture)["takeover_with_queued_confirmation"], "max_tool_calls": 20}
+    baseline = run(fixture, RelayScenario.from_json(scenario_json(max_tool_calls=20)),
+                   "relay-local-success")
+    faulted = run(fixture, RelayScenario.from_json(data), "relay-local-success")
+    [finding] = [f for f in findings(fixture, faulted, "relay-run-1", "2026-10-30T10:00:05Z")
+                 if f["invariant"] == "no_automation_after_takeover"]
+    proposal = {"schema_version": 1, "world_version": "service-relay/1",
+                "hypothesis": "The front desk confirms a job the owner has just taken over, "
+                              "because no role looks at who holds the conversation",
+                "adapter_id": "relay-local-success", "scenario": data,
+                "expected_signal": "no_automation_after_takeover fails at the confirmation"}
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "capsule.json"
+        relay_capsule.export_capsule(path, fixture, data, faulted)
+        capsule = json.loads(path.read_text(encoding="utf-8"))
+    core = "examples/contracts/core"
+    return {f"{core}/world_run_result.relay_fixture.json": _json(faulted),
+            f"{core}/world_reality_diff.relay_fixture.json":
+                _json(reality_diff(fixture, baseline, faulted)),
+            f"{core}/world_invariant_finding.relay_automation_after_takeover.json": _json(finding),
+            f"{core}/world_scenario.relay_takeover.json": _json(data),
+            f"{core}/world_experiment_proposal.relay_takeover.json": _json(proposal),
+            f"{core}/capsule_v2.relay_fixture.json": _json(capsule)}
 
 
 def example_files(root: Path, generated: dict[str, str]) -> dict[str, str]:

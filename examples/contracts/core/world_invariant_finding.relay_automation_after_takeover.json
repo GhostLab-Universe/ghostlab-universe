@@ -1,0 +1,16 @@
+{
+  "evidence_event_ids": [
+    4
+  ],
+  "finding_id": "relay-run-1-no_automation_after_takeover",
+  "invariant": "no_automation_after_takeover",
+  "limit_value": 0,
+  "observed_value": 1,
+  "recorded_at": "2026-10-30T10:00:05Z",
+  "run_id": "relay-run-1",
+  "schema_version": 1,
+  "unit": "mutations_after_takeover",
+  "verdict": "failed",
+  "verifier_version": "relay-verifier-1",
+  "world_version": "service-relay/1"
+}

@@ -1,0 +1,12 @@
+{
+  "faults": [
+    {
+      "after_event": null,
+      "fault_id": "takeover_with_queued_confirmation",
+      "parameters": []
+    }
+  ],
+  "max_tool_calls": 20,
+  "schema_version": 1,
+  "world_version": "service-relay/1"
+}

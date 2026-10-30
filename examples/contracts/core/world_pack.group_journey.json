@@ -7,7 +7,7 @@
     },
     {
       "adapter_id": "journey-version-checked",
-      "description": "Re-reads intent version and permissions before each commitment",
+      "description": "Acts only on the version every mandatory traveller approved, re-reads it before confirming, and re-reads permission before each delivery",
       "kind": "repaired"
     }
   ],
@@ -78,8 +78,8 @@
     "communications"
   ],
   "schema_version": 1,
-  "source": "GhostLab priority-worlds plan (design-level, 2026-10-29)",
-  "status": "specified",
+  "source": "ghostlab.worlds.journey group-journey/1 and journey-adapters/1 (designed in the GhostLab priority-worlds plan)",
+  "status": "implemented",
   "summary": "Two travellers replan an overnight visit after a cancellation; one changes a hard return deadline and revokes itinerary sharing with a third person.",
   "title": "Group Journey Rescue",
   "tools": [

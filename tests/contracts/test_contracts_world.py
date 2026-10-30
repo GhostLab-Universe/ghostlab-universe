@@ -93,8 +93,8 @@ def test_refund_pack_invariants_faults_and_adapters_match_the_core():
 
 
 def test_only_implemented_packs_are_executable():
-    assert is_executable("refund-world/1")
-    assert not is_executable(J) and not is_executable("service-relay/1")
+    assert is_executable("refund-world/1") and is_executable(J)
+    assert not is_executable("service-relay/1")
     assert not is_executable("creator-release/1")  # deferred: not registered at all
     assert {p.status for p in PACKS.values()} == {"implemented", "specified"}
 
@@ -148,9 +148,9 @@ def test_non_refund_evidence_does_not_map_to_refund_v1():
     (WorldScenario, "world_scenario.group_journey_revocation",
      lambda p: p["faults"][0].update(fault_id="timeout_after_commit")),
     (WorldScenario, "world_scenario.group_journey_revocation",
-     lambda p: p["faults"][1]["parameters"][0].update(value="1")),
+     lambda p: p["faults"][0]["parameters"][0].update(value=1)),
     (WorldScenario, "world_scenario.group_journey_revocation",
-     lambda p: p["faults"][1]["parameters"][0].update(value=True)),
+     lambda p: p["faults"][0]["parameters"][0].update(value=True)),
     (WorldScenario, "world_scenario.group_journey_revocation",
      lambda p: p["faults"][0].update(parameters=[])),
     (WorldScenario, "world_scenario.group_journey_revocation",
@@ -251,11 +251,11 @@ def test_model_facing_contracts_have_no_free_form_objects():
         walk(schema, schema.get("$defs", {}), contract.name)
 
 
-# --- a specified journey campaign is expressible end to end --------------------------
+# --- a journey campaign is expressible end to end --------------------------------------
 
 def test_journey_campaign_walks_every_contract_it_touches():
     spec = WorldCampaignSpec.model_validate(ex("world_campaign_spec.group_journey"))
-    assert spec.world_version == J and not is_executable(spec.world_version)
+    assert spec.world_version == J and is_executable(spec.world_version)
     record = BY_NAME["world_campaign_record"].model.model_validate(
         ex("world_campaign_record.group_journey"))
     assert record.spec == spec
@@ -408,3 +408,36 @@ def test_every_pack_tool_parameter_is_bounded():
                     assert "minimum" in spec and "maximum" in spec, (tool.name, name)
     assert check_arguments(pack(J).tool("deliver_message").parameters,
                            {"message_id": ""}) == ["argument 'message_id' length is out of bounds"]
+
+
+# --- the published journey evidence is the M02 engine's own output ---------------------
+
+def test_published_journey_capsule_replays_without_a_model():
+    from ghostlab.worlds.journey_capsule import replay as replay_journey
+    result = replay_journey(EXAMPLES / "core" / "capsule_v2.journey_fixture.json")
+    assert result["reproduced"] and result["model_calls"] == 0
+    assert not result["checks"]["delivered_messages_permitted"]
+
+
+def test_journey_examples_cite_the_recorded_delivery():
+    run_result = ex("world_run_result.journey_fixture")
+    finding = ex("world_invariant_finding.journey_revoked_delivery")
+    [event_id] = finding["evidence_event_ids"]
+    delivery = run_result["trace"][event_id - 1]
+    assert delivery["request"]["tool"] == "deliver_message"
+    invocation = ex("world_tool_invocation.journey_deliver_message")
+    assert (invocation["tool"], invocation["arguments"]) == (
+        delivery["request"]["tool"], delivery["request"]["arguments"])
+    result = ex("world_tool_result.journey_delivered")
+    assert (result["event_id"], result["output"]) == (event_id, delivery["outcome"]["result"])
+    claim = ex("evidence_interpretation.journey_revocation")["claims"][0]
+    assert {c["id"] for c in claim["cited"]} == {f"{finding['run_id']}:{event_id}",
+                                                 finding["finding_id"]}
+    # the revocation applied after the message was queued, which is the proposal's premise
+    queued_at = next(e["event_id"] for e in run_result["trace"]
+                     if e["request"]["tool"] == "queue_message"
+                     and e["outcome"]["result"]["message_id"]
+                     == delivery["request"]["arguments"]["message_id"])
+    revoked_from = [row["from_event"] for row in run_result["final_state"]["permission_timeline"]
+                    if not row["sharing"]]
+    assert revoked_from == [queued_at + 1] and queued_at < event_id

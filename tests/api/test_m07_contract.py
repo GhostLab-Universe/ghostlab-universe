@@ -8,6 +8,8 @@ import pytest
 from ghostlab.api import create_app
 from ghostlab.api.openapi import OPENAPI_PATH, document, drifted
 from ghostlab.contracts.registry import CONTRACTS
+from m05_harness import proposal
+from m05_journey_harness import journey_reply
 
 SCHEMAS = Path(__file__).resolve().parents[2] / "schemas" / "v1"
 
@@ -110,3 +112,37 @@ def test_the_app_builds_without_storage_or_environment(monkeypatch):
     for variable in ("GHOSTLAB_AUTH_MODE", "GHOSTLAB_DEPLOYMENT"):
         monkeypatch.delenv(variable, raising=False)
     assert create_app().openapi()["info"]["title"] == "GhostLab Control Plane"
+
+
+def m00_example(name):
+    path = SCHEMAS.parents[1] / "examples" / "contracts" / f"{name}.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("example,reply", [
+    ("campaign_spec.refund_timeout", proposal), ("world_campaign_spec.group_journey", journey_reply)])
+def test_a_published_m00_spec_is_accepted_by_the_real_route(stack, example, reply):
+    api = stack(reply())
+    response = api.post("/v1/campaigns", key="example", json=m00_example(example))
+    assert response.status_code == 202, response.text
+    view = api.wait(response.json()["record"]["campaign_id"], "awaiting_approval")
+    assert view["record"]["spec"] == m00_example(example)
+
+
+def test_a_published_m00_submission_reaches_the_decision_route_unchanged(stack):
+    api = stack(proposal())
+    paused = api.paused()
+    example = m00_example("approval_submission.approve")
+    approval = paused["approval"]
+    body = {**example, "approval_id": approval["approval_id"],
+            "action_digest": approval["action_digest"]}
+    response = api.post(f"/v1/approvals/{approval['approval_id']}/decision", who="reviewer",
+                        key="example", json=body)
+    assert response.status_code == 200, response.text
+    assert set(response.json()["decision"]) == set(m00_example("approval_decision.approved"))
+
+
+def test_the_view_shapes_match_the_published_record_examples(stack):
+    api = stack(journey_reply())
+    view = api.paused("group-journey/1")
+    assert set(view["record"]) == set(m00_example("world_campaign_record.group_journey"))

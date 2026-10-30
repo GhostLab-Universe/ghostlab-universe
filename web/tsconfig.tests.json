@@ -1,5 +1,5 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.app.json",
   "include": ["src", "tests/stopgap.d.ts", "tests/unit", "tests/render", "tests/integration", "tests/contract-compat.check.ts"],
   "exclude": ["src/api/generate.mjs", "tests/browser"]
 }

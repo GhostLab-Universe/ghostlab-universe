@@ -22,6 +22,7 @@ from pathlib import Path
 import httpx
 from fastapi.responses import Response
 
+from ghostlab.capsule import MAX_CAPSULE_BYTES
 from ghostlab.contracts import (ApprovalDecision, ApprovalRequest, ApprovalSubmission, CapsuleV1,
                                 ErrorInfo, ExperimentEvent, Provenance, Ref, TaskSpec)
 from ghostlab.contracts.primitives import parse_timestamp
@@ -38,7 +39,6 @@ from ghostlab.orchestration.inference import LiveInferenceRefused
 from ghostlab.policy import (ApprovalDenied, ApproverAuthority, PolicyDenied, action_digest,
                              authorize_capability, authorize_world, root_scope)
 from ghostlab.policy.authorization import deny
-from ghostlab.capsule import MAX_CAPSULE_BYTES
 from ghostlab.security.redaction import Redactor
 from ghostlab.storage.interfaces import Conflict
 
@@ -294,7 +294,8 @@ class ControlPlane:
             def proceed(controller: CampaignController):
                 return (controller.resume if paused else controller.recover)(campaign_id)
 
-            job, started = self._launch(trusted, campaign_id, "resume", proceed, follow=True)
+            # Following a running worker matters only at a pause; see JobRegistry.submit.
+            job, started = self._launch(trusted, campaign_id, "resume", proceed, follow=paused)
             if started:
                 self.jobs.wait_for_first_step(job)
         return self.campaign_view(session, campaign_id)
@@ -333,9 +334,7 @@ class ControlPlane:
         proposal = experiment["proposal"]
         if state["spec"]["world_version"] == REFUND:
             proposal = proposal_to_world(proposal).model_dump(mode="json")
-        return WorldExperimentProposal.model_validate(
-            {**proposal, "hypothesis": self._text(proposal["hypothesis"]),
-             "expected_signal": self._text(proposal["expected_signal"])})
+        return WorldExperimentProposal.model_validate(self.redactor.value(proposal))
 
     @staticmethod
     def _execution(value: dict | None) -> ExecutionRecord | None:

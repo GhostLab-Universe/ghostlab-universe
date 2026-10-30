@@ -5,6 +5,7 @@ stores and capsules are the real code.
 """
 
 import json
+import threading
 
 from conftest import spec_json
 from m05_harness import PROJECT, meta_reply, proposal
@@ -209,3 +210,51 @@ def test_the_spec_is_recorded_as_sent(stack):
     api = stack(proposal())
     created = api.create(REFUND).json()
     assert created["record"]["spec"] == spec_json(REFUND)
+
+
+def test_a_new_campaign_reads_as_empty_rather_than_failing(stack):
+    gate_open, reached = threading.Event(), threading.Event()
+
+    def hold(name, state):
+        if name == "propose":
+            reached.set()
+            assert gate_open.wait(30)
+
+    api = stack(proposal(), lab_options={"on_node": hold})
+    campaign_id = api.create(REFUND).json()["record"]["campaign_id"]
+    assert reached.wait(30)
+    view = api.view(campaign_id)
+    assert view["record"]["status"] == "running"
+    assert view["experiments"] == [] and view["approval"] is None and view["repair"] is None
+    assert view["outcome"] is None and view["errors"] == []
+    assert view["record"]["usage"]["model_calls"] == 0
+    missing = f"/v1/campaigns/{campaign_id}/experiments/exp-missing"
+    for path in (missing, f"{missing}/diff", f"{missing}/runs/fork"):
+        assert api.get(path).status_code == 404
+    assert api.post(f"{missing}/capsules/fork").status_code == 404
+    assert api.post(f"{missing}/capsules/fork/replay").status_code == 404
+    gate_open.set()
+    api.wait(campaign_id, "awaiting_approval")
+
+
+def test_a_run_with_no_repair_has_no_repaired_evidence(stack):
+    api = stack(proposal())
+    paused = api.paused(REFUND)
+    base = (f"/v1/campaigns/{paused['record']['campaign_id']}/experiments/"
+            f"{paused['experiments'][0]['experiment_id']}")
+    assert api.get(f"{base}/runs/repaired").status_code == 404
+    assert api.post(f"{base}/capsules/repaired").status_code == 404
+    assert api.post(f"{base}/capsules/repaired/replay").status_code == 404
+    assert api.post(f"{base}/capsules/fork/replay").status_code == 404  # not exported yet
+
+
+def test_a_principal_with_no_world_identity_is_a_recorded_refusal(stack):
+    api = stack(proposal())
+    created = api.create(REFUND, who="stranger")
+    assert created.status_code == 202
+    campaign_id = created.json()["record"]["campaign_id"]
+    done = api.wait(campaign_id, "failed", who="stranger")
+    assert done["outcome"] == "policy_denied"
+    assert done["errors"][-1]["code"] == "forbidden"
+    assert "unbound_principal" in done["errors"][-1]["message"]
+    assert done["experiments"] == []

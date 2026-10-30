@@ -249,8 +249,9 @@ class ContextCompiler:
     def _conflict_questions(self, records, at) -> list[ContextItem]:
         questions = []
         for left, right in combinations(sorted(records, key=lambda r: r.record_id), 2):
-            shared = sorted({(r.kind, r.id) for r in left.evidence}
-                            & {(r.kind, r.id) for r in right.evidence})
+            # One run or artifact holds many findings; only a shared finding can disagree.
+            shared = sorted({(r.kind, r.id) for r in left.evidence if r.kind == "finding"}
+                            & {(r.kind, r.id) for r in right.evidence if r.kind == "finding"})
             if (not shared or left.content == right.content
                     or left.record_id in right.supersedes or right.record_id in left.supersedes):
                 continue

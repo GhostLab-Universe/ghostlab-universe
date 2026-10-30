@@ -14,6 +14,7 @@ owner (written before ownership existed) and never see a project's artifacts.
 
 import hashlib
 import os
+import re
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -22,10 +23,11 @@ from typing import Protocol, runtime_checkable
 from ghostlab.contracts import ArtifactRef, Provenance, TrustedScope
 
 from . import sqlite as db
-from .interfaces import Conflict, IntegrityError, NotFound, StorageError
+from .interfaces import Conflict, IntegrityError, NotFound, ScopeViolation, StorageError
 
 ARTIFACT_INTERFACE_VERSION = "ghostlab-storage-artifacts/2"
 DEFAULT_MAX_BYTES = 16 * 1024 * 1024
+_PROJECT_ID = re.compile(r"[0-9a-f]{16}\.")  # the namespace a project view writes under
 
 
 class ArtifactTooLarge(StorageError):
@@ -58,9 +60,13 @@ class ProjectArtifacts:
                                project_id=self.project_id)
 
     def ref(self, artifact_id: str) -> ArtifactRef:
-        return self.store._ref(artifact_id, self.project_id)
+        stored = self.store._ref(artifact_id, self.project_id)
+        if not artifact_id.startswith(self.artifact_id("")):
+            raise IntegrityError("Artifact owner does not match its id")  # a tampered row
+        return stored
 
     def read(self, ref: ArtifactRef, *, max_bytes: int = DEFAULT_MAX_BYTES) -> bytes:
+        self.ref(ref.artifact_id)
         return self.store._read(ref, self.project_id, max_bytes)
 
 
@@ -76,13 +82,18 @@ class FileArtifactStore:
 
     def put(self, data: bytes, *, artifact_id: str, media_type: str,
             provenance: Provenance, created_at: str) -> ArtifactRef:
+        if _PROJECT_ID.match(artifact_id):  # can't squat a project's name or probe for it
+            raise ScopeViolation("Project artifacts are written through a project view")
         return self._put(data, artifact_id=artifact_id, media_type=media_type,
                          provenance=provenance, created_at=created_at, project_id=None)
 
     def ref(self, artifact_id: str) -> ArtifactRef:
+        if _PROJECT_ID.match(artifact_id):
+            raise NotFound("Artifact not found")  # a tampered owner can't expose it here
         return self._ref(artifact_id, None)
 
     def read(self, ref: ArtifactRef, *, max_bytes: int = DEFAULT_MAX_BYTES) -> bytes:
+        self.ref(ref.artifact_id)
         return self._read(ref, None, max_bytes)
 
     def _put(self, data: bytes, *, artifact_id: str, media_type: str, provenance: Provenance,
@@ -97,13 +108,19 @@ class FileArtifactStore:
             "size_bytes": len(data), "media_type": media_type,
             "provenance": provenance.model_dump(mode="json"), "created_at": created_at})
         blob = self._blob(digest)
-        if not blob.exists():
+        # Blobs are shared, so a damaged one is rewritten, not inherited.
+        if not (blob.exists() and hashlib.sha256(blob.read_bytes()).hexdigest() == digest):
             blob.parent.mkdir(parents=True, exist_ok=True)
             fd, temp = tempfile.mkstemp(dir=blob.parent, prefix=".tmp-")
             try:
                 with os.fdopen(fd, "wb") as handle:
                     handle.write(data)
-                os.replace(temp, blob)
+                try:
+                    os.replace(temp, blob)
+                except PermissionError:  # Windows: a concurrent writer of the same bytes
+                    Path(temp).unlink(missing_ok=True)
+                    if not blob.exists():
+                        raise
             except BaseException:
                 Path(temp).unlink(missing_ok=True)
                 raise

@@ -3,6 +3,7 @@
 Inference is a labeled fixture (httpx.MockTransport). Everything else is the real code.
 """
 
+import asyncio
 import dataclasses
 import json
 import warnings
@@ -15,6 +16,7 @@ with warnings.catch_warnings():
 
 from conftest import LOOPBACK, build_app, build_lab, spec_json
 from ghostlab.api import create_app
+from ghostlab.api.middleware import MAX_BODY_BYTES, _read_body
 from ghostlab.api.openapi import OPENAPI_PATH
 from ghostlab.api.plane import ApiConfig
 from ghostlab.api.sessions import (LocalDevSessions, TokenSessions, require_local_deployment)
@@ -299,6 +301,14 @@ def test_requests_are_size_limited_before_parsing(stack):
     assert chunked.status_code == 413
     too_big = api.post("/v1/capsules/import", content=b" " * (2_100_000))
     assert too_big.status_code == 413
+
+
+def test_a_declared_oversize_body_is_refused_without_being_read():
+    async def unread():
+        raise AssertionError("the body was read")
+
+    scope = {"type": "http", "headers": [(b"content-length", b"70000")]}
+    assert asyncio.run(_read_body(scope, unread, MAX_BODY_BYTES)) is None
 
 
 def test_event_pages_are_bounded(stack):

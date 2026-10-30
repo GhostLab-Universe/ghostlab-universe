@@ -60,10 +60,11 @@ def test_a_truncated_experiment_is_inconclusive_in_every_view(stack, world, repl
     assert compared["diff"]["violated_invariants"] == []
     assert api.get(f"{url}/runs/fork").json()["result"]["status"] == "budget_exhausted"
 
-    api.post(f"{url}/capsules/fork")
-    replayed = api.post(f"{url}/capsules/fork/replay").json()
-    assert replayed["reproduced"] is True  # the replay matched what was recorded
-    assert replayed["run_status"] == "budget_exhausted"  # and what was recorded was cut short
+    capsule_id = api.post(f"{url}/capsules/fork").json()["artifact"]["id"]
+    for path in (f"{url}/capsules/fork/replay", f"/v1/capsules/{capsule_id}/replay"):
+        replayed = api.post(path).json()
+        assert replayed["reproduced"] is True  # the replay matched what was recorded
+        assert replayed["run_status"] == "budget_exhausted"  # and that was cut short
 
 
 def test_a_violation_seen_before_truncation_still_goes_to_a_human(stack):

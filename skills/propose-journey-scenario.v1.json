@@ -14,12 +14,14 @@
   "skill_id": "propose-journey-scenario",
   "steps": [
     "Read the verified findings and questions in this context",
+    "The participants are traveller-a and traveller-b, who are mandatory, and participant-c, who only views the itinerary",
     "Pick one or more faults group-journey/1 supports, each with its parameters as name and value pairs",
-    "stale_preference_memory: preference_version is the superseded intent version, which is 1; after_event may be null",
-    "delayed_itinerary_update: delay_events is how many events late the update arrives; after_event must be null",
-    "sharing_revoked_while_queued: recipient_id is a participant, such as participant-c; after_event null revokes just after that recipient's message is queued, and a number revokes after that event",
+    "stale_preference_memory: preference_version (integer) is the superseded intent version, which is 1; after_event may be null",
+    "delayed_itinerary_update: delay_events (integer) is how many events late the update arrives, such as 2; after_event must be null",
+    "sharing_revoked_while_queued: recipient_id (string) is a participant, such as participant-c; after_event null revokes just after that recipient's message is queued, and a number revokes after that event",
     "Pick one adapter of the pack: journey-naive or journey-version-checked",
-    "Set max_tool_calls to at most 20",
+    "Set max_tool_calls to at most 20; the controller may state a lower limit in the context",
+    "Leave room for the adapter to finish: journey-naive needs at least 12 tool calls, or 16 with delayed_itinerary_update, and journey-version-checked needs at least 18",
     "State the hypothesis and the invariant you expect to fail: commitments_use_approved_intent, mandatory_participants_feasible or delivered_messages_permitted",
     "Return exactly one world_experiment_proposal object and nothing else"
   ],

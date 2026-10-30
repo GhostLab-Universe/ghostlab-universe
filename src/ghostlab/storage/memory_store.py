@@ -24,14 +24,15 @@ def _model_for(world_version: str) -> type[MemoryRecord]:
     return MemoryRecord if world_version == REFUND_WORLD else WorldMemoryRecord
 
 
-COLUMNS = "world_version, project_id, record_id, body"
+COLUMNS = "world_version, project_id, record_id, status, campaign_id, body"
 
 
-def _load(world_version: str, project_id: str, record_id: str, body: str) -> MemoryRecord:
+def _load(world_version: str, project_id: str, record_id: str, status: str,
+          campaign_id: str | None, body: str) -> MemoryRecord:
     """Columns and body must agree, so an edited row can't move a record between scopes."""
     record = db.load(_model_for(world_version), body)
-    if (record.world_version, record.project_id, record.record_id) != (
-            world_version, project_id, record_id):
+    if (record.world_version, record.project_id, record.record_id, record.status,
+            record.campaign_id) != (world_version, project_id, record_id, status, campaign_id):
         raise IntegrityError("Stored memory record disagrees with its row")
     return record
 

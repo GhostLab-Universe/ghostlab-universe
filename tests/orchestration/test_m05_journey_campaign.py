@@ -601,6 +601,29 @@ def test_a_repair_gets_the_calls_its_adapter_needs_whatever_the_experiment_used(
         assert controller.replay_capsule(CID, run="repaired")["reproduced"]
 
 
+def delayed(events=3):
+    return {"fault_id": "delayed_itinerary_update", "after_event": None,
+            "parameters": [{"name": "delay_events", "value": events}]}
+
+
+@pytest.mark.parametrize("recipient, after_event", [(ORGANIZER, 11), ("traveller-b", 14)])
+def test_a_fault_that_missed_the_repair_does_not_verify_it(tmp_path, recipient, after_event):
+    lab, state = start(tmp_path, journey_reply(NAIVE, faults=[
+        delayed(), revoke(recipient, after_event)]))
+    assert only_experiment(state)["coverage"]["complete"] is True and failed(state)
+    done = resume_after_approval(lab, state)
+    assert (done["status"], done["outcome"]) == ("failed", "repair_incomplete")
+    repair = done["repair"]
+    assert repair["lost_faults"] == ["sharing_revoked_while_queued"]
+    assert repair["verified"] is False and repair["held_by"] is None
+
+
+def test_a_repair_that_met_every_fault_records_none_lost(tmp_path):
+    lab, state = start(tmp_path)
+    done = resume_after_approval(lab, state)
+    assert done["outcome"] == "repair_verified" and done["repair"]["lost_faults"] == []
+
+
 def test_a_campaign_budget_that_cannot_cover_the_repair_stops_it(tmp_path):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
     with lab.controller() as controller:
@@ -1526,7 +1549,7 @@ def test_an_expired_approval_closes_even_though_the_fixture_changed(tmp_path):
 
 @pytest.mark.parametrize("stop", ["cancel", "deadline"])
 @pytest.mark.parametrize("entry", ["resume", "recover"])
-def test_a_stopped_campaign_closes_even_though_the_fixture_changed(tmp_path, stop, entry):
+def test_a_stopped_campaign_can_be_entered_though_the_fixture_changed(tmp_path, stop, entry):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
     with lab.controller() as controller:
         controller.start(CID, journey_spec())
@@ -1540,7 +1563,7 @@ def test_a_stopped_campaign_closes_even_though_the_fixture_changed(tmp_path, sto
         done = getattr(controller, entry)(CID)
     if entry == "resume":
         assert done["status"] in {"cancelled", "budget_exhausted"}
-    else:  # the campaign is paused, so recovering pauses it again
+    else:  # recover doesn't answer the pause; the entry just isn't refused
         assert done["paused"]
 
 

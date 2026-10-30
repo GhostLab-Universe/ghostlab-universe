@@ -22,12 +22,12 @@
     "Pick one adapter of the pack: journey-naive or journey-version-checked",
     "Set max_tool_calls to at most 20; the controller may state a lower limit in the context",
     "Leave room for the adapter to finish: journey-naive needs at least 12 tool calls, or 16 with delayed_itinerary_update, and journey-version-checked needs at least 18",
+    "These values describe the default fixture; where the context states participants, intent versions or tool-call needs for this campaign, use those instead",
     "State the hypothesis and the invariant you expect to fail: commitments_use_approved_intent, mandatory_participants_feasible or delivered_messages_permitted",
     "Return exactly one world_experiment_proposal object and nothing else"
   ],
   "stop_conditions": [
-    "One world_experiment_proposal returned",
-    "No supported fault would test a new hypothesis"
+    "One world_experiment_proposal returned"
   ],
   "version": 1
 }

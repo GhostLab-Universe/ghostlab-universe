@@ -1,7 +1,9 @@
 # Mandatory acceptance gates
 
-Status as of 2026-10-29, at integration commit `774165a` (`architecture-and-refund-core`),
-which includes contract set 1.1 (PR #9).
+Status as of 2026-10-30, at integration commit `506f98a` (`architecture-and-refund-core`),
+which includes contract set 1.1 (PR #9) and the M02 journey world (PR #10). The
+registry promotion of `group-journey/1` (PR #12) was cleared by review but isn't
+merged yet.
 
 These five gates come from GhostLab's existing plan. Each one is tracked
 **planned → implemented → integration-tested**. **Live-tested** is tracked
@@ -29,7 +31,7 @@ least-complete requirement.
 
 | # | Gate | Owners | Status | Live-tested |
 | --- | --- | --- | --- | --- |
-| 1 | World enforcement | M02, M05, M06 | **Planned.** Integration-tested for the refund world only; the journey and service worlds aren't implemented | n/a |
+| 1 | World enforcement | M02, M05, M06 | **Partly implemented.** Refund: integration-tested through the controller. Journey: world enforcement implemented and tested in M02; controller and security integration (M05, M06) pending. Service: not implemented | n/a |
 | 2 | Authenticated sessions and project isolation | M07, M06, M04 | **Planned.** There is no authentication yet (M07), and artifacts aren't project-scoped | n/a |
 | 3 | Injection and information-access resistance | M03, M04, M06, M09 | **Implemented**, but there is no committed end-to-end adversarial suite | n/a |
 | 4 | Independent evaluation, audit and retention | M09, M02, M04, M06 | **Planned.** M09 hasn't started; retention and audit are partial | n/a |
@@ -45,9 +47,9 @@ delivery.
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | Refund world: every tool call authorized before dispatch; a denial causes no mutation | Integration-tested | [test_m05_units.py](../tests/orchestration/test_m05_units.py) `test_denied_calls_leave_no_trace_or_ledger_change`, `test_policy_enforced_run_equals_core_run_when_allowed`; [test_m05_campaign.py](../tests/orchestration/test_m05_campaign.py) `test_unbound_or_mismatched_identity_denies_the_run_without_mutation`, `test_unbound_principal_denies_and_leaves_no_open_reservation`; [test_m06_authorization.py](../tests/policy/test_m06_authorization.py) `test_denial_causes_no_mutation`, `test_customer_argument_cannot_spoof_identity` |
-| Journey world: revocation after queue, before delivery; no delivery on denial | Planned | `group-journey/1` is specified in contract set 1.1. M02 implementation has started |
+| Journey world: revocation after queue, before delivery; no delivery on denial | **World enforcement implemented**, tested in M02 only. **Controller and security integration pending:** no journey run goes through M05 or M06 yet, and M06 tool permissions don't cover journey tools | [test_m02_journey.py](../tests/simulation/test_m02_journey.py) `test_revocation_race_gets_through_the_lab_world_and_only_the_guard_stops_it`, `test_guard_denials_record_an_error_event_and_change_nothing`, `test_fault_matrix` |
 | Service world: owner takeover with actions pending; no mutation after takeover | Planned | `service-relay/1` stays specified and non-runnable |
-| Non-runnable worlds refused by controllers | Planned | `is_executable()` exists in contract set 1.1. M05/M06 still need to enforce it |
+| Non-runnable worlds refused by controllers | Planned | `is_executable()` exists in contract set 1.1, but nothing in M05 or M06 consults it. M05 refuses other worlds only because the set-1 `CampaignSpec` admits just `refund-world/1`, which also keeps journey campaigns from running |
 
 ## 2. Authenticated sessions and project isolation
 

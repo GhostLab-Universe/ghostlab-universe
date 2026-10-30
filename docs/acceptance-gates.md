@@ -1,9 +1,8 @@
 # Mandatory acceptance gates
 
-Status as of 2026-10-30, at integration commit `506f98a` (`architecture-and-refund-core`),
-which includes contract set 1.1 (PR #9) and the M02 journey world (PR #10). The
-registry promotion of `group-journey/1` (PR #12) was cleared by review but isn't
-merged yet.
+Status as of 2026-10-30, at integration commit `34737a0` (`architecture-and-refund-core`),
+which includes contract set 1.1 (PR #9), the M02 journey world (PR #10), the
+`group-journey/1` registry promotion (PR #12) and the v1 capsule metadata fix (PR #13).
 
 These five gates come from GhostLab's existing plan. Each one is tracked
 **planned → implemented → integration-tested**. **Live-tested** is tracked
@@ -49,7 +48,7 @@ delivery.
 | Refund world: every tool call authorized before dispatch; a denial causes no mutation | Integration-tested | [test_m05_units.py](../tests/orchestration/test_m05_units.py) `test_denied_calls_leave_no_trace_or_ledger_change`, `test_policy_enforced_run_equals_core_run_when_allowed`; [test_m05_campaign.py](../tests/orchestration/test_m05_campaign.py) `test_unbound_or_mismatched_identity_denies_the_run_without_mutation`, `test_unbound_principal_denies_and_leaves_no_open_reservation`; [test_m06_authorization.py](../tests/policy/test_m06_authorization.py) `test_denial_causes_no_mutation`, `test_customer_argument_cannot_spoof_identity` |
 | Journey world: revocation after queue, before delivery; no delivery on denial | **World enforcement implemented**, tested in M02 only. **Controller and security integration pending:** no journey run goes through M05 or M06 yet, and M06 tool permissions don't cover journey tools | [test_m02_journey.py](../tests/simulation/test_m02_journey.py) `test_revocation_race_gets_through_the_lab_world_and_only_the_guard_stops_it`, `test_guard_denials_record_an_error_event_and_change_nothing`, `test_fault_matrix` |
 | Service world: owner takeover with actions pending; no mutation after takeover | Planned | `service-relay/1` stays specified and non-runnable |
-| Non-runnable worlds refused by controllers | Planned | `is_executable()` exists in contract set 1.1, but nothing in M05 or M06 consults it. M05 refuses other worlds only because the set-1 `CampaignSpec` admits just `refund-world/1`, which also keeps journey campaigns from running |
+| Non-runnable worlds refused by controllers | Planned | `is_executable()` is true for `refund-world/1` and `group-journey/1` and false for `service-relay/1`, but nothing in M05 or M06 consults it. M05 refuses other worlds only because the set-1 `CampaignSpec` admits just `refund-world/1`, which also keeps journey campaigns from running |
 
 ## 2. Authenticated sessions and project isolation
 

@@ -18,12 +18,16 @@ from ghostlab.skills import SkillRegistry
 from ghostlab.skills.registry import ROOT
 from ghostlab.storage.memory_store import SqliteMemoryStore
 from ghostlab.storage.migrations import migrate
+from ghostlab.worlds.journey import FAULTS, JourneyFixture, JourneyScenario, scenario_json
+from ghostlab.worlds.journey_run import ADAPTERS, fault_scenarios, run
 
 from m03_fakes import NOW, T1, FakeMemoryStore, LeakyMemoryStore, scope
 
 J = "group-journey/1"
 EXAMPLES = ROOT / "examples" / "contracts"
 OPERATOR = Principal(principal_id="operator-1", kind="human")
+PARAMETER_TYPES = {"integer": int, "string": str, "boolean": bool}
+SNAKE_CASE = r"[a-z]+(?:_[a-z]+)+"
 
 
 @pytest.fixture(scope="module")
@@ -60,6 +64,55 @@ def texts(compiled):
     return [item.content for item in compiled.bundle.items]
 
 
+def journey_steps(skills):
+    return skills.get("propose-journey-scenario").spec.steps
+
+
+def stated_faults(steps):
+    """Each fault step as the skill words it: {fault_id: [(parameter, type), ...]}."""
+    matches = (re.match(rf"({SNAKE_CASE}): ({SNAKE_CASE}) \((\w+)\) ", step) for step in steps)
+    return {match[1]: [(match[2], match[3])] for match in matches if match}
+
+
+def fault_step(steps, fault_id):
+    (step,) = [step for step in steps if step.startswith(f"{fault_id}: ")]
+    return step
+
+
+def stated_value(steps, fault_id):
+    """The example value a fault step gives, typed as that step declares."""
+    ((_, kind),) = stated_faults(steps)[fault_id]
+    value = re.search(r"(?:which is|such as) ([a-z0-9-]+)", fault_step(steps, fault_id))[1]
+    return PARAMETER_TYPES[kind](value)
+
+
+def one_fault(steps, fault_id, after_event):
+    ((name, _),) = stated_faults(steps)[fault_id]
+    return scenario_json([(fault_id, after_event, {name: stated_value(steps, fault_id)})])
+
+
+def stated_adapters(steps):
+    prefix = "Pick one adapter of the pack: "
+    (step,) = [step for step in steps if step.startswith(prefix)]
+    return step.removeprefix(prefix).split(" or ")
+
+
+def stated_caps(steps):
+    """{(adapter, with the delayed fault): cap}, parsed from the skill's one caps step."""
+    (match,) = filter(None, (re.fullmatch(
+        r"Leave room for the adapter to finish: (\S+) needs at least (\d+) tool calls, or "
+        r"(\d+) with delayed_itinerary_update, and (\S+) needs at least (\d+)", step)
+        for step in steps))
+    naive, plain, delayed, checked, both = match.groups()
+    return {(naive, False): int(plain), (naive, True): int(delayed),
+            (checked, False): int(both), (checked, True): int(both)}
+
+
+def finishes(adapter, scenario, cap):
+    scenario = JourneyScenario.from_json({**scenario, "max_tool_calls": cap})
+    return run(JourneyFixture(), scenario, adapter)["status"] == "completed"
+
+
 # --- the skill ------------------------------------------------------------------------
 
 def test_the_journey_skill_is_registered_and_holds_no_tools(skills):
@@ -70,16 +123,122 @@ def test_the_journey_skill_is_registered_and_holds_no_tools(skills):
 
 
 def test_the_skill_names_everything_a_valid_proposal_needs(skills):
-    steps = " ".join(skills.get("propose-journey-scenario").spec.steps)
+    steps = journey_steps(skills)
     world = pack(J)
-    for fault in world.faults:
-        assert fault.fault_id in steps
-        for parameter in fault.parameters:
-            assert parameter.name in steps
-    for adapter in world.adapters:
-        assert adapter.adapter_id in steps
-    for name in world.invariant_names:
-        assert name in steps
+    assert stated_faults(steps) == {fault.fault_id: [(p.name, p.type) for p in fault.parameters]
+                                    for fault in world.faults}
+    assert stated_adapters(steps) == [adapter.adapter_id for adapter in world.adapters]
+    (step,) = [step for step in steps if "the invariant you expect to fail" in step]
+    assert set(re.findall(SNAKE_CASE, step)) == set(world.invariant_names)
+
+
+def test_the_skill_states_the_types_the_world_requires(skills):
+    assert FAULTS == {fault_id: {name: PARAMETER_TYPES[kind] for name, kind in parameters}
+                      for fault_id, parameters in stated_faults(journey_steps(skills)).items()}
+
+
+def test_the_skill_names_only_adapters_with_an_implementation(skills):
+    steps = journey_steps(skills)
+    assert set(stated_adapters(steps)) == set(ADAPTERS)
+    assert {adapter for adapter, _ in stated_caps(steps)} == set(ADAPTERS)
+
+
+def test_a_proposal_built_from_the_skill_is_accepted(skills):
+    steps = journey_steps(skills)
+    cap = int(re.search(r"Set max_tool_calls to at most (\d+)", " ".join(steps))[1])
+    faults = list(stated_faults(steps))
+    data = scenario_json([(fault_id, None, {stated_faults(steps)[fault_id][0][0]:
+                                            stated_value(steps, fault_id)})
+                          for fault_id in faults], cap)
+    scenario = JourneyScenario.from_json(data)
+    assert scenario.max_tool_calls == cap
+    assert [fault_id for fault_id, _, _ in scenario.faults] == faults
+    for adapter in stated_adapters(steps):
+        proposal = WorldExperimentProposal.model_validate({
+            "schema_version": 1, "world_version": J, "hypothesis": "A stated fault breaks it",
+            "adapter_id": adapter, "scenario": data, "expected_signal": "An invariant fails"})
+        assert proposal.adapter_id == adapter
+
+
+def test_the_stated_after_event_is_what_the_world_accepts(skills):
+    steps = journey_steps(skills)
+    assert "after_event must be null" in fault_step(steps, "delayed_itinerary_update")
+    for fault_id in stated_faults(steps):
+        step = fault_step(steps, fault_id)
+        assert "after_event" in step
+        untimed = JourneyScenario.from_json(one_fault(steps, fault_id, None))
+        assert untimed.params(fault_id)["after_event"] is None
+        timed = one_fault(steps, fault_id, 5)
+        if "after_event must be null" in step:
+            with pytest.raises(ValueError):
+                JourneyScenario.from_json(timed)
+        else:
+            assert JourneyScenario.from_json(timed).params(fault_id)["after_event"] == 5
+
+
+def test_the_sharing_step_states_when_the_revocation_lands(skills):
+    steps = journey_steps(skills)
+    step = fault_step(steps, "sharing_revoked_while_queued")
+    assert "after_event null revokes just after that recipient's message is queued" in step
+    assert "a number revokes after that event" in step
+    recipient = stated_value(steps, "sharing_revoked_while_queued")
+
+    def revoked_from(scenario):
+        result = run(JourneyFixture(), JourneyScenario.from_json(scenario), "journey-naive")
+        (revoked,) = [entry for entry in result["final_state"]["permission_timeline"]
+                      if not entry["sharing"]]
+        assert revoked["participant"] == recipient
+        queued = [event["event_id"] for event in result["trace"]
+                  if event["request"]["tool"] == "queue_message"
+                  and event["request"]["arguments"]["recipient_id"] == recipient]
+        return revoked["from_event"], queued
+
+    from_event, (queued,) = revoked_from(one_fault(steps, "sharing_revoked_while_queued", None))
+    assert from_event == queued + 1
+    assert revoked_from(one_fault(steps, "sharing_revoked_while_queued", 5))[0] == 6
+
+
+def test_the_stated_values_are_the_fixtures(skills):
+    steps = journey_steps(skills)
+    fixture = JourneyFixture()
+    superseded = {version for version, _ in fixture.intents} - {fixture.current_version}
+    assert {stated_value(steps, "stale_preference_memory")} == superseded
+    assert stated_value(steps, "sharing_revoked_while_queued") in fixture.viewers
+
+
+def test_the_skill_lists_the_participants(skills):
+    (step,) = [step for step in journey_steps(skills) if step.startswith("The participants")]
+    mandatory, viewers = step.split(", and ")
+    fixture = JourneyFixture()
+    assert "mandatory" in mandatory and "only views" in viewers
+    assert tuple(re.findall(r"[a-z]+-[a-z]", mandatory)) == fixture.mandatory
+    assert tuple(re.findall(r"[a-z]+-[a-z]", viewers)) == fixture.viewers
+
+
+def test_the_stated_caps_are_what_the_adapters_need(skills):
+    steps = journey_steps(skills)
+    caps = stated_caps(steps)
+    assert max(caps.values()) <= int(re.search(r"at most (\d+)", " ".join(steps))[1])
+    fixture = JourneyFixture()
+    faults = fault_scenarios(fixture)
+    delayed = faults.pop("delayed_itinerary_update")
+    undelayed = [scenario_json(), *faults.values()]
+    # Every delay, including those that land before the first read or after the last.
+    delays = [scenario_json([("delayed_itinerary_update", None, {"delay_events": n})])
+              for n in range(19)]
+    for adapter in ADAPTERS:
+        for scenario in undelayed:
+            assert finishes(adapter, scenario, caps[adapter, False]), adapter
+        for scenario in delays:
+            assert finishes(adapter, scenario, caps[adapter, True]), adapter
+        # Tight: one call fewer doesn't finish, so a raised number fails here too.
+        assert not finishes(adapter, scenario_json(), caps[adapter, False] - 1), adapter
+        assert not finishes(adapter, delayed, caps[adapter, True] - 1), adapter
+
+
+def test_the_controller_may_lower_the_cap(skills):
+    (step,) = [step for step in journey_steps(skills) if step.startswith("Set max_tool_calls")]
+    assert step.endswith("the controller may state a lower limit in the context")
 
 
 def test_the_skill_names_only_what_the_pack_offers(skills):
@@ -236,3 +395,13 @@ def test_journey_findings_can_be_summarized():
     result = summarize_findings([finding], item_id="summary-1", observed_at=NOW,
                                 run_ref=Ref(kind="run", id=finding.run_id, sha256=None))
     assert "observed 1 vs limit 0 unpermitted_deliveries" in result.item.content
+
+
+@pytest.mark.parametrize("missing", ["observed_value", "limit_value"])
+def test_a_summary_states_a_value_only_beside_its_limit(missing):
+    data = json.loads((EXAMPLES / "core" / "world_invariant_finding.journey_revoked_delivery.json")
+                      .read_text(encoding="utf-8"))
+    finding = WorldInvariantFinding.model_validate({**data, missing: None})
+    result = summarize_findings([finding], item_id="summary-1", observed_at=NOW,
+                                run_ref=Ref(kind="run", id=finding.run_id, sha256=None))
+    assert "observed" not in result.item.content and "None" not in result.item.content

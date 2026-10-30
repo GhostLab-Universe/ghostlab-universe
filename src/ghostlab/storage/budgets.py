@@ -28,6 +28,7 @@ class BudgetLedger(Protocol):
     def reserve(self, reservation: BudgetReservation, *, limit: int) -> BudgetReservation: ...
     def reconcile(self, reservation_id: str, actual: int | None) -> BudgetReservation: ...
     def release(self, reservation_id: str) -> BudgetReservation: ...
+    def void_task(self, campaign_id: str, task_id: str, resource: str) -> int: ...
     def committed(self, campaign_id: str, resource: str) -> tuple[int, int]: ...
 
 
@@ -65,6 +66,25 @@ class SqliteBudgetLedger:
 
     def release(self, reservation_id: str) -> BudgetReservation:
         return self._close(reservation_id, "released", None)
+
+    def void_task(self, campaign_id: str, task_id: str, resource: str) -> int:
+        """Release one task's rows for a resource, open or settled; return how many.
+
+        For a task whose runs are being discarded and repeated after a crash.
+        """
+        with db.write(self.path) as conn:
+            rows = conn.execute(
+                "SELECT reservation_id, body FROM budget_reservations WHERE campaign_id = ? "
+                "AND resource = ? AND status != 'released' "
+                "AND json_extract(body, '$.task_id') = ?",
+                (campaign_id, resource, task_id)).fetchall()
+            for reservation_id, body in rows:
+                updated = db.revise(BudgetReservation, db.load(BudgetReservation, body),
+                                    status="released", actual=None)
+                conn.execute("UPDATE budget_reservations SET status = 'released', actual = NULL, "
+                             "body = ? WHERE reservation_id = ?",
+                             (updated.model_dump_json(), reservation_id))
+        return len(rows)
 
     def committed(self, campaign_id: str, resource: str) -> tuple[int, int]:
         """(committed amount, reconciled reservations whose actual is unknown)."""

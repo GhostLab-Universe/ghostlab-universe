@@ -17,6 +17,7 @@ import os
 import re
 import sqlite3
 import tempfile
+import time
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
@@ -28,6 +29,7 @@ from .interfaces import Conflict, IntegrityError, NotFound, ScopeViolation, Stor
 ARTIFACT_INTERFACE_VERSION = "ghostlab-storage-artifacts/2"
 DEFAULT_MAX_BYTES = 16 * 1024 * 1024
 _PROJECT_ID = re.compile(r"[0-9a-f]{16}\.")  # the namespace a project view writes under
+_BLOB_ATTEMPTS = 8  # Windows refuses a file another handle has open; these clear in moments
 
 
 class ArtifactTooLarge(StorageError):
@@ -107,23 +109,7 @@ class FileArtifactStore:
             "schema_version": 1, "artifact_id": artifact_id, "sha256": digest,
             "size_bytes": len(data), "media_type": media_type,
             "provenance": provenance.model_dump(mode="json"), "created_at": created_at})
-        blob = self._blob(digest)
-        # Blobs are shared, so a damaged one is rewritten, not inherited.
-        if not (blob.exists() and hashlib.sha256(blob.read_bytes()).hexdigest() == digest):
-            blob.parent.mkdir(parents=True, exist_ok=True)
-            fd, temp = tempfile.mkstemp(dir=blob.parent, prefix=".tmp-")
-            try:
-                with os.fdopen(fd, "wb") as handle:
-                    handle.write(data)
-                try:
-                    os.replace(temp, blob)
-                except PermissionError:  # Windows: a concurrent writer of the same bytes
-                    Path(temp).unlink(missing_ok=True)
-                    if not blob.exists():
-                        raise
-            except BaseException:
-                Path(temp).unlink(missing_ok=True)
-                raise
+        self._store_blob(self._blob(digest), data, digest)
         try:
             with db.write(self.db_path) as conn:
                 conn.execute("INSERT INTO artifacts (artifact_id, sha256, size_bytes, body, "
@@ -133,13 +119,40 @@ class FileArtifactStore:
             raise Conflict("Artifact id already exists") from error
         return ref
 
+    def _store_blob(self, blob: Path, data: bytes, digest: str) -> None:
+        """Leave intact bytes at ``blob``, whoever wrote them, or raise.
+
+        Blobs are shared, so a damaged one is rewritten, not inherited. A concurrent
+        reader or writer can refuse either step on Windows, so nothing counts as
+        stored until the bytes have been read back.
+        """
+        for attempt in range(_BLOB_ATTEMPTS):
+            try:
+                if blob.exists() and hashlib.sha256(blob.read_bytes()).hexdigest() == digest:
+                    return
+                blob.parent.mkdir(parents=True, exist_ok=True)
+                fd, temp = tempfile.mkstemp(dir=blob.parent, prefix=".tmp-")
+                try:
+                    with os.fdopen(fd, "wb") as handle:
+                        handle.write(data)
+                    os.replace(temp, blob)
+                finally:
+                    Path(temp).unlink(missing_ok=True)
+            except PermissionError:
+                time.sleep(0.005 * 2 ** attempt)
+        raise StorageError("Artifact bytes could not be stored")
+
     def _ref(self, artifact_id: str, project_id: str | None) -> ArtifactRef:
         with db.read(self.db_path) as conn:
-            row = conn.execute("SELECT body FROM artifacts WHERE artifact_id = ? "
-                               "AND project_id IS ?", (artifact_id, project_id)).fetchone()
+            row = conn.execute("SELECT sha256, size_bytes, body FROM artifacts "
+                               "WHERE artifact_id = ? AND project_id IS ?",
+                               (artifact_id, project_id)).fetchone()
         if row is None:
             raise NotFound("Artifact not found")  # also another project's: not disclosed
-        return db.load(ArtifactRef, row[0])
+        ref = db.load(ArtifactRef, row[2])
+        if (ref.artifact_id, ref.sha256, ref.size_bytes) != (artifact_id, row[0], row[1]):
+            raise IntegrityError("Stored artifact metadata disagrees with its row")
+        return ref
 
     def _read(self, ref: ArtifactRef, project_id: str | None, max_bytes: int) -> bytes:
         stored = self._ref(ref.artifact_id, project_id)

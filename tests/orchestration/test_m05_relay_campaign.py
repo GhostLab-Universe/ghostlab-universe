@@ -22,8 +22,8 @@ from ghostlab.worlds.relay import RelayFixture, RelayJob, RelayScenario, ToolErr
 from m05_harness import OPERATOR, PROJECT, STRANGER, Script, meta_reply, proposal, spec
 from m05_journey_harness import J, journey_reply, journey_spec
 from m05_relay_harness import (AUTOMATION, BUSINESS_OWNER, CAPACITY_RACE, CHECKED, COMPETITION,
-                               FIRST_CONFIRM_EVENT, LOCAL, LOST_ACK, R, TAKEOVER_RACE, RelayLab,
-                               proposal_json, relay_reply, relay_spec)
+                               FIRST_CONFIRM_EVENT, FIRST_LEASE_EVENT, LOCAL, LOST_ACK, R,
+                               TAKEOVER_RACE, RelayLab, proposal_json, relay_reply, relay_spec)
 
 CID = "campaign-1"
 INVARIANT = "no_automation_after_takeover"
@@ -193,7 +193,7 @@ def test_the_takeover_race_is_caught_in_the_lab_and_closed_only_by_the_boundary(
 
 def test_the_capacity_race_is_closed_by_the_boundary(tmp_path):
     lab, state = start(tmp_path, relay_reply(CHECKED, faults=[CAPACITY_RACE]))
-    assert failed(state)[0]["evidence_event_ids"] == [2]
+    assert failed(state)[0]["evidence_event_ids"] == [FIRST_LEASE_EVENT]
     done = resume_after_approval(lab, state)
     repair = done["repair"]
     assert done["outcome"] == "repair_verified" and repair["held_by"] == "guarded_boundary"

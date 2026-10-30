@@ -9,6 +9,8 @@ import json
 
 from ghostlab.contracts.world import WorldCampaignSpec
 from ghostlab.policy import StaticWorldBinding
+from ghostlab.worlds.relay import RelayFixture
+from ghostlab.worlds.relay_run import capacity_race_scenario, takeover_race_scenario
 
 from m05_harness import OPERATOR, PROJECT, meta_reply
 from m05_journey_harness import JourneyLab
@@ -17,7 +19,6 @@ R = "service-relay/1"
 AUTOMATION = "relay-automation"
 BUSINESS_OWNER = "owner-1"
 LOCAL, CHECKED = "relay-local-success", "relay-lease-checked"
-FIRST_CONFIRM_EVENT = 5  # the lease-checked adapter's first confirmation in a clean run
 
 
 def fault(fault_id, after_event=None, **parameters):
@@ -28,8 +29,11 @@ def fault(fault_id, after_event=None, **parameters):
 TAKEOVER = fault("takeover_with_queued_confirmation")
 LOST_ACK = fault("lost_reservation_ack")
 COMPETITION = fault("stale_availability_competition", competing_jobs=2)
-TAKEOVER_RACE = fault("takeover_with_queued_confirmation", FIRST_CONFIRM_EVENT - 1)
-CAPACITY_RACE = fault("stale_availability_competition", 1, competing_jobs=2)
+# Derived from a clean lease-checked run, so they follow the adapter.
+TAKEOVER_RACE = takeover_race_scenario(RelayFixture())["faults"][0]
+CAPACITY_RACE = capacity_race_scenario(RelayFixture())["faults"][0]
+FIRST_CONFIRM_EVENT = TAKEOVER_RACE["after_event"] + 1
+FIRST_LEASE_EVENT = CAPACITY_RACE["after_event"] + 1
 
 
 def scenario(faults=None, *, cap=20):

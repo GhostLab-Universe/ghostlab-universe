@@ -26,7 +26,7 @@ jobs:
       - name: Unit tests with no installed packages
         env:
           PYTHONPATH: src
-        run: uv run --no-project --isolated python -s -m unittest discover -s tests
+        run: uv run --no-project --isolated --python 3.13 python -s -m unittest discover -s tests
 
   python:
     name: Lock, tests and contract drift

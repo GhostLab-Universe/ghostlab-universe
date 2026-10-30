@@ -88,8 +88,12 @@ class RefundDriver:
         return (f"adapter={proposal['adapter']} "
                 f"timeout_after_commit={proposal['scenario']['timeout_after_commit']}")
 
+    def faults_fired(self, proposal: dict, run: dict) -> set[str]:
+        timed_out = any(event["outcome"].get("error") == "PaymentTimeout" for event in run["trace"])
+        return {"timeout_after_commit"} if timed_out else set()
+
     def faults_triggered(self, proposal: dict, fork: dict) -> bool:
-        return any(event["outcome"].get("error") == "PaymentTimeout" for event in fork["trace"])
+        return bool(self.faults_fired(proposal, fork))
 
     def minimum_cap(self, fixture: Fixture) -> int:
         return min(len(refund_run(fixture, Scenario(timeout_after_commit=True), adapter)["trace"])
@@ -235,10 +239,15 @@ class JourneyDriver:
                         for f in proposal["scenario"]["faults"])
         return f"adapter={proposal['adapter_id']} faults={faults}"
 
+    def faults_fired(self, proposal: dict, run: dict) -> set[str]:
+        return {fault["fault_id"] for fault in proposal["scenario"]["faults"]
+                if _journey_fault_fired(fault, run)}
+
     def faults_triggered(self, proposal: dict, fork: dict) -> bool:
         """True when every fault demonstrably took effect, read from the run itself."""
         faults = proposal["scenario"]["faults"]
-        return bool(faults) and all(_journey_fault_fired(fault, fork) for fault in faults)
+        return bool(faults) and self.faults_fired(proposal, fork) == {
+            fault["fault_id"] for fault in faults}
 
     @staticmethod
     def _adapter_calls(fixture: JourneyFixture) -> dict[str, int]:

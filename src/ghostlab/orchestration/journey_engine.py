@@ -2,7 +2,7 @@
 
 M02's world and adapters are used through their public classes and are not edited.
 
-Every run, in every mode, passes each tool call through ``authorize_world_tool``
+Every evidence run, in every mode, passes each tool call through ``authorize_world_tool``
 before dispatch: project, scope, role, tool validation and ownership. A denial
 raises before the world's ``call``, so it leaves no trace event and no state
 change, and the adapter can't carry on past it.

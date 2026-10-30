@@ -1,9 +1,13 @@
 """World-aware memory and project-owned artifacts (additive to ghostlab-storage/1)."""
 
+import dataclasses
 import hashlib
+import os
 import sqlite3
 import threading
+import time
 from contextlib import closing
+from pathlib import Path
 
 import pytest
 from m04_fixtures import database, example, memory, scope
@@ -12,14 +16,16 @@ from ghostlab.contracts import ArtifactRef, MemoryQuery, MemoryRecord, Provenanc
 from ghostlab.contracts.world import WorldMemoryQuery, WorldMemoryRecord
 from ghostlab.memory import MemoryPipeline
 from ghostlab.memory.pipeline import Observation
-from ghostlab.storage import Conflict, IntegrityError, NotFound, ScopeViolation
+from ghostlab.storage import Conflict, IntegrityError, NotFound, ScopeViolation, StorageError
 from ghostlab.storage.artifacts import ArtifactStore, FileArtifactStore
 from ghostlab.storage.migrations import available, migrate
 from ghostlab.storage.memory_store import SqliteMemoryStore
 
 JOURNEY = "group-journey/1"
 AT = "2026-10-29T10:00:06Z"
+LATER = "2026-10-29T10:00:07Z"
 PROVENANCE = Provenance(source_kind="controller", source_ref=None, observed_at=AT, trust="trusted")
+UNTRUSTED = Provenance(source_kind="tool_result", source_ref=None, observed_at=AT, trust="untrusted")
 
 
 def journey_record(record_id="journey-1", project_id="project-local", **changes):
@@ -251,6 +257,63 @@ def test_unverified_input_cannot_retire_a_verified_record(store):
     assert store.get(scope(), record.record_id).status == "verified"
 
 
+def test_a_planted_duplicate_cannot_retire_a_verified_record(store):
+    pipeline = MemoryPipeline(store)
+    record = pipeline.capture(scope(), trusted())
+    later = dataclasses.replace(trusted(), content="the refund never happened", observed_at=LATER)
+    planted = pipeline.capture(scope(), dataclasses.replace(later, provenance=UNTRUSTED))
+    assert planted.status == "unverified"
+    with pytest.raises(Conflict):
+        pipeline.supersede(scope(), record.record_id, later)
+    assert store.get(scope(), record.record_id).status == "verified"
+
+
+@pytest.mark.parametrize("status", ["unverified", "verified"])
+def test_a_duplicate_that_does_not_reference_the_old_record_retires_nothing(store, status):
+    pipeline = MemoryPipeline(store)
+    record = pipeline.capture(scope(), trusted())
+    later = dataclasses.replace(trusted(), content="newer finding", observed_at=LATER)
+    pipeline.capture(scope(), later if status == "verified"
+                     else dataclasses.replace(later, provenance=UNTRUSTED))
+    with pytest.raises(Conflict):
+        pipeline.supersede(scope(), record.record_id, later)
+    assert store.get(scope(), record.record_id).status == "verified"
+
+
+def test_a_contradicted_duplicate_cannot_stand_in_as_the_replacement(store):
+    pipeline = MemoryPipeline(store)
+    record = pipeline.capture(scope(), trusted())
+    later = dataclasses.replace(trusted(), content="newer finding", observed_at=LATER)
+    pipeline.contradict(scope(), pipeline.capture(scope(), dataclasses.replace(
+        later, supersedes=(record.record_id,))).record_id)
+    with pytest.raises(Conflict):
+        pipeline.supersede(scope(), record.record_id, later)
+    assert store.get(scope(), record.record_id).status == "verified"
+
+
+def test_superseding_twice_is_repeatable_after_a_crash(store):
+    pipeline = MemoryPipeline(store)
+    record = pipeline.capture(scope(), trusted())
+    later = dataclasses.replace(trusted(), content="newer finding", observed_at=LATER)
+    first = pipeline.supersede(scope(), record.record_id, later)
+    with closing(sqlite3.connect(store.path)) as conn, conn:  # the crash came before the old record retired
+        conn.execute("UPDATE memory_records SET status = 'verified', body = ? WHERE record_id = ?",
+                     (record.model_dump_json(), record.record_id))
+    assert pipeline.supersede(scope(), record.record_id, later).record_id == first.record_id
+    assert store.get(scope(), record.record_id).status == "superseded"
+
+
+@pytest.mark.parametrize("column, value", [("status", "verified"), ("campaign_id", "campaign-z")])
+def test_an_edited_status_or_campaign_column_fails_integrity(tmp_path, column, value):
+    path = database(tmp_path)
+    store = SqliteMemoryStore(path)
+    store.put(scope(), journey_record(status="unverified"))
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute(f"UPDATE memory_records SET {column} = ?", (value,))
+    with pytest.raises(IntegrityError):
+        store.get(scope(), "journey-1")
+
+
 def test_a_row_moved_to_another_project_or_id_fails_integrity(tmp_path):
     path = database(tmp_path)
     store = SqliteMemoryStore(path)
@@ -319,6 +382,64 @@ def test_a_put_repairs_a_damaged_shared_blob(artifacts, tmp_path):
     blob.write_bytes(b"gone")
     second = put(artifacts.for_project(scope("project-b")), "x", b"same")
     assert artifacts.for_project(scope("project-b")).read(second) == b"same"
+
+
+def refuse_once(monkeypatch, target, name):
+    real, calls = getattr(target, name), []
+
+    def refused(*args, **kwargs):
+        calls.append(args)
+        if len(calls) == 1:
+            raise PermissionError("in use by another handle")
+        return real(*args, **kwargs)
+    monkeypatch.setattr(target, name, refused)
+    return calls
+
+
+def keep(view, data=b"same", name="a"):
+    return view.put(data, name=name, media_type="text/plain", provenance=PROVENANCE, created_at=AT)
+
+
+def test_a_blob_being_replaced_is_read_again_not_a_crash(artifacts, monkeypatch):
+    view = artifacts.for_project(scope())
+    first = keep(view)
+    calls = refuse_once(monkeypatch, Path, "read_bytes")
+    second = keep(view, name="b")
+    assert len(calls) == 2 and view.read(second) == view.read(first) == b"same"
+
+
+def test_a_refused_replace_is_retried(artifacts, monkeypatch):
+    view = artifacts.for_project(scope())
+    calls = refuse_once(monkeypatch, os, "replace")
+    assert view.read(keep(view)) == b"same"
+    assert len(calls) == 2
+
+
+def test_a_damaged_blob_that_stays_locked_fails_the_put_and_stores_no_row(artifacts, monkeypatch):
+    view = artifacts.for_project(scope())
+    ref = keep(view)
+    artifacts._blob(ref.sha256).write_bytes(b"damaged")
+    monkeypatch.setattr(os, "replace", lambda *_: (_ for _ in ()).throw(PermissionError("held")))
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    with pytest.raises(StorageError):
+        keep(view, name="b")
+    with pytest.raises(NotFound):
+        view.ref(view.artifact_id("b"))
+    assert not [p for p in artifacts._blob(ref.sha256).parent.iterdir()
+                if p.name.startswith(".tmp-")]
+    monkeypatch.undo()
+    assert view.read(keep(view, name="b")) == b"same"
+
+
+@pytest.mark.parametrize("column, value", [("sha256", "0" * 64), ("size_bytes", 1),
+                                           ("artifact_id", "0123456789abcdef.moved")])
+def test_a_row_edited_away_from_its_body_fails_integrity(artifacts, column, value):
+    view = artifacts.for_project(scope())
+    ref = keep(view)
+    with closing(sqlite3.connect(artifacts.db_path)) as conn, conn:
+        conn.execute(f"UPDATE artifacts SET {column} = ?", (value,))
+    with pytest.raises(IntegrityError):
+        view.store._ref(value if column == "artifact_id" else ref.artifact_id, view.project_id)
 
 
 def test_identical_concurrent_puts_all_succeed(artifacts):

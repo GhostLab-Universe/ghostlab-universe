@@ -4,17 +4,19 @@ for a controller-labelled experiment, and nothing untrusted can grant authority.
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import get_args
 
 import pytest
 from m06_fakes import FakeApprovalStore
 from pydantic import ValidationError
 
 from ghostlab.contracts import ApprovalSubmission, Principal, TrustedScope
+from ghostlab.contracts.primitives import AgentRole
 from ghostlab.contracts.world import (WorldExperimentProposal, WorldToolInvocation,
                                       WorldTrustedScope)
-from ghostlab.contracts.world_packs import PACKS, pack
+from ghostlab.contracts.world_packs import PACKS, WorldToolSpec, pack
 from ghostlab.policy import (ENFORCED, LAB, POLICY_VERSION, ROLE_EFFECT_CEILINGS,
-                             ApprovalDenied, ApprovalService, PolicyDenied,
+                             ApprovalDenied, ApprovalService, ExecutionMode, PolicyDenied,
                              ProjectApproverAllowlist, StaticWorldBinding, authorize_capability,
                              authorize_delivery, authorize_world, authorize_world_tool,
                              delegate_world, execution_mode_for, root_scope, supervisor_scope,
@@ -31,6 +33,14 @@ BINDING = StaticWorldBinding({(PROJECT, "operator-1", J): "traveller-a"})
 ALL_TOOLS = [t.name for t in pack(J).tools]
 DELIVER = {"message_id": "msg-1"}
 INSPECT = {"journey_id": "journey-1"}
+TOOL_ARGUMENTS = {"inspect_constraints": INSPECT,
+                  "hold_availability": {"journey_id": "j", "option_id": "o", "intent_version": 2},
+                  "release_availability": {"hold_id": "h"},
+                  "confirm_reservation": {"hold_id": "h", "intent_version": 2},
+                  "update_calendar_event": {"participant_id": "p", "event_id": "e",
+                                            "intent_version": 2},
+                  "queue_message": {"recipient_id": "r", "template_id": "t"},
+                  "deliver_message": DELIVER}
 
 
 def example(name):
@@ -70,16 +80,8 @@ def test_a_tool_is_refused_if_its_world_stops_being_runnable(monkeypatch):
 # --- tools ----------------------------------------------------------------------------
 
 def test_the_bound_owner_may_call_every_tool_of_the_pack():
-    arguments = {"inspect_constraints": INSPECT,
-                 "hold_availability": {"journey_id": "j", "option_id": "o", "intent_version": 2},
-                 "release_availability": {"hold_id": "h"},
-                 "confirm_reservation": {"hold_id": "h", "intent_version": 2},
-                 "update_calendar_event": {"participant_id": "p", "event_id": "e",
-                                           "intent_version": 2},
-                 "queue_message": {"recipient_id": "r", "template_id": "t"},
-                 "deliver_message": DELIVER}
-    assert set(arguments) == set(ALL_TOOLS)
-    for tool, args in arguments.items():
+    assert set(TOOL_ARGUMENTS) == set(ALL_TOOLS)
+    for tool, args in TOOL_ARGUMENTS.items():
         assert decide(target(), tool, args).allowed, tool
 
 
@@ -240,7 +242,17 @@ def test_the_role_ceiling_is_checked_for_tools():
     assert decide(analyst, "deliver_message", DELIVER).code == "tool_not_in_role_ceiling"
 
 
-def test_a_validated_invocation_is_accepted():
+@pytest.mark.parametrize("tool", [t.name for t in pack(J).tools if t.effect == "mutate"])
+def test_an_analyst_is_read_only_for_mutate_tools(tool):
+    scope = world_scope("analyst", [tool])  # granted the tool, so only the ceiling can refuse
+    assert decide(scope, tool, TOOL_ARGUMENTS[tool]).code == "tool_not_in_role_ceiling"
+    with pytest.raises(PolicyDenied) as refused:
+        delegate_world(world_root_scope(PROJECT, OPERATOR, J), "analyst", [tool])
+    assert refused.value.decision.code == "delegation_denied"
+
+
+def test_policy_accepts_the_arguments_of_a_validated_invocation():
+    # The policy decision only: dispatching these arguments into a world is not covered here.
     invocation = WorldToolInvocation.model_validate(
         example("world_tool_invocation.journey_deliver_message"))
     assert decide(target(), invocation.tool, invocation.arguments).allowed
@@ -269,6 +281,20 @@ def test_delegation_checks_the_world_and_the_parent():
         delegate_world(root, "not-a-role", ALL_TOOLS)
 
 
+def test_an_undelegated_parent_that_is_not_a_supervisor_cannot_delegate():
+    parent = WorldTrustedScope.model_validate({**world_scope("target", ALL_TOOLS).model_dump(),
+                                               "delegated_by": None})
+    with pytest.raises(PolicyDenied) as refused:
+        delegate_world(parent, "analyst", ["inspect_constraints"])  # otherwise a valid request
+    assert refused.value.decision.reason == "only an undelegated supervisor delegates"
+
+
+def test_a_delegated_child_records_its_delegator():
+    root = world_root_scope(PROJECT, OPERATOR, J)
+    assert root.delegated_by is None
+    assert delegate_world(root, "analyst", ["inspect_constraints"]).delegated_by == "supervisor"
+
+
 def test_duplicate_tools_are_collapsed_not_an_error():
     root = world_root_scope(PROJECT, OPERATOR, J)
     scope = delegate_world(root, "target", ["inspect_constraints", "inspect_constraints"])
@@ -276,9 +302,13 @@ def test_duplicate_tools_are_collapsed_not_an_error():
 
 
 def test_every_declared_effect_has_a_ceiling_decision():
-    from ghostlab.contracts.world_packs import PACKS
-    effects = {tool.effect for world in PACKS.values() for tool in world.tools}
-    assert effects <= ROLE_EFFECT_CEILINGS["supervisor"]
+    declared = set(get_args(WorldToolSpec.model_fields["effect"].annotation))
+    assert {tool.effect for world in PACKS.values() for tool in world.tools} <= declared
+    assert set(ROLE_EFFECT_CEILINGS) == set(get_args(AgentRole))
+    assert dict(ROLE_EFFECT_CEILINGS) == {
+        "supervisor": declared, "target": declared, "analyst": {"read"},
+        "explorer": set(), "worldsmith": set(), "verifier": set()}
+    assert "handoff" in ROLE_EFFECT_CEILINGS["target"]
 
 
 def test_delivery_outside_the_project_is_denied():
@@ -291,6 +321,12 @@ def test_only_an_experiment_runs_unguarded():
     assert execution_mode_for("repair") == ENFORCED and ENFORCED.guarded is True
     assert execution_mode_for("operation") == ENFORCED
     assert execution_mode_for("anything-else") == ENFORCED  # deny by default
+
+
+@pytest.mark.parametrize("mode, guarded", [("lab", True), ("enforced", False)])
+def test_an_inconsistent_execution_mode_is_refused(mode, guarded):
+    with pytest.raises(ValueError):
+        ExecutionMode(mode, guarded=guarded)
 
 
 def test_the_mode_is_recorded_as_plain_evidence():
@@ -364,7 +400,9 @@ def test_an_approval_cannot_be_reused_to_run_unguarded():
     service.consume(project_id=PROJECT, approval_id="approval-1", action=ACTION, now=NOW)
 
 
-def test_the_requesting_operator_has_no_approval_authority():
+def test_an_operator_off_the_allowlist_cannot_decide():
+    # The allowlist refuses here, not the request: M06.md records that separation of
+    # duties isn't enforced, so a requester on the allowlist could decide.
     service = approvals()
     request = requested(service)
     with pytest.raises(ApprovalDenied) as refused:

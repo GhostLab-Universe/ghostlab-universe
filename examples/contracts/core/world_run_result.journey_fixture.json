@@ -69,7 +69,6 @@
         "intent_version": 2,
         "kind": "calendar",
         "participant_id": "traveller-a",
-        "ref": "traveller-a:return-journey",
         "reservation_id": "res-hold-1",
         "window": [
           930,
@@ -82,7 +81,6 @@
         "intent_version": 2,
         "kind": "calendar",
         "participant_id": "traveller-b",
-        "ref": "traveller-b:return-journey",
         "reservation_id": "res-hold-1",
         "window": [
           930,
@@ -582,7 +580,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-a",
-            "ref": "traveller-a:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -721,7 +718,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-a",
-            "ref": "traveller-a:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -734,7 +730,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-b",
-            "ref": "traveller-b:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -912,7 +907,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-a",
-            "ref": "traveller-a:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -925,7 +919,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-b",
-            "ref": "traveller-b:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1062,7 +1055,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-a",
-            "ref": "traveller-a:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1075,7 +1067,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-b",
-            "ref": "traveller-b:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1221,7 +1212,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-a",
-            "ref": "traveller-a:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1234,7 +1224,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-b",
-            "ref": "traveller-b:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1388,7 +1377,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-a",
-            "ref": "traveller-a:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1401,7 +1389,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-b",
-            "ref": "traveller-b:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1562,7 +1549,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-a",
-            "ref": "traveller-a:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1575,7 +1561,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-b",
-            "ref": "traveller-b:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1747,7 +1732,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-a",
-            "ref": "traveller-a:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1760,7 +1744,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-b",
-            "ref": "traveller-b:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1937,7 +1920,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-a",
-            "ref": "traveller-a:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,
@@ -1950,7 +1932,6 @@
             "intent_version": 2,
             "kind": "calendar",
             "participant_id": "traveller-b",
-            "ref": "traveller-b:return-journey",
             "reservation_id": "res-hold-1",
             "window": [
               930,

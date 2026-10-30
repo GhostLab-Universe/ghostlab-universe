@@ -1,0 +1,4564 @@
+{
+  "components": {
+    "schemas": {
+      "ApprovalDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "action_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Action Digest",
+            "type": "string"
+          },
+          "approval_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "approver": {
+            "$ref": "#/components/schemas/Principal"
+          },
+          "decided_at": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "decision_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "policy_version": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "decision_id",
+          "approval_id",
+          "action_digest",
+          "decision",
+          "approver",
+          "policy_version",
+          "reason",
+          "decided_at"
+        ],
+        "title": "ApprovalDecision",
+        "type": "object"
+      },
+      "ApprovalRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Action Digest",
+            "type": "string"
+          },
+          "action_kind": {
+            "enum": [
+              "apply_repair",
+              "change_policy",
+              "execute_consequential_action"
+            ],
+            "title": "Action Kind",
+            "type": "string"
+          },
+          "approval_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "campaign_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "created_at": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "material_risks": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Material Risks",
+            "type": "array"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/Ref"
+          },
+          "policy_version": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "requested_by_role": {
+            "enum": [
+              "supervisor",
+              "worldsmith",
+              "explorer",
+              "analyst",
+              "target",
+              "verifier"
+            ],
+            "title": "Requested By Role",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/TrustedScope"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "expired",
+              "consumed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "task_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "approval_id",
+          "campaign_id",
+          "task_id",
+          "action_kind",
+          "action_digest",
+          "payload",
+          "summary",
+          "material_risks",
+          "requested_by_role",
+          "scope",
+          "policy_version",
+          "status",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "ApprovalRequest",
+        "type": "object"
+      },
+      "ApprovalSubmission": {
+        "additionalProperties": false,
+        "description": "Client request body. The approver is taken from the session, never from here.",
+        "properties": {
+          "action_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Action Digest",
+            "type": "string"
+          },
+          "approval_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "approval_id",
+          "action_digest",
+          "decision",
+          "reason"
+        ],
+        "title": "ApprovalSubmission",
+        "type": "object"
+      },
+      "ApprovalSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "action_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Action Digest",
+            "type": "string"
+          },
+          "approval_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "approval_id",
+          "action_digest",
+          "expires_at"
+        ],
+        "title": "ApprovalSummary",
+        "type": "object"
+      },
+      "ApprovalView": {
+        "additionalProperties": false,
+        "description": "``action`` is the exact payload the digest binds, recomputed before it is shown.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "expired",
+              "consumed"
+            ],
+            "title": "Effective Status",
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/components/schemas/ApprovalRequest"
+          }
+        },
+        "required": [
+          "request",
+          "effective_status",
+          "action",
+          "decision"
+        ],
+        "title": "ApprovalView",
+        "type": "object"
+      },
+      "BudgetLimits": {
+        "additionalProperties": false,
+        "properties": {
+          "cost_currency": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Currency"
+          },
+          "max_cost_minor": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Cost Minor"
+          },
+          "max_input_tokens": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Max Input Tokens",
+            "type": "integer"
+          },
+          "max_model_calls": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Max Model Calls",
+            "type": "integer"
+          },
+          "max_output_tokens": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "max_parallel_runs": {
+            "maximum": 64.0,
+            "minimum": 1.0,
+            "title": "Max Parallel Runs",
+            "type": "integer"
+          },
+          "max_tool_calls": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Max Tool Calls",
+            "type": "integer"
+          },
+          "max_wall_clock_ms": {
+            "maximum": 1000000000000.0,
+            "minimum": 1.0,
+            "title": "Max Wall Clock Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_model_calls",
+          "max_tool_calls",
+          "max_input_tokens",
+          "max_output_tokens",
+          "max_cost_minor",
+          "cost_currency",
+          "max_wall_clock_ms",
+          "max_parallel_runs"
+        ],
+        "title": "BudgetLimits",
+        "type": "object"
+      },
+      "BudgetUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "cost_currency": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Currency"
+          },
+          "cost_minor": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Minor"
+          },
+          "input_tokens": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model_calls": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Model Calls",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "tool_calls": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Tool Calls",
+            "type": "integer"
+          },
+          "unknown_usage_events": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Unknown Usage Events",
+            "type": "integer"
+          },
+          "wall_clock_ms": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Wall Clock Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model_calls",
+          "tool_calls",
+          "input_tokens",
+          "output_tokens",
+          "cost_minor",
+          "cost_currency",
+          "wall_clock_ms",
+          "unknown_usage_events"
+        ],
+        "title": "BudgetUsage",
+        "type": "object"
+      },
+      "CampaignView": {
+        "additionalProperties": false,
+        "description": "Authoritative status from the campaign's checkpoint. Safe to read after reconnect.",
+        "properties": {
+          "approval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ErrorInfo"
+            },
+            "maxItems": 256,
+            "title": "Errors",
+            "type": "array"
+          },
+          "event_count": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Event Count",
+            "type": "integer"
+          },
+          "experiments": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentSummary"
+            },
+            "maxItems": 32,
+            "title": "Experiments",
+            "type": "array"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "record": {
+            "$ref": "#/components/schemas/WorldCampaignRecord"
+          },
+          "repair": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepairView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskSpec"
+            },
+            "maxItems": 256,
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "record",
+          "outcome",
+          "job",
+          "tasks",
+          "approval",
+          "experiments",
+          "repair",
+          "errors",
+          "event_count"
+        ],
+        "title": "CampaignView",
+        "type": "object"
+      },
+      "CapsuleImport": {
+        "additionalProperties": false,
+        "properties": {
+          "capsule": {
+            "$ref": "#/components/schemas/CapsuleInfo"
+          },
+          "replay": {
+            "$ref": "#/components/schemas/ReplayResult"
+          }
+        },
+        "required": [
+          "capsule",
+          "replay"
+        ],
+        "title": "CapsuleImport",
+        "type": "object"
+      },
+      "CapsuleInfo": {
+        "additionalProperties": false,
+        "description": "A capsule stored as a project artifact. ``artifact.id`` is the capsule id.",
+        "properties": {
+          "artifact": {
+            "$ref": "#/components/schemas/Ref"
+          },
+          "capsule_schema_version": {
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Capsule Schema Version",
+            "type": "integer"
+          },
+          "world_version": {
+            "enum": [
+              "refund-world/1",
+              "group-journey/1",
+              "service-relay/1"
+            ],
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact",
+          "world_version",
+          "capsule_schema_version"
+        ],
+        "title": "CapsuleInfo",
+        "type": "object"
+      },
+      "CapsulePayloadV1": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "fixture": {
+            "$ref": "#/components/schemas/FixtureV1"
+          },
+          "recorded_model_outputs": {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "maxItems": 1000,
+            "title": "Recorded Model Outputs",
+            "type": "array"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunResult"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/ScenarioV1"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "seed": {
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "source": {
+            "const": "trusted-synthetic-refund-adapter",
+            "title": "Source",
+            "type": "string"
+          },
+          "world_version": {
+            "const": "refund-world/1",
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "world_version",
+          "fixture",
+          "scenario",
+          "actor_id",
+          "source",
+          "seed",
+          "recorded_model_outputs",
+          "run"
+        ],
+        "title": "CapsulePayloadV1",
+        "type": "object"
+      },
+      "CapsulePayloadV2": {
+        "additionalProperties": false,
+        "description": "Failure Capsule for any registered world. v1 capsules stay valid and replayable.",
+        "properties": {
+          "actor_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "fixture": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Fixture",
+            "type": "object"
+          },
+          "recorded_model_outputs": {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "maxItems": 1000,
+            "title": "Recorded Model Outputs",
+            "type": "array"
+          },
+          "run": {
+            "$ref": "#/components/schemas/WorldRunResult"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/WorldScenario"
+          },
+          "schema_version": {
+            "const": 2,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "seed": {
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "source": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "world_version": {
+            "enum": [
+              "refund-world/1",
+              "group-journey/1",
+              "service-relay/1"
+            ],
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "world_version",
+          "fixture",
+          "scenario",
+          "actor_id",
+          "source",
+          "seed",
+          "recorded_model_outputs",
+          "run"
+        ],
+        "title": "CapsulePayloadV2",
+        "type": "object"
+      },
+      "CapsuleV1": {
+        "additionalProperties": false,
+        "description": "On-disk v1 envelope. sha256 is accidental-change detection, not authorship.",
+        "properties": {
+          "payload": {
+            "$ref": "#/components/schemas/CapsulePayloadV1"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payload",
+          "sha256"
+        ],
+        "title": "CapsuleV1",
+        "type": "object"
+      },
+      "CapsuleV2": {
+        "additionalProperties": false,
+        "description": "v2 has no separate loader yet, so the contract itself verifies the checksum.\n\nThe checksum detects accidental change; it does not establish authorship.",
+        "properties": {
+          "payload": {
+            "$ref": "#/components/schemas/CapsulePayloadV2"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payload",
+          "sha256"
+        ],
+        "title": "CapsuleV2",
+        "type": "object"
+      },
+      "DecisionResult": {
+        "additionalProperties": false,
+        "description": "The recorded decision. ``resumed`` is false if the campaign could not continue yet.\n\nThe decision stands either way; ``resume_error`` says why, and the owner can retry\nwith ``POST /v1/campaigns/{campaign_id}/resume``.",
+        "properties": {
+          "approval": {
+            "$ref": "#/components/schemas/ApprovalRequest"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/ApprovalDecision"
+          },
+          "resume_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resumed": {
+            "title": "Resumed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decision",
+          "approval",
+          "resumed",
+          "resume_error"
+        ],
+        "title": "DecisionResult",
+        "type": "object"
+      },
+      "ErrorInfo": {
+        "additionalProperties": false,
+        "description": "Typed error. side_effect records whether a world action may have committed.",
+        "properties": {
+          "code": {
+            "enum": [
+              "validation_failed",
+              "unauthenticated",
+              "forbidden",
+              "not_found",
+              "conflict",
+              "budget_exhausted",
+              "cancelled",
+              "deadline_exceeded",
+              "rate_limited",
+              "provider_transient",
+              "provider_permanent",
+              "provider_invalid_output",
+              "tool_error",
+              "tool_timeout",
+              "approval_required",
+              "approval_invalid",
+              "internal"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Ref"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retryable": {
+            "title": "Retryable",
+            "type": "boolean"
+          },
+          "side_effect": {
+            "enum": [
+              "none",
+              "committed",
+              "unknown"
+            ],
+            "title": "Side Effect",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable",
+          "side_effect",
+          "ref"
+        ],
+        "title": "ErrorInfo",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "description": "Every non-2xx body. ``reason`` is a stable machine code finer than ``error.code``.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorInfo"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "error",
+          "reason"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EventPage": {
+        "additionalProperties": false,
+        "description": "Application events by ascending sequence. Not model-token streaming.",
+        "properties": {
+          "campaign_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentEvent"
+            },
+            "maxItems": 200,
+            "title": "Events",
+            "type": "array"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_after": {
+            "maximum": 1000000000000.0,
+            "minimum": 0.0,
+            "title": "Next After",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "events",
+          "next_after",
+          "has_more"
+        ],
+        "title": "EventPage",
+        "type": "object"
+      },
+      "ExecutionRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "guarded": {
+            "title": "Guarded",
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": [
+              "lab",
+              "enforced"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "guarded"
+        ],
+        "title": "ExecutionRecord",
+        "type": "object"
+      },
+      "ExperimentEvent": {
+        "additionalProperties": false,
+        "description": "Ordered application event for status streams; not model-token streaming.",
+        "properties": {
+          "campaign_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "campaign_created",
+              "campaign_status_changed",
+              "task_status_changed",
+              "run_started",
+              "tool_event_recorded",
+              "run_completed",
+              "finding_recorded",
+              "approval_requested",
+              "approval_decided",
+              "budget_reserved",
+              "budget_exhausted",
+              "capsule_exported",
+              "replay_completed"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "refs": {
+            "items": {
+              "$ref": "#/components/schemas/Ref"
+            },
+            "maxItems": 64,
+            "title": "Refs",
+            "type": "array"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sequence": {
+            "maximum": 1000000000000.0,
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "summary": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "trace_id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "campaign_id",
+          "sequence",
+          "kind",
+          "task_id",
+          "run_id",
+          "trace_id",
+          "occurred_at",
+          "refs",
+          "summary"
+        ],
+        "title": "ExperimentEvent",
+        "type": "object"
+      },
+      "ExperimentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Adapter Id",
+            "type": "string"
+          },
+          "experiment_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Experiment Id",
+            "type": "string"
+          },
+          "hypothesis": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Hypothesis",
+            "type": "string"
+          },
+          "iteration": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Iteration",
+            "type": "integer"
+          },
+          "runs": {
+            "items": {
+              "enum": [
+                "baseline",
+                "fork",
+                "repaired"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Runs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "experiment_id",
+          "iteration",
+          "hypothesis",
+          "adapter_id",
+          "runs"
+        ],
+        "title": "ExperimentSummary",
+        "type": "object"
+      },
+      "ExperimentView": {
+        "additionalProperties": false,
+        "properties": {
+          "diff": {
+            "$ref": "#/components/schemas/WorldRealityDiff"
+          },
+          "execution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "experiment_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Experiment Id",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/WorldInvariantFinding"
+            },
+            "maxItems": 256,
+            "title": "Findings",
+            "type": "array"
+          },
+          "iteration": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Iteration",
+            "type": "integer"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/WorldExperimentProposal"
+          },
+          "runs": {
+            "items": {
+              "enum": [
+                "baseline",
+                "fork",
+                "repaired"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Runs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "experiment_id",
+          "iteration",
+          "proposal",
+          "execution",
+          "diff",
+          "findings",
+          "runs"
+        ],
+        "title": "ExperimentView",
+        "type": "object"
+      },
+      "FaultInjection": {
+        "additionalProperties": false,
+        "properties": {
+          "after_event": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Event"
+          },
+          "fault_id": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$",
+            "title": "Fault Id",
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/FaultParameter"
+            },
+            "maxItems": 8,
+            "title": "Parameters",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fault_id",
+          "after_event",
+          "parameters"
+        ],
+        "title": "FaultInjection",
+        "type": "object"
+      },
+      "FaultParameter": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$",
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
+        "title": "FaultParameter",
+        "type": "object"
+      },
+      "FixtureV1": {
+        "additionalProperties": false,
+        "properties": {
+          "currency": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Order Id",
+            "type": "string"
+          },
+          "paid_minor": {
+            "maximum": 1000000000000.0,
+            "minimum": 1.0,
+            "title": "Paid Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "order_id",
+          "customer_id",
+          "paid_minor",
+          "currency"
+        ],
+        "title": "FixtureV1",
+        "type": "object"
+      },
+      "GuardDenial": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Error",
+            "type": "string"
+          },
+          "event_id": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Event Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event_id",
+          "error"
+        ],
+        "title": "GuardDenial",
+        "type": "object"
+      },
+      "JobStatus": {
+        "additionalProperties": false,
+        "description": "This server's background execution for a campaign, beside the authoritative record.\n\n``active``: a worker is running it. ``idle``: paused or finished. ``stalled``: the\ncheckpoint is unfinished but no worker holds it (a crash, restart or worker error);\nthe owner can continue it with ``resume``.",
+        "properties": {
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "active",
+              "idle",
+              "stalled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "cancel_requested",
+          "error"
+        ],
+        "title": "JobStatus",
+        "type": "object"
+      },
+      "JsonValue": {},
+      "LedgerRow": {
+        "additionalProperties": false,
+        "properties": {
+          "amount_minor": {
+            "maximum": 1000000000000000.0,
+            "minimum": 1.0,
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Order Id",
+            "type": "string"
+          },
+          "transaction_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Transaction Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "order_id",
+          "customer_id",
+          "amount_minor",
+          "idempotency_key"
+        ],
+        "title": "LedgerRow",
+        "type": "object"
+      },
+      "OrderRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "currency": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "order_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Order Id",
+            "type": "string"
+          },
+          "paid_minor": {
+            "maximum": 1000000000000.0,
+            "minimum": 1.0,
+            "title": "Paid Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "order_id",
+          "customer_id",
+          "paid_minor",
+          "currency"
+        ],
+        "title": "OrderRecord",
+        "type": "object"
+      },
+      "OutcomeError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "enum": [
+              "ToolError",
+              "PaymentTimeout",
+              "BudgetExceeded"
+            ],
+            "title": "Error",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "title": "OutcomeError",
+        "type": "object"
+      },
+      "OutcomeResult": {
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderRecord"
+              },
+              {
+                "$ref": "#/components/schemas/RefundStatus"
+              },
+              {
+                "$ref": "#/components/schemas/LedgerRow"
+              }
+            ],
+            "title": "Result"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "OutcomeResult",
+        "type": "object"
+      },
+      "Principal": {
+        "additionalProperties": false,
+        "description": "Identity derived from an authenticated session, never from a request body.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "human",
+              "service",
+              "local_dev"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "principal_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Principal Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "principal_id",
+          "kind"
+        ],
+        "title": "Principal",
+        "type": "object"
+      },
+      "RecordedRequest": {
+        "additionalProperties": false,
+        "description": "What the target attempted, recorded even when the world rejected it.",
+        "properties": {
+          "arguments": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Arguments",
+            "type": "object"
+          },
+          "tool": {
+            "maxLength": 200,
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "arguments"
+        ],
+        "title": "RecordedRequest",
+        "type": "object"
+      },
+      "Ref": {
+        "additionalProperties": false,
+        "description": "Typed pointer to evidence; a digest pins content when it is known.",
+        "properties": {
+          "id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "artifact",
+              "run",
+              "event",
+              "finding",
+              "capsule",
+              "task",
+              "memory",
+              "approval",
+              "context_bundle",
+              "envelope"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "sha256"
+        ],
+        "title": "Ref",
+        "type": "object"
+      },
+      "RefundChecks": {
+        "additionalProperties": false,
+        "properties": {
+          "authorized_refunds": {
+            "title": "Authorized Refunds",
+            "type": "boolean"
+          },
+          "no_duplicate_full_refund": {
+            "title": "No Duplicate Full Refund",
+            "type": "boolean"
+          },
+          "total_refund_within_payment": {
+            "title": "Total Refund Within Payment",
+            "type": "boolean"
+          },
+          "unique_idempotency_keys": {
+            "title": "Unique Idempotency Keys",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "authorized_refunds",
+          "total_refund_within_payment",
+          "no_duplicate_full_refund",
+          "unique_idempotency_keys"
+        ],
+        "title": "RefundChecks",
+        "type": "object"
+      },
+      "RefundStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "refund": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerRow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "committed",
+              "not_found"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "refund"
+        ],
+        "title": "RefundStatus",
+        "type": "object"
+      },
+      "RepairView": {
+        "additionalProperties": false,
+        "description": "The repair's recorded assessment; world-specific fields are null elsewhere.",
+        "properties": {
+          "adapter": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter"
+          },
+          "authorized": {
+            "title": "Authorized",
+            "type": "boolean"
+          },
+          "execution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guard_denials": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/GuardDenial"
+                },
+                "maxItems": 1000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guard Denials"
+          },
+          "held_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "adapter",
+                  "guarded_boundary"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held By"
+          },
+          "refunded_minor": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refunded Minor"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Ref"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "completed",
+                  "budget_exhausted"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Status"
+          },
+          "safety_held": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safety Held"
+          },
+          "task_complete": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Complete"
+          },
+          "task_outcome": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Outcome"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "authorized",
+          "verified",
+          "run",
+          "run_status",
+          "safety_held",
+          "task_complete",
+          "task_outcome",
+          "adapter",
+          "execution",
+          "guard_denials",
+          "held_by",
+          "refunded_minor"
+        ],
+        "title": "RepairView",
+        "type": "object"
+      },
+      "ReplayResult": {
+        "additionalProperties": false,
+        "description": "Recorded-action replay. It never calls a model, so ``model_calls`` is always 0.",
+        "properties": {
+          "checks": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Checks",
+            "type": "object"
+          },
+          "guarded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guarded"
+          },
+          "matches": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Matches",
+            "type": "object"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "maximum": 1000000000000.0,
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "model_calls": {
+            "const": 0,
+            "title": "Model Calls",
+            "type": "integer"
+          },
+          "reproduced": {
+            "title": "Reproduced",
+            "type": "boolean"
+          },
+          "world_version": {
+            "enum": [
+              "refund-world/1",
+              "group-journey/1",
+              "service-relay/1"
+            ],
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "reproduced",
+          "matches",
+          "checks",
+          "metrics",
+          "guarded",
+          "model_calls"
+        ],
+        "title": "ReplayResult",
+        "type": "object"
+      },
+      "RunResult": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "adapter": {
+            "enum": [
+              "vulnerable",
+              "repaired"
+            ],
+            "title": "Adapter",
+            "type": "string"
+          },
+          "adapter_version": {
+            "const": "refund-adapters/1",
+            "title": "Adapter Version",
+            "type": "string"
+          },
+          "checks": {
+            "$ref": "#/components/schemas/RefundChecks"
+          },
+          "final_state": {
+            "$ref": "#/components/schemas/WorldSnapshot"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "budget_exhausted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trace": {
+            "items": {
+              "$ref": "#/components/schemas/TraceEvent"
+            },
+            "maxItems": 1000,
+            "title": "Trace",
+            "type": "array"
+          }
+        },
+        "required": [
+          "adapter",
+          "adapter_version",
+          "actor_id",
+          "status",
+          "trace",
+          "final_state",
+          "checks"
+        ],
+        "title": "RunResult",
+        "type": "object"
+      },
+      "RunView": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact": {
+            "$ref": "#/components/schemas/Ref"
+          },
+          "execution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "experiment_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Experiment Id",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/WorldInvariantFinding"
+            },
+            "maxItems": 256,
+            "title": "Findings",
+            "type": "array"
+          },
+          "result": {
+            "$ref": "#/components/schemas/WorldRunResult"
+          },
+          "run": {
+            "enum": [
+              "baseline",
+              "fork",
+              "repaired"
+            ],
+            "title": "Run",
+            "type": "string"
+          },
+          "run_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "experiment_id",
+          "run",
+          "artifact",
+          "execution",
+          "result",
+          "findings"
+        ],
+        "title": "RunView",
+        "type": "object"
+      },
+      "ScenarioV1": {
+        "additionalProperties": false,
+        "properties": {
+          "max_tool_calls": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Max Tool Calls",
+            "type": "integer"
+          },
+          "timeout_after_commit": {
+            "title": "Timeout After Commit",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "timeout_after_commit",
+          "max_tool_calls"
+        ],
+        "title": "ScenarioV1",
+        "type": "object"
+      },
+      "SessionInfo": {
+        "additionalProperties": false,
+        "description": "What the authenticated session resolved to. Nothing here is client-selected.",
+        "properties": {
+          "auth_mode": {
+            "enum": [
+              "local_dev",
+              "configured_tokens"
+            ],
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "can_approve": {
+            "title": "Can Approve",
+            "type": "boolean"
+          },
+          "inference": {
+            "enum": [
+              "disabled",
+              "fixture",
+              "live"
+            ],
+            "title": "Inference",
+            "type": "string"
+          },
+          "principal": {
+            "$ref": "#/components/schemas/Principal"
+          },
+          "production_authenticated": {
+            "const": false,
+            "title": "Production Authenticated",
+            "type": "boolean"
+          },
+          "project_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "runnable_worlds": {
+            "items": {
+              "enum": [
+                "refund-world/1",
+                "group-journey/1",
+                "service-relay/1"
+              ],
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Runnable Worlds",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "principal",
+          "project_id",
+          "auth_mode",
+          "production_authenticated",
+          "can_approve",
+          "inference",
+          "runnable_worlds"
+        ],
+        "title": "SessionInfo",
+        "type": "object"
+      },
+      "TaskSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "campaign_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "depends_on": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Depends On",
+            "type": "array"
+          },
+          "exit_condition": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Exit Condition",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "propose_world",
+              "propose_experiment",
+              "validate_proposal",
+              "execute_run",
+              "verify_run",
+              "analyze_evidence",
+              "record_memory",
+              "await_approval"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "max_attempts": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "output_ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Ref"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "role": {
+            "enum": [
+              "supervisor",
+              "worldsmith",
+              "explorer",
+              "analyst",
+              "target",
+              "verifier"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "ready",
+              "running",
+              "awaiting_approval",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "skipped"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "task_id",
+          "campaign_id",
+          "kind",
+          "role",
+          "depends_on",
+          "status",
+          "attempt",
+          "max_attempts",
+          "exit_condition",
+          "output_ref"
+        ],
+        "title": "TaskSpec",
+        "type": "object"
+      },
+      "TraceEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Event Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutcomeResult"
+              },
+              {
+                "$ref": "#/components/schemas/OutcomeError"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "request": {
+            "$ref": "#/components/schemas/RecordedRequest"
+          },
+          "state": {
+            "$ref": "#/components/schemas/WorldSnapshot"
+          }
+        },
+        "required": [
+          "event_id",
+          "request",
+          "outcome",
+          "state"
+        ],
+        "title": "TraceEvent",
+        "type": "object"
+      },
+      "TrustedScope": {
+        "additionalProperties": false,
+        "description": "Authority the controller grants for one task. Model output never sets this.",
+        "properties": {
+          "allowed_tools": {
+            "items": {
+              "enum": [
+                "get_order",
+                "issue_refund",
+                "get_refund_status"
+              ],
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Allowed Tools",
+            "type": "array"
+          },
+          "delegated_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supervisor",
+                  "worldsmith",
+                  "explorer",
+                  "analyst",
+                  "target",
+                  "verifier"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delegated By"
+          },
+          "issued_by": {
+            "const": "controller",
+            "title": "Issued By",
+            "type": "string"
+          },
+          "policy_version": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "principal": {
+            "$ref": "#/components/schemas/Principal"
+          },
+          "project_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "supervisor",
+              "worldsmith",
+              "explorer",
+              "analyst",
+              "target",
+              "verifier"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "principal",
+          "role",
+          "delegated_by",
+          "allowed_tools",
+          "policy_version",
+          "issued_by"
+        ],
+        "title": "TrustedScope",
+        "type": "object"
+      },
+      "WorldCampaignRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "created_at": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/Principal"
+          },
+          "project_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/WorldCampaignSpec"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "awaiting_approval",
+              "completed",
+              "failed",
+              "cancelled",
+              "budget_exhausted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trace_id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Trace Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/BudgetUsage"
+          }
+        },
+        "required": [
+          "schema_version",
+          "campaign_id",
+          "project_id",
+          "created_by",
+          "spec",
+          "status",
+          "usage",
+          "trace_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "WorldCampaignRecord",
+        "type": "object"
+      },
+      "WorldCampaignSpec": {
+        "additionalProperties": false,
+        "description": "``campaign_spec`` for any registered world. Still carries no identity.",
+        "properties": {
+          "budget": {
+            "$ref": "#/components/schemas/BudgetLimits"
+          },
+          "objective": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Objective",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "success_criteria": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Success Criteria",
+            "type": "array"
+          },
+          "world_version": {
+            "enum": [
+              "refund-world/1",
+              "group-journey/1",
+              "service-relay/1"
+            ],
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "objective",
+          "success_criteria",
+          "world_version",
+          "budget"
+        ],
+        "title": "WorldCampaignSpec",
+        "type": "object"
+      },
+      "WorldDivergence": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorldTraceEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_id": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Event Id",
+            "type": "integer"
+          },
+          "faulted": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorldTraceEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "event_id",
+          "baseline",
+          "faulted"
+        ],
+        "title": "WorldDivergence",
+        "type": "object"
+      },
+      "WorldExperimentProposal": {
+        "additionalProperties": false,
+        "description": "Explorer structured output for any registered world. Identity-free.",
+        "properties": {
+          "adapter_id": {
+            "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+            "title": "Adapter Id",
+            "type": "string"
+          },
+          "expected_signal": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Expected Signal",
+            "type": "string"
+          },
+          "hypothesis": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Hypothesis",
+            "type": "string"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/WorldScenario"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "world_version": {
+            "enum": [
+              "refund-world/1",
+              "group-journey/1",
+              "service-relay/1"
+            ],
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "world_version",
+          "hypothesis",
+          "adapter_id",
+          "scenario",
+          "expected_signal"
+        ],
+        "title": "WorldExperimentProposal",
+        "type": "object"
+      },
+      "WorldInvariantFinding": {
+        "additionalProperties": false,
+        "description": "A verifier verdict from world evidence, never model confidence.",
+        "properties": {
+          "evidence_event_ids": {
+            "items": {
+              "maximum": 1000.0,
+              "minimum": 1.0,
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "title": "Evidence Event Ids",
+            "type": "array"
+          },
+          "finding_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Finding Id",
+            "type": "string"
+          },
+          "invariant": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$",
+            "title": "Invariant",
+            "type": "string"
+          },
+          "limit_value": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Value"
+          },
+          "observed_value": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Value"
+          },
+          "recorded_at": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "run_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "verdict": {
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          },
+          "verifier_version": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Verifier Version",
+            "type": "string"
+          },
+          "world_version": {
+            "enum": [
+              "refund-world/1",
+              "group-journey/1",
+              "service-relay/1"
+            ],
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "finding_id",
+          "run_id",
+          "world_version",
+          "invariant",
+          "verifier_version",
+          "verdict",
+          "evidence_event_ids",
+          "observed_value",
+          "limit_value",
+          "unit",
+          "recorded_at"
+        ],
+        "title": "WorldInvariantFinding",
+        "type": "object"
+      },
+      "WorldOutcomeError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
+            "title": "Error",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "title": "WorldOutcomeError",
+        "type": "object"
+      },
+      "WorldOutcomeResult": {
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Result",
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "WorldOutcomeResult",
+        "type": "object"
+      },
+      "WorldRealityDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline_metrics": {
+            "additionalProperties": {
+              "maximum": 1000000000000000.0,
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "title": "Baseline Metrics",
+            "type": "object"
+          },
+          "faulted_metrics": {
+            "additionalProperties": {
+              "maximum": 1000000000000000.0,
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "title": "Faulted Metrics",
+            "type": "object"
+          },
+          "first_divergence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorldDivergence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "violated_invariants": {
+            "items": {
+              "pattern": "^[a-z][a-z0-9_]{1,63}$",
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Violated Invariants",
+            "type": "array"
+          },
+          "world_version": {
+            "enum": [
+              "refund-world/1",
+              "group-journey/1",
+              "service-relay/1"
+            ],
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "world_version",
+          "first_divergence",
+          "baseline_metrics",
+          "faulted_metrics",
+          "violated_invariants"
+        ],
+        "title": "WorldRealityDiff",
+        "type": "object"
+      },
+      "WorldRecordedRequest": {
+        "additionalProperties": false,
+        "description": "What the target attempted, recorded even when the world rejected it.",
+        "properties": {
+          "arguments": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Arguments",
+            "type": "object"
+          },
+          "tool": {
+            "maxLength": 200,
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "arguments"
+        ],
+        "title": "WorldRecordedRequest",
+        "type": "object"
+      },
+      "WorldRunResult": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "adapter_id": {
+            "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+            "title": "Adapter Id",
+            "type": "string"
+          },
+          "adapter_version": {
+            "pattern": "^[a-z0-9][a-z0-9._/-]{0,99}$",
+            "title": "Adapter Version",
+            "type": "string"
+          },
+          "checks": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Checks",
+            "type": "object"
+          },
+          "final_state": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Final State",
+            "type": "object"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "budget_exhausted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trace": {
+            "items": {
+              "$ref": "#/components/schemas/WorldTraceEvent"
+            },
+            "maxItems": 1000,
+            "title": "Trace",
+            "type": "array"
+          },
+          "world_version": {
+            "enum": [
+              "refund-world/1",
+              "group-journey/1",
+              "service-relay/1"
+            ],
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "world_version",
+          "adapter_id",
+          "adapter_version",
+          "actor_id",
+          "status",
+          "trace",
+          "final_state",
+          "checks"
+        ],
+        "title": "WorldRunResult",
+        "type": "object"
+      },
+      "WorldScenario": {
+        "additionalProperties": false,
+        "description": "A fault schedule for one world. Model-facing (inside proposals): no free dicts.",
+        "properties": {
+          "faults": {
+            "items": {
+              "$ref": "#/components/schemas/FaultInjection"
+            },
+            "maxItems": 8,
+            "title": "Faults",
+            "type": "array"
+          },
+          "max_tool_calls": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Max Tool Calls",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "world_version": {
+            "enum": [
+              "refund-world/1",
+              "group-journey/1",
+              "service-relay/1"
+            ],
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "world_version",
+          "faults",
+          "max_tool_calls"
+        ],
+        "title": "WorldScenario",
+        "type": "object"
+      },
+      "WorldSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "ledger": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerRow"
+            },
+            "maxItems": 1000,
+            "title": "Ledger",
+            "type": "array"
+          },
+          "order": {
+            "$ref": "#/components/schemas/OrderRecord"
+          },
+          "total_refunded_minor": {
+            "maximum": 1000000000000000.0,
+            "minimum": 0.0,
+            "title": "Total Refunded Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "order",
+          "ledger",
+          "total_refunded_minor"
+        ],
+        "title": "WorldSnapshot",
+        "type": "object"
+      },
+      "WorldTraceEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Event Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorldOutcomeResult"
+              },
+              {
+                "$ref": "#/components/schemas/WorldOutcomeError"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "request": {
+            "$ref": "#/components/schemas/WorldRecordedRequest"
+          },
+          "state": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "State",
+            "type": "object"
+          }
+        },
+        "required": [
+          "event_id",
+          "request",
+          "outcome",
+          "state"
+        ],
+        "title": "WorldTraceEvent",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Authenticated control plane for GhostLab Universe experiments. Worlds are synthetic. Project and principal come from the session, never a request. Events are application events, not model-token streaming.",
+    "title": "GhostLab Control Plane",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/approvals/{approval_id}": {
+      "get": {
+        "description": "Readable by the campaign's owner and the project's approvers; otherwise 404.",
+        "operationId": "getApproval",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Approval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "Get Approval",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
+    "/v1/approvals/{approval_id}/decision": {
+      "post": {
+        "description": "Approve or reject through M06. The approver is the session, never the body.\n\n``approval_id`` must match the path and ``action_digest`` the request, and the\ncampaign then resumes under its owner. Knowing an id or digest is not authority.\nA retry with the same key returns the recorded decision.",
+        "operationId": "decideApproval",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Approval Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Client-generated identity of this action. A retry with the same key and body returns the same result and performs no second action.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Client-generated identity of this action. A retry with the same key and body returns the same result and performs no second action.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalSubmission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicts with the current state"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many campaigns running; retry later"
+          }
+        },
+        "summary": "Decide Approval",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
+    "/v1/artifacts/{artifact_id}": {
+      "get": {
+        "description": "Download an artifact owned by the session's project.",
+        "operationId": "downloadArtifact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {}
+            },
+            "description": "Artifact bytes, verified against their digest"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "Download Artifact",
+        "tags": [
+          "evidence"
+        ]
+      }
+    },
+    "/v1/campaigns": {
+      "post": {
+        "description": "Start a campaign in the session's project.\n\nThe campaign id is derived from the session and the key, so a retry finds the same\ncampaign and its current state instead of starting another. Reusing a key with a\ndifferent spec is a 409. The world, budget and inference gates run before anything\nis stored. ``service-relay/1`` is a registered design, not a runnable world: 403.",
+        "operationId": "createCampaign",
+        "parameters": [
+          {
+            "description": "Client-generated identity of this action. A retry with the same key and body returns the same result and performs no second action.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Client-generated identity of this action. A retry with the same key and body returns the same result and performs no second action.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorldCampaignSpec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicts with the current state"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many campaigns running; retry later"
+          }
+        },
+        "summary": "Create Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/v1/campaigns/{campaign_id}": {
+      "get": {
+        "description": "Authoritative status from the checkpoint; use this after any reconnect.",
+        "operationId": "getCampaign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "Get Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/v1/campaigns/{campaign_id}/cancel": {
+      "post": {
+        "description": "Ask a running campaign to stop at its next guarded step. Repeating is harmless.\n\nA campaign awaiting approval has nothing running: this is a 409 with reason\n``awaiting_approval``, and rejecting the approval is how to end it. A finished\ncampaign is a 409 with reason ``campaign_finished``, unless it was already cancelled.",
+        "operationId": "cancelCampaign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicts with the current state"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many campaigns running; retry later"
+          }
+        },
+        "summary": "Cancel Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/v1/campaigns/{campaign_id}/events": {
+      "get": {
+        "description": "Poll application events after a sequence number. Reconnecting loses nothing.",
+        "operationId": "listCampaignEvents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000000000,
+              "minimum": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "List Events",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/v1/campaigns/{campaign_id}/experiments/{experiment_id}": {
+      "get": {
+        "operationId": "getExperiment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "experiment_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Experiment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExperimentView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "Get Experiment",
+        "tags": [
+          "evidence"
+        ]
+      }
+    },
+    "/v1/campaigns/{campaign_id}/experiments/{experiment_id}/capsules/{run}": {
+      "post": {
+        "description": "Store a Failure Capsule for a recorded run. Content-addressed, so a retry is the same.",
+        "operationId": "exportCapsule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "experiment_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Experiment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "enum": [
+                "baseline",
+                "fork",
+                "repaired"
+              ],
+              "title": "Run",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapsuleInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicts with the current state"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many campaigns running; retry later"
+          }
+        },
+        "summary": "Export Capsule",
+        "tags": [
+          "capsules"
+        ]
+      }
+    },
+    "/v1/campaigns/{campaign_id}/experiments/{experiment_id}/capsules/{run}/replay": {
+      "post": {
+        "description": "Replay an exported capsule's recorded actions. Makes no model call.",
+        "operationId": "replayCampaignCapsule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "experiment_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Experiment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "enum": [
+                "baseline",
+                "fork",
+                "repaired"
+              ],
+              "title": "Run",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "Replay Campaign Capsule",
+        "tags": [
+          "capsules"
+        ]
+      }
+    },
+    "/v1/campaigns/{campaign_id}/experiments/{experiment_id}/diff": {
+      "get": {
+        "description": "Baseline against fork, from the recorded evidence.",
+        "operationId": "getRealityDiff",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "experiment_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Experiment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldRealityDiff"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "Get Diff",
+        "tags": [
+          "evidence"
+        ]
+      }
+    },
+    "/v1/campaigns/{campaign_id}/experiments/{experiment_id}/runs/{run}": {
+      "get": {
+        "operationId": "getRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "experiment_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Experiment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run",
+            "required": true,
+            "schema": {
+              "enum": [
+                "baseline",
+                "fork",
+                "repaired"
+              ],
+              "title": "Run",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "Get Run",
+        "tags": [
+          "evidence"
+        ]
+      }
+    },
+    "/v1/campaigns/{campaign_id}/resume": {
+      "post": {
+        "description": "Owner only. Re-check a paused campaign, or continue a stalled one.\n\nThis grants nothing: a pending approval pauses again, and a rejected, expired or\nused one ends the campaign. A decision already resumes the campaign, so this is\nfor retrying after ``settings_changed`` or a stall. Repeating is harmless.",
+        "operationId": "resumeCampaign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicts with the current state"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many campaigns running; retry later"
+          }
+        },
+        "summary": "Resume Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/v1/capsules/import": {
+      "post": {
+        "description": "Validate a capsule, replay it, and store it in the session's project.\n\nAn imported capsule is untrusted data. It is identified by its checksum, so a retry\nis the same. A capsule that doesn't reproduce is stored and reported as not reproduced.",
+        "operationId": "importCapsule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CapsuleV1"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CapsuleV2"
+                  }
+                ],
+                "title": "Capsule"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapsuleImport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicts with the current state"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many campaigns running; retry later"
+          }
+        },
+        "summary": "Import Capsule",
+        "tags": [
+          "capsules"
+        ]
+      }
+    },
+    "/v1/capsules/{capsule_id}/replay": {
+      "post": {
+        "description": "Replay any capsule stored in this project. Makes no model call.",
+        "operationId": "replayCapsule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "capsule_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Capsule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "Replay Capsule",
+        "tags": [
+          "capsules"
+        ]
+      }
+    },
+    "/v1/session": {
+      "get": {
+        "operationId": "getSession",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          }
+        },
+        "summary": "Get Session",
+        "tags": [
+          "session"
+        ]
+      }
+    }
+  }
+}

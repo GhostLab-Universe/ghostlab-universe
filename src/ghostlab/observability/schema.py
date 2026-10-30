@@ -37,6 +37,9 @@ CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
 MAX_COUNT = 10**15
 
 
+_USAGE_FIELDS = ("input_tokens", "output_tokens", "cost_minor", "cost_currency")
+
+
 def _known_count(value, label: str):
     if value is None:
         return None
@@ -65,10 +68,18 @@ class Usage:
 
     @classmethod
     def from_mapping(cls, value: Mapping | None) -> "Usage":
-        """Read a contract usage dump. A missing field stays unknown."""
-        value = value or {}
-        return cls(*(value.get(name) for name in ("input_tokens", "output_tokens",
-                                                  "cost_minor", "cost_currency")))
+        """Read a contract usage dump. A missing or invalid value stays unknown.
+
+        This runs on the business path, so bad usage becomes unknown instead of raising.
+        """
+        value = value if isinstance(value, Mapping) else {}
+        try:
+            return cls(*(value.get(name) for name in _USAGE_FIELDS))
+        except ValueError:
+            pass
+        counts = [item if type(item) is int and 0 <= item <= MAX_COUNT else None
+                  for item in (value.get("input_tokens"), value.get("output_tokens"))]
+        return cls(*counts)
 
 
 @dataclass(frozen=True)
@@ -202,7 +213,6 @@ _OPTIONAL_TEXT = ("project_id", "campaign_id", "task_id", "role", "provider", "m
                   "prompt_version", "skill_id", "skill_version", "workflow_version",
                   "world_version", "outcome", "error_code", "approval_id")
 _OPTIONAL_COUNTS = ("latency_ms", "attempt", "retries", "validation_failures")
-_USAGE_FIELDS = tuple(item.name for item in fields(Usage))
 
 
 def _scalar(value) -> bool:
@@ -258,7 +268,7 @@ def validate_record(data: Mapping) -> list[str]:
         problems.append("usage must have exactly its four fields")
     else:
         try:
-            Usage.from_mapping(usage)
+            Usage(*(usage[name] for name in _USAGE_FIELDS))
         except ValueError as error:
             problems.append(f"invalid usage: {error}")
     attributes = data["attributes"]

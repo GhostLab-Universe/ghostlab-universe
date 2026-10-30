@@ -168,8 +168,7 @@ def test_the_cli_exit_code_is_what_blocks_ci(evaluated, tmp_path, capsys):
     assert gate.main([str(out), "--expected", str(DEFAULT_EXPECTED)]) == 0
     edit_evidence(out, "flow.refund", lambda d: fork(d)["body"]["final_state"]["ledger"].pop())
     assert gate.main([str(out), "--expected", str(DEFAULT_EXPECTED)]) == 1
-    assert json.loads(capsys.readouterr().out.split("}\n{")[-1].join(["{", ""]))["gate"] == (
-        "blocked")
+    assert '"gate": "blocked"' in capsys.readouterr().out
 
 
 def test_a_real_behaviour_regression_blocks_promotion(tmp_path, monkeypatch):

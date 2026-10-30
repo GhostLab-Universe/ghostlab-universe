@@ -203,6 +203,23 @@ def test_invalid_names_and_statuses_are_refused():
         telemetry().event("Not A Name", context())
 
 
+def test_reading_bad_usage_gives_unknown_and_never_raises():
+    assert Usage.from_mapping(None) == Usage()
+    assert Usage.from_mapping({"input_tokens": 5}) == Usage(input_tokens=5)
+    assert Usage.from_mapping({"input_tokens": True, "output_tokens": 9}) == Usage(
+        output_tokens=9)
+    assert Usage.from_mapping({"input_tokens": 1, "cost_minor": 5}) == Usage(input_tokens=1)
+    assert Usage.from_mapping({"cost_minor": 5, "cost_currency": "INR"}).cost_minor == 5
+
+
+def test_a_record_with_invalid_stored_usage_is_rejected(tmp_path):
+    sink = InMemorySink()
+    telemetry(sink).event("tool.call", context())
+    stored = sink.records[0].to_json()
+    stored["usage"]["input_tokens"] = -1
+    assert validate_record(stored) != []
+
+
 def test_context_refuses_malformed_ids():
     with pytest.raises(ValueError):
         TraceContext(trace_id="short")

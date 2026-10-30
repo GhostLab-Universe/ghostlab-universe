@@ -304,8 +304,9 @@ _PACK_DATA = [
             {"adapter_id": "relay-local-success", "kind": "vulnerable",
              "description": "Each role trusts its own local success and retries blindly"},
             {"adapter_id": "relay-lease-checked", "kind": "repaired",
-             "description": "Plans from the lease list and re-reads leases, the promise "
-                            "version and ownership before confirming"}],
+             "description": "Plans from the lease list, re-reads leases, the promise version "
+                            "and ownership before confirming, and otherwise releases its "
+                            "leases and hands the conversation to the owner"}],
         "replay": {"capsule_schema_versions": [2], "dispatch": "recorded_actions"},
         "source": "ghostlab.worlds.relay service-relay/1 and relay-adapters/1 "
                   "(designed in the GhostLab priority-worlds plan)",

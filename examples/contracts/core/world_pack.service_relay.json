@@ -7,7 +7,7 @@
     },
     {
       "adapter_id": "relay-lease-checked",
-      "description": "Plans from the lease list and re-reads leases, the promise version and ownership before confirming",
+      "description": "Plans from the lease list, re-reads leases, the promise version and ownership before confirming, and otherwise releases its leases and hands the conversation to the owner",
       "kind": "repaired"
     }
   ],

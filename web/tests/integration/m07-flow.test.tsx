@@ -1,6 +1,7 @@
 /**
- * Integration tests against a running M07 service. They need M07_ORIGIN, and fail
- * loudly without it rather than passing by skipping.
+ * Service-backed tests against a running M07 service. They need M07_ORIGIN, and fail
+ * loudly without it rather than passing by skipping. A pass against an unmerged M07
+ * branch is not an integrated result, and scripted inference is not a live one.
  *
  * Start M07's fixture server (scripted replies, never a model) from a checkout of
  * feature/m07-api, then run `node tests/integration/run.mjs` from web/:

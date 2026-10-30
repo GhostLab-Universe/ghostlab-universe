@@ -83,7 +83,8 @@ function CapsuleControls({
         anchor.download = `${info.artifact.id}.json`;
         anchor.click();
       }
-      URL.revokeObjectURL(url);
+      // Revoked after the click has been handled: some browsers cancel a download otherwise.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     });
 
   return (

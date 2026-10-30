@@ -396,7 +396,6 @@ class RelayDriver:
 
     def findings(self, fixture: RelayFixture, run_id: str, run: dict, recorded_at: str,
                  execution: dict | None) -> list[dict]:
-        fixture = replace(fixture, guarded=bool(execution["guarded"]))
         return [WorldInvariantFinding.model_validate(finding).model_dump(mode="json")
                 for finding in relay_findings(fixture, run, run_id, recorded_at)]
 
@@ -433,7 +432,6 @@ class RelayDriver:
         guard refused a call for that job. Otherwise the run never tested the repair, and
         passing checks would mean nothing. A denial for one job excuses no other job.
         """
-        fixture = replace(fixture, guarded=bool(execution["guarded"]))
         task = relay_task_outcome(fixture, run["final_state"])
         refused = {denial["job_id"] for denial in _relay_denials(run)}
         unexplained = [job_id for job_id, outcome in task["jobs"].items()

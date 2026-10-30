@@ -405,6 +405,14 @@ def test_an_unbound_principal_runs_nothing(tmp_path):
     assert open_reservations(lab) == []
 
 
+def test_an_unbound_principal_is_refused_before_a_world_exists():
+    with pytest.raises(PolicyDenied) as refused:
+        execute_relay_run(RelayFixture(), RelayScenario.from_json(scenario_json()), LOCAL, LAB,
+                          scope=DRIVER.target(PROJECT, OPERATOR), project_id=PROJECT,
+                          binding=StaticWorldBinding({}))
+    assert refused.value.decision.code == "unbound_principal"
+
+
 def test_ownership_holds_in_the_lab_too():
     outcome = run_directly(LOCAL, [], LAB, actor=BUSINESS_OWNER)
     assert outcome.run is None and outcome.denial.code == "identity_mismatch"
@@ -717,6 +725,12 @@ def test_a_clean_finish_is_verified_and_a_missing_job_is_not():
     run = repaired_run([])
     assert assess(run)["verified"]
     assert assess(without_confirmation(run, "job-2"))["verified"] is False
+
+
+def test_a_finished_repair_that_broke_an_invariant_is_not_verified():
+    run = repaired_run([])
+    assessment = DRIVER.assess_repair(RelayFixture(), run, [{"verdict": "failed"}], GUARDED)
+    assert assessment["safety_held"] is False and assessment["verified"] is False
 
 
 def test_a_denial_for_one_job_does_not_excuse_another():

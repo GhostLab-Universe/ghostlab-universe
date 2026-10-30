@@ -16,7 +16,6 @@ denial is a recorded world outcome, so a capsule of the run replays exactly.
 """
 
 from collections.abc import Callable
-from dataclasses import replace
 
 from ghostlab.contracts import TrustedScope
 from ghostlab.execution.relay_guard import GuardedRelayWorld
@@ -81,10 +80,10 @@ def execute_relay_run(fixture: RelayFixture, scenario: RelayScenario, adapter: s
                       mode: ExecutionMode, *, scope: TrustedScope, project_id: str,
                       binding: WorldActorBinding,
                       should_stop: Callable[[], str | None] = lambda: None) -> RunOutcome:
-    """One relay run. The fixture's ``guarded`` flag records the mode in any capsule."""
+    """One relay run. The mode picks the world class; a capsule records it from the
+    experiment's execution record."""
     if adapter not in ADAPTERS:
         raise ValueError("Unknown adapter")
-    fixture = replace(fixture, guarded=mode.guarded)
     cls = EnforcedRelayWorld if mode.guarded else LabRelayWorld
     world = cls(fixture, scenario, scope=scope, project_id=project_id, binding=binding,
                 should_stop=should_stop)

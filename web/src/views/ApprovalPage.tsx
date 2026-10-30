@@ -1,0 +1,237 @@
+import { useRef, useState } from "react";
+import type { ApprovalView, CampaignView, DecisionResult, SessionInfo } from "../api/api.generated.ts";
+import type { DataSource, Failure, Origin } from "../data/source.ts";
+import { actionFacts, buildSubmission, decisionGate, IdempotencyKeys, type Decision } from "../logic/approval.ts";
+import { formatTimestamp, prettyJson } from "../logic/format.ts";
+import { Digest, Facts, FailureNotice, Loading, Mono, Notice, RefLabel, Section, Tag } from "../ui/components.tsx";
+import { useResource } from "../ui/hooks.ts";
+import { RepairResult } from "./CampaignPage.tsx";
+
+export function ApprovalPage({
+  source,
+  view,
+  session,
+  refresh,
+}: {
+  source: DataSource;
+  view: CampaignView;
+  session: SessionInfo | null;
+  refresh: () => Promise<void>;
+}) {
+  const approvalId = view.approval?.approval_id ?? null;
+  const { resource, reload } = useResource(approvalId, view.event_count, () => source.getApproval(approvalId ?? ""));
+  const keys = useRef(new IdempotencyKeys());
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<Failure | null>(null);
+  const [result, setResult] = useState<DecisionResult | null>(null);
+
+  if (approvalId === null) {
+    return (
+      <Notice state="empty" title="No approval requested">
+        An approval appears here when a repair needs a decision.
+      </Notice>
+    );
+  }
+  if (resource.status === "loading") return <Loading what="approval" />;
+  if (resource.status === "failed") return <FailureNotice failure={resource.failure} />;
+
+  async function decide(approval: ApprovalView, decision: Decision, reason: string) {
+    setBusy(true);
+    setFailure(null);
+    setResult(null);
+    const submission = buildSubmission(approval, decision, reason);
+    const outcome = await source.decideApproval(submission, keys.current.keyFor(submission));
+    if (outcome.ok) setResult(outcome.data);
+    else setFailure(outcome.failure);
+    // What the page shows next comes from the service, not from the response above.
+    await refresh();
+    reload();
+    setBusy(false);
+  }
+
+  async function resume() {
+    setBusy(true);
+    const outcome = await source.resumeCampaign(view.record.campaign_id);
+    if (outcome.ok) setResult(null);
+    else setFailure(outcome.failure);
+    await refresh();
+    reload();
+    setBusy(false);
+  }
+
+  return (
+    <>
+      <ApprovalDetail approval={resource.data} origins={resource.origins} />
+      <DecisionPanel
+        approval={resource.data}
+        session={session}
+        busy={busy}
+        failure={failure}
+        result={result}
+        origins={resource.origins}
+        onDecide={(decision, reason) => void decide(resource.data, decision, reason)}
+        onResume={() => void resume()}
+      />
+      {view.repair === null ? null : (
+        <RepairResult
+          repair={view.repair}
+          outcome={view.outcome}
+          worldVersion={view.record.spec.world_version}
+          origins={resource.origins}
+        />
+      )}
+    </>
+  );
+}
+
+export function ApprovalDetail({ approval, origins }: { approval: ApprovalView; origins: readonly Origin[] }) {
+  const { request, action } = approval;
+  const facts = actionFacts(action);
+  const { scope } = request;
+  return (
+    <>
+      <Section title="Exact action" origins={origins}>
+        <p className="lead">{request.summary}</p>
+        <Facts
+          facts={[
+            { term: "Kind", detail: <Mono>{request.action_kind}</Mono> },
+            { term: "Status", detail: <Mono>{approval.effective_status}</Mono> },
+            { term: "Action digest", detail: <Digest value={request.action_digest} /> },
+            { term: "Adapter", detail: facts.adapter === null ? <span className="muted">not in the action</span> : <Mono>{facts.adapter}</Mono> },
+            {
+              term: "Execution mode",
+              detail:
+                facts.mode === null ? (
+                  <span className="muted">not in the action</span>
+                ) : (
+                  <span data-testid="execution-mode">
+                    <Mono>{facts.mode}</Mono>, guarded <Mono>{String(facts.guarded)}</Mono>
+                  </span>
+                ),
+            },
+            {
+              term: "Fixture digest",
+              detail: facts.fixtureSha256 === null ? <span className="muted">not in the action</span> : <Digest value={facts.fixtureSha256} />,
+            },
+            { term: "Evidence", detail: <RefLabel value={request.payload} /> },
+          ]}
+        />
+        <h3>Action the digest binds</h3>
+        {action === null ? (
+          <Notice state="failed" title="The action could not be shown">
+            The service did not return the action for this digest. Do not approve what you cannot read.
+          </Notice>
+        ) : (
+          <pre className="action-json" tabIndex={0} aria-label="Exact action" data-testid="exact-action">
+            {prettyJson(action)}
+          </pre>
+        )}
+      </Section>
+      <Section title="Scope" origins={origins}>
+        <Facts
+          facts={[
+            { term: "Project", detail: <Mono>{scope.project_id}</Mono> },
+            { term: "Principal", detail: <Mono>{scope.principal.principal_id}</Mono> },
+            { term: "Role", detail: <Mono>{scope.role}</Mono> },
+            { term: "Delegated by", detail: scope.delegated_by === null ? <span className="muted">none</span> : <Mono>{scope.delegated_by}</Mono> },
+            { term: "Allowed tools", detail: scope.allowed_tools.length === 0 ? <span className="muted">none</span> : <Mono>{scope.allowed_tools.join(", ")}</Mono> },
+            { term: "Policy", detail: <Mono>{request.policy_version}</Mono> },
+            { term: "Requested by", detail: <Mono>{request.requested_by_role}</Mono> },
+            { term: "Expires", detail: formatTimestamp(request.expires_at) },
+          ]}
+        />
+      </Section>
+      <Section title="Material risks" origins={origins}>
+        <ul className="plain" data-testid="material-risks">
+          {request.material_risks.map((risk, index) => (
+            <li key={index}>{risk}</li>
+          ))}
+        </ul>
+      </Section>
+    </>
+  );
+}
+
+export function DecisionPanel({
+  approval,
+  session,
+  busy,
+  failure,
+  result,
+  origins,
+  onDecide,
+  onResume,
+}: {
+  approval: ApprovalView;
+  session: SessionInfo | null;
+  busy: boolean;
+  failure: Failure | null;
+  result: DecisionResult | null;
+  origins: readonly Origin[];
+  onDecide: (decision: Decision, reason: string) => void;
+  onResume: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const gate = decisionGate(approval, session);
+  const canSubmit = gate.open && approval.action !== null && !busy;
+  const preview = buildSubmission(approval, "approve", reason);
+  return (
+    <Section title="Decision" origins={origins}>
+      {approval.decision === null ? null : (
+        <Facts
+          facts={[
+            { term: "Decision", detail: <Tag tone="neutral">{approval.decision.decision}</Tag> },
+            { term: "Approver (from the session)", detail: <Mono>{approval.decision.approver.principal_id}</Mono> },
+            { term: "Decided", detail: formatTimestamp(approval.decision.decided_at) },
+            { term: "Reason", detail: approval.decision.reason ?? <span className="muted">none given</span> },
+          ]}
+        />
+      )}
+      {gate.note === null ? null : <p>{gate.note}</p>}
+      {gate.open ? (
+        <form
+          className="stack-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+          }}
+        >
+          <label htmlFor="decision-reason">Reason (optional)</label>
+          <textarea
+            id="decision-reason"
+            rows={2}
+            maxLength={2000}
+            value={reason}
+            disabled={busy}
+            onChange={(event) => setReason(event.currentTarget.value)}
+          />
+          <div className="actions">
+            <button type="button" disabled={!canSubmit} onClick={() => onDecide("approve", reason)}>
+              Approve this action
+            </button>
+            <button type="button" className="quiet" disabled={!canSubmit} onClick={() => onDecide("reject", reason)}>
+              Reject
+            </button>
+          </div>
+          <p className="muted">
+            Your decision applies only to digest <Mono>{preview.action_digest.slice(0, 12)}</Mono>. The service takes the
+            approver from your session and decides whether you may approve.
+          </p>
+        </form>
+      ) : null}
+      {failure === null ? null : <FailureNotice failure={failure} />}
+      {result !== null && !result.resumed ? (
+        <Notice state="conflict" title="Decision recorded, campaign not resumed" live>
+          <p>{result.resume_error?.error.message ?? "The service gave no reason."}</p>
+          {result.resume_error?.reason ? (
+            <p className="muted">
+              Reason <Mono>{result.resume_error.reason}</Mono>
+            </p>
+          ) : null}
+          <button type="button" disabled={busy} onClick={onResume}>
+            Resume campaign
+          </button>
+        </Notice>
+      ) : null}
+    </Section>
+  );
+}

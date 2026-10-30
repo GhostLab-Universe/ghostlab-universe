@@ -636,6 +636,11 @@ def test_altered_evidence_with_a_fresh_checksum_is_not_reproduced(exported, muta
 # contracts suite checks that the contract rejects each of these too.
 METADATA_MUTATIONS = [
     lambda p: p["run"].update(status="invented-invalid-status"),
+    lambda p: p["run"].update(status=[]),
+    lambda p: p["run"].update(status={}),
+    lambda p: p["run"].update(adapter_id=[]),
+    lambda p: p["run"].update(adapter_id={}),
+    lambda p: p.update(source=["x"]),
     lambda p: p.update(seed=True),
     lambda p: p.update(seed=-1),
     lambda p: p.update(seed=2**53),

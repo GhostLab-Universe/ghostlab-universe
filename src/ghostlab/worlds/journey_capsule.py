@@ -104,7 +104,7 @@ def _check_run(recorded, actor_id, scenario):
         raise ValueError("Invalid recorded run")
     if (type(recorded["schema_version"]) is not int or recorded["schema_version"] != 1
             or recorded["world_version"] != WORLD_VERSION
-            or recorded["adapter_id"] not in ADAPTERS
+            or type(recorded["adapter_id"]) is not str or recorded["adapter_id"] not in ADAPTERS
             or recorded["adapter_version"] != ADAPTER_VERSION):
         raise ValueError("Recorded run is not from this world's adapters")
     if recorded["actor_id"] != actor_id:
@@ -120,7 +120,8 @@ def _check_run(recorded, actor_id, scenario):
         raise ValueError("Invalid trace length")
     for index, event in enumerate(trace):
         _check_event(index, event)
-    if recorded["status"] not in {"completed", "budget_exhausted"}:
+    if type(recorded["status"]) is not str or recorded["status"] not in {"completed",
+                                                                          "budget_exhausted"}:
         raise ValueError("Invalid run status")
     # Stricter than the contract: the budget can only end a run that used all of it.
     if recorded["status"] == "budget_exhausted" and len(trace) != scenario.max_tool_calls:

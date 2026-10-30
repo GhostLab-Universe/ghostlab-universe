@@ -28,6 +28,7 @@ from itertools import combinations
 from ghostlab.contracts import (ContextBundle, ContextItem, MemoryQuery, MemoryRecord,
                                 Provenance, Ref, TrustedScope)
 from ghostlab.contracts.primitives import parse_timestamp
+from ghostlab.contracts.world import WorldMemoryQuery
 from ghostlab.skills import SkillInvocation, SkillRegistry
 from ghostlab.storage.interfaces import MemoryStore
 
@@ -184,7 +185,9 @@ class ContextCompiler:
 
     def _select_memory(self, request) -> tuple[list[MemoryRecord], list[Omission]]:
         selection = request.memory
-        query = MemoryQuery(
+        model = (MemoryQuery if selection.world_version in (None, "refund-world/1")
+                 else WorldMemoryQuery)
+        query = model(
             schema_version=1, project_id=request.scope.project_id,
             campaign_id=selection.campaign_id, world_version=selection.world_version,
             kinds=list(selection.kinds), statuses=list(selection.statuses),
@@ -195,6 +198,8 @@ class ContextCompiler:
             reason = None
             if record.project_id != request.scope.project_id:
                 reason = "cross_project"
+            elif selection.world_version not in (None, record.world_version):
+                reason = "other_world"
             elif record.status not in selection.statuses or record.kind not in selection.kinds:
                 reason = "status_or_kind"
             elif (parse_timestamp(record.effective_from) > as_of

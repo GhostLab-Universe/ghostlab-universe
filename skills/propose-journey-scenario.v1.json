@@ -1,0 +1,25 @@
+{
+  "allowed_tools": [],
+  "output_schema": {"name": "world_experiment_proposal", "version": 1},
+  "preconditions": [
+    "The campaign targets group-journey/1",
+    "The campaign budget allows at least one more pair of runs"
+  ],
+  "prompt_version": "explorer-journey-prompt-1",
+  "purpose": "Propose one bounded group-journey/1 experiment likely to violate a journey invariant",
+  "schema_version": 1,
+  "skill_id": "propose-journey-scenario",
+  "steps": [
+    "Read the verified findings and questions in this context",
+    "Pick one or more faults group-journey/1 supports: stale_preference_memory, delayed_itinerary_update, sharing_revoked_while_queued",
+    "Pick one adapter of the pack: journey-naive or journey-version-checked",
+    "Set max_tool_calls to at most 20; the controller rejects a larger value",
+    "State the hypothesis and the invariant you expect to fail",
+    "Return exactly one world_experiment_proposal object and nothing else"
+  ],
+  "stop_conditions": [
+    "One world_experiment_proposal returned",
+    "No supported fault would test a new hypothesis"
+  ],
+  "version": 1
+}

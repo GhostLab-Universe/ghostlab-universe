@@ -22,6 +22,12 @@ function field(label: string, value: unknown, whenNull: string): RecordedField {
     : { label, value: String(value), recorded: true };
 }
 
+function lostFaultsField(repair: RepairView): RecordedField {
+  const lost = repair.lost_faults;
+  if (lost === null) return { label: "lost_faults", value: "not recorded yet", recorded: false };
+  return { label: "lost_faults", value: lost.length === 0 ? "none" : lost.join(", "), recorded: true };
+}
+
 function heldByField(repair: RepairView, isRefund: boolean): RecordedField {
   if (repair.held_by !== null) return { label: "held_by", value: repair.held_by, recorded: true };
   const value = isRefund ? "not recorded for this world" : "not set (only a verified repair sets it)";
@@ -43,13 +49,16 @@ export function presentRepair(
     field("safety_held", repair.safety_held, "not recorded yet"),
     field("task_complete", repair.task_complete, "not recorded yet"),
     field("verified", repair.verified, "not recorded yet"),
+    lostFaultsField(repair),
     heldByField(repair, worldVersion === "refund-world/1"),
   ];
+  const lost = repair.lost_faults ?? [];
   const agrees =
     repair.verified === true &&
     outcome === "repair_verified" &&
     repair.run_status === "completed" &&
-    repair.safety_held === true;
+    repair.safety_held === true &&
+    lost.length === 0;
 
   if (agrees && repair.task_complete === true) {
     return {
@@ -71,7 +80,7 @@ export function presentRepair(
     return {
       tone: "fail",
       headline: "Inconsistent repair record",
-      detail: `The record says verified, but the campaign outcome is ${outcome ?? "not set"}. Treat this as not verified.`,
+      detail: `The record says verified, but the campaign outcome is ${outcome ?? "not set"} and it lists ${lost.length} lost faults. Treat this as not verified.`,
       fields,
     };
   }
@@ -87,7 +96,10 @@ export function presentRepair(
     return {
       tone: "warn",
       headline: "Repair incomplete",
-      detail: "The repaired run did not get far enough to test the repair. Passing checks on this run prove nothing.",
+      detail:
+        lost.length > 0
+          ? `The repaired run never met ${lost.join(", ")}, which the fork met, so the repair was not tested against it. Passing checks on this run prove nothing.`
+          : "The repaired run did not get far enough to test the repair. Passing checks on this run prove nothing.",
       fields,
     };
   }

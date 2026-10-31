@@ -185,6 +185,7 @@ export function DiffPanel({
 
       {baselineLedger === null && forkLedger === null ? null : (
         <Section title="Ledger" origins={runOrigins}>
+          <p className="muted">A synthetic ledger. No real money moved.</p>
           <div className="sides">
             <LedgerColumn side="baseline" title="Baseline" ledger={baselineLedger} />
             <LedgerColumn side="fork" title="Fork" ledger={forkLedger} />

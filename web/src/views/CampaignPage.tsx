@@ -2,14 +2,13 @@ import { useState } from "react";
 import type { BudgetLimits, BudgetUsage, CampaignView, RepairView } from "../api/api.generated.ts";
 import type { DataSource, Failure, Origin, Result } from "../data/source.ts";
 import { readCoverage } from "../logic/coverage.ts";
-import { BLOCKED_ENDED_HELP } from "../logic/failure.ts";
 import { formatCount, formatTimestamp } from "../logic/format.ts";
 import { presentRepair } from "../logic/repair.ts";
 import { campaignHref } from "../logic/routes.ts";
-import { taskStatus } from "../logic/status.ts";
+import { outcomeNotice, taskStatus } from "../logic/status.ts";
 import { orderTasks } from "../logic/timeline.ts";
 import { Digest, Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
-import { CoverageLine, CoverageNotice } from "./experimentData.tsx";
+import { CoverageLine } from "./experimentData.tsx";
 
 export function CampaignPanel({
   view,
@@ -23,6 +22,7 @@ export function CampaignPanel({
   refresh: () => Promise<void>;
 }) {
   const { record } = view;
+  const notice = outcomeNotice(view.outcome);
   return (
     <>
       {record.status === "awaiting_approval" ? <AwaitingApproval view={view} /> : null}
@@ -31,18 +31,12 @@ export function CampaignPanel({
           It stopped at a guarded step. Evidence recorded before the stop is still shown.
         </Notice>
       ) : null}
-      {view.outcome === "settings_changed" ? (
-        <Notice state="blocked" title="Blocked: settings changed" live>
-          <p>{BLOCKED_ENDED_HELP}</p>
+      {notice !== null ? (
+        <Notice state={notice.state} title={notice.title} live>
+          {notice.detail}
         </Notice>
       ) : record.status === "failed" ? (
         <Notice state="failed" title="Campaign failed" />
-      ) : null}
-      {view.outcome === "coverage_incomplete" ? (
-        <Notice state="incomplete" title="Coverage incomplete" live>
-          An experiment stopped before finishing. A run that stopped early proves nothing, so finding no failure here
-          is not a pass.
-        </Notice>
       ) : null}
       {view.errors.length > 0 ? (
         <Section title="Recorded errors" origins={origins}>
@@ -109,7 +103,7 @@ function ExperimentList({ view }: { view: CampaignView }) {
             ) : (
               <CoverageLine coverage={coverage} recorded />
             )}
-            {coverage?.complete === false ? <Tag tone="warn">Stopped before finishing</Tag> : null}
+            {coverage?.complete === false ? <Tag tone="warn">Not a complete test</Tag> : null}
           </li>
         );
       })}
@@ -134,7 +128,8 @@ function JobControls({ view, source, refresh }: { view: CampaignView; source: Da
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const { status } = view.record;
-  const canCancel = (status === "running" || status === "queued") && !view.job.cancel_requested;
+  const paused = status === "awaiting_approval";
+  const canCancel = (status === "running" || status === "queued" || paused) && !view.job.cancel_requested;
   const stalled = view.job.state === "stalled";
 
   async function act(run: () => Promise<Result<CampaignView>>) {
@@ -157,6 +152,9 @@ function JobControls({ view, source, refresh }: { view: CampaignView; source: Da
         </Notice>
       ) : null}
       {view.job.cancel_requested ? <p>Cancel requested. The campaign stops at its next guarded step.</p> : null}
+      {paused && canCancel ? (
+        <p className="muted">Cancelling ends this campaign. Its approval stays unspent and can&apos;t run anything.</p>
+      ) : null}
       <div className="actions">
         {canCancel ? (
           <button type="button" disabled={busy} onClick={() => void act(() => source.cancelCampaign(id))}>

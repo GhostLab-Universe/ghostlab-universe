@@ -232,6 +232,9 @@ function CampaignHeading({
       </h1>
       <p className="status-line" aria-live="polite">
         <Tag tone={status.tone}>{status.label}</Tag>
+        <span className="muted" data-testid="synthetic-label">
+          Synthetic world: no real people or money
+        </span>
         {view.outcome === null ? null : (
           <span>
             Outcome <Mono>{view.outcome}</Mono>

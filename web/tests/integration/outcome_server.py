@@ -13,6 +13,7 @@ import argparse
 import functools
 import itertools
 import json
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -27,15 +28,28 @@ sys.path.insert(0, str(args.m07 / "tests" / "api"))
 sys.argv = [sys.argv[0], "--root", args.root, "--port", args.port]
 
 import fixture_server  # noqa: E402
+from ghostlab.budgets import BudgetAccountant  # noqa: E402
 from ghostlab.orchestration.worlds import DEFAULT_WORLDS, JourneyDriver  # noqa: E402
 from ghostlab.worlds.journey import JourneyFixture  # noqa: E402
-from m05_harness import meta_reply  # noqa: E402
+from m05_harness import VULNERABLE, meta_reply  # noqa: E402
 from m05_journey_harness import J, ORGANIZER, JourneyLab, proposal_json  # noqa: E402
 
 REVOKE_ORGANIZER = [{"fault_id": "sharing_revoked_while_queued", "after_event": 2,
                      "parameters": [{"name": "recipient_id", "value": ORGANIZER}]}]
+MISSED_BY_REPAIR = [{"fault_id": "delayed_itinerary_update", "after_event": None,
+                     "parameters": [{"name": "delay_events", "value": 3}]},
+                    {"fault_id": "sharing_revoked_while_queued", "after_event": 11,
+                     "parameters": [{"name": "recipient_id", "value": ORGANIZER}]}]
+SHORT_REPAIR_MARK, SHORT_REPAIR_CAP = 19, 12  # a repair has its own cap, so a marker sets it
 default_reply = fixture_server.scripted_reply
 truncated_caps = itertools.cycle((3, 4))  # a second iteration may not repeat the first
+silent_caps = itertools.cycle((20, 19))
+oversized_caps = itertools.cycle((21, 22))
+
+
+def refund(*, timeout=True, cap=20):
+    scenario = {**VULNERABLE["scenario"], "timeout_after_commit": timeout, "max_tool_calls": cap}
+    return {**VULNERABLE, "scenario": scenario}
 
 
 def scripted_reply(request: httpx.Request) -> httpx.Response:
@@ -44,7 +58,13 @@ def scripted_reply(request: httpx.Request) -> httpx.Response:
     elif b"outcome-violation" in request.content:
         chosen = proposal_json(faults=REVOKE_ORGANIZER, cap=11)
     elif b"outcome-short-repair" in request.content:
-        chosen = proposal_json(cap=12)
+        chosen = proposal_json(cap=SHORT_REPAIR_MARK)
+    elif b"outcome-lost-fault" in request.content:
+        chosen = proposal_json(faults=MISSED_BY_REPAIR)
+    elif b"outcome-silent-fault" in request.content:
+        chosen = refund(timeout=False, cap=next(silent_caps))
+    elif b"outcome-no-experiment" in request.content:
+        chosen = refund(cap=next(oversized_caps))
     else:
         return default_reply(request)
     status, body = meta_reply(json.dumps(chosen))
@@ -62,13 +82,35 @@ class OneShotDriver(JourneyDriver):
             return JourneyFixture(journey_id="journey-changed")
         return super().current_fixture(services)
 
+    def repair_action(self, experiment_id, proposal):
+        action = super().repair_action(experiment_id, proposal)
+        if proposal["scenario"]["max_tool_calls"] != SHORT_REPAIR_MARK:
+            return action
+        return {**action, "scenario": {**action["scenario"], "max_tool_calls": SHORT_REPAIR_CAP}}
+
 
 driver = OneShotDriver()
 armed_campaigns = set()
 
 
+budget_check_breaks = False
+real_reserve = BudgetAccountant.reserve
+
+
+def reserve(self, *call, **options):
+    """A failing check, once, as a broken ledger would fail. Not an exhausted budget."""
+    global budget_check_breaks
+    if budget_check_breaks:
+        budget_check_breaks = False
+        raise sqlite3.OperationalError("disk I/O error")
+    return real_reserve(self, *call, **options)
+
+
 def arm_settings_change(name, state):
+    global budget_check_breaks
     objective = state["spec"]["objective"]
+    if "outcome-budget-check" in objective and name == "propose":
+        budget_check_breaks = True
     wanted = {"outcome-settings-at-consume": "consume",
               "outcome-settings-at-resume": "await_approval"}
     for marker, node in wanted.items():
@@ -77,6 +119,7 @@ def arm_settings_change(name, state):
             driver.armed = True
 
 
+BudgetAccountant.reserve = reserve
 fixture_server.scripted_reply = scripted_reply
 fixture_server.JourneyLab = functools.partial(
     JourneyLab, worlds={**DEFAULT_WORLDS, J: driver}, on_node=arm_settings_change)

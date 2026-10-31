@@ -48,6 +48,9 @@ const TITLES: Record<FailureState, string> = {
   reconnecting: "Reconnecting",
 };
 
+/** The campaign has stopped: a decision on it is recorded and moves nothing. */
+export const CAMPAIGN_FINISHED = "campaign_finished";
+
 /** A refused action. M07 uses one reason for three causes; only its message says which. */
 export const BLOCKED_HELP =
   "Nothing ran, and any approval is still unused. If the world's settings changed, restoring them lets the campaign resume. A damaged record can't be restored. The message above says which this is.";

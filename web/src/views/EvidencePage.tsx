@@ -8,11 +8,12 @@ import type {
   WorldTraceEvent,
 } from "../api/api.generated.ts";
 import type { DataSource, Origin, RunName } from "../data/source.ts";
+import { readCoverage } from "../logic/coverage.ts";
 import { findingsForEvent, isErrorOutcome, parseEventRef, violatingEventIds } from "../logic/evidence.ts";
 import { formatTimestamp } from "../logic/format.ts";
 import { campaignHref, type Route } from "../logic/routes.ts";
 import { Facts, FailureNotice, JsonBlock, Loading, Mono, Notice, Section, Tag } from "../ui/components.tsx";
-import { ExperimentGate, ExperimentPicker, useExperiment, useRun } from "./experimentData.tsx";
+import { CoverageNotice, ExperimentGate, ExperimentPicker, useExperiment, useRun } from "./experimentData.tsx";
 
 type CampaignRoute = Extract<Route, { page: "campaign" }>;
 
@@ -77,8 +78,12 @@ export function EvidencePage({
 
 export function ProposalSection({ experiment, origins }: { experiment: ExperimentView; origins: readonly Origin[] }) {
   const { proposal, execution } = experiment;
+  const coverage = readCoverage(experiment);
   return (
     <Section title="Experiment" origins={origins}>
+      {coverage === null ? null : (
+        <CoverageNotice coverage={coverage} violations={violatingEventIds(experiment.findings).length} />
+      )}
       <Facts
         facts={[
           { term: "Hypothesis (model output, untrusted)", detail: proposal.hypothesis },

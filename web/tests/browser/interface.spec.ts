@@ -106,6 +106,59 @@ test("coverage_incomplete is never success, in the campaign or the diff", async 
   await expect(page.getByTestId("replay-verdict")).toContainText("stopped early");
 });
 
+test("a fault that never fired is never clean, though both runs finished", async ({ page }) => {
+  await go(page, "campaign/fx-coverage-unfired");
+  await expect(page.locator(".status-line")).toContainText("coverage_incomplete");
+  await expect(page.getByTestId("coverage")).toContainText("faults_triggered false");
+  await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
+  await view(page, "Reality Diff");
+  await expect(page.getByTestId("state-incomplete")).toContainText("Both runs finished, but a fault never fired");
+  await shot(page, "coverage-unfired-diff");
+});
+
+test("a repair that missed a fault shows lost_faults and no success", async ({ page }) => {
+  await go(page, "campaign/fx-journey-lost-fault");
+  await expect(page.getByTestId("repair-verdict")).toHaveAttribute("data-tone", "warn");
+  await expect(page.getByTestId("repair-fields")).toContainText("sharing_revoked_while_queued");
+  await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
+  await shot(page, "repair-lost-fault");
+});
+
+for (const [id, title] of [
+  ["fx-no-experiment", "No experiment ran"],
+  ["fx-budget-check", "Budget check failed"],
+] as const) {
+  test(`${title} is named`, async ({ page }) => {
+    await go(page, `campaign/${id}`);
+    await expect(page.getByTestId("state-failed")).toContainText(title);
+    await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
+    await shot(page, `outcome-${id}`);
+  });
+}
+
+test("cancelling a paused campaign ends it; a later decision moves nothing", async ({ page }) => {
+  await go(page, "campaign/fx-refund");
+  await page.getByRole("button", { name: "Cancel campaign" }).click();
+  await expect(page.locator(".status-line")).toContainText("Cancelled");
+  await view(page, "Approval");
+  await expect(page.getByText("This campaign has stopped")).toBeVisible();
+  await page.getByRole("button", { name: "Approve this action" }).click();
+  const notice = page.getByText("Decision recorded, campaign not resumed").locator("..");
+  await expect(notice).toContainText("campaign_finished");
+  await expect(notice).toContainText("moved nothing");
+  await expect(page.getByRole("button", { name: "Resume campaign" })).toHaveCount(0);
+  await expect(page.getByTestId("repair-verdict")).toHaveCount(0);
+  await shot(page, "decision-on-stopped-campaign");
+});
+
+test("every campaign view says the world is synthetic", async ({ page }) => {
+  await go(page, "campaign/fx-refund");
+  for (const name of ["Campaign", "Evidence", "Reality Diff", /Approval/, "Capsule"]) {
+    await view(page, name);
+    await expect(page.getByTestId("synthetic-label")).toBeVisible();
+  }
+});
+
 test("a violation before truncation stays visible and reaches approval", async ({ page }) => {
   await go(page, "campaign/fx-coverage-violation/diff");
   await expect(page.getByTestId("violating-events")).toContainText("Event 10");

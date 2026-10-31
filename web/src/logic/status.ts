@@ -1,4 +1,5 @@
 import type { CampaignView, TaskSpec } from "../api/api.generated.ts";
+import { BLOCKED_ENDED_HELP } from "./failure.ts";
 import type { Tone } from "./repair.ts";
 
 type CampaignStatus = CampaignView["record"]["status"];
@@ -22,6 +23,37 @@ const CAMPAIGN: Record<CampaignStatus, StatusLabel> = {
 export function campaignStatus(status: CampaignStatus, outcome: string | null = null): StatusLabel {
   if (outcome === "settings_changed") return { label: "Blocked: settings changed", tone: "warn" };
   return CAMPAIGN[status];
+}
+
+export interface OutcomeNotice {
+  state: "blocked" | "incomplete" | "failed";
+  title: string;
+  detail: string;
+}
+
+/** Outcomes that need more than the status says. None of these is a clean result. */
+const OUTCOMES: Record<string, OutcomeNotice> = {
+  settings_changed: { state: "blocked", title: "Blocked: settings changed", detail: BLOCKED_ENDED_HELP },
+  coverage_incomplete: {
+    state: "incomplete",
+    title: "Coverage incomplete",
+    detail:
+      "A run stopped early or a fault never fired. Either way this proves nothing, so finding no failure here is not a pass.",
+  },
+  no_experiment_ran: {
+    state: "failed",
+    title: "No experiment ran",
+    detail: "No proposal reached execution, so nothing was tested. This is not a clean result.",
+  },
+  budget_check_failed: {
+    state: "failed",
+    title: "Budget check failed",
+    detail: "The check itself failed, which is not the same as an exhausted budget. Nothing after it ran.",
+  },
+};
+
+export function outcomeNotice(outcome: string | null): OutcomeNotice | null {
+  return outcome === null ? null : (OUTCOMES[outcome] ?? null);
 }
 
 const TERMINAL = new Set<CampaignStatus>(["completed", "failed", "cancelled", "budget_exhausted"]);

@@ -805,7 +805,7 @@
       },
       "Coverage": {
         "additionalProperties": false,
-        "description": "Whether an experiment's runs finished. Null only on a checkpoint older than coverage.\n\n``complete: false`` means a run stopped at its tool cap: a clean result from it\nproves nothing, and only the violations it did reach count.",
+        "description": "Whether an experiment tested anything. Null only on a checkpoint older than coverage.\n\n``complete: false`` means a run stopped at its tool cap or a fault never fired: a\nclean result from it proves nothing, and only the violations it did reach count.\n``faults_triggered`` is null on a checkpoint from before it was recorded.",
         "properties": {
           "baseline": {
             "enum": [
@@ -819,6 +819,17 @@
             "title": "Complete",
             "type": "boolean"
           },
+          "faults_triggered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faults Triggered"
+          },
           "fork": {
             "enum": [
               "completed",
@@ -831,6 +842,7 @@
         "required": [
           "baseline",
           "fork",
+          "faults_triggered",
           "complete"
         ],
         "title": "Coverage",
@@ -1806,6 +1818,23 @@
             ],
             "title": "Held By"
           },
+          "lost_faults": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 16,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lost Faults"
+          },
           "refunded_minor": {
             "anyOf": [
               {
@@ -1897,6 +1926,7 @@
           "execution",
           "guard_denials",
           "held_by",
+          "lost_faults",
           "refunded_minor"
         ],
         "title": "RepairView",
@@ -3559,7 +3589,7 @@
     },
     "/v1/campaigns/{campaign_id}/cancel": {
       "post": {
-        "description": "Ask a running campaign to stop at its next guarded step. Repeating is harmless.\n\nA campaign awaiting approval has nothing running: this is a 409 with reason\n``awaiting_approval``, and rejecting the approval is how to end it. A finished\ncampaign is a 409 with reason ``campaign_finished``, unless it was already cancelled.",
+        "description": "Stop a running, paused or stalled campaign at its next guard. Repeating is harmless.\n\nAn approval that was not yet used stays unspent, and can't run anything afterwards.\nA finished campaign is a 409 with reason ``campaign_finished``, unless it was\nalready cancelled.",
         "operationId": "cancelCampaign",
         "parameters": [
           {

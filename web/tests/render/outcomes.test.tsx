@@ -70,9 +70,9 @@ test("the campaign view shows coverage_incomplete and no success", () => {
   assert.match(page, /data-testid="state-incomplete"/);
   assert.doesNotMatch(page, /data-tone="ok"/);
   const shown = text(page);
-  assert.match(shown, /A run that stopped early proves nothing/);
-  assert.match(shown, /Coverage: baseline budget_exhausted , fork budget_exhausted , complete false/);
-  assert.match(shown, /Stopped before finishing/);
+  assert.match(shown, /this proves nothing/);
+  assert.match(shown, /Coverage: baseline budget_exhausted , fork budget_exhausted , faults_triggered false , complete false/);
+  assert.match(shown, /Not a complete test/);
   assert.match(shown, /stopped at their tool cap/);
 });
 
@@ -82,6 +82,45 @@ test("the campaign view says when coverage was not recorded", () => {
   const page = text(html(<CampaignPanel view={{ ...view, experiments }} origins={origins} source={source} refresh={refresh} />));
   assert.match(page, /Coverage was not recorded for this experiment/);
   assert.match(page, /proves nothing/, "the outcome still says so without the field");
+});
+
+test("a fault that never fired never reads as clean, though both runs finished", () => {
+  const campaign = campaignPage("fx-coverage-unfired");
+  assert.doesNotMatch(campaign, /data-tone="ok"/);
+  assert.match(text(campaign), /faults_triggered false/);
+  const page = diffPage(scenario("fx-coverage-unfired").stage.experiment!);
+  assert.match(text(page), /Both runs finished, but a fault never fired/);
+  assert.doesNotMatch(text(page), /stopped early/);
+  assert.doesNotMatch(page, /data-tone="ok"/);
+});
+
+test("a repair that missed a fault shows lost_faults and no success", () => {
+  const page = campaignPage("fx-journey-lost-fault");
+  assert.doesNotMatch(page, /data-tone="ok"/);
+  assert.match(text(page), /Repair incomplete/);
+  assert.match(text(page), /lost_faults sharing_revoked_while_queued/);
+  assert.match(text(page), /never met sharing_revoked_while_queued/);
+});
+
+for (const [id, title, words] of [
+  ["fx-no-experiment", "No experiment ran", /nothing was tested/],
+  ["fx-budget-check", "Budget check failed", /not the same as an exhausted budget/],
+] as const) {
+  test(`${title} is named, not a generic failure`, () => {
+    const page = campaignPage(id);
+    assert.match(page, /data-testid="state-failed"/);
+    assert.match(text(page), new RegExp(title));
+    assert.match(text(page), words);
+    assert.doesNotMatch(text(page), /Campaign failed/);
+    assert.doesNotMatch(page, /data-tone="ok"/);
+  });
+}
+
+test("a paused campaign offers cancel and says what it does", () => {
+  const page = text(campaignPage("fx-refund"));
+  assert.match(page, /Cancel campaign/);
+  assert.match(page, /stays unspent/);
+  assert.doesNotMatch(text(campaignPage("fx-journey-truncated")), /Cancel campaign/);
 });
 
 test("the diff view shows truncation with no failure", () => {
@@ -208,6 +247,31 @@ test("the decision panel keeps a blocked resume visible", () => {
   assert.match(text(markup), /Decision recorded, campaign not resumed/);
   assert.match(text(markup), /settings_changed/);
   assert.match(text(markup), /any approval is still unused/);
+});
+
+test("a decision on a stopped campaign says it moved nothing and offers no resume", () => {
+  const stage = scenario("fx-journey").cancelled!;
+  const result = {
+    decision: scenario("fx-refund").approved!.approval!.decision!,
+    approval: stage.approval!.request,
+    resumed: false,
+    resume_error: {
+      reason: "campaign_finished",
+      error: { code: "conflict" as const, message: "Campaign is already cancelled", ref: null, retryable: false, side_effect: "none" as const },
+    },
+  };
+  const markup = panel("fx-journey", { result, stopped: true });
+  assert.match(text(markup), /Decision recorded, campaign not resumed/);
+  assert.match(text(markup), /Campaign is already cancelled/);
+  assert.match(text(markup), /campaign_finished/);
+  assert.match(text(markup), /moved nothing and nothing ran/);
+  assert.doesNotMatch(text(markup), /Resume campaign/);
+});
+
+test("before deciding on a stopped campaign, the panel warns it can run nothing", () => {
+  const markup = text(panel("fx-journey", { stopped: true }));
+  assert.match(markup, /This campaign has stopped/);
+  assert.match(markup, /can't run anything/);
 });
 
 test("after a reload, an unspent approval still explains itself", () => {

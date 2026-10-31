@@ -129,6 +129,53 @@ test("coverage_incomplete: campaign, diff and replay", async ({ page }) => {
   await shot(page, "service-coverage-incomplete-replay");
 });
 
+test("a fault that never fired is never clean, and says why", async ({ page }) => {
+  await start(page, REFUND, "outcome-silent-fault");
+  await expect(page.locator(".status-line")).toContainText("coverage_incomplete", POLLED);
+  await expect(page.getByTestId("coverage").first()).toContainText("faults_triggered false");
+  await expect(page.getByTestId("synthetic-label")).toBeVisible();
+  await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
+  await view(page, "Reality Diff");
+  await expect(page.getByTestId("state-incomplete")).toContainText("Both runs finished, but a fault never fired");
+  await shot(page, "service-coverage-unfired-diff");
+});
+
+test("no_experiment_ran and budget_check_failed are named failures", async ({ page }) => {
+  await start(page, REFUND, "outcome-no-experiment");
+  await expect(page.getByTestId("state-failed")).toContainText("No experiment ran", POLLED);
+  await expect(page.locator(".status-line")).toContainText("no_experiment_ran");
+  await shot(page, "service-no-experiment");
+  await start(page, JOURNEY, "outcome-budget-check");
+  await expect(page.getByTestId("state-failed")).toContainText("Budget check failed", POLLED);
+  await shot(page, "service-budget-check-failed");
+});
+
+test("a repair that missed a fault shows lost_faults", async ({ page }) => {
+  await start(page, JOURNEY, "outcome-lost-fault");
+  await paused(page);
+  await approval(page);
+  await approve(page);
+  await expect(page.getByTestId("repair-verdict")).toContainText("Repair incomplete", POLLED);
+  await expect(page.getByTestId("repair-fields")).toContainText("sharing_revoked_while_queued");
+  await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
+  await shot(page, "service-repair-lost-fault");
+});
+
+test("cancelling a paused campaign ends it; a later decision moves nothing", async ({ page }) => {
+  await start(page, REFUND);
+  await paused(page);
+  await page.getByRole("button", { name: "Cancel campaign" }).click();
+  await expect(page.locator(".status-line")).toContainText("Cancelled", POLLED);
+  await approval(page);
+  await expect(page.getByText("This campaign has stopped")).toBeVisible();
+  await approve(page);
+  const notice = page.getByText("Decision recorded, campaign not resumed").locator("..");
+  await expect(notice).toContainText("campaign_finished", POLLED);
+  await expect(page.getByRole("button", { name: "Resume campaign" })).toHaveCount(0);
+  await expect(page.getByTestId("repair-verdict")).toHaveCount(0);
+  await shot(page, "service-decision-on-stopped");
+});
+
 test("a violation before truncation reaches approval", async ({ page }) => {
   await start(page, JOURNEY, "outcome-violation");
   await paused(page);

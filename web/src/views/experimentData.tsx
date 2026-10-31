@@ -65,7 +65,8 @@ export function CoverageNotice({ coverage, violations }: { coverage: Coverage; v
 export function CoverageLine({ coverage, recorded }: { coverage: Coverage; recorded: boolean }) {
   return (
     <p data-testid="coverage">
-      Coverage: baseline <Mono>{coverage.baseline}</Mono>, fork <Mono>{coverage.fork}</Mono>, complete{" "}
+      Coverage: baseline <Mono>{coverage.baseline}</Mono>, fork <Mono>{coverage.fork}</Mono>, faults_triggered{" "}
+      <Mono>{coverage.faults_triggered === null ? "not recorded" : String(coverage.faults_triggered)}</Mono>, complete{" "}
       <Mono>{String(coverage.complete)}</Mono>
       {recorded ? null : <span className="muted"> (read from the two recorded runs)</span>}
     </p>

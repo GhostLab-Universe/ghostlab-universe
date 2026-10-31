@@ -157,7 +157,7 @@ function tasks(campaignId: string, statuses: StatusList, repair: StatusList = []
 }
 
 const DONE = ["succeeded", "succeeded", "succeeded", "succeeded", "succeeded"] as const;
-const COMPLETE: Coverage = { baseline: "completed", fork: "completed", complete: true };
+const COMPLETE: Coverage = { baseline: "completed", fork: "completed", faults_triggered: true, complete: true };
 
 function event(
   campaignId: string,
@@ -367,6 +367,7 @@ function truncatedWorld(truncation: RecordedTruncation, name: string): World {
 
 const TRUNCATED_CLEAN = truncatedWorld(recorded.journey_truncated_clean, "journey_truncated_clean");
 const TRUNCATED_VIOLATION = truncatedWorld(recorded.journey_truncated_violation, "journey_truncated_violation");
+const UNFIRED = truncatedWorld(recorded.journey_unfired, "journey_unfired");
 
 const AUTHORED_STATE = authored("Task list, event list and this campaign state are hand-authored in M05's shape");
 
@@ -505,19 +506,19 @@ function runningStage(campaignId: string, world: World, status: CampaignView["re
   };
 }
 
-function coverageIncomplete(id: string): Scenario {
-  const experiment = TRUNCATED_CLEAN.experiment(null);
+function coverageIncomplete(id: string, world: World, title: string, shows: string): Scenario {
+  const experiment = world.experiment(null);
   const events = [
-    ...runEvents(id, TRUNCATED_CLEAN).filter((item) => item.kind !== "finding_recorded"),
+    ...runEvents(id, world).filter((item) => item.kind !== "finding_recorded"),
     event(id, 6, "budget_exhausted", "Campaign budget_exhausted: coverage_incomplete"),
   ];
   return {
     id,
     group: "state",
-    title: "Coverage incomplete",
-    shows: "budget_exhausted / coverage_incomplete: a truncated run with no failure proves nothing.",
+    title,
+    shows,
     stage: {
-      view: campaign(TRUNCATED_CLEAN.record, id, {
+      view: campaign(world.record, id, {
         status: "budget_exhausted",
         outcome: "coverage_incomplete",
         updatedAt: "2026-10-29T10:10:00Z",
@@ -526,7 +527,7 @@ function coverageIncomplete(id: string): Scenario {
         errors: [
           {
             code: "budget_exhausted",
-            message: "1 experiment(s) stopped at their tool cap before finishing",
+            message: "1 experiment(s) stopped at their tool cap or never triggered a fault",
             ref: null,
             retryable: false,
             side_effect: "none",
@@ -537,7 +538,32 @@ function coverageIncomplete(id: string): Scenario {
       events,
       approval: null,
       experiment,
-      origins: originsFor(TRUNCATED_CLEAN, "Id and status replaced for this scenario"),
+      origins: originsFor(world, "Id and status replaced for this scenario"),
+    },
+  };
+}
+
+/** Failed before any experiment ran, so there is no evidence to show. */
+function failedEarly(id: string, world: World, outcome: string, code: ErrorResponse["error"]["code"], message: string, title: string, shows: string): Scenario {
+  const events = [event(id, 1, "campaign_created", "Campaign created"), event(id, 2, "campaign_status_changed", `Campaign failed: ${outcome}`)];
+  return {
+    id,
+    group: "state",
+    title,
+    shows,
+    stage: {
+      view: campaign(world.record, id, {
+        status: "failed",
+        outcome,
+        updatedAt: "2026-10-29T10:10:00Z",
+        tasks: tasks(id, ["failed"]),
+        errors: [{ code, message, ref: null, retryable: false, side_effect: "none" }],
+        event_count: events.length,
+      }),
+      events,
+      approval: null,
+      experiment: null,
+      origins: originsFor(world, "Id and status replaced for this scenario"),
     },
   };
 }
@@ -613,6 +639,23 @@ function redacted(id: string): Scenario {
   };
 }
 
+/** Cancelled while paused: the approval stays pending on a stopped campaign. */
+function cancelledWhilePaused(id: string, world: World): Stage {
+  const { stage } = awaitingStage(id, world);
+  const events = [...stage.events, event(id, 8, "campaign_status_changed", "Campaign cancelled: cancelled_by_request")];
+  return {
+    ...stage,
+    events,
+    view: {
+      ...stage.view,
+      record: { ...stage.view.record, status: "cancelled", updated_at: "2026-10-29T10:10:00Z" },
+      outcome: "cancelled_by_request",
+      tasks: tasks(id, DONE, ["cancelled", "cancelled"]),
+      event_count: events.length,
+    },
+  };
+}
+
 function flow(id: string, world: World, name: string, title: string, shows: string): Scenario {
   const { stage, request } = awaitingStage(id, world);
   return {
@@ -623,6 +666,7 @@ function flow(id: string, world: World, name: string, title: string, shows: stri
     stage,
     approved: finishedStage(id, world, request, world.repair, name),
     rejected: rejectedStage(id, world, request),
+    cancelled: cancelledWhilePaused(id, world),
   };
 }
 
@@ -680,7 +724,11 @@ export const SCENARIOS: readonly Scenario[] = [
   finished("fx-journey-boundary", JOURNEY, recorded.journey_repair_held_by_boundary, "journey_repair_held_by_boundary", "Repair held by the boundary", "A verified repair where the guard denied a delivery at event 18."),
   finished("fx-journey-truncated", JOURNEY, recorded.journey_repair_truncated, "journey_repair_truncated", "Repair incomplete", "budget_exhausted / repair_incomplete: safety held, but the run never finished."),
   finished("fx-journey-idle", JOURNEY, recorded.journey_repair_idle, "journey_repair_idle", "Repair incomplete, nothing attempted", "failed / repair_incomplete: the run finished without booking, so nothing was tested."),
-  coverageIncomplete("fx-coverage-incomplete"),
+  finished("fx-journey-lost-fault", JOURNEY, recorded.journey_repair_lost_fault, "journey_repair_lost_fault", "Repair missed a fault", "failed / repair_incomplete: the fork met a fault the repair never met, so it was not tested."),
+  coverageIncomplete("fx-coverage-incomplete", TRUNCATED_CLEAN, "Coverage incomplete: run stopped", "budget_exhausted / coverage_incomplete: a truncated run with no failure proves nothing."),
+  coverageIncomplete("fx-coverage-unfired", UNFIRED, "Coverage incomplete: fault never fired", "budget_exhausted / coverage_incomplete: both runs finished, but the fault never fired."),
+  failedEarly("fx-no-experiment", REFUND, "no_experiment_ran", "validation_failed", "No proposal reached execution", "No experiment ran", "failed / no_experiment_ran: nothing was tested, which is not a clean result."),
+  failedEarly("fx-budget-check", JOURNEY, "budget_check_failed", "internal", "The budget check failed: disk I/O error", "Budget check failed", "failed / budget_check_failed: the check itself failed, which is not an exhausted budget."),
   awaiting("fx-coverage-violation", TRUNCATED_VIOLATION, "Violation before truncation", "Coverage is incomplete, but the violation stands and still goes to approval.", {}),
   settingsBlocked("fx-settings-blocked"),
   redacted("fx-redacted"),

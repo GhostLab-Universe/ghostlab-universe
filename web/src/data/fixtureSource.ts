@@ -7,6 +7,7 @@ import type {
   ExperimentView,
 } from "../api/api.generated.ts";
 import { SCENARIOS, type ExperimentFixture, type Scenario, type Stage } from "../fixtures/scenarios.ts";
+import { isTerminal } from "../logic/status.ts";
 import type { DataSource, Failure, Origin, Result, RunName } from "./source.ts";
 
 const PAGE_SIZE = 100;
@@ -102,6 +103,17 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
       policy_version: approval.request.policy_version,
       reason: submission.reason,
     };
+    if (isTerminal(stage!.view.record.status)) {
+      const status = submission.decision === "approve" ? ("approved" as const) : ("rejected" as const);
+      const request = { ...approval.request, status };
+      stages.set(scenario.id, { ...stage!, approval: { ...approval, request, effective_status: status, decision } });
+      const message = `Campaign is already ${stage!.view.record.status}`;
+      const error = { code: "conflict" as const, message, ref: null, retryable: false, side_effect: "none" as const };
+      return ok(
+        { decision, approval: request, resumed: false, resume_error: { error, reason: "campaign_finished" } },
+        [TEST_DOUBLE],
+      );
+    }
     if (scenario.resumeError !== undefined) {
       const status = submission.decision === "approve" ? ("approved" as const) : ("rejected" as const);
       const request = { ...approval.request, status };
@@ -171,9 +183,6 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
       respond(id, () => {
         const stage = stageOf(id);
         if (stage === undefined) return notFound("campaign");
-        if (stage.view.record.status === "awaiting_approval") {
-          return refused(409, "conflict", "Nothing is running: reject the approval to end this campaign", "awaiting_approval");
-        }
         const next = scenarioOf(id)?.cancelled;
         if (next === undefined) return refused(409, "conflict", "This campaign has finished", "campaign_finished");
         return move(id, next);

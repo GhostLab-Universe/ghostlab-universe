@@ -3,8 +3,9 @@ import type { ApprovalView, CampaignView, DecisionResult, SessionInfo } from "..
 import type { DataSource, Failure, Origin } from "../data/source.ts";
 import { actionFacts, buildSubmission, decisionGate, IdempotencyKeys, type Decision } from "../logic/approval.ts";
 import { readCoverage } from "../logic/coverage.ts";
-import { BLOCKED_ENDED_HELP, describeFailure, failureState } from "../logic/failure.ts";
+import { BLOCKED_ENDED_HELP, CAMPAIGN_FINISHED, describeFailure, failureState } from "../logic/failure.ts";
 import { formatTimestamp, prettyJson } from "../logic/format.ts";
+import { isTerminal } from "../logic/status.ts";
 import { Digest, Facts, FailureNotice, Loading, Mono, Notice, RefLabel, Section, Tag } from "../ui/components.tsx";
 import { useResource } from "../ui/hooks.ts";
 import { RepairResult } from "./CampaignPage.tsx";
@@ -40,11 +41,13 @@ export function ApprovalPage({
   const truncated = view.experiments.flatMap((experiment) => readCoverage(experiment) ?? []).find((item) => !item.complete);
   // Approved but never consumed, so a reload still shows why nothing has run.
   const blocked = view.outcome === "settings_changed";
+  const stopped = isTerminal(view.record.status);
   const unspent =
     resource.data.effective_status === "approved" &&
     view.repair === null &&
     view.job.state !== "active" &&
-    !blocked;
+    !blocked &&
+    !stopped;
 
   async function decide(approval: ApprovalView, decision: Decision, reason: string) {
     setBusy(true);
@@ -84,6 +87,7 @@ export function ApprovalPage({
         origins={resource.origins}
         unspent={unspent}
         blocked={blocked}
+        stopped={stopped}
         onDecide={(decision, reason) => void decide(resource.data, decision, reason)}
         onResume={() => void resume()}
       />
@@ -176,6 +180,7 @@ export function DecisionPanel({
   origins,
   unspent = false,
   blocked = false,
+  stopped = false,
   onDecide,
   onResume,
 }: {
@@ -187,6 +192,7 @@ export function DecisionPanel({
   origins: readonly Origin[];
   unspent?: boolean;
   blocked?: boolean;
+  stopped?: boolean;
   onDecide: (decision: Decision, reason: string) => void;
   onResume: () => void;
 }) {
@@ -198,8 +204,14 @@ export function DecisionPanel({
   const resumeFailure = refused && result.resume_error !== null
     ? describeFailure({ kind: "service", status: 409, ...result.resume_error })
     : null;
+  const canResume = resumeFailure?.reason !== CAMPAIGN_FINISHED;
   return (
     <Section title="Decision" origins={origins}>
+      {stopped && !blocked && !refused ? (
+        <Notice state="conflict" title="This campaign has stopped">
+          <p>A decision is still recorded, but it can&apos;t run anything. The approval stays unspent.</p>
+        </Notice>
+      ) : null}
       {approval.decision === null ? null : (
         <Facts
           facts={[
@@ -258,9 +270,13 @@ export function DecisionPanel({
               Reason <Mono>{resumeFailure.reason}</Mono>
             </p>
           ) : null}
-          <button type="button" disabled={busy} onClick={onResume}>
-            Resume campaign
-          </button>
+          {canResume ? (
+            <button type="button" disabled={busy} onClick={onResume}>
+              Resume campaign
+            </button>
+          ) : (
+            <p>The campaign has stopped, so this decision moved nothing and nothing ran.</p>
+          )}
         </Notice>
       ) : blocked ? (
         <Notice state="blocked" title="Blocked: settings changed" live>

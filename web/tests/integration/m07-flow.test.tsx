@@ -263,12 +263,71 @@ test("rejecting ends the campaign without a repair, and 'completed' is not succe
   assert.equal(done.repair, null);
 });
 
-test("cancelling a paused campaign is the documented conflict", async () => {
-  const { campaignId } = await pausedCampaign(client, "refund-world/1", "cancel");
-  const failure = failureOf(await client.cancelCampaign(campaignId));
-  assert.equal(failure.status, 409);
-  assert.equal(failure.reason, "awaiting_approval");
-  assert.equal(describeFailure(failure).state, "conflict");
+test("cancelling a paused campaign ends it, and a later decision moves nothing", async () => {
+  const { campaignId, live, approval } = await pausedCampaign(client, "refund-world/1", "cancel");
+  unwrap(await client.cancelCampaign(campaignId));
+  const done = await until(live, "cancelled", "completed", "failed");
+  assert.equal(done.record.status, "cancelled");
+  assert.equal(done.repair, null);
+  assert.equal(unwrap(await client.getApproval(approval.request.approval_id)).effective_status, "pending");
+
+  const decided = unwrap(await client.decideApproval(buildSubmission(approval, "approve", ""), `after-cancel-${nonce}`));
+  assert.equal(decided.resumed, false);
+  assert.equal(decided.resume_error?.reason, "campaign_finished");
+  await live.refresh();
+  assert.equal(live.getState().view?.record.status, "cancelled");
+  assert.equal(live.getState().view?.repair, null);
+  const finished = failureOf(await client.cancelCampaign(`missing-${nonce}`));
+  assert.equal(describeFailure(finished).state, "not_found");
+});
+
+test("coverage_incomplete can mean a fault never fired, with both runs finished", async () => {
+  const created = unwrap(await client.createCampaign(spec("refund-world/1", "outcome-silent-fault"), `silent-${nonce}`));
+  const live = new CampaignLive(client, created.record.campaign_id, noTimers);
+  const view = await until(live, "budget_exhausted", "completed", "failed");
+  assert.equal(view.outcome, "coverage_incomplete");
+  assert.deepEqual(view.experiments[0]?.coverage, {
+    baseline: "completed",
+    fork: "completed",
+    faults_triggered: false,
+    complete: false,
+  });
+  const page = renderToStaticMarkup(<CampaignPanel view={view} origins={SERVICE_ORIGIN} source={client} refresh={async () => undefined} />);
+  assert.match(text(page), /faults_triggered false/);
+  assert.doesNotMatch(page, /data-tone="ok"/);
+});
+
+test("no_experiment_ran is a failure, not a clean result", async () => {
+  const created = unwrap(await client.createCampaign(spec("refund-world/1", "outcome-no-experiment"), `none-${nonce}`));
+  const live = new CampaignLive(client, created.record.campaign_id, noTimers);
+  const view = await until(live, "failed", "completed", "budget_exhausted");
+  assert.equal(view.record.status, "failed");
+  assert.equal(view.outcome, "no_experiment_ran");
+  assert.deepEqual(view.experiments, []);
+  const page = renderToStaticMarkup(<CampaignPanel view={view} origins={SERVICE_ORIGIN} source={client} refresh={async () => undefined} />);
+  assert.match(text(page), /No experiment ran/);
+  assert.doesNotMatch(page, /data-tone="ok"/);
+});
+
+test("budget_check_failed is not reported as exhaustion", async () => {
+  const created = unwrap(await client.createCampaign(spec("group-journey/1", "outcome-budget-check"), `budget-${nonce}`));
+  const live = new CampaignLive(client, created.record.campaign_id, noTimers);
+  const view = await until(live, "failed", "completed", "budget_exhausted");
+  assert.equal(view.record.status, "failed");
+  assert.equal(view.outcome, "budget_check_failed");
+  assert.equal(view.errors.at(-1)?.code, "internal");
+});
+
+test("a repair that missed a fault the fork met shows lost_faults, not success", async () => {
+  const { live, approval } = await pausedCampaign(client, "group-journey/1", "lost-fault", "outcome-lost-fault");
+  unwrap(await client.decideApproval(buildSubmission(approval, "approve", ""), `lost-decision-${nonce}`));
+  const done = await until(live, "failed", "completed", "budget_exhausted");
+  assert.equal(done.record.status, "failed");
+  assert.equal(done.outcome, "repair_incomplete");
+  assert.ok(done.repair);
+  assert.deepEqual(done.repair.lost_faults, ["sharing_revoked_while_queued"]);
+  assert.equal(done.repair.held_by, null);
+  assert.equal(presentRepair(done.repair, done.outcome, "group-journey/1").tone, "warn");
 });
 
 test("a bad spec is a validation error and creates nothing", async () => {
@@ -291,7 +350,7 @@ test("coverage_incomplete: a truncated run with no failure is never success", as
   const summary = view.experiments.at(-1)!;
   assert.equal(readCoverage(summary)?.complete, false);
   const page = renderToStaticMarkup(<CampaignPanel view={view} origins={SERVICE_ORIGIN} source={client} refresh={async () => undefined} />);
-  assert.match(text(page), /A run that stopped early proves nothing/);
+  assert.match(text(page), /this proves nothing/);
   assert.match(text(page), /complete false/);
   assert.doesNotMatch(page, /data-tone="ok"/);
 

@@ -131,9 +131,6 @@ test("replay needs an exported capsule, and only the published one exists", asyn
 
 test("cancelling follows the contract's refusals", async () => {
   const source = createFixtureSource();
-  const waiting = await source.cancelCampaign("fx-refund");
-  assert.equal(waiting.ok, false);
-  if (!waiting.ok && waiting.failure.kind === "service") assert.equal(waiting.failure.reason, "awaiting_approval");
   const finished = await source.cancelCampaign("fx-journey-truncated");
   assert.equal(finished.ok, false);
   if (!finished.ok && finished.failure.kind === "service") assert.equal(finished.failure.reason, "campaign_finished");

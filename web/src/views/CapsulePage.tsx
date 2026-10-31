@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
 import type { CampaignView, CapsuleInfo, ExperimentView, ReplayResult } from "../api/api.generated.ts";
 import type { DataSource, Failure, Origin, RunName } from "../data/source.ts";
+import { readCoverage } from "../logic/coverage.ts";
+import { violatingEventIds } from "../logic/evidence.ts";
 import { presentReplay } from "../logic/replay.ts";
 import { Digest, Facts, FailureNotice, Mono, Section, Tag } from "../ui/components.tsx";
-import { ExperimentGate, ExperimentPicker, useExperiment } from "./experimentData.tsx";
+import { CoverageNotice, ExperimentGate, ExperimentPicker, useExperiment } from "./experimentData.tsx";
 
 export function CapsulePage({
   source,
@@ -20,11 +22,18 @@ export function CapsulePage({
       {(experiment, origins) => (
         <>
           <ExperimentPicker view={view} current={experiment.experiment_id} target="capsule" />
+          <CapsuleCoverage experiment={experiment} />
           <CapsuleControls source={source} campaignId={view.record.campaign_id} experiment={experiment} origins={origins} />
         </>
       )}
     </ExperimentGate>
   );
+}
+
+function CapsuleCoverage({ experiment }: { experiment: ExperimentView }) {
+  const coverage = readCoverage(experiment);
+  if (coverage === null) return null;
+  return <CoverageNotice coverage={coverage} violations={violatingEventIds(experiment.findings).length} />;
 }
 
 function CapsuleControls({

@@ -19,6 +19,7 @@ const base: RepairView = {
   execution: { mode: "enforced", guarded: true },
   guard_denials: [],
   held_by: null,
+  lost_faults: [],
   refunded_minor: null,
 };
 
@@ -77,12 +78,12 @@ test("repair_did_not_hold is a failure", () => {
 });
 
 test("an authorized repair with no result yet shows nothing as recorded", () => {
-  const pending = { ...base, run: null, run_status: null, safety_held: null, task_complete: null };
+  const pending = { ...base, run: null, run_status: null, safety_held: null, task_complete: null, lost_faults: null };
   const view = presentRepair(pending, null, JOURNEY);
   assert.equal(view.tone, "active");
   assert.deepEqual(
     view.fields.filter((field) => !field.recorded).map((field) => field.label),
-    ["run_status", "safety_held", "task_complete", "held_by"],
+    ["run_status", "safety_held", "task_complete", "lost_faults", "held_by"],
   );
 });
 
@@ -93,6 +94,31 @@ test("held_by null is explained, and differs by world", () => {
   assert.match(journey?.value ?? "", /only a verified repair/);
   assert.equal(refund?.recorded, false);
   assert.match(refund?.value ?? "", /not recorded for this world/);
+});
+
+test("recorded: a repair that missed a fault never reads as success, even with safety and task true", () => {
+  const { repair, outcome, campaign_status: status } = recorded.journey_repair_lost_fault;
+  assert.equal(status, "failed");
+  assert.equal(outcome, "repair_incomplete");
+  assert.equal(repair.safety_held, true, "the trap: everything else looks fine");
+  assert.equal(repair.task_complete, true);
+  assert.deepEqual(repair.lost_faults, ["sharing_revoked_while_queued"]);
+  const view = presentRepair(repair, outcome, JOURNEY);
+  assert.equal(view.tone, "warn");
+  assert.match(view.detail, /never met sharing_revoked_while_queued/);
+  assert.equal(value(repair, outcome, "lost_faults"), "sharing_revoked_while_queued");
+});
+
+test("a lost fault outweighs a record that claims verified", () => {
+  const claimed: RepairView = { ...base, verified: true, task_complete: true, lost_faults: ["a_fault"] };
+  const view = presentRepair(claimed, "repair_verified", JOURNEY);
+  assert.equal(view.tone, "fail");
+  assert.equal(view.headline, "Inconsistent repair record");
+});
+
+test("no lost faults reads as none, and an older record as not recorded", () => {
+  assert.equal(value(base, "repair_incomplete", "lost_faults"), "none");
+  assert.equal(value({ ...base, lost_faults: null }, "repair_incomplete", "lost_faults"), "not recorded yet");
 });
 
 test("recorded values appear verbatim", () => {

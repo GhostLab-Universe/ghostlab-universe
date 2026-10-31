@@ -2,8 +2,8 @@
 
 plan → propose (Explorer, M01 via M03 context) → validate → execute (baseline and
 fork, M06-authorized world calls) → verify (deterministic findings) → remember
-(M04 memory) → [request_repair → await_approval ⟲ → consume → execute_repair →
-remember_repair] → plan … → end.
+(M04 memory) → plan … → end, or → request_repair → await_approval ⟲ → consume →
+execute_repair → remember_repair → end.
 
 Trust rules:
 
@@ -328,12 +328,11 @@ class CampaignController:
                 self._discard_earlier_runs(state, f"{self._prefix(state)}-execute")
             elif name == "execute_repair":
                 self._discard_earlier_runs(state, f"{state['campaign_id']}-execute-repair")
-            if self._unusable(state):
-                if state.get("finished_at"):
-                    return {"next": "end"}  # the outcome stands; only its memory is left
-                # With no usable world, only a stop can move the campaign, at whichever node.
-                if (stop := self._guard(state)) is not None:
-                    return stop
+            # With no usable world, only a stop can move the campaign, at whichever node.
+            # A finished campaign has nothing to stop: its memory waits for the world.
+            if not state.get("finished_at") and self._unusable(state) and (
+                    stop := self._guard(state)) is not None:
+                return stop
             return node(state)
         return run
 

@@ -130,7 +130,7 @@ class CampaignView(StrictModel):
     record: WorldCampaignRecord
     inference: InferenceMode  # what produced this campaign's proposals
     outcome: ShortText | None  # final outcomes are listed in docs/modules/M07.md
-    fixture_sha256: Sha256Hex | None  # the pinned fixture; null on an older refund checkpoint
+    fixture_sha256: Sha256Hex | None  # the pinned fixture; null if the checkpoint has none
     job: JobStatus
     tasks: list[TaskSpec] = Field(max_length=256)
     approval: ApprovalSummary | None

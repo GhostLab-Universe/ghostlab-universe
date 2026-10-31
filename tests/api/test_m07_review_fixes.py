@@ -101,7 +101,8 @@ def test_the_lock_is_on_the_storage_root(tmp_path):
 # -- P2: shutdown is not a cancel ------------------------------------------------------------
 
 def test_a_shutdown_writes_no_outcome_nobody_asked_for(tmp_path, monkeypatch):
-    monkeypatch.setattr(jobs_module, "SHUTDOWN_GRACE_S", 0.2)
+    # Long enough that a worker ignoring the stop signal would reach the approval pause.
+    monkeypatch.setattr(jobs_module, "SHUTDOWN_GRACE_S", 1.0)
     holder = {}
 
     def until_shutdown(name, state):

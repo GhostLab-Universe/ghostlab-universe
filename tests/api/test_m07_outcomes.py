@@ -10,6 +10,7 @@ import pytest
 
 from conftest import spec_json
 from ghostlab.api.jobs import Job
+from ghostlab.api.rootlock import LOCK_NAME
 from ghostlab.api.sessions import ApiSession, TokenSessions
 from ghostlab.budgets import BudgetAccountant
 from ghostlab.orchestration.worlds import DEFAULT_WORLDS, JourneyDriver
@@ -364,7 +365,8 @@ def test_a_credential_in_a_decision_reason_is_refused_and_records_nothing(stack)
 def test_a_credential_in_a_spec_never_reaches_storage(stack, tmp_path):
     api = stack(proposal())
     api.post("/v1/campaigns", key="k", json={**spec_json(), "objective": f"Key {SECRET}"})
-    stored = b"".join(path.read_bytes() for path in tmp_path.rglob("*") if path.is_file())
+    stored = b"".join(path.read_bytes() for path in tmp_path.rglob("*")
+                      if path.is_file() and path.name != LOCK_NAME)  # locked, and always empty
     assert SECRET.encode() not in stored
 
 

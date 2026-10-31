@@ -414,7 +414,7 @@ def test_deleting_or_flipping_findings_in_evidence_blocks(evaluated, tmp_path):
 
 def test_findings_are_pinned_in_the_fingerprint(evaluated):
     case = next(c for c in score_directory(evaluated[0])["cases"] if c["case_id"] == "flow.refund")
-    pinned = case["fingerprint"]["campaigns"]["main"]["findings"]
+    pinned = [item[:3] for item in case["fingerprint"]["campaigns"]["main"]["findings"]]
     assert ["fork", "total_refund_within_payment", "failed"] in pinned
     assert ["repaired", "total_refund_within_payment", "passed"] in pinned
 
@@ -675,9 +675,14 @@ def test_a_tree_that_changes_during_the_run_is_dirty(tmp_path, monkeypatch):
 def test_the_release_ignores_a_working_tree_that_blesses_a_regression(bound, tmp_path):
     """Probe: regress, rewrite expected.json locally, release. The commit's own file decides."""
     clone = tmp_path / "clone"
-    subprocess.run(["git", "clone", "-q", str(ROOT), str(clone)], check=True)
-    subprocess.run(["git", "-C", str(clone), "fetch", "-q", str(ROOT), COMMIT], check=True)
-    subprocess.run(["git", "-C", str(clone), "checkout", "-q", COMMIT], check=True)
+    subprocess.run(["git", "init", "-q", str(clone)], check=True)
+    objects = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--path-format=absolute",
+                              "--git-common-dir"], capture_output=True, text=True,
+                             check=True).stdout.strip()
+    # A checkout that shares ROOT's objects and holds anything in its working tree.
+    alternates = clone / ".git" / "objects" / "info" / "alternates"
+    alternates.write_bytes(f"{objects}/objects\n".encode())  # no CRLF: git reads the raw line
+    (clone / "evals").mkdir()
     out = tmp_path / "regressed"
     shutil.copytree(bound, out)
     edit_evidence(out, "flow.refund", lambda d: d["observations"].update(regressed=True))
@@ -687,7 +692,8 @@ def test_the_release_ignores_a_working_tree_that_blesses_a_regression(bound, tmp
     (clone / "uv.lock").write_text("changed locally", "utf-8")
     record = release(out, repo=clone)
     assert record["promotable"] is False
-    assert any("flow.refund.observations.regressed" in item for item in record["blockers"])
+    assert any("flow.refund.observations.regressed" in item
+               for item in record["blockers"]), record["blockers"]
     assert record["evaluation"]["expected_sha256"] == hashlib.sha256(
         subprocess.run(["git", "-C", str(ROOT), "show", f"{COMMIT}:evals/expected.json"],
                        capture_output=True, check=True).stdout.replace(b"\r\n", b"\n")).hexdigest()
@@ -759,7 +765,7 @@ def test_a_live_claim_without_a_report_proves_nothing_and_leaves_promotion_alone
 
 
 def test_the_candidate_cant_be_its_own_rollback(bound):
-    record = release(bound, commit=TARGETS["rollback_target"]["commit"])
+    record = release(bound, commit=TARGETS["rollback_target"]["commit"], targets=TARGETS)
     assert "the candidate equals its own rollback target" in record["blockers"]
 
 

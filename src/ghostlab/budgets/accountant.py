@@ -91,6 +91,9 @@ class BudgetAccountant:
     def release(self, reservation: BudgetReservation):
         self.ledger.release(reservation.reservation_id)
 
+    def void_task(self, task_id: str, resource: str):
+        self.ledger.void_task(self.campaign_id, task_id, resource)
+
     def model_attempt_gate(self, task_id: str, *, max_output_tokens: int, input_tokens: int,
                            task_limits: BudgetLimits,
                            deadline_passed: Callable[[], bool] | None = None) -> "AttemptGate":

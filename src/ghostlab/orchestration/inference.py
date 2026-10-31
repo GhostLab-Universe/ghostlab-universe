@@ -39,7 +39,8 @@ class LiveInferenceAuthorization:
     compatibility_report: Path    # M01 probe report from a live run
     confirm_paid_calls: bool
 
-    def check(self, config: ProviderConfig, campaign_limits: BudgetLimits):
+    def check(self, config: ProviderConfig, campaign_limits: BudgetLimits,
+              schema: str = "experiment_proposal"):
         if not self.confirm_paid_calls:
             raise LiveInferenceRefused("paid calls were not confirmed")
         if self.model != config.model:
@@ -50,6 +51,8 @@ class LiveInferenceAuthorization:
             report = json.loads(self.compatibility_report.read_text(encoding="utf-8"))
         except (OSError, ValueError) as error:
             raise LiveInferenceRefused("compatibility report is missing or unreadable") from error
+        if not isinstance(report, dict):
+            raise LiveInferenceRefused("compatibility report is not a JSON object")
         if (report.get("live") is not True or report.get("transport") != "network"
                 or report.get("mode") != "live"):
             raise LiveInferenceRefused("compatibility report is not from a live run")
@@ -67,10 +70,15 @@ class LiveInferenceAuthorization:
         if missing:
             raise LiveInferenceRefused(
                 f"compatibility report lacks required checks: {sorted(missing)}")
+        # M01's probe tests the refund proposal; another schema needs its own proof.
+        proven = report.get("structured_schemas", ["experiment_proposal"])
+        if not isinstance(proven, list) or schema not in proven:
+            raise LiveInferenceRefused(f"compatibility report doesn't cover {schema}")
 
 
 def require_inference_allowed(runtime: Runtime, config: ProviderConfig, limits: BudgetLimits,
-                              live: LiveInferenceAuthorization | None) -> BudgetLimits:
+                              live: LiveInferenceAuthorization | None,
+                              *, schema: str = "experiment_proposal") -> BudgetLimits:
     """Return the effective limits; refuse any non-mock runtime without authorization.
 
     Only an ``httpx.MockTransport`` keeps requests in-process. ``None`` (the
@@ -83,7 +91,7 @@ def require_inference_allowed(runtime: Runtime, config: ProviderConfig, limits: 
         raise LiveInferenceRefused("a network runtime needs LiveInferenceAuthorization")
     if not config.credential.source.startswith("env:"):
         raise LiveInferenceRefused("live calls need a key read from the environment")
-    live.check(config, limits)
+    live.check(config, limits, schema)
     return limits.model_validate({**limits.model_dump(),
                                   "max_model_calls": live.max_model_calls})
 
@@ -96,6 +104,7 @@ class ProposalOutcome:
     bundle_sha256: str
     attempts: int
     exhausted: str | None        # resource whose budget stopped the call
+    budget_error: str | None = None  # the check itself failed; nothing was exhausted
 
 
 class ExplorerClient:
@@ -113,13 +122,17 @@ class ExplorerClient:
                 objective: str, success_criteria: tuple[str, ...], as_of: str,
                 questions: tuple[str, ...], accountant: BudgetAccountant,
                 task_limits: BudgetLimits, remaining_ms: int,
-                deadline_passed: Callable[[], bool], cancel=None) -> ProposalOutcome:
+                deadline_passed: Callable[[], bool], cancel=None,
+                skill_id: str = "propose-refund-scenario",
+                world_version: str = "refund-world/1",
+                proposal_model=ExperimentProposal) -> ProposalOutcome:
         compiled = self.compiler.compile(ContextRequest(
             bundle_id=f"bundle-{task_id}", campaign_id=campaign_id, task_id=task_id,
             role="explorer", scope=scope, objective=objective,
-            success_criteria=success_criteria, skill_id="propose-refund-scenario",
+            success_criteria=success_criteria, skill_id=skill_id,
             as_of=as_of, compiled_at=as_of, token_budget=self.token_budget,
-            questions=questions, memory=MemorySelection(campaign_id=None, limit=10)))
+            questions=questions, memory=MemorySelection(
+                world_version=world_version, campaign_id=None, limit=10)))
         bundle = compiled.bundle
         probe = self.adapter_factory(self.runtime)
         if remaining_ms < 1 or deadline_passed():
@@ -147,9 +160,12 @@ class ExplorerClient:
         gate.settle(reply)
         proposal = None
         if reply.status == "completed" and reply.structured_output is not None:
-            proposal = ExperimentProposal.model_validate(reply.structured_output)
+            proposal = proposal_model.model_validate(reply.structured_output)
         invocation = dataclasses.asdict(compiled.invocation)
+        stopped = gate.exhausted
+        broken = stopped is not None and stopped.scope in {"ledger", "deadline"}
         return ProposalOutcome(
             proposal.model_dump(mode="json") if proposal else None,
             reply.model_dump(mode="json"), invocation, compiled.sha256, len(gate.attempts),
-            gate.exhausted.resource if gate.exhausted else None)
+            stopped.resource if stopped and not broken else None,
+            stopped.resource if broken else None)

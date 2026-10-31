@@ -727,6 +727,18 @@ def test_a_lease_lapses_at_its_deadline_and_a_confirmation_stops_the_clock():
     assert verify(fixture, world.snapshot())["confirmations_backed_by_reservations"] is True
 
 
+def test_a_committed_lease_keeps_its_capacity_past_its_deadline():
+    fixture = replace(FIXTURE, lease_ttl_events=2)
+    world = RelayWorld(fixture, CLEAN)
+    reserve(world, "job-2", TECH_A, "k1")   # event 1: its deadline is event 3
+    confirm(world, "job-2")                 # event 2: committed
+    inspect(world, "job-2")
+    inspect(world, "job-2")                 # event 4: past the deadline, and still promised
+    reserve(world, "job-1", TECH_A, "k2")   # event 5: oversold
+    detail = verify_details(fixture, world.snapshot())["allocations_within_capacity"]
+    assert (detail["passed"], detail["evidence_event_ids"]) == (False, [5])
+
+
 def test_an_expired_lease_frees_its_capacity():
     fixture = replace(FIXTURE, lease_ttl_events=1)
     world = RelayWorld(fixture, CLEAN)

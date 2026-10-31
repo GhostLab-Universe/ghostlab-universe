@@ -1,0 +1,2939 @@
+{
+ "base_commit": "c0a13cc",
+ "case_count": 114,
+ "cases": [
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-001",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-002",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-003",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-004",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-005",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-006",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-007",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-008",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-009",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-010",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-011",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-012",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-013",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-014",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-015",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-016",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-017",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-018",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-019",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-020",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-021",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-022",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-023",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-024",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-025",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-026",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-027",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-028",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-029",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-030",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-031",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-032",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 17,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-033",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-034",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-035",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 15,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-036",
+   "fault_set": [
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-037",
+   "fault_set": [
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-038",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 9,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-039",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 11,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-040",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 14,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-041",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 7,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-042",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 17,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-043",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-044",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-045",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-046",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-047",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-048",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-049",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-050",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 3,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-051",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-052",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-053",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 11,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-054",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 14,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-055",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 4,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-056",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 15,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-naive",
+   "case_id": "heldout-057",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-058",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-059",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-060",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-061",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-062",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-063",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-064",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-065",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-066",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-067",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-068",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-069",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-070",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-071",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-072",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-073",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-074",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-075",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-076",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-077",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-078",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-079",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-080",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-081",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-082",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-083",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-084",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-085",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-086",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-087",
+   "fault_set": [
+    "sharing_revoked_while_queued"
+   ],
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-088",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-089",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 17,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-090",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-091",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 3,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-092",
+   "fault_set": [
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 10,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-093",
+   "fault_set": [
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-094",
+   "fault_set": [
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-095",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 4,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-096",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 15,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-097",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-098",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 18,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-099",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory"
+   ],
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-100",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-101",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-102",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-103",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-104",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-105",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-106",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-107",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-108",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-109",
+   "fault_set": [
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-110",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 15,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-111",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-112",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 3,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-113",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 20,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "adapter": "journey-version-checked",
+   "case_id": "heldout-114",
+   "fault_set": [
+    "sharing_revoked_while_queued",
+    "stale_preference_memory",
+    "delayed_itinerary_update"
+   ],
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 14,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "classification": {
+  "errored": "the case raised, or no fork run was stored",
+  "failure_found": "journey_oracle finds an unpermitted delivery or a stale commitment in the stored fork run, whatever coverage says",
+  "fault_fired_no_violation": "the oracle finds no violation and coverage.complete is true",
+  "inconclusive": "the oracle finds no violation and coverage.complete is false",
+  "unsafe_enforced_run": "journey_oracle finds a violation or mutated_on_denial in the stored repaired run; the controller's safety_held is not read"
+ },
+ "exclusions": [
+  {
+   "fault_id": "sharing_revoked_while_queued",
+   "found_in": {
+    "0": [
+     "tests/simulation/test_m02_journey.py:391"
+    ],
+    "10": [
+     "tests/orchestration/test_m05_journey_campaign.py:1294"
+    ],
+    "1000": [
+     "tests/orchestration/test_m05_journey_campaign.py:1288"
+    ],
+    "11": [
+     "tests/orchestration/test_m05_journey_campaign.py:1294",
+     "tests/orchestration/test_m05_journey_campaign.py:608",
+     "evals/cases.py:587"
+    ],
+    "12": [
+     "tests/orchestration/test_m05_journey_campaign.py:238"
+    ],
+    "14": [
+     "tests/orchestration/test_m05_journey_campaign.py:608"
+    ],
+    "15": [
+     "evals/cases.py:541"
+    ],
+    "17": [
+     "tests/integration/test_m09_campaign_trace.py:79",
+     "tests/orchestration/test_m05_journey_campaign.py:40",
+     "tests/orchestration/test_m05_journey_campaign.py:231",
+     "tests/orchestration/test_m05_journey_campaign.py:1041",
+     "tests/orchestration/test_m05_journey_campaign.py:1048",
+     "tests/orchestration/test_m05_journey_campaign.py:1055",
+     "tests/orchestration/test_m05_journey_campaign.py:216",
+     "evals/cases.py:197"
+    ],
+    "2": [
+     "tests/orchestration/test_m05_journey_campaign.py:1289",
+     "tests/orchestration/test_m05_journey_campaign.py:1292",
+     "tests/orchestration/test_m05_journey_campaign.py:1241"
+    ],
+    "3": [
+     "tests/simulation/test_m02_journey.py:198"
+    ],
+    "4": [
+     "tests/simulation/test_m02_journey.py:398"
+    ],
+    "5": [
+     "tests/context/test_m03_journey.py:171",
+     "tests/context/test_m03_journey.py:198"
+    ],
+    "999": [
+     "tests/orchestration/test_m05_journey_campaign.py:1288"
+    ],
+    "None": [
+     "tests/context/test_m03_journey.py:169",
+     "tests/context/test_m03_journey.py:196",
+     "tests/orchestration/m05_journey_harness.py:23",
+     "tests/orchestration/m05_journey_harness.py:30",
+     "tests/orchestration/test_m05_journey_campaign.py:1282",
+     "tests/orchestration/test_m05_journey_campaign.py:1289",
+     "tests/orchestration/test_m05_journey_campaign.py:1291",
+     "tests/orchestration/test_m05_journey_campaign.py:1292",
+     "tests/orchestration/test_m05_journey_campaign.py:1293",
+     "tests/orchestration/test_m05_journey_campaign.py:1304",
+     "tests/orchestration/test_m05_journey_campaign.py:1353",
+     "tests/orchestration/test_m05_journey_campaign.py:282",
+     "tests/orchestration/test_m05_journey_campaign.py:1033",
+     "tests/orchestration/test_m05_journey_campaign.py:995",
+     "tests/orchestration/test_m05_journey_campaign.py:1138",
+     "tests/orchestration/test_m05_journey_campaign.py:216",
+     "tests/simulation/test_m02_journey.py:230"
+    ]
+   },
+   "values": [
+    null,
+    0,
+    2,
+    3,
+    4,
+    5,
+    10,
+    11,
+    12,
+    14,
+    15,
+    17,
+    999,
+    1000
+   ]
+  },
+  {
+   "fault_id": "stale_preference_memory",
+   "found_in": {
+    "5": [
+     "tests/context/test_m03_journey.py:171"
+    ],
+    "None": [
+     "tests/context/test_m03_journey.py:169",
+     "tests/orchestration/test_m05_journey_campaign.py:244",
+     "tests/orchestration/test_m05_journey_campaign.py:1008",
+     "tests/orchestration/test_m05_journey_campaign.py:1278"
+    ]
+   },
+   "values": [
+    null,
+    5
+   ]
+  },
+  {
+   "fault_id": "delayed_itinerary_update",
+   "found_in": {
+    "0": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "1": [
+     "tests/context/test_m03_journey.py:227",
+     "tests/orchestration/test_m05_journey_campaign.py:1312"
+    ],
+    "10": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "11": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "12": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "13": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "14": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "15": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "16": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "17": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "18": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "2": [
+     "tests/context/test_m03_journey.py:227",
+     "tests/simulation/test_m02_journey.py:406"
+    ],
+    "3": [
+     "tests/context/test_m03_journey.py:227",
+     "tests/orchestration/test_m05_journey_campaign.py:603",
+     "tests/orchestration/test_m05_journey_campaign.py:611",
+     "evals/cases.py:587"
+    ],
+    "4": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "5": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "6": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "7": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "8": [
+     "tests/context/test_m03_journey.py:227"
+    ],
+    "9": [
+     "tests/context/test_m03_journey.py:227"
+    ]
+   },
+   "values": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+   ]
+  }
+ ],
+ "known_limits": [
+  "Tests already sweep delay_events 0 to 18, so only 19 and 20 are left, and no adapter is expected to read the update that late. They stay in the universe rather than being filtered out, so this says nothing new about that fault's timing, and a case carrying it is unlikely to reach complete coverage.",
+  "journey_oracle checks deliveries and commitments. It has no independent check of mandatory_participants_feasible, so that invariant is reported from the controller's findings and a repair for it alone would show as an integrity failure, not as failure_found."
+ ],
+ "max_tool_calls": 20,
+ "per_stratum": 5,
+ "rule": "Universe: both adapters, each non-empty set of the three faults, recipient or preference version from the fixture, after_event null or 1 to the cap, delay_events 0 to the cap. Remove any case with a fault whose timing value is in the exclusions, whatever its recipient or adapter. Strata are (adapter, fault set). Take the revocation-only strata whole. From each other stratum take per_stratum cases with random.Random(seed).sample, walking strata in order, or all of them if there are fewer.",
+ "schema": "ghostlab-heldout/1",
+ "seed": 20261031,
+ "selection_sha256": "4a89149fe660ae5a8c91e2b482256a20d6827672c0a4a7892d7ac2b1bbb6a5c5",
+ "world": "group-journey/1"
+}

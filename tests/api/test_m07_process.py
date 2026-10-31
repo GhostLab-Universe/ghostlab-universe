@@ -10,7 +10,9 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 import httpx
@@ -40,7 +42,7 @@ def free_port():
 def environment(**changes):
     env = {key: value for key, value in os.environ.items()
            if key not in {"MODEL_API_KEY", "BASETEN_API_KEY", "GHOSTLAB_DEPLOYMENT"}}
-    return {**env, "GHOSTLAB_AUTH_MODE": "local_dev", "LANGSMITH_TRACING": "false", **changes}
+    return {**env, "GHOSTLAB_AUTH_MODE": "local_dev", **changes}
 
 
 def spawn(root, port, *extra, command=None, **env):
@@ -275,23 +277,109 @@ def test_a_second_process_is_refused_and_a_crash_does_not_block_a_restart(tmp_pa
         stop(restarted)
 
 
-def test_one_key_sent_at_two_servers_cannot_pay_twice(tmp_path):
-    """The critic's repro: the second server can't exist, so one key meets one campaign."""
+class Sink(BaseHTTPRequestHandler):
+    """Stands in for LangSmith, on loopback. Every request a server sends lands here."""
+
+    seen: list = []
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("content-length") or 0))
+        type(self).seen.append((self.path, dict(self.headers)))
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"{}")
+
+    do_GET = do_PATCH = do_POST
+
+    def log_message(self, *_):
+        pass
+
+
+@pytest.fixture
+def sink():
+    Sink.seen = []
+    server = HTTPServer(("127.0.0.1", 0), Sink)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        yield server.server_address[1]
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+TRACE_KEY = "lsv2_pt_fakefakefakefakefakefake"
+
+
+def tracing_on(sink_port):
+    """Everything that could turn tracing on, pointed at the sink. Proxies lead nowhere."""
+    return {"LANGSMITH_TRACING": "true", "LANGSMITH_TRACING_V2": "true",
+            "LANGCHAIN_TRACING_V2": "true", "LANGCHAIN_TRACING": "true",
+            "LANGSMITH_API_KEY": TRACE_KEY, "LANGCHAIN_API_KEY": TRACE_KEY,
+            "LANGSMITH_ENDPOINT": f"http://127.0.0.1:{sink_port}",
+            "LANGCHAIN_ENDPOINT": f"http://127.0.0.1:{sink_port}",
+            "MODEL_API_KEY": "sk-should-never-be-read-0123456789",
+            "HTTP_PROXY": "http://127.0.0.1:9", "HTTPS_PROXY": "http://127.0.0.1:9",
+            "NO_PROXY": "127.0.0.1"}
+
+
+FLUSH_S = 4  # LangSmith sends in the background; give it time to try
+
+
+def test_scripted_mode_sends_nothing_with_tracing_on_and_needs_no_key(tmp_path, sink):
+    port = free_port()
+    process = spawn(tmp_path / "root", port, "--scripted", **tracing_on(sink))
+    try:
+        wait_up(process, port)
+        with client(port) as http:
+            campaign_id = create(http, JOURNEY, "traced")
+            paused = wait(http, campaign_id, "awaiting_approval")
+            decide(http, paused, "decision")
+            assert wait(http, campaign_id, "completed")["outcome"] == "repair_verified"
+        time.sleep(FLUSH_S)
+        assert Sink.seen == []
+    finally:
+        stop(process)
+
+
+def test_a_plain_server_sends_nothing_with_tracing_on(tmp_path, sink):
     root, port = tmp_path / "root", free_port()
     first = spawn(root, port, "--scripted")
     try:
         wait_up(first, port)
-        second = spawn(root, free_port(), "--scripted")
-        second.communicate(timeout=60)
-        assert second.returncode == 2
         with client(port) as http:
-            one = create(http, REFUND, "same-key")
-            two = create(http, REFUND, "same-key")
-            assert one == two
-            view = wait(http, one, "awaiting_approval")
-            assert view["record"]["usage"]["model_calls"] == 1
+            campaign_id = create(http, REFUND, "traced")
+            wait(http, campaign_id, "awaiting_approval")
     finally:
         stop(first)
+
+    port = free_port()
+    plain = spawn(root, port, **tracing_on(sink))
+    try:
+        assert wait_up(plain, port)["inference"] == "disabled"
+        with client(port) as http:  # closing runs the graph with no inference
+            assert http.post(f"/v1/campaigns/{campaign_id}/cancel").status_code == 202
+            view = wait(http, campaign_id, "cancelled")
+            assert view["inference"] == "scripted"  # the label stays with the campaign
+        time.sleep(FLUSH_S)
+        assert Sink.seen == []
+    finally:
+        stop(plain)
+
+
+@pytest.mark.parametrize("project", ["has space", "p" * 100])
+def test_a_project_that_cannot_work_is_refused_at_startup(tmp_path, project):
+    process = spawn(tmp_path / "root", free_port(), "--project", project)
+    _, errors = process.communicate(timeout=60)
+    assert process.returncode == 2
+    assert "--project" in errors
+
+
+def test_a_retried_key_on_the_real_server_pays_once(scripted):
+    http, _ = scripted
+    one = create(http, REFUND, "same-key")
+    two = create(http, REFUND, "same-key")
+    assert one == two
+    assert wait(http, one, "awaiting_approval")["record"]["usage"]["model_calls"] == 1
 
 
 def test_openapi_and_session_agree_on_the_mode(scripted):

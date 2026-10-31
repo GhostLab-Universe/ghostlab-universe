@@ -14,7 +14,7 @@ import dataclasses
 import hashlib
 import json
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -23,6 +23,7 @@ import httpx
 from fastapi.responses import Response
 from pydantic import ValidationError
 
+from ghostlab.budgets import utc_timestamp
 from ghostlab.capsule import MAX_CAPSULE_BYTES
 from ghostlab.contracts import (ApprovalDecision, ApprovalRequest, ApprovalSubmission, CapsuleV1,
                                 ErrorInfo, ExperimentEvent, Provenance, Ref, TaskSpec)
@@ -39,7 +40,7 @@ from ghostlab.policy import (ApprovalDenied, ApproverAuthority, PolicyDenied, ac
                              authorize_capability, authorize_world, root_scope)
 from ghostlab.policy.authorization import deny
 from ghostlab.security.redaction import Redactor
-from ghostlab.storage.interfaces import Conflict
+from ghostlab.storage.interfaces import Conflict, NotFound
 
 from .errors import ApiError, describe, not_found
 from .jobs import Job, JobRegistry, ServerStopping
@@ -47,7 +48,8 @@ from .models import (ApprovalSummary, ApprovalView, CampaignView, CapsuleImport,
                      Coverage, DecisionResult, ErrorResponse, EventPage, ExecutionRecord,
                      ExperimentSummary, ExperimentView, GuardDenial, JobStatus, RealityDiffView,
                      ReplayResult, RepairView, RunName, RunView, SessionInfo)
-from .scripted import DEFAULT_SCENARIO, SCRIPTED_ENDPOINT, available, scripted_runtime
+from .scripted import (DEFAULT_SCENARIO, SCRIPTED_ENDPOINT, ScriptedProposals, available,
+                       scripted_runtime)
 from .sessions import ApiSession
 
 CANCEL_WAIT_S = 10.0  # how long a cancel waits to learn whether it ended a stopped campaign
@@ -81,6 +83,18 @@ def _capsule_bytes(envelope: dict) -> bytes:
     return (json.dumps(envelope, indent=2) + "\n").encode()
 
 
+def _keys(value) -> Iterator[str]:
+    """Every dict key, at any depth. ``Redactor.value`` reads keys but never scrubs them."""
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, dict):
+            yield from item
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
+
+
 class ControlPlane:
     def __init__(self, config: ApiConfig, saver):
         self.config, self.services, self.saver = config, config.services, saver
@@ -88,6 +102,7 @@ class ControlPlane:
         self.jobs = JobRegistry(limit=config.max_active_campaigns,
                                 on_failure=self._record_failure)
         self._failures: dict[str, ErrorInfo] = {}
+        self._origins: dict[str, dict] = {}
 
     # -- plumbing ---------------------------------------------------------------------
 
@@ -107,25 +122,61 @@ class ControlPlane:
 
     def _launch(self, session: TrustedSession, campaign_id: str,
                 call: Callable[[CampaignController], object], *, cancel: bool = False,
-                follow: bool = False, runtime=None) -> tuple[Job, bool]:
+                follow: bool = False, scenario: str | None = None) -> tuple[Job, bool]:
+        """``scenario`` is given only by a start, which also pins the campaign's origin."""
         key = ledger_key(session.project_id, campaign_id)
 
         def work(job: Job):
             self._failures.pop(key, None)
             hook = self.services.on_node
+            replies = None
+            if self.config.scripted:
+                origin = self._origin(session, campaign_id) or {}
+                replies = ScriptedProposals(
+                    scenario or origin.get("scripted_scenario") or DEFAULT_SCENARIO)
 
             def on_node(name, state):
+                if scenario is not None and not job.entered:
+                    self._pin_origin(session, campaign_id, scenario)
                 job.entered = True  # the checkpoint exists: this campaign can be read
                 job.settled.set()
                 if self.jobs.stopping.is_set():
                     raise ServerStopping()
+                if replies is not None:
+                    replies.observe(state)
                 hook(name, state)
 
-            services = dataclasses.replace(self.services, on_node=on_node,
-                                           runtime=runtime or self.services.runtime)
+            services = dataclasses.replace(
+                self.services, on_node=on_node,
+                runtime=scripted_runtime(replies) if replies else self.services.runtime)
             call(self._controller(session, services=services, cancel=job.cancel))
 
         return self.jobs.submit(key, work, cancel=cancel, follow=follow)
+
+    def _pin_origin(self, session, campaign_id: str, scenario: str) -> None:
+        """What produced this campaign, fixed at start, so no later server can relabel it."""
+        origin = {"inference": self._inference(),
+                  "scripted_scenario": scenario if self.config.scripted else None}
+        stamp = utc_timestamp(self.services.clock())
+        provenance = Provenance(source_kind="controller", source_ref=None, observed_at=stamp,
+                                trust="trusted")
+        view = self.services.artifacts.for_project(self._scope(session))
+        try:
+            view.put(json.dumps(origin, sort_keys=True).encode(), name=f"{campaign_id}-origin",
+                     media_type="application/json", provenance=provenance, created_at=stamp)
+        except Conflict:
+            pass  # a restart of this same start; the first pin stands
+
+    def _origin(self, session, campaign_id: str) -> dict | None:
+        key = ledger_key(session.project_id, campaign_id)
+        if key not in self._origins:
+            view = self.services.artifacts.for_project(self._scope(session))
+            try:
+                data = view.read(view.ref(view.artifact_id(f"{campaign_id}-origin")))
+            except NotFound:
+                return None
+            self._origins[key] = json.loads(data)
+        return self._origins[key]
 
     def _text(self, value: str) -> str:
         return self.redactor.text(value)[:MAX_TEXT]
@@ -165,10 +216,13 @@ class ControlPlane:
         return ("fixture" if isinstance(transport, httpx.MockTransport)
                 else "live" if self.services.live is not None else "disabled")
 
-    def _campaign_inference(self, state: dict) -> str:
-        """Pinned at start, so a scripted campaign stays labelled on any later server."""
+    def _campaign_inference(self, session, state: dict) -> str:
+        """As pinned at start. Never the reading server's mode, which proves nothing."""
+        origin = self._origin(session, state["campaign_id"])
+        if origin is not None:
+            return origin["inference"]
         endpoint = (state.get("provider") or {}).get("endpoint")
-        return "scripted" if endpoint == SCRIPTED_ENDPOINT else self._inference()
+        return "scripted" if endpoint == SCRIPTED_ENDPOINT else "unrecorded"
 
     def _can_approve(self, principal, project_id: str) -> bool:
         """What ``ApprovalService.decide`` will accept, so the session can't overstate it."""
@@ -188,28 +242,25 @@ class ControlPlane:
 
     # -- campaigns --------------------------------------------------------------------
 
-    def _scripted_runtime(self, world_version: str, scenario: str):
-        """The runtime for a named scenario; only a scripted server has any to name."""
-        if scenario == DEFAULT_SCENARIO:
-            return None
-        if not self.config.scripted or not available(world_version, scenario):
+    def _require_scenario(self, world_version: str, scenario: str) -> None:
+        """Only a scripted server has scenarios to name, and not every world has each."""
+        if scenario != DEFAULT_SCENARIO and not (self.config.scripted
+                                                 and available(world_version, scenario)):
             raise ApiError(422, "validation_failed", "This server or world has no such scripted "
                            "scenario", reason="scripted_scenario_unavailable")
-        return scripted_runtime(scenario)
 
     def create_campaign(self, session: ApiSession, spec: WorldCampaignSpec, idempotency_key: str,
                         scenario: str = DEFAULT_SCENARIO) -> tuple[CampaignView, bool]:
         self._refuse_secrets(spec.objective, *spec.success_criteria)
-        runtime = self._scripted_runtime(spec.world_version, scenario)
+        self._require_scenario(spec.world_version, scenario)
         trusted = session.trusted
-        identity = (idempotency_key,) if runtime is None else (idempotency_key, scenario)
         campaign_id = "c-" + request_digest(session.project_id, session.principal.principal_id,
-                                            *identity)
+                                            idempotency_key)
         replayed = self._existing(trusted, campaign_id) is not None
         if not replayed:
             job, started = self._launch(trusted, campaign_id,
                                         lambda controller: controller.start(campaign_id, spec),
-                                        runtime=runtime)
+                                        scenario=scenario)
             try:
                 self.jobs.wait_for_first_step(job)  # the controller's gates run and raise here
             except CampaignExists:
@@ -220,7 +271,8 @@ class ControlPlane:
                                reason="identifier_too_long") from error
             replayed = not started
         state = self._controller(trusted).state(campaign_id)
-        if state["spec"] != spec.model_dump(mode="json"):
+        pinned = (self._origin(trusted, campaign_id) or {}).get("scripted_scenario")
+        if state["spec"] != spec.model_dump(mode="json") or pinned not in (None, scenario):
             raise ApiError(409, "conflict", "This Idempotency-Key was used for a different spec",
                            reason="idempotency_key_reused")
         return self.campaign_view(session, campaign_id), replayed
@@ -304,7 +356,7 @@ class ControlPlane:
             {**controller.record(campaign_id).model_dump(mode="json"), "status": state["status"]})
         approval = state.get("approval")
         return CampaignView(
-            record=record, inference=self._campaign_inference(state), outcome=state["outcome"],
+            record=record, inference=self._campaign_inference(session, state), outcome=state["outcome"],
             fixture_sha256=state.get("fixture_sha256"),
             job=self._job_status(session.project_id, key, job, state),
             tasks=[TaskSpec.model_validate(task) for task in state["tasks"]],
@@ -321,7 +373,7 @@ class ControlPlane:
         pending = [event for event in state["events"] if event["sequence"] > after]
         page = [ExperimentEvent.model_validate({**event, "summary": self._text(event["summary"])})
                 for event in pending[:limit]]
-        return EventPage(campaign_id=campaign_id, inference=self._campaign_inference(state),
+        return EventPage(campaign_id=campaign_id, inference=self._campaign_inference(session, state),
                          events=page,
                          next_after=page[-1].sequence if page else after,
                          has_more=len(pending) > limit)
@@ -370,12 +422,14 @@ class ControlPlane:
     def resume(self, session: ApiSession, campaign_id: str) -> CampaignView:
         trusted = session.trusted
         state = self._controller(trusted).state(campaign_id)
-        if state["paused"]:
-            # Following a running worker matters only at a pause; see JobRegistry.submit.
-            job, started = self._launch(trusted, campaign_id, self._proceed(campaign_id),
-                                        follow=state["status"] == "awaiting_approval")
-            if started:
-                self.jobs.wait_for_first_step(job)
+        if not state["paused"]:
+            raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
+                           reason="campaign_finished")
+        # Following a running worker matters only at a pause; see JobRegistry.submit.
+        job, started = self._launch(trusted, campaign_id, self._proceed(campaign_id),
+                                    follow=state["status"] == "awaiting_approval")
+        if started:
+            self.jobs.wait_for_first_step(job)
         return self.campaign_view(session, campaign_id)
 
     # -- evidence ---------------------------------------------------------------------
@@ -427,7 +481,7 @@ class ControlPlane:
         experiment = self._experiment(state, experiment_id)
         runs = self._runs(state, experiment_id)
         return ExperimentView(
-            experiment_id=experiment_id, inference=self._campaign_inference(state),
+            experiment_id=experiment_id, inference=self._campaign_inference(session, state),
             iteration=experiment["iteration"],
             proposal=self._world_proposal(state, experiment),
             execution=self._execution(experiment.get("execution")),
@@ -439,7 +493,7 @@ class ControlPlane:
         state = self._controller(session.trusted).state(campaign_id)
         experiment = self._experiment(state, experiment_id)
         return RealityDiffView(experiment_id=experiment_id,
-                               inference=self._campaign_inference(state),
+                               inference=self._campaign_inference(session, state),
                                diff=self._world_diff(state, experiment),
                                coverage=self._coverage(experiment))
 
@@ -462,7 +516,7 @@ class ControlPlane:
         result = (run_to_world(data) if state["spec"]["world_version"] == REFUND
                   else WorldRunResult.model_validate(data))
         run_id = f"{experiment_id}-{run}"
-        return RunView(inference=self._campaign_inference(state), run_id=run_id,
+        return RunView(inference=self._campaign_inference(session, state), run_id=run_id,
                        experiment_id=experiment_id, run=run,
                        artifact=Ref.model_validate(ref), execution=self._execution(execution),
                        result=result, findings=self._findings(state, {run_id}))
@@ -489,14 +543,16 @@ class ControlPlane:
         world_version = state["spec"]["world_version"]
         return CapsuleInfo(artifact=Ref.model_validate(ref), world_version=world_version,
                            capsule_schema_version=self._capsule_schema(world_version),
-                           inference=self._campaign_inference(state))
+                           inference=self._campaign_inference(session, state))
 
     @staticmethod
     def _replay_result(world_version: str, run_status: str, result: dict,
                        inference: str | None = None) -> ReplayResult:
         metrics = result.get("metrics", {"refunded_minor": result.get("total_refunded_minor", 0)})
         return ReplayResult(world_version=world_version, inference=inference,
-                            run_status=run_status, reproduced=result["reproduced"],
+                            # Replay checks the status only for a recording it reproduced.
+                            run_status=run_status if result["reproduced"] else None,
+                            reproduced=result["reproduced"],
                             matches=result["matches"], checks=result["checks"], metrics=metrics,
                             guarded=result.get("guarded"), model_calls=result["model_calls"])
 
@@ -509,7 +565,7 @@ class ControlPlane:
         return self._replay_result(state["spec"]["world_version"], recorded["status"],
                                    self._replaying(lambda: controller.replay_capsule(
                                        campaign_id, run=run, experiment_id=experiment_id)),
-                                   self._campaign_inference(state))
+                                   self._campaign_inference(session, state))
 
     @staticmethod
     def _replaying(call: Callable[[], dict]) -> dict:
@@ -546,9 +602,14 @@ class ControlPlane:
         world_version = capsule.payload.world_version
         self._driver(world_version)
         if isinstance(capsule, CapsuleV2) and world_version == REFUND:
-            capsule = capsule_v2_to_v1(capsule)  # refund replay reads v1
+            try:
+                capsule = capsule_v2_to_v1(capsule)  # refund replay reads v1
+            except ValueError as error:
+                raise ApiError(422, "validation_failed", "This capsule cannot be replayed",
+                               reason="capsule_invalid") from error
         envelope = capsule.model_dump(mode="json")
-        if self.redactor.value(envelope) != envelope:  # stored, and served to the whole project
+        if (self.redactor.value(envelope) != envelope  # stored, and served to the whole project
+                or any(self.redactor.text(key) != key for key in _keys(envelope))):
             raise self._secret_refused()
         data = _capsule_bytes(envelope)
         if len(data) > MAX_CAPSULE_BYTES:
@@ -605,7 +666,7 @@ class ControlPlane:
                    and self.services.clock() >= parse_timestamp(request.expires_at))
         state = self._approval_state(request, project_id)
         return ApprovalView(request=request,
-                            inference=self._campaign_inference(state) if state else None,
+                            inference=self._campaign_inference(session, state) if state else None,
                             effective_status="expired" if expired else request.status,
                             action=self._approval_action(request, state),
                             decision=store.get_decision(project_id, approval_id))

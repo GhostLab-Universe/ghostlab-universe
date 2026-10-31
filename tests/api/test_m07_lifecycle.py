@@ -193,7 +193,8 @@ def test_resume_after_a_rejection_does_not_run_the_repair(stack):
     campaign_id = paused["record"]["campaign_id"]
     api.decide(paused, "reject")
     api.wait(campaign_id, "completed")
-    assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 202
+    resumed = api.post(f"/v1/campaigns/{campaign_id}/resume")
+    assert resumed.status_code == 409 and resumed.json()["reason"] == "campaign_finished"
     assert api.wait(campaign_id, "completed")["outcome"] == "repair_rejected"
     assert experiment_count(api) == 2
 
@@ -205,7 +206,7 @@ def test_a_finished_repair_cannot_be_run_twice(stack):
     api.decide(paused)
     api.wait(campaign_id, "completed")
     for _ in range(2):
-        assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 202
+        assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 409
     assert api.wait(campaign_id, "completed")["outcome"] == "repair_verified"
     assert experiment_count(api) == 3
     approval = api.get(f"/v1/approvals/{paused['approval']['approval_id']}").json()

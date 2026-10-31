@@ -8,9 +8,9 @@ the reserved ``.invalid`` domain and is pinned into each campaign at start, whic
 campaign stays labelled ``scripted`` for as long as it exists.
 
 A client may name a scenario from ``ScriptedScenario`` when it creates a campaign. The
-choice picks a checked-in proposal and carries no content. It applies to that campaign's
-starting run: the scenario isn't stored, so a campaign recovered from a crash mid-proposal
-gets the world's default proposal, still labelled scripted.
+choice picks a checked-in proposal and carries no content. Which proposal to serve comes
+from the campaign's own state and pinned origin, never from the request body, which holds
+the client's objective.
 
 Worlds, verifier, approvals, stores and capsules are the real code. Only the proposal is
 scripted, and nothing here shows that a model would propose it.
@@ -26,13 +26,11 @@ from ghostlab.providers import Credential, ProviderConfig, Runtime, adapter_for
 
 SCRIPTED_ENDPOINT = "https://scripted.ghostlab.invalid/v1"
 SCRIPTED_MODEL = "ghostlab-scripted-proposals"
-JOURNEY_MARKER = b"group-journey"
 
 REFUND_WORLD, JOURNEY_WORLD = "refund-world/1", "group-journey/1"
 REVOCATION_RECIPIENT = "participant-c"
 RACE_AFTER_EVENT = 17  # journey-version-checked's last permission check before delivery
 NEVER = 999  # past the end of any run: the fault is scheduled and never fires
-SECOND_ATTEMPT_MARKER = b"Already explored"
 
 # A closed list. A client names one of these; it never supplies proposal content.
 ScriptedScenario = Literal["default", "revocation_race", "fault_never_fires"]
@@ -83,12 +81,18 @@ def available(world_version: str, scenario: str) -> bool:
     return (world_version, scenario) in _proposals(20)
 
 
-def scripted_reply(scenario: str = DEFAULT_SCENARIO):
-    """A transport handler serving one scenario's checked-in proposals."""
-    def reply(request: httpx.Request) -> httpx.Response:
-        world = JOURNEY_WORLD if JOURNEY_MARKER in request.content else REFUND_WORLD
-        cap = 19 if SECOND_ATTEMPT_MARKER in request.content else 20  # a second, new experiment
-        proposal = _proposals(cap)[world, scenario]
+class ScriptedProposals:
+    """A transport handler for one worker. ``observe`` tells it what the campaign is doing."""
+
+    def __init__(self, scenario: str = DEFAULT_SCENARIO):
+        self.scenario, self.world, self.iteration = scenario, REFUND_WORLD, 1
+
+    def observe(self, state: dict) -> None:
+        self.world, self.iteration = state["spec"]["world_version"], state["iteration"]
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        cap = 20 if self.iteration <= 1 else 19  # a later attempt must be a new experiment
+        proposal = _proposals(cap)[self.world, self.scenario]
         return httpx.Response(200, json={
             "id": "resp_scripted", "object": "response", "status": "completed",
             "model": SCRIPTED_MODEL,
@@ -97,11 +101,9 @@ def scripted_reply(scenario: str = DEFAULT_SCENARIO):
                                      "annotations": []}]}],
             "usage": {"input_tokens": 0, "output_tokens": 0}})
 
-    return reply
 
-
-def scripted_runtime(scenario: str = DEFAULT_SCENARIO) -> Runtime:
-    return Runtime(transport=httpx.MockTransport(scripted_reply(scenario)))
+def scripted_runtime(replies: ScriptedProposals | None = None) -> Runtime:
+    return Runtime(transport=httpx.MockTransport(replies or ScriptedProposals()))
 
 
 def scripted_adapter(runtime: Runtime):

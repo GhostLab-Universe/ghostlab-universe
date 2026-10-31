@@ -17,9 +17,10 @@ from ghostlab.storage.checkpoints import graph_checkpointer
 from .errors import install
 from .middleware import RequestGuard
 from .plane import ApiConfig, ControlPlane
-from .rootlock import RootLock
+from .rootlock import RootLock, require_one_root
 from .routes import router
 from .sessions import NoSessions, require_local_deployment
+from .tracing import disable_trace_export
 
 API_VERSION = "1.0.0"
 DESCRIPTION = ("Authenticated control plane for GhostLab Universe experiments. Worlds are "
@@ -36,6 +37,11 @@ def _attach_log_redaction(redactor: Redactor) -> None:
 def create_app(config: ApiConfig | None = None) -> FastAPI:
     if config is not None:
         require_local_deployment(config.bind_host, config.environ)
+        services = config.services
+        require_one_root(config.graph_db, config.app_db, services.approval_store.path,
+                         services.ledger.path, services.memory_store.path,
+                         services.artifacts.db_path, services.artifacts.root)
+        disable_trace_export()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -53,6 +59,7 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
 
     app = FastAPI(title="GhostLab Control Plane", version=API_VERSION, description=DESCRIPTION,
                   docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan,
+                  telemetry={"auto_configure": False},
                   separate_input_output_schemas=False)
     redactor = config.redactor if config else Redactor()
     _attach_log_redaction(redactor)

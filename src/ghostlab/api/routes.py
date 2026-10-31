@@ -89,7 +89,8 @@ def create_campaign(spec: WorldCampaignSpec, key: IdempotencyKey, response: Resp
     is stored. ``service-relay/1`` is a registered design, not a runnable world: 403.
     Text shaped like a credential is refused (422), not stored. ``scripted_scenario``
     selects a checked-in proposal on a ``--scripted`` server; anywhere else, or for a world
-    without that scenario, it is a 422 with reason ``scripted_scenario_unavailable``.
+    without that scenario, it is a 422 with reason ``scripted_scenario_unavailable``. A key
+    reused with another scenario is a 409, as for another spec.
     """
     view, replayed = control.create_campaign(who, spec, key, scripted_scenario)
     if replayed:
@@ -134,7 +135,8 @@ def resume_campaign(campaign_id: CampaignId, control: Plane, who: Session):
 
     This grants nothing: a pending approval pauses again, and a rejected, expired or
     used one ends the campaign. A decision already resumes the campaign, so this is
-    for retrying after ``settings_changed`` or a stall. Repeating is harmless.
+    for retrying after ``settings_changed`` or a stall. A finished campaign is a 409 with
+    reason ``campaign_finished``, because there is nothing to resume.
     """
     return control.resume(who, campaign_id)
 

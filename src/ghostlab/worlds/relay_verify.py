@@ -95,22 +95,25 @@ def _backed(fixture, held, bad, job_id):
 def _bad_confirmations(fixture, state):
     """Confirmations that were not backed: {(job, confirm event): evidence events}."""
     bad_grants = _bad_grants(fixture, state)
+    grants = {row["lease_id"]: row for row in state["lease_log"] if row["kind"] == "granted"}
     problems = {}
     for row in state["confirmation_log"]:
         at, job_id = row["event_id"], row["job_id"]
         stale = row["promise_version"] != promise_version_at(state, job_id, at)
         if stale or not _backed(fixture, _held_before(state, at), bad_grants, job_id):
             problems[(job_id, at)] = {at}
-    # A confirmation that stood at its event must still stand at the end: the customer
-    # was told, so a release afterwards leaves the promise without a reservation.
-    final = _held_at_end(state)
-    for row in state["confirmation_log"]:
-        key = (row["job_id"], row["event_id"])
-        if key not in problems and not _backed(fixture, final, bad_grants, row["job_id"]):
-            released = [r["event_id"] for r in state["lease_log"]
-                        if r["kind"] == "released" and r["job_id"] == row["job_id"]
-                        and r["event_id"] > row["event_id"]]
-            problems[key] = {row["event_id"], *released}
+            continue
+        # The customer was told, and only a confirmation commits a lease, so nothing can
+        # replace a committed lease: a later uncommitted one would lapse. The first release
+        # that leaves the job short fails here, however long the run goes on.
+        kept = {log["lease_id"]: grants[log["lease_id"]] for log in state["lease_log"]
+                if log["kind"] == "committed" and log["job_id"] == job_id}
+        for log in state["lease_log"]:
+            if log["kind"] == "released" and log["lease_id"] in kept:
+                del kept[log["lease_id"]]
+                if not _backed(fixture, kept, bad_grants, job_id):
+                    problems[(job_id, at)] = {at, log["event_id"]}
+                    break
     return problems
 
 
@@ -166,7 +169,8 @@ def _capacity_lost(fixture, state, job):
 
 def _resolution(fixture, state, job):
     if any(row["job_id"] == job.job_id for row in state["confirmation_log"]):
-        return "confirmed"
+        unbacked = {job_id for job_id, _ in _bad_confirmations(fixture, state)}
+        return "unbacked" if job.job_id in unbacked else "confirmed"
     if any(row["conversation_id"] == job.conversation_id and row["source"] == "takeover"
            for row in state["ownership_timeline"]):
         return "owner_takeover"
@@ -176,9 +180,10 @@ def _resolution(fixture, state, job):
 def task_outcome(fixture, state: dict) -> dict:
     """Did the agent finish the job? An evaluation measure, not an invariant.
 
-    Each job ends ``confirmed``, or with the evidence for why it could not be:
-    ``owner_takeover`` or ``capacity_lost``. Anything else is ``unresolved``, and a
-    hand-off alone doesn't change that: an agent could hand off everything.
+    Each job ends ``confirmed``, or ``unbacked`` if that promise didn't hold, or with the
+    evidence for why it could not be: ``owner_takeover`` or ``capacity_lost``. Anything
+    else is ``unresolved``, and a hand-off alone doesn't change that: an agent could hand
+    off everything.
     """
     jobs = {job.job_id: _resolution(fixture, state, job) for job in fixture.jobs}
     confirmed = {row["job_id"] for row in state["confirmation_log"]}

@@ -361,21 +361,18 @@ class CampaignController:
 
     def _settings_problem(self, state) -> str | None:
         driver, snapshot = self._world_driver(state), state.get("fixture")
-        if snapshot is None:
-            return (None if driver.world_version == "refund-world/1"
-                    else "this campaign has no recorded fixture")
-        if hashlib.sha256(canonical(snapshot)).hexdigest() != state["fixture_sha256"]:
-            return "the recorded fixture failed its digest"
-        if driver.snapshot(driver.current_fixture(self.s)) != snapshot:
-            return "the world fixture changed since this campaign started"
-        fixture = driver.restore(snapshot)
-        if (problem := driver.identity_problem(self.s, fixture, self.session.project_id,
-                                               self.session.principal)) is not None:
-            return problem
-        action = (state.get("approval") or {}).get("action") or {}
-        if action.get("fixture_sha256") not in (None, state["fixture_sha256"]):
-            return "the approved action names a different fixture"
-        return None
+        if snapshot is not None:
+            if hashlib.sha256(canonical(snapshot)).hexdigest() != state["fixture_sha256"]:
+                return "the recorded fixture failed its digest"
+            if driver.snapshot(driver.current_fixture(self.s)) != snapshot:
+                return "the world fixture changed since this campaign started"
+            action = (state.get("approval") or {}).get("action") or {}
+            if action.get("fixture_sha256") not in (None, state["fixture_sha256"]):
+                return "the approved action names a different fixture"
+        elif driver.world_version != "refund-world/1":
+            return "this campaign has no recorded fixture"
+        return driver.identity_problem(self.s, self._fixture(state), self.session.project_id,
+                                       self.session.principal)
 
     def _can_only_close(self, state) -> bool:
         """Cancellation, the deadline or a dead approval stop the campaign at its next node."""

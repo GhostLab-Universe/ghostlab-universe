@@ -210,7 +210,7 @@ def fault_scenarios(fixture: RelayFixture) -> dict:
     return {
         "stale_availability_competition": scenario_json(
             [("stale_availability_competition", None,
-              {"competing_jobs": len(fixture.competitors)})]),
+              {"competing_jobs": max(1, len(fixture.competitors))})]),
         "lost_reservation_ack": scenario_json([("lost_reservation_ack", None, {})]),
         "takeover_with_queued_confirmation": scenario_json(
             [("takeover_with_queued_confirmation", None, {})]),
@@ -223,31 +223,37 @@ def _clean_checked_trace(fixture: RelayFixture) -> list:
     return run(lab, RelayScenario.from_json(scenario_json()), "relay-lease-checked")["trace"]
 
 
-def _first_job_event(trace, fixture, tool) -> int:
+def _first_job_event(trace, fixture, tool) -> int | None:
+    """None if the clean run never got there, so there is no race to time."""
     job_id = fixture.jobs[0].job_id
-    return next(e["event_id"] for e in trace if e["request"]["tool"] == tool
-                and e["request"]["arguments"]["job_id"] == job_id)
+    return next((e["event_id"] for e in trace if e["request"]["tool"] == tool
+                 and "error" not in e["outcome"]
+                 and e["request"]["arguments"]["job_id"] == job_id), None)
 
 
-def takeover_race_scenario(fixture: RelayFixture) -> dict:
+def takeover_race_scenario(fixture: RelayFixture) -> dict | None:
     """Takeover timed to land on the lease-checked adapter's first confirmation.
 
     The trigger is derived from a fault-free run: the ownership check right before
     that confirmation. Takeover takes effect from the next event, the confirmation.
     """
     confirm = _first_job_event(_clean_checked_trace(fixture), fixture, "confirm_service")
+    if confirm is None:
+        return None
     return scenario_json([("takeover_with_queued_confirmation", confirm - 1, {})])
 
 
-def capacity_race_scenario(fixture: RelayFixture) -> dict:
+def capacity_race_scenario(fixture: RelayFixture) -> dict | None:
     """Competitors arrive on the event the lease-checked adapter makes its first lease,
     after it read the leases and found the resource free."""
     reserve = _first_job_event(_clean_checked_trace(fixture), fixture, "reserve_resource")
+    if reserve is None:
+        return None
     return scenario_json([("stale_availability_competition", reserve - 1,
-                           {"competing_jobs": len(fixture.competitors)})])
+                           {"competing_jobs": max(1, len(fixture.competitors))})])
 
 
-def expiry_race_fixture(fixture: RelayFixture) -> RelayFixture:
+def expiry_race_fixture(fixture: RelayFixture) -> RelayFixture | None:
     """A lease lifetime that ends on the event of the first confirmation.
 
     Derived from a fault-free run: the time between the first job's first lease and
@@ -256,20 +262,25 @@ def expiry_race_fixture(fixture: RelayFixture) -> RelayFixture:
     trace = _clean_checked_trace(fixture)
     reserve = _first_job_event(trace, fixture, "reserve_resource")
     confirm = _first_job_event(trace, fixture, "confirm_service")
+    if reserve is None or confirm is None:
+        return None
     return replace(fixture, lease_ttl_events=confirm - reserve)
 
 
-def _race(baseline, lab_fixture, data):
+def _race(lab_fixture, data, baseline=None):
+    """A Reality Diff needs a baseline from the same fixture, so the expiry race has none."""
     race = RelayScenario.from_json(data)
     lab = run(lab_fixture, race, "relay-lease-checked")
     guarded = run(replace(lab_fixture, guarded=True), race, "relay-lease-checked")
-    return {"scenario": data, "fixture": lab_fixture.to_json(), "lab": lab, "guarded": guarded,
-            "diff": reality_diff(lab_fixture, baseline, lab)}
+    result = {"scenario": data, "fixture": lab_fixture.to_json(), "lab": lab, "guarded": guarded}
+    if baseline is not None:
+        result["diff"] = reality_diff(lab_fixture, baseline, lab)
+    return result
 
 
 def experiment(fixture: RelayFixture | None = None) -> dict:
     """Baseline, each fault (local-success, lease-checked, guarded local-success) and the
-    three races."""
+    races this fixture's clean run makes possible."""
     fixture = replace(fixture or RelayFixture(), guarded=False)
     guarded = replace(fixture, guarded=True)
     clean = RelayScenario.from_json(scenario_json())
@@ -284,8 +295,11 @@ def experiment(fixture: RelayFixture | None = None) -> dict:
             "guarded": run(guarded, scenario, "relay-local-success"),
             "diff": reality_diff(fixture, baseline["relay-local-success"], faulted)}
     checked = baseline["relay-lease-checked"]
-    expiry = expiry_race_fixture(fixture)
-    return {"baseline": baseline, "faults": faults, "races": {
-        "owner_takeover": _race(checked, fixture, takeover_race_scenario(fixture)),
-        "capacity": _race(checked, fixture, capacity_race_scenario(fixture)),
-        "lease_expiry": _race(checked, expiry, scenario_json())}}
+    races = {}
+    if (takeover := takeover_race_scenario(fixture)) is not None:
+        races["owner_takeover"] = _race(fixture, takeover, checked)
+    if (capacity := capacity_race_scenario(fixture)) is not None:
+        races["capacity"] = _race(fixture, capacity, checked)
+    if (expiry := expiry_race_fixture(fixture)) is not None:
+        races["lease_expiry"] = _race(expiry, scenario_json())
+    return {"baseline": baseline, "faults": faults, "races": races}

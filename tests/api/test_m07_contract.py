@@ -146,3 +146,20 @@ def test_the_view_shapes_match_the_published_record_examples(stack):
     api = stack(journey_reply())
     view = api.paused("group-journey/1")
     assert set(view["record"]) == set(m00_example("world_campaign_record.group_journey"))
+
+
+def test_the_document_declares_what_the_server_actually_sends():
+    document = spec()
+    assert document["components"]["securitySchemes"]["HTTPBearer"]["scheme"] == "bearer"
+    artifact = document["paths"]["/v1/artifacts/{artifact_id}"]["get"]
+    assert list(artifact["responses"]["200"]["content"]) == ["application/json"]
+    assert artifact["security"] == [{"HTTPBearer": []}]
+    create = document["paths"]["/v1/campaigns"]["post"]["responses"]
+    assert "Idempotency-Replayed" in create["202"]["headers"]
+    assert "Retry-After" in create["429"]["headers"]
+    assert "WWW-Authenticate" in create["401"]["headers"]
+    decide = document["paths"]["/v1/approvals/{approval_id}/decision"]["post"]["responses"]
+    assert "Idempotency-Replayed" in decide["200"]["headers"]
+    for path, item in document["paths"].items():
+        for method, operation in item.items():
+            assert "500" in operation["responses"], (method, path)

@@ -246,7 +246,7 @@ def test_service_relay_is_refused_before_anything_exists(stack):
     assert response.json()["reason"] == "world_not_runnable"
     assert response.json()["error"]["code"] == "forbidden"
     assert api.script.requests == []
-    assert api.client.app.state.plane.jobs.get("anything") is None
+    assert api.client.app.state.plane.jobs._jobs == {}
 
 
 @pytest.mark.parametrize("body,reason", [

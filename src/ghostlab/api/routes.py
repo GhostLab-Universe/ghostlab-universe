@@ -7,12 +7,14 @@ unauthenticated by forgetting a dependency.
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response
+from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, Security
+from fastapi.security import HTTPBearer
 
 from ghostlab.contracts import ApprovalSubmission, CapsuleV1
 from ghostlab.contracts.primitives import Identifier
 from ghostlab.contracts.world import CapsuleV2, WorldCampaignSpec
 
+from .scripted import DEFAULT_SCENARIO, ScriptedScenario
 from .models import (ApprovalView, CampaignView, CapsuleImport, CapsuleInfo, DecisionResult,
                      ErrorResponse, EventPage, ExperimentView, RealityDiffView, ReplayResult,
                      RunName, RunView, SessionInfo)
@@ -28,19 +30,30 @@ ExperimentId = Annotated[Identifier, Path()]
 ArtifactId = Annotated[Identifier, Path()]
 ApprovalId = Annotated[Identifier, Path()]
 
+STRING_HEADER = {"schema": {"type": "string"}}
 COMMON_ERRORS = {
-    401: {"model": ErrorResponse, "description": "No valid session"},
+    401: {"model": ErrorResponse, "description": "No valid session",
+          "headers": {"WWW-Authenticate": STRING_HEADER}},
     403: {"model": ErrorResponse, "description": "Refused by policy"},
     404: {"model": ErrorResponse, "description": "Absent, or owned by another project"},
     413: {"model": ErrorResponse, "description": "Request body too large"},
     422: {"model": ErrorResponse, "description": "Invalid request; nothing was changed"},
+    500: {"model": ErrorResponse, "description": "Unexpected failure; detail is not disclosed"},
 }
 WRITE_ERRORS = {
     409: {"model": ErrorResponse, "description": "Conflicts with the current state"},
-    429: {"model": ErrorResponse, "description": "Too many campaigns running; retry later"},
+    429: {"model": ErrorResponse, "description": "Too many campaigns running; retry later",
+          "headers": {"Retry-After": STRING_HEADER}},
+    503: {"model": ErrorResponse, "description": "The server is shutting down; retry later"},
 }
+REPLAYED = {"headers": {"Idempotency-Replayed": {
+    "description": "Present and true when this request's identity was already used",
+    **STRING_HEADER}}}
 
-router = APIRouter(prefix="/v1", responses=COMMON_ERRORS)
+bearer = HTTPBearer(auto_error=False, description=(
+    "Configured bearer tokens. In local_dev mode the session is the single local principal "
+    "and no token is needed. Neither is production authentication."))
+router = APIRouter(prefix="/v1", responses=COMMON_ERRORS, dependencies=[Security(bearer)])
 
 
 def plane(request: Request):
@@ -61,18 +74,24 @@ def get_session(control: Plane, who: Session):
 
 
 @router.post("/campaigns", response_model=CampaignView, status_code=202,
-             operation_id="createCampaign", tags=["campaigns"], responses=WRITE_ERRORS)
+             operation_id="createCampaign", tags=["campaigns"],
+             responses={**WRITE_ERRORS, 202: REPLAYED})
 def create_campaign(spec: WorldCampaignSpec, key: IdempotencyKey, response: Response,
-                    control: Plane, who: Session):
+                    control: Plane, who: Session,
+                    scripted_scenario: Annotated[ScriptedScenario, Query(
+                        description="Scripted servers only: which checked-in proposal to use. "
+                                    "Not every world has every scenario.")] = DEFAULT_SCENARIO):
     """Start a campaign in the session's project.
 
     The campaign id is derived from the session and the key, so a retry finds the same
     campaign and its current state instead of starting another. Reusing a key with a
     different spec is a 409. The world, budget and inference gates run before anything
     is stored. ``service-relay/1`` is a registered design, not a runnable world: 403.
-    Text shaped like a credential is refused (422), not stored.
+    Text shaped like a credential is refused (422), not stored. ``scripted_scenario``
+    selects a checked-in proposal on a ``--scripted`` server; anywhere else, or for a world
+    without that scenario, it is a 422 with reason ``scripted_scenario_unavailable``.
     """
-    view, replayed = control.create_campaign(who, spec, key)
+    view, replayed = control.create_campaign(who, spec, key, scripted_scenario)
     if replayed:
         response.headers["Idempotency-Replayed"] = "true"
     return view
@@ -99,9 +118,11 @@ def list_events(campaign_id: CampaignId, control: Plane, who: Session,
 def cancel_campaign(campaign_id: CampaignId, control: Plane, who: Session):
     """Stop a running, paused or stalled campaign at its next guard. Repeating is harmless.
 
-    An approval that was not yet used stays unspent, and can't run anything afterwards.
-    A finished campaign is a 409 with reason ``campaign_finished``, unless it was
-    already cancelled.
+    A 202 means it stopped, or a worker has the request: read ``job.cancel_requested`` and
+    the status. A 409 with reason ``cancel_incomplete`` means the campaign could not be
+    stopped because its interrupted step can't finish; it is unchanged, and ``job.error``
+    says why. A finished campaign is a 409 with reason ``campaign_finished``, unless it was
+    already cancelled. An approval not yet used stays unspent and can't run anything.
     """
     return control.cancel(who, campaign_id)
 
@@ -165,6 +186,8 @@ def import_capsule(capsule: CapsuleV1 | CapsuleV2, control: Plane, who: Session)
 
     An imported capsule is untrusted data. It is identified by its checksum, so a retry
     is the same. A capsule that doesn't reproduce is stored and reported as not reproduced.
+    One that claims what its adapter doesn't do (422 ``capsule_invalid``), or holds text
+    shaped like a credential (422 ``secret_shaped_text``), is refused and not stored.
     """
     return control.import_capsule(who, capsule)
 
@@ -178,8 +201,10 @@ def replay_capsule(capsule_id: ArtifactId, control: Plane, who: Session):
 
 @router.get("/artifacts/{artifact_id}", operation_id="downloadArtifact", tags=["evidence"],
             response_class=Response,
-            responses={200: {"content": {"application/octet-stream": {}},
-                             "description": "Artifact bytes, verified against their digest"}})
+            responses={200: {"content": {"application/json": {"schema": {}}},
+                             "description": "Artifact bytes, verified against their digest",
+                             "headers": {"ETag": STRING_HEADER,
+                                         "Content-Disposition": STRING_HEADER}}})
 def download_artifact(artifact_id: ArtifactId, control: Plane, who: Session):
     """Download an artifact owned by the session's project."""
     return control.artifact_response(who, artifact_id)
@@ -193,7 +218,8 @@ def get_approval(approval_id: ApprovalId, control: Plane, who: Session):
 
 
 @router.post("/approvals/{approval_id}/decision", response_model=DecisionResult,
-             operation_id="decideApproval", tags=["approvals"], responses=WRITE_ERRORS)
+             operation_id="decideApproval", tags=["approvals"],
+             responses={**WRITE_ERRORS, 200: REPLAYED})
 def decide_approval(approval_id: ApprovalId, submission: ApprovalSubmission,
                     key: IdempotencyKey, response: Response, control: Plane, who: Session):
     """Approve or reject through M06. The approver is the session, never the body.

@@ -10,6 +10,7 @@ import pytest
 
 from conftest import spec_json
 from ghostlab.api.jobs import Job
+from ghostlab.api.rootlock import LOCK_NAME
 from ghostlab.api.sessions import ApiSession, TokenSessions
 from ghostlab.budgets import BudgetAccountant
 from ghostlab.orchestration.worlds import DEFAULT_WORLDS, JourneyDriver
@@ -308,14 +309,20 @@ def test_a_damaged_fixture_record_is_a_typed_refusal(stack, damage, message):
     assert view["job"]["state"] == "stalled"
 
 
-def test_an_older_refund_checkpoint_still_reads_without_a_digest(stack):
+def test_an_unpinned_refund_checkpoint_reads_but_is_refused_to_continue(stack):
     api = stack(proposal())
     paused = api.paused(REFUND)
     campaign_id = paused["record"]["campaign_id"]
     checkpoint(api, campaign_id, fixture=None, fixture_sha256=None)
     assert api.view(campaign_id)["fixture_sha256"] is None
-    api.decide(paused)
-    assert api.wait(campaign_id, "completed")["outcome"] == "repair_verified"
+    decided = api.decide(paused)
+    assert decided.status_code == 200  # the decision stands, and nothing runs on it
+    assert decided.json()["resumed"] is False
+    assert decided.json()["resume_error"]["reason"] == "settings_changed"
+    assert "no recorded fixture" in decided.json()["resume_error"]["error"]["message"]
+    view = api.view(campaign_id)
+    assert view["record"]["status"] == "awaiting_approval" and view["repair"] is None
+    assert len(api.lab.engine.calls) == 2  # baseline and fork: the repair never ran
 
 
 def test_an_older_experiment_with_no_coverage_reads_as_not_recorded(stack):
@@ -364,7 +371,8 @@ def test_a_credential_in_a_decision_reason_is_refused_and_records_nothing(stack)
 def test_a_credential_in_a_spec_never_reaches_storage(stack, tmp_path):
     api = stack(proposal())
     api.post("/v1/campaigns", key="k", json={**spec_json(), "objective": f"Key {SECRET}"})
-    stored = b"".join(path.read_bytes() for path in tmp_path.rglob("*") if path.is_file())
+    stored = b"".join(path.read_bytes() for path in tmp_path.rglob("*")
+                      if path.is_file() and path.name != LOCK_NAME)  # locked, and always empty
     assert SECRET.encode() not in stored
 
 

@@ -24,6 +24,7 @@ from ghostlab.storage.interfaces import Conflict, NotFound, StorageError
 from .models import ErrorResponse
 
 MAX_REPORTED_PROBLEMS = 20
+MAX_LOCATION_DEPTH = 4
 
 
 @dataclass(eq=False)
@@ -93,9 +94,15 @@ def respond(error: Exception, redactor: Redactor) -> JSONResponse:
     return JSONResponse(body.model_dump(mode="json"), status_code=status, headers=headers)
 
 
+def _location(item: dict) -> str:
+    """Declared fields only: an unknown field's name is input, so it is not repeated."""
+    parts = item["loc"][:-1] if item["type"] == "extra_forbidden" else item["loc"]
+    return ".".join(str(part) for part in parts[:MAX_LOCATION_DEPTH])
+
+
 def _validation_message(error: RequestValidationError) -> str:
     """Where and how a request failed; the default handler would echo the input."""
-    problems = [f"{'.'.join(str(part) for part in item['loc'])}: {item['type']}"
+    problems = [f"{_location(item)}: {item['type']}"
                 for item in error.errors()[:MAX_REPORTED_PROBLEMS]]
     return "Invalid request: " + "; ".join(problems)
 

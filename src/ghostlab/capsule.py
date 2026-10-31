@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from .core import (ADAPTER_VERSION, Fixture, RefundWorld, Scenario, ToolError, WORLD_VERSION,
-                   verify)
+                   run, verify)
 
 
 SCHEMA_VERSION = 1
@@ -75,6 +75,21 @@ def _check_metadata(payload, recorded):
         raise ValueError("Invalid recorded run status")
 
 
+def _check_adapter(fixture, scenario, actor_id, recorded):
+    """A recording that replays must also be what its named checked-in adapter does.
+
+    Whether a run finished rests on a call past the cap that was never made, so the
+    recorded requests can't show it: a truncated run relabelled ``completed`` with a fresh
+    checksum replays cleanly. Running the adapter settles the status and the trace.
+    """
+    try:
+        produced = run(fixture, scenario, recorded["adapter"], actor_id=actor_id)
+    except ToolError as error:
+        raise ValueError("Recorded run is not what its adapter produces") from error
+    if (produced["status"], produced["trace"]) != (recorded["status"], recorded["trace"]):
+        raise ValueError("Recorded run is not what its adapter produces")
+
+
 def replay(path: Path):
     """Re-execute recorded tool requests; never import code or call a model.
 
@@ -119,6 +134,8 @@ def replay(path: Path):
         "final_state": state == recorded["final_state"],
         "checks": checks == recorded["checks"],
     }
+    if all(matches.values()):
+        _check_adapter(fixture, scenario, payload["actor_id"], recorded)
     return {"reproduced": all(matches.values()), "matches": matches,
             "checks": checks, "total_refunded_minor": state["total_refunded_minor"],
             "model_calls": 0}

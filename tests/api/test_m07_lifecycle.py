@@ -247,7 +247,7 @@ def test_resume_while_a_worker_is_running_adds_nothing(stack):
     assert resumed.json()["job"]["state"] == "active"
     gate.release.set()
     assert api.wait(campaign_id, "awaiting_approval")["job"]["error"] is None
-    assert api.client.app.state.plane.jobs.get(campaign_id) is None
+    assert api.client.app.state.plane.jobs._jobs == {}  # nothing was queued behind the worker
     assert experiment_count(api) == 2
 
 
@@ -357,7 +357,7 @@ def test_cancel_during_the_repair_stops_before_it_runs(stack):
 
 def test_a_decision_during_the_pause_window_is_not_lost():
     ran, gate = [], threading.Event()
-    registry = JobRegistry(limit=2, on_failure=lambda key, error: None)
+    registry = JobRegistry(limit=2, on_failure=lambda key, error, cancelling: None)
     job, started = registry.submit("k", lambda job: gate.wait(30))
     assert started
     joined, started = registry.submit("k", lambda job: ran.append("resume"), follow=True)

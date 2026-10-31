@@ -3,6 +3,7 @@
     python -m evals.heldout --write-rule           write the selection to heldout_rule.json
     python -m evals.heldout --out <dir>            run it, store evidence, print the counts
     python -m evals.heldout --out <dir> --record   also write heldout_result.json
+    python -m evals.heldout --out <dir> --score-only   rescore stored evidence, running nothing
 
 The cases in ``evals.cases`` use the timings they were built with. These don't. The rule
 below fixes the universe, the exclusions and the seed before any selected case runs, and
@@ -387,6 +388,10 @@ def counts(rows: list[dict]) -> dict:
         "repairs": {
             "attempted": len(repairs),
             "verified": sum(item["campaign_outcome"] == "repair_verified" for item in repairs),
+            # Such a verdict covers only the faults that fired, and the outcome doesn't say so.
+            "verified_with_incomplete_fork_coverage": sum(
+                row["repair"]["campaign_outcome"] == "repair_verified"
+                and not row["fork"]["coverage"]["complete"] for row in failures),
             "incomplete": len(incomplete),
             "incomplete_with_lost_faults": sum(bool(item["lost_faults"]) for item in incomplete),
             "did_not_hold": sum(item["campaign_outcome"] == "repair_did_not_hold"
@@ -447,6 +452,7 @@ def main(argv=None) -> int:
     parser.add_argument("--out", type=Path)
     parser.add_argument("--write-rule", action="store_true")
     parser.add_argument("--record", action="store_true", help="Write heldout_result.json")
+    parser.add_argument("--score-only", action="store_true", help="Run nothing")
     args = parser.parse_args(argv)
     if args.write_rule:
         rule = build_rule()
@@ -460,7 +466,8 @@ def main(argv=None) -> int:
     if canonical_sha256(rule["cases"]) != rule["selection_sha256"]:
         parser.exit(2, "heldout_rule.json doesn't match its digest\n")
     args.out.mkdir(parents=True, exist_ok=True)
-    run_heldout(args.out, held_out_cases(rule["cases"]))
+    if not args.score_only:
+        run_heldout(args.out, held_out_cases(rule["cases"]))
     report = score_heldout(args.out, rule["cases"])
     write_json(args.out / "report.json", report)
     if args.record:

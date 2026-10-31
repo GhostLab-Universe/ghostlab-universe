@@ -1,14 +1,23 @@
-"""The held-out evaluation: the timings are chosen by rule, and tuned ones can't get in."""
+"""The held-out evaluation: the timings are chosen by rule, and tuned ones can't get in.
+
+The whole selection takes minutes, so this reruns two of its cases and reads the recorded
+result for the rest. Inference is a labeled fixture throughout.
+"""
 
 import json
+import shutil
 
-from evals import heldout
+import pytest
+
+from evals import demo, heldout
 from evals.evidence import canonical_sha256
 from ghostlab.worlds.journey import JourneyFixture
 
 from conftest import ROOT
 
 RULE = json.loads(heldout.RULE_PATH.read_text("utf-8"))
+RESULT = json.loads(heldout.RESULT_PATH.read_text("utf-8"))
+RACE_CASE, UNTESTED_CASE = "heldout-062", "heldout-032"  # a found failure, and an inconclusive
 
 
 def timings(case):
@@ -76,3 +85,148 @@ def test_the_rule_records_what_it_excluded_and_why():
 def test_held_out_results_stay_out_of_the_gate():
     expected = json.loads((ROOT / "evals" / "expected.json").read_text("utf-8"))
     assert not any(case_id.startswith("heldout") for case_id in expected)
+
+
+# --- the recorded result ------------------------------------------------------------------
+
+def test_the_result_is_for_this_selection_and_drops_nothing():
+    assert RESULT["selection_sha256"] == RULE["selection_sha256"]
+    assert [row["case_id"] for row in RESULT["cases"]] == [case["case_id"]
+                                                           for case in RULE["cases"]]
+    assert (RESULT["inference"], RESULT["live_provider_contacted"]) == ("mocked", False)
+
+
+def test_the_counts_come_from_the_rows_and_add_up():
+    counts = RESULT["counts"]
+    assert heldout.counts(RESULT["cases"]) == counts
+    assert (counts["failures_found"] + counts["fault_fired_no_violation"]
+            + counts["inconclusive"] + counts["errored"]) == counts["cases"]
+
+
+def test_an_inconclusive_case_stays_inconclusive_in_the_record():
+    for row in RESULT["cases"]:
+        if row["class"] == "inconclusive":
+            assert row["campaign"]["outcome"] == "coverage_incomplete", row["case_id"]
+            assert row["fork"]["coverage"]["complete"] is False
+            assert row["repair"] is None
+
+
+def test_each_recorded_verdict_matches_the_recorded_oracle():
+    for row in RESULT["cases"]:
+        oracle = row["fork"]["oracle"]
+        violated = bool(oracle["unpermitted_deliveries"] or oracle["stale_commitments"])
+        assert violated == (row["class"] == "failure_found"), row["case_id"]
+
+
+def test_a_recorded_repair_ran_enforced_and_each_replay_called_no_model():
+    for row in RESULT["cases"]:
+        assert row["fork"]["execution"] == {"mode": "lab", "guarded": False}
+        assert row["model_attempts"] == 1
+        if row["repair"]:
+            assert row["repair"]["execution"] == {"mode": "enforced", "guarded": True}
+        for replay in row["replays"].values():
+            assert replay["reported_model_calls"] == 0
+            assert replay["provider_requests_during_replay"] == 0
+
+
+# --- verdicts read stored evidence --------------------------------------------------------
+
+def selected(*case_ids):
+    return [case for case in RULE["cases"] if case["case_id"] in case_ids]
+
+
+def row_of(report, case_id):
+    return next(row for row in report["cases"] if row["case_id"] == case_id)
+
+
+@pytest.fixture(scope="module")
+def stored(tmp_path_factory):
+    out = tmp_path_factory.mktemp("heldout")
+    selection = selected(RACE_CASE, UNTESTED_CASE)
+    heldout.run_heldout(out, heldout.held_out_cases(selection))
+    return out, selection
+
+
+@pytest.fixture
+def copied(stored, tmp_path):
+    out = tmp_path / "copy"
+    shutil.copytree(stored[0], out)
+    return out, stored[1]
+
+
+def edit(out, case_id, change):
+    path = out / "evidence" / f"{case_id}.json"
+    data = json.loads(path.read_text("utf-8"))
+    change(data["campaigns"]["main"])
+    path.write_text(json.dumps(data), "utf-8")
+
+
+def fork_of(campaign):
+    return next(run for name, run in campaign["runs"].items() if name.endswith("/fork"))
+
+
+def test_a_rerun_gives_the_recorded_rows(stored):
+    report = heldout.score_heldout(*stored)
+    for case_id in (RACE_CASE, UNTESTED_CASE):
+        assert row_of(report, case_id) == row_of(RESULT, case_id)
+
+
+def test_a_controller_claim_cant_change_the_oracles_verdict(copied):
+    out, selection = copied
+
+    def deny_everything(campaign):
+        for finding in campaign["findings"]:
+            finding["verdict"] = "passed"
+        campaign["outcome"] = "no_failure_found"
+        campaign["repair"]["verified"] = False
+
+    edit(out, RACE_CASE, deny_everything)
+    row = row_of(heldout.score_heldout(out, selection), RACE_CASE)
+    assert row["class"] == "failure_found"
+    assert row["fork"]["oracle"]["unpermitted_deliveries"] == [10]
+    assert "findings_match_the_independent_oracle" in row["integrity_failures"]
+
+
+def test_the_verdict_follows_the_stored_run_and_the_digest_catches_the_edit(copied):
+    out, selection = copied
+    edit(out, RACE_CASE, lambda campaign: fork_of(campaign)["body"]["final_state"].update(
+        delivery_log=[row for row in fork_of(campaign)["body"]["final_state"]["delivery_log"]
+                      if row["event_id"] != 10]))
+    row = row_of(heldout.score_heldout(out, selection), RACE_CASE)
+    assert row["fork"]["oracle"]["unpermitted_deliveries"] == []
+    assert "evidence_digests_match" in row["integrity_failures"]
+
+
+def test_a_coverage_claim_cant_turn_an_inconclusive_run_clean(copied):
+    out, selection = copied
+
+    def claim_tested(campaign):
+        for coverage in campaign["coverage"].values():
+            coverage.update(faults_triggered=True, complete=True)
+
+    edit(out, UNTESTED_CASE, claim_tested)
+    row = row_of(heldout.score_heldout(out, selection), UNTESTED_CASE)
+    assert "coverage_matches_the_stored_runs" in row["integrity_failures"]
+
+
+def test_the_demo_prints_what_the_runbook_shows(tmp_path, capsys):
+    assert demo.main(["--out", str(tmp_path / "demo")]) == 0
+    output = capsys.readouterr().out
+    assert output.startswith("inference: mocked")
+    for text in ('"mode": "lab"', '"first_divergence_event": 18', '"held_by": "guarded_boundary"',
+                 '"error": "PermissionWithdrawnDenied"', '"reported_model_calls": 0',
+                 '"outcome": "coverage_incomplete"', '"faults_triggered": false'):
+        assert text in output
+    runbook = (ROOT / "docs" / "demo.md").read_text("utf-8")
+    for text in ("Inference is mocked", "Pending authorization", "journey-demo", "journey-replay",
+                 "coverage_incomplete"):
+        assert text in runbook
+
+
+def test_a_case_that_raises_is_counted_not_dropped(tmp_path):
+    selection = selected(RACE_CASE)
+    (tmp_path / "errors.json").write_text(json.dumps({RACE_CASE: "RuntimeError"}), "utf-8")
+    report = heldout.score_heldout(tmp_path, selection)
+    assert report["counts"]["errored"] == report["counts"]["cases"] == 1
+    assert report["counts"]["cases_with_integrity_failures"] == 1
+    assert row_of(report, RACE_CASE)["error"] == "RuntimeError"

@@ -1,0 +1,8737 @@
+{
+ "by_adapter": {
+  "journey-naive": {
+   "cases": 57,
+   "errored": 0,
+   "failure_found": 25,
+   "fault_fired_no_violation": 0,
+   "inconclusive": 32
+  },
+  "journey-version-checked": {
+   "cases": 57,
+   "errored": 0,
+   "failure_found": 4,
+   "fault_fired_no_violation": 19,
+   "inconclusive": 34
+  }
+ },
+ "by_fault_set": {
+  "delayed_itinerary_update": {
+   "cases": 4,
+   "errored": 0,
+   "failure_found": 0,
+   "fault_fired_no_violation": 0,
+   "inconclusive": 4
+  },
+  "delayed_itinerary_update+sharing_revoked_while_queued": {
+   "cases": 10,
+   "errored": 0,
+   "failure_found": 3,
+   "fault_fired_no_violation": 0,
+   "inconclusive": 7
+  },
+  "delayed_itinerary_update+sharing_revoked_while_queued+stale_preference_memory": {
+   "cases": 10,
+   "errored": 0,
+   "failure_found": 5,
+   "fault_fired_no_violation": 0,
+   "inconclusive": 5
+  },
+  "delayed_itinerary_update+stale_preference_memory": {
+   "cases": 10,
+   "errored": 0,
+   "failure_found": 0,
+   "fault_fired_no_violation": 0,
+   "inconclusive": 10
+  },
+  "sharing_revoked_while_queued": {
+   "cases": 60,
+   "errored": 0,
+   "failure_found": 17,
+   "fault_fired_no_violation": 16,
+   "inconclusive": 27
+  },
+  "sharing_revoked_while_queued+stale_preference_memory": {
+   "cases": 10,
+   "errored": 0,
+   "failure_found": 4,
+   "fault_fired_no_violation": 1,
+   "inconclusive": 5
+  },
+  "stale_preference_memory": {
+   "cases": 10,
+   "errored": 0,
+   "failure_found": 0,
+   "fault_fired_no_violation": 2,
+   "inconclusive": 8
+  }
+ },
+ "cases": [
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-001",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "9719e84fe32decafa4b3e1070457698a4633d29744000ddf3ccba509ca90ad82",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "c1262cd0a2b2ae6580503339107c5b60aba563f674862a879691eaef94bb798b",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-002",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "1147a76fed4273788ae742ab35a114bf63af1e0bf719b04d678d5461d8c4cc46",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "4369a46c0518705b25b436a6e38ca6eb3076f8077b45cb67d51fde4735bdcc57",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-003",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "95527f7cf5d30c598eba48021c1c64b71993de53e2ac69485e9b8a7bfdddd4ee",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "0fbcec37199ff3396b9fdfa91540a07130e2037f95bce52fe329a8fe7aa413d7",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-004",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "2bb5169bb786e20553f0e99905637f1dbb0dad8e37e503fed45ee6c2c07da835",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "6fa36b066c49e82f5cd26da267baf88e5141e63fe82f93cc1099c6e1ada5e5aa",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-005",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "4bb73aec1d82eb876c82a39771d57305e22c1c69cfce834d7ae62ee0073cf1b1",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "guarded_boundary",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [
+      {
+       "error": "PermissionWithdrawnDenied",
+       "event_id": 10
+      }
+     ],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "9ffe2e2fa918629800dbd9b02e6d6689151dfb76a0cd13d69bb4e10f6fb1a8d5",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-006",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-007",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-008",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-009",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-010",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-011",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      11
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "d1fd0655ed9a898fafe859f2d26d0b0a1f7dd3cacdbcc0e856cd7f596883e990",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "22a64faf85a48bbc7e10700c031e1c5a888bf248e9857ef278827287425227db",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-012",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      11
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "d2b18f8719af6c120ae83dea24b081408900ba359732a38f8e08571c9c19a5b2",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "9ae6942f0afe1969df99dfd278c446ced3e6d220ce6d2441df86a18559b25dee",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-013",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      11
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "8cdb22d7aa8f52e0e3a9111598718d315823a2a9c849f01aa0f4e29cf25ff0a4",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "05e632627e6cb87b3fdd2f8d799bebad54bdc3a02adaa2ab307f1a994029fb8b",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-014",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      11
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "c7f43bcb9f73c9215587dd3cde6e95a014abcafa97d4857fd6db40129df0f2fb",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "b78ee6e6d7872f16967972827dbf762f9a8d0a3e3c881b19ac990e3436e31200",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-015",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      11
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "c87e86d2ad2b3aa4186796e192d5fdd8940ed0175b9576dd628702624a8ebb30",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "4fbf674b0e96a8512b446680b3cc01b80de5ab07694d04ffdcc5b3ae593e566d",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-016",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-017",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-018",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-019",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-020",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-021",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      12
+     ],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "9374489fa8b386775c617065297aba825e3bc9c488f62154332275783a1785b4",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "3b6769c11b2bad6dc63963b1cf8d3b2ba54de4ed1e9d06d2687c78a2944544c5",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-022",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      12
+     ],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "fb2ee94e3ee5c4f1bacaf6fe3f638824d2592f5ded48630384636ef1eb4ff720",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "2676b050ac4620b2f29af812e302f7ca714c006943c8f6d1b4351b7115456046",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-023",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      12
+     ],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "5cc44e2cee83609dc43bcf4e40006ce49df57b578a64a9e123c74ebf4c3fcb77",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "0344c5f95fc2ec29412db2c3d427163f1d18cbe9b6b493144a7422dd3d2f81eb",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-024",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      12
+     ],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "8861682dbffcbc32791b646b048da78c5e2dae27ce359d82a2949c23d1e1d23e",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "f013ac31ac42e98aab990df426000253b37cf4336bc9b36fc95aad1e84fa3d84",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-025",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      12
+     ],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "2e766605705ceabc97d9fbf380619dd66af1dd19f81ec286c787d1479b797664",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-026",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-027",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-028",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-029",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-030",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-031",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "9f0eecc070ba6aec080cb529a526074531454533344c9351874a05f225b95095",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-032",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 17,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-033",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-034",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-035",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 15,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-036",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-037",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-038",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 9,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "95527f7cf5d30c598eba48021c1c64b71993de53e2ac69485e9b8a7bfdddd4ee",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "ac5aa8296f36039d75888fd6d644a1ad449fc5aff92262cd5851ea28b9c356eb",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-039",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 11,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      11
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "d2b18f8719af6c120ae83dea24b081408900ba359732a38f8e08571c9c19a5b2",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "28646e4ad9766de4d534f336838135c1838648dc30164524522a4d5cf904eaf9",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-040",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 14,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      11
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "c7f43bcb9f73c9215587dd3cde6e95a014abcafa97d4857fd6db40129df0f2fb",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "b78ee6e6d7872f16967972827dbf762f9a8d0a3e3c881b19ac990e3436e31200",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-041",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 7,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-042",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 17,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      11
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "d2b18f8719af6c120ae83dea24b081408900ba359732a38f8e08571c9c19a5b2",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "9ae6942f0afe1969df99dfd278c446ced3e6d220ce6d2441df86a18559b25dee",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-043",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      12
+     ],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "9374489fa8b386775c617065297aba825e3bc9c488f62154332275783a1785b4",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "3b6769c11b2bad6dc63963b1cf8d3b2ba54de4ed1e9d06d2687c78a2944544c5",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-044",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-045",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "2bb5169bb786e20553f0e99905637f1dbb0dad8e37e503fed45ee6c2c07da835",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "6fa36b066c49e82f5cd26da267baf88e5141e63fe82f93cc1099c6e1ada5e5aa",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-046",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-047",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      12
+     ],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "2e766605705ceabc97d9fbf380619dd66af1dd19f81ec286c787d1479b797664",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-048",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-049",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-050",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 3,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "stale_preference_memory"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "64ccd4223f35121724c4994e78abfa9af965a8de92a2c4b8a006ae4db803f87f",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-051",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-052",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-053",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 11,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "4bb73aec1d82eb876c82a39771d57305e22c1c69cfce834d7ae62ee0073cf1b1",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "guarded_boundary",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [
+      {
+       "error": "PermissionWithdrawnDenied",
+       "event_id": 10
+      }
+     ],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "6726712f161a85b7cfd6e13d71186bf3046c20c75aad297c6f29361e49d6ab05",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-054",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 14,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      11
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "8cdb22d7aa8f52e0e3a9111598718d315823a2a9c849f01aa0f4e29cf25ff0a4",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "05e632627e6cb87b3fdd2f8d799bebad54bdc3a02adaa2ab307f1a994029fb8b",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-055",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 4,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "9f0eecc070ba6aec080cb529a526074531454533344c9351874a05f225b95095",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-056",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 15,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-naive",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-057",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      12
+     ],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "9374489fa8b386775c617065297aba825e3bc9c488f62154332275783a1785b4",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "adapter",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "3b6769c11b2bad6dc63963b1cf8d3b2ba54de4ed1e9d06d2687c78a2944544c5",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-058",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "c1262cd0a2b2ae6580503339107c5b60aba563f674862a879691eaef94bb798b",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-059",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "4369a46c0518705b25b436a6e38ca6eb3076f8077b45cb67d51fde4735bdcc57",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-060",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "0fbcec37199ff3396b9fdfa91540a07130e2037f95bce52fe329a8fe7aa413d7",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-061",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "6fa36b066c49e82f5cd26da267baf88e5141e63fe82f93cc1099c6e1ada5e5aa",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-062",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "4f75a5116565f4debf0125891e368b6d284112a14953f3ac39c5474d8cf8444e",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "guarded_boundary",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [
+      {
+       "error": "PermissionWithdrawnDenied",
+       "event_id": 10
+      }
+     ],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "9ffe2e2fa918629800dbd9b02e6d6689151dfb76a0cd13d69bb4e10f6fb1a8d5",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-063",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "5e832ef1e5ef215d273f3a19c0ad360b5b90aafd2d89da912743fa37b1fd671c",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-064",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "9fbcf9b01b9c500e7ab4a679818f0bc8eec8366bf0cb020efc4db4220922722d",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-065",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-066",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-067",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-068",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "22a64faf85a48bbc7e10700c031e1c5a888bf248e9857ef278827287425227db",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-069",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "9ae6942f0afe1969df99dfd278c446ced3e6d220ce6d2441df86a18559b25dee",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-070",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "05e632627e6cb87b3fdd2f8d799bebad54bdc3a02adaa2ab307f1a994029fb8b",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-071",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "b78ee6e6d7872f16967972827dbf762f9a8d0a3e3c881b19ac990e3436e31200",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-072",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "4fbf674b0e96a8512b446680b3cc01b80de5ab07694d04ffdcc5b3ae593e566d",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-073",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      14
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "8dedcb5da8dfbaad5141fd4d6ba63de2cc17eb021a74d0db5ab16a50028ef709",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "guarded_boundary",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [
+      {
+       "error": "PermissionWithdrawnDenied",
+       "event_id": 14
+      }
+     ],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-2"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "f88d0d51bc7f29e53513d5ec16560f17892847d611bc7761e9386872f74716c8",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-074",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "c099a11c732be6cae41c97d00bb2ee03b1fde164989c75e7cdbe42c9131f3996",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-075",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-076",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-077",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-078",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "3b6769c11b2bad6dc63963b1cf8d3b2ba54de4ed1e9d06d2687c78a2944544c5",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-079",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "2676b050ac4620b2f29af812e302f7ca714c006943c8f6d1b4351b7115456046",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-080",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "0344c5f95fc2ec29412db2c3d427163f1d18cbe9b6b493144a7422dd3d2f81eb",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-081",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "f013ac31ac42e98aab990df426000253b37cf4336bc9b36fc95aad1e84fa3d84",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-082",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "2e766605705ceabc97d9fbf380619dd66af1dd19f81ec286c787d1479b797664",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-083",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "ba34dc7aa350d2b084edb27b20760517663cdf26eaa9d241a5ebe8f2707a7f9e",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-084",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-3"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "02981ee91114eeb8eb5bc72604ad31be4ea19893bf2da3a7ebc07962f8da4a35",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-085",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-086",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-087",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 20,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-088",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "830fbdcffe9ce74e2af489b774a6ef21ddd4a2c66c3529c13090ad11622b74b7",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-089",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 17,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-090",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "stale_preference_memory"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0c6537ff2d24e6b2839c8f67e921453a57ad2043a7a1b71ad95162272dc815c8",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-091",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 3,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "stale_preference_memory"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "c2191e44dea4479aff7a1e863a4df65026fad4a8e4af4b0382105c40acffa226",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-092",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 10,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "2c35dac7d5595403aea9441a57b9564204a0a191f71f296a418fcbf00d57fce9",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-093",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-094",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-095",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 4,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "830fbdcffe9ce74e2af489b774a6ef21ddd4a2c66c3529c13090ad11622b74b7",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-096",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 15,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "0344c5f95fc2ec29412db2c3d427163f1d18cbe9b6b493144a7422dd3d2f81eb",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "no_failure_found",
+    "status": "completed"
+   },
+   "case_id": "heldout-097",
+   "class": "fault_fired_no_violation",
+   "faults": [
+    {
+     "after_event": 16,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": true,
+     "faults_triggered": true,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued",
+     "stale_preference_memory"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-3"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "05940d455faaf5e274e128181e9baeef00c46418de0a3230dfde4f86226282df",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-098",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 19,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 18,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-099",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "e2292ca119d669f9f42e5904bbed9d17fb744591758a062d3488a8938aa99c61",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-100",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "4fbf674b0e96a8512b446680b3cc01b80de5ab07694d04ffdcc5b3ae593e566d",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-101",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "9ae6942f0afe1969df99dfd278c446ced3e6d220ce6d2441df86a18559b25dee",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-102",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "05e632627e6cb87b3fdd2f8d799bebad54bdc3a02adaa2ab307f1a994029fb8b",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-103",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "3b6769c11b2bad6dc63963b1cf8d3b2ba54de4ed1e9d06d2687c78a2944544c5",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-104",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "05e632627e6cb87b3fdd2f8d799bebad54bdc3a02adaa2ab307f1a994029fb8b",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-105",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 6,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "830fbdcffe9ce74e2af489b774a6ef21ddd4a2c66c3529c13090ad11622b74b7",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-106",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "stale_preference_memory"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "9b87144f1f37fdf14cd69ab1cbe327dc5d844396f564412d7ba33fa878ba991a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-107",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 2
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-108",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 18,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "0e95bfc84140e35c2f3686b9c1b33dc3117da62c27e593b83ddbbcef14653d0a",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-109",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "stale_preference_memory"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": []
+    },
+    "run_sha256": "2875ee762525fd252eab9ed0d162f314ba9a380b6934848be45a2656d020b921",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-110",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 7,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 15,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued",
+     "stale_preference_memory"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "8364507c2653fc900b886b4781503046c0255f444046566068286de5d5a96f07",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-111",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 8,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 16,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "f013ac31ac42e98aab990df426000253b37cf4336bc9b36fc95aad1e84fa3d84",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-112",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 9,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-a"
+      }
+     ]
+    },
+    {
+     "after_event": 3,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 19
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued",
+     "stale_preference_memory"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      10
+     ],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "c1e5434a7dfd22dd416eb8d356215c74fefbe956e51a678282badd0534e7bdb9",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "guarded_boundary",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-b"
+     ],
+     "guard_denials": [
+      {
+       "error": "PermissionWithdrawnDenied",
+       "event_id": 10
+      }
+     ],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-1"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-a"
+     ]
+    },
+    "run_sha256": "e7f3989539f64119418366109e063d55247a674f0113037dc12d62e7c54ec1cb",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "repair_verified",
+    "status": "completed"
+   },
+   "case_id": "heldout-113",
+   "class": "failure_found",
+   "faults": [
+    {
+     "after_event": 13,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "traveller-b"
+      }
+     ]
+    },
+    {
+     "after_event": 20,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [
+     "delivered_messages_permitted"
+    ],
+    "faults_fired": [
+     "sharing_revoked_while_queued"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [
+      14
+     ],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "8dedcb5da8dfbaad5141fd4d6ba63de2cc17eb021a74d0db5ab16a50028ef709",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": {
+    "campaign_outcome": "repair_verified",
+    "execution": {
+     "guarded": true,
+     "mode": "enforced"
+    },
+    "held_by": "guarded_boundary",
+    "lost_faults": [],
+    "oracle": {
+     "delivered_to": [
+      "participant-c",
+      "traveller-a"
+     ],
+     "guard_denials": [
+      {
+       "error": "PermissionWithdrawnDenied",
+       "event_id": 14
+      }
+     ],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [
+      "msg-2"
+     ],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "traveller-b"
+     ]
+    },
+    "run_sha256": "f88d0d51bc7f29e53513d5ec16560f17892847d611bc7761e9386872f74716c8",
+    "run_status": "completed",
+    "unsafe": false,
+    "verified": true
+   },
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    },
+    "repaired": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  },
+  {
+   "adapter": "journey-version-checked",
+   "campaign": {
+    "outcome": "coverage_incomplete",
+    "status": "budget_exhausted"
+   },
+   "case_id": "heldout-114",
+   "class": "inconclusive",
+   "faults": [
+    {
+     "after_event": 1,
+     "fault_id": "sharing_revoked_while_queued",
+     "parameters": [
+      {
+       "name": "recipient_id",
+       "value": "participant-c"
+      }
+     ]
+    },
+    {
+     "after_event": 14,
+     "fault_id": "stale_preference_memory",
+     "parameters": [
+      {
+       "name": "preference_version",
+       "value": 1
+      }
+     ]
+    },
+    {
+     "after_event": null,
+     "fault_id": "delayed_itinerary_update",
+     "parameters": [
+      {
+       "name": "delay_events",
+       "value": 20
+      }
+     ]
+    }
+   ],
+   "fork": {
+    "coverage": {
+     "baseline": "completed",
+     "complete": false,
+     "faults_triggered": false,
+     "fork": "completed"
+    },
+    "execution": {
+     "guarded": false,
+     "mode": "lab"
+    },
+    "failed_invariants": [],
+    "faults_fired": [
+     "sharing_revoked_while_queued",
+     "stale_preference_memory"
+    ],
+    "oracle": {
+     "delivered_to": [
+      "traveller-a",
+      "traveller-b"
+     ],
+     "guard_denials": [],
+     "mutated_on_denial": [],
+     "stale_commitments": [],
+     "still_queued": [],
+     "unpermitted_deliveries": [],
+     "withdrawn": [
+      "participant-c"
+     ]
+    },
+    "run_sha256": "925a7ac2d91d74321d74809d7bfa44612ba5d5e252d2e82a92819b3ebafe4a77",
+    "status": "completed"
+   },
+   "integrity_failures": [],
+   "model_attempts": 1,
+   "repair": null,
+   "replays": {
+    "fork": {
+     "provider_requests_during_replay": 0,
+     "reported_model_calls": 0,
+     "reproduced": true
+    }
+   }
+  }
+ ],
+ "counts": {
+  "cases": 114,
+  "cases_with_integrity_failures": 0,
+  "errored": 0,
+  "failures_found": 29,
+  "failures_found_with_incomplete_coverage": 12,
+  "fault_fired_no_violation": 19,
+  "inconclusive": 66,
+  "repairs": {
+   "attempted": 29,
+   "did_not_hold": 0,
+   "held_by_adapter": 23,
+   "held_by_guarded_boundary": 6,
+   "incomplete": 0,
+   "incomplete_with_lost_faults": 0,
+   "verified": 29,
+   "verified_with_incomplete_fork_coverage": 12
+  },
+  "replays": {
+   "attempted": 143,
+   "provider_requests": 0,
+   "reported_model_calls": 0,
+   "reproduced": 143
+  },
+  "unsafe_enforced_runs": 0
+ },
+ "environment": {
+  "platform": "win32",
+  "python": "3.13.18"
+ },
+ "fixture_label": "httpx.MockTransport fixture; no provider was contacted",
+ "inference": "mocked",
+ "live_provider_contacted": false,
+ "schema": "ghostlab-heldout/1",
+ "seed": 20261031,
+ "selection_sha256": "4a89149fe660ae5a8c91e2b482256a20d6827672c0a4a7892d7ac2b1bbb6a5c5",
+ "world": "group-journey/1"
+}

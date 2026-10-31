@@ -32,8 +32,9 @@ All of these must hold. Any failure blocks promotion.
    drift blocks. If behaviour changed on purpose, update `evals/expected.json` with
    `--write-expected` in its own commit, and have a reviewer read the diff. CI never
    writes that file.
-5. [ ] `python -m evals.release --report <dir>/report.json --commit <sha>` exits 0, and
-   the record is attached to the release notes.
+5. [ ] `python -m evals.release --evidence <dir> --commit <sha>` exits 0, and the record
+   is attached to the release notes. Run it from a clean checkout of `<sha>`: evidence from
+   another commit or a tree with local changes blocks.
 6. [ ] The recovery drill passed on this candidate ([recovery-drill.md](recovery-drill.md)).
    The automated case `ops.recovery_drill` is part of step 4.
 7. [ ] The stores were backed up before upgrading (the drill's backup step).
@@ -52,9 +53,11 @@ Not reachable today. It needs everything above, plus gates 1–4 of
 `docs/acceptance-gates.md` where they apply, and gate 5's live evidence.
 `customer_connected_use_allowed` in a release record is false for a local target whatever
 else the record says. A future target of kind `customer_connected` also needs an
-authenticated runtime, evidence for every security gate, and a real compatibility report
-that passes the controller's own check. A status or a path in the targets file proves
-nothing. `customer_connected_blockers` lists what's missing, and none of this changes
+authenticated runtime, evidence for every security gate, a documented provider, endpoint
+and model, and a real compatibility report that passes the controller's own check and
+shows timeout, cancel, rate-limit and budget handling were probed. Today's probe doesn't
+cover those, so `true` is unreachable, on purpose. A status or a path in the targets file
+proves nothing. `customer_connected_blockers` lists what's missing, and none of this changes
 offline promotion.
 
 ## After promotion

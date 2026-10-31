@@ -9,8 +9,9 @@ The automated version is the evaluation case `ops.recovery_drill`:
 python -m evals.run --out <scratch-dir> --only ops.recovery_drill
 ```
 
-`--only` runs one case, so the gate also lists the others as missing. Read that case's
-entry in `<scratch-dir>/report.json`, or run the full suite, which has no such noise.
+`--out` must be a new or empty directory. `--only` runs one case, so the gate also lists
+the others as missing. Read that case's entry in `<scratch-dir>/report.json`, or run the
+full suite, which has no such noise.
 
 ## What it does
 

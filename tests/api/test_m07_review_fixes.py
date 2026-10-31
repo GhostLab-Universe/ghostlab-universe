@@ -548,3 +548,21 @@ def test_a_status_replay_could_not_check_is_not_reported(stack):
     assert imported.status_code == 201, imported.text
     assert imported.json()["replay"]["reproduced"] is False
     assert imported.json()["replay"]["run_status"] is None
+
+
+@pytest.mark.parametrize("scripted,held", [(True, set()), (False, {"MODEL_API_KEY"})])
+def test_a_scripted_server_holds_no_provider_key(tmp_path, monkeypatch, scripted, held):
+    import os
+
+    from ghostlab.api import __main__ as entry
+
+    monkeypatch.setenv("GHOSTLAB_AUTH_MODE", "local_dev")
+    monkeypatch.setenv("MODEL_API_KEY", "not-a-real-key")
+    monkeypatch.setenv("BASETEN_API_KEY", "not-a-real-key")
+    monkeypatch.delenv("BASETEN_API_KEY" if not scripted else "GHOSTLAB_DEPLOYMENT", raising=False)
+    seen = {}
+    monkeypatch.setattr(entry.uvicorn, "run", lambda app, **_: seen.update(
+        keys={name for name in ("MODEL_API_KEY", "BASETEN_API_KEY") if name in os.environ}))
+    args = ["--root", str(tmp_path / "root"), "--port", "1", *(["--scripted"] if scripted else [])]
+    assert entry.main(args) == 0
+    assert seen["keys"] == held

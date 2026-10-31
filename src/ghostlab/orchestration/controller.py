@@ -324,6 +324,9 @@ class CampaignController:
     def _wrap(self, name, node):
         def run(state):
             self.s.on_node(name, state)
+            # With no usable world, only a stop can move the campaign, at whichever node.
+            if self._unusable(state) and (stop := self._guard(state)) is not None:
+                return stop
             return node(state)
         return run
 
@@ -352,25 +355,29 @@ class CampaignController:
         """The fixture this campaign's evidence came from, never the current setting."""
         driver, snapshot = self._world_driver(state), state.get("fixture")
         if snapshot is None:
-            if driver.world_version != "refund-world/1":
-                raise CampaignSettingsChanged("this campaign has no recorded fixture")
-            return driver.current_fixture(self.s)  # a checkpoint from before pinning
+            raise CampaignSettingsChanged("this campaign has no recorded fixture")
         if hashlib.sha256(canonical(snapshot)).hexdigest() != state["fixture_sha256"]:
             raise CampaignSettingsChanged("the recorded fixture failed its digest")
         return driver.restore(snapshot)
 
+    def _unusable(self, state) -> bool:
+        try:
+            self._fixture(state)
+        except (PolicyDenied, CampaignSettingsChanged):
+            return True
+        return False
+
     def _settings_problem(self, state) -> str | None:
         driver, snapshot = self._world_driver(state), state.get("fixture")
-        if snapshot is not None:
-            if hashlib.sha256(canonical(snapshot)).hexdigest() != state["fixture_sha256"]:
-                return "the recorded fixture failed its digest"
-            if driver.snapshot(driver.current_fixture(self.s)) != snapshot:
-                return "the world fixture changed since this campaign started"
-            action = (state.get("approval") or {}).get("action") or {}
-            if action.get("fixture_sha256") not in (None, state["fixture_sha256"]):
-                return "the approved action names a different fixture"
-        elif driver.world_version != "refund-world/1":
+        if snapshot is None:
             return "this campaign has no recorded fixture"
+        if hashlib.sha256(canonical(snapshot)).hexdigest() != state["fixture_sha256"]:
+            return "the recorded fixture failed its digest"
+        if driver.snapshot(driver.current_fixture(self.s)) != snapshot:
+            return "the world fixture changed since this campaign started"
+        action = (state.get("approval") or {}).get("action") or {}
+        if action.get("fixture_sha256") not in (None, state["fixture_sha256"]):
+            return "the approved action names a different fixture"
         return driver.identity_problem(self.s, self._fixture(state), self.session.project_id,
                                        self.session.principal)
 
@@ -942,11 +949,12 @@ class CampaignController:
         wait_id = f"{state['campaign_id']}-await-approval"
         if (stop := self._guard(state)) is not None:
             return stop
-        if (problem := self._settings_problem(state)) is not None:
-            tasks = board.fail_dependents(board.finish(state["tasks"], wait_id, "failed"))
-            return self._stop(state, "failed", "settings_changed", tasks=tasks,
-                              error=self._error("approval_invalid", problem))
         try:
+            problem = self._settings_problem(state)
+            if problem is not None:
+                tasks = board.fail_dependents(board.finish(state["tasks"], wait_id, "failed"))
+                return self._stop(state, "failed", "settings_changed", tasks=tasks,
+                                  error=self._error("approval_invalid", problem))
             request = self._world_driver(state).repair_request(approval["action"])
         except PolicyDenied as denied:
             return self._denied(state, state["tasks"], wait_id, denied.decision)

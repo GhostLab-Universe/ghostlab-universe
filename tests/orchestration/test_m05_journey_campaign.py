@@ -935,15 +935,73 @@ def test_a_journey_campaign_without_a_recorded_fixture_is_refused(tmp_path):
             controller.export_capsule(CID)
 
 
-def test_a_refund_checkpoint_from_before_pinning_still_resumes(tmp_path):
-    lab = JourneyLab(tmp_path, Script(proposal()))
+def unpinned(lab, world_spec, reply):
+    lab.script.add(reply)
     with lab.controller() as controller:
-        state = controller.start(CID, spec())
+        state = controller.start(CID, world_spec)
         controller.graph.update_state(controller._config(CID),
                                       {"fixture": None, "fixture_sha256": None})
+    return state
+
+
+def test_a_checkpoint_with_no_pinned_fixture_is_refused_and_spends_nothing(tmp_path):
+    lab = JourneyLab(tmp_path, Script())
+    state = unpinned(lab, spec(), proposal())
+    lab.approve(state)
+    lab.refund_fixture = Fixture(order_id="synthetic-order-2", paid_minor=100_000)
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.resume(CID)
+    assert stored_approval(lab, state).status == "approved"
+
+
+def test_a_checkpoint_with_no_pinned_fixture_can_still_be_cancelled(tmp_path):
+    lab = JourneyLab(tmp_path, Script())
+    state = unpinned(lab, spec(), proposal())
+    cancel = threading.Event()
+    cancel.set()
+    with lab.controller(cancel=cancel) as controller:
+        assert controller.resume(CID)["status"] == "cancelled"
+    assert stored_approval(lab, state).status == "pending"
+
+
+@pytest.mark.parametrize("node", ["validate", "verify", "remember"])
+@pytest.mark.parametrize("stop", ["cancel", "deadline"])
+def test_a_withdrawn_world_closes_from_a_node_with_no_stop_check(tmp_path, node, stop):
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=CrashOnce(node))
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.start(CID, journey_spec())
+    lab.worlds = {}
+    cancel = threading.Event()
+    cancel.set() if stop == "cancel" else lab.clock.advance(minutes=30)
+    with lab.controller(cancel=cancel) as controller:
+        done = controller.recover(CID)
+    assert done["status"] in {"cancelled", "budget_exhausted"} and not done["paused"]
+
+
+def test_a_withdrawn_world_still_refuses_a_recovery_with_no_stop(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=CrashOnce("verify"))
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.start(CID, journey_spec())
+    lab.worlds = {}
+    with lab.controller() as controller, pytest.raises(PolicyDenied):
+        controller.recover(CID)
+
+
+def test_a_world_withdrawn_at_consume_closes_with_the_approval_unspent(tmp_path):
+    def withdraw(name, state):
+        if name == "consume":
+            held["controller"].s.worlds = {}
+
+    held = {}
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=withdraw)
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
     lab.approve(state)
     with lab.controller() as controller:
-        assert controller.resume(CID)["outcome"] == "repair_verified"
+        held["controller"] = controller
+        done = controller.resume(CID)
+    assert (done["status"], done["outcome"]) == ("failed", "world_not_runnable")
+    assert stored_approval(lab, state).status == "approved"
 
 
 # --- 11. a verified repair has to have run ---------------------------------------------------
@@ -1634,14 +1692,10 @@ def test_a_binding_withdrawn_during_the_resume_spends_nothing(tmp_path):
 
 
 @pytest.mark.parametrize("bindings", [{}, {(PROJECT, OPERATOR.principal_id): "synthetic-customer-2"}])
-@pytest.mark.parametrize("pinned", [True, False])
-def test_a_changed_refund_binding_keeps_the_approval(tmp_path, bindings, pinned):
+def test_a_changed_refund_binding_keeps_the_approval(tmp_path, bindings):
     lab = JourneyLab(tmp_path, Script(proposal()))
     with lab.controller() as controller:
         state = controller.start(CID, spec())
-        if not pinned:  # a checkpoint from before fixtures were pinned
-            controller.graph.update_state(controller._config(CID),
-                                          {"fixture": None, "fixture_sha256": None})
     lab.approve(state)
     original, lab.binding = lab.binding, StaticPrincipalBinding(bindings)
     with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):

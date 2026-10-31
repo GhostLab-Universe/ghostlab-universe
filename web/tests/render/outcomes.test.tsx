@@ -189,6 +189,23 @@ test("a resume refused with settings_changed is blocked, not failed", () => {
   assert.match(text(markup), /A damaged record can't be restored/);
 });
 
+test("a withdrawn binding shows as a refusal, with the service's own message", () => {
+  const scene = scenario("fx-binding-withdrawn");
+  const error = scene.resumeError!;
+  const result = {
+    decision: scenario("fx-refund").approved!.approval!.decision!,
+    approval: scene.stage.approval!.request,
+    resumed: false,
+    resume_error: error,
+  };
+  const markup = panel("fx-binding-withdrawn", { result });
+  assert.match(markup, /data-testid="state-blocked"/);
+  assert.doesNotMatch(markup, /data-testid="state-failed"/);
+  assert.match(text(markup), /the world identity no longer owns this/);
+  assert.match(text(markup), /a refusal, not a failed repair/);
+  assert.doesNotMatch(markup, /data-testid="repair-verdict"/);
+});
+
 test("a failed campaign with outcome settings_changed is blocked, and resume isn't offered", () => {
   const page = campaignPage("fx-settings-blocked");
   assert.match(page, /data-testid="state-blocked"/);

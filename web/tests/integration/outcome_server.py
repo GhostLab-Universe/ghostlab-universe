@@ -30,6 +30,7 @@ sys.argv = [sys.argv[0], "--root", args.root, "--port", args.port]
 import fixture_server  # noqa: E402
 from ghostlab.budgets import BudgetAccountant  # noqa: E402
 from ghostlab.orchestration.worlds import DEFAULT_WORLDS, JourneyDriver  # noqa: E402
+from ghostlab.policy import StaticWorldBinding  # noqa: E402
 from ghostlab.worlds.journey import JourneyFixture  # noqa: E402
 from m05_harness import VULNERABLE, meta_reply  # noqa: E402
 from m05_journey_harness import J, ORGANIZER, JourneyLab, proposal_json  # noqa: E402
@@ -89,6 +90,18 @@ class OneShotDriver(JourneyDriver):
         return {**action, "scenario": {**action["scenario"], "max_tool_calls": SHORT_REPAIR_CAP}}
 
 
+class WithdrawableBinding(StaticWorldBinding):
+    """Withdraws the bound identity for one check, then restores it."""
+
+    withdrawn = False
+
+    def actor_for(self, project_id, principal, world_version):
+        if WithdrawableBinding.withdrawn:
+            WithdrawableBinding.withdrawn = False
+            return None
+        return super().actor_for(project_id, principal, world_version)
+
+
 driver = OneShotDriver()
 armed_campaigns = set()
 
@@ -117,10 +130,15 @@ def arm_settings_change(name, state):
         if marker in objective and name == node and state["campaign_id"] not in armed_campaigns:
             armed_campaigns.add(state["campaign_id"])
             driver.armed = True
+    if ("outcome-binding-at-resume" in objective and name == "await_approval"
+            and state["campaign_id"] not in armed_campaigns):
+        armed_campaigns.add(state["campaign_id"])
+        WithdrawableBinding.withdrawn = True
 
 
 BudgetAccountant.reserve = reserve
 fixture_server.scripted_reply = scripted_reply
+fixture_server.StaticWorldBinding = WithdrawableBinding
 fixture_server.JourneyLab = functools.partial(
     JourneyLab, worlds={**DEFAULT_WORLDS, J: driver}, on_node=arm_settings_change)
 

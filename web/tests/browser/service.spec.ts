@@ -25,6 +25,19 @@ const approval = (page: Page) => view(page, /Approval/);
 const approve = (page: Page) => page.getByRole("button", { name: "Approve this action" }).click();
 const paused = (page: Page) => expect(page.getByTestId("state-awaiting_approval")).toBeVisible(POLLED);
 
+/** The last steps of the priority flow: a capsule of the verified repair, then its replay. */
+async function replayRepaired(page: Page) {
+  await view(page, "Capsule");
+  await page.getByLabel("Run").selectOption("repaired");
+  await page.getByRole("button", { name: "Export capsule" }).click();
+  await expect(page.getByRole("button", { name: "Replay capsule" })).toBeEnabled();
+  await page.getByRole("button", { name: "Replay capsule" }).click();
+  await expect(page.getByTestId("replay-verdict")).toContainText("Reproduced");
+  await expect(page.getByTestId("replay-fields")).toContainText("run_status");
+  await expect(page.getByTestId("replay-fields")).toContainText("completed");
+  await expect(page.getByTestId("replay-fields")).toContainText("model_calls");
+}
+
 test("the session shows the scripted inference and has no test data banner", async ({ page }) => {
   await page.goto("/#/");
   const session = page.locator(".session");
@@ -75,6 +88,8 @@ test("refund end to end: create, evidence, diff, replay, download, approve", asy
 
   await page.reload();
   await expect(page.getByTestId("repair-verdict")).toContainText("Repair verified", POLLED);
+  await replayRepaired(page);
+  await shot(page, "service-refund-repaired-replay");
 });
 
 test("journey end to end: both events, enforced repair held by the adapter", async ({ page }) => {
@@ -99,6 +114,8 @@ test("journey end to end: both events, enforced repair held by the adapter", asy
   await expect(page.getByTestId("repair-verdict")).toContainText("Repair verified", POLLED);
   await expect(page.getByTestId("repair-fields")).toContainText("adapter");
   await shot(page, "service-journey-repaired");
+  await replayRepaired(page);
+  await shot(page, "service-journey-repaired-replay");
 });
 
 test("rejecting: 'completed' does not read as success", async ({ page }) => {
@@ -228,6 +245,20 @@ test("a resume refused by settings_changed is blocked, then restoring finishes i
 
   await page.reload();
   await expect(page.getByText("Approved, not yet used")).toBeVisible(POLLED);
+  await page.getByRole("button", { name: "Resume campaign" }).click();
+  await expect(page.getByTestId("repair-verdict")).toContainText("Repair verified", POLLED);
+});
+
+test("a withdrawn binding is a refusal, then restoring it finishes the repair", async ({ page }) => {
+  await start(page, JOURNEY, "outcome-binding-at-resume");
+  await paused(page);
+  await approval(page);
+  await approve(page);
+  const blocked = page.getByTestId("state-blocked");
+  await expect(blocked).toContainText("the world identity no longer owns this", POLLED);
+  await expect(blocked).toContainText("a refusal, not a failed repair");
+  await expect(page.getByTestId("repair-verdict")).toHaveCount(0);
+  await shot(page, "service-binding-withdrawn");
   await page.getByRole("button", { name: "Resume campaign" }).click();
   await expect(page.getByTestId("repair-verdict")).toContainText("Repair verified", POLLED);
 });

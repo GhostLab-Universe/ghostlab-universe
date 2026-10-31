@@ -197,6 +197,16 @@ test("a refused resume is blocked, with the approval unspent after a reload", as
   await expect(page.getByTestId("state-denied")).toHaveCount(0);
 });
 
+test("a withdrawn binding reads as a refusal, not a failed repair", async ({ page }) => {
+  await go(page, "campaign/fx-binding-withdrawn/approval");
+  await page.getByRole("button", { name: "Approve this action" }).click();
+  const blocked = page.getByTestId("state-blocked");
+  await expect(blocked).toContainText("the world identity no longer owns this");
+  await expect(blocked).toContainText("a refusal, not a failed repair");
+  await expect(page.getByTestId("repair-verdict")).toHaveCount(0);
+  await shot(page, "binding-withdrawn");
+});
+
 test("failed / settings_changed reads as blocked and offers no resume", async ({ page }) => {
   await go(page, "campaign/fx-settings-blocked");
   await expect(page.locator(".status-line")).toContainText("Blocked: settings changed");

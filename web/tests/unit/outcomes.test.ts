@@ -149,6 +149,32 @@ test("coverage missing on an older checkpoint is never assumed complete", () => 
   assert.equal(readCoverage({ coverage: null }), null);
 });
 
+test("a withdrawn binding is a refusal, with the approval unspent", async () => {
+  const source = createFixtureSource();
+  const view = await source.getCampaign("fx-binding-withdrawn");
+  assert.ok(view.ok);
+  const id = view.data.approval!.approval_id;
+  const approval = await source.getApproval(id);
+  assert.ok(approval.ok);
+  const decided = await source.decideApproval(buildSubmission(approval.data, "approve", ""), "key-1");
+  assert.ok(decided.ok);
+  assert.equal(decided.data.resumed, false);
+  assert.equal(decided.data.resume_error?.error.message, "the world identity no longer owns this");
+  const after = await source.getApproval(id);
+  assert.ok(after.ok);
+  assert.equal(after.data.effective_status, "approved");
+  const campaign = await source.getCampaign("fx-binding-withdrawn");
+  assert.ok(campaign.ok);
+  assert.equal(campaign.data.repair, null);
+});
+
+test("blocked copy never reads as a failed repair", () => {
+  assert.match(BLOCKED_HELP, /a refusal, not a failed repair/);
+  assert.match(BLOCKED_HELP, /bound identity/);
+  assert.match(outcomeNotice("settings_changed")?.detail ?? "", /not a failed repair/);
+  assert.doesNotMatch(outcomeNotice("settings_changed")?.detail ?? "", /fixture changed/);
+});
+
 test("BLOCKED_HELP promises nothing a damaged record can't deliver", () => {
   assert.match(BLOCKED_HELP, /A damaged record can't be restored/);
   assert.doesNotMatch(BLOCKED_HELP, /lets the campaign resume\.$/);

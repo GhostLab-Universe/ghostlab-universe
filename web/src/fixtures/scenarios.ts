@@ -770,6 +770,12 @@ export const SCENARIOS: readonly Scenario[] = [
       error: { code: "conflict", message: "the world fixture changed since this campaign started", ref: null, retryable: false, side_effect: "none" },
     },
   }),
+  awaiting("fx-binding-withdrawn", JOURNEY, "World binding withdrawn", "The bound world identity changed: the resume is refused and the approval stays unspent.", {
+    resumeError: {
+      reason: "settings_changed",
+      error: { code: "conflict", message: "the world identity no longer owns this", ref: null, retryable: false, side_effect: "none" },
+    },
+  }),
   expired("fx-approval-expired"),
   missing("fx-load-denied", "Campaign read denied", "A 403 on the authoritative read.", serviceFailure(403, "forbidden", "Refused by policy", "capability_denied")),
   missing("fx-load-invalid", "Campaign read rejected", "A 422 validation error.", serviceFailure(422, "validation_failed", "campaign_id does not match the identifier pattern", null)),

@@ -51,13 +51,13 @@ const TITLES: Record<FailureState, string> = {
 /** The campaign has stopped: a decision on it is recorded and moves nothing. */
 export const CAMPAIGN_FINISHED = "campaign_finished";
 
-/** A refused action. M07 uses one reason for three causes; only its message says which. */
+/** A refused action. M07 uses one reason for several causes; only its message says which. */
 export const BLOCKED_HELP =
-  "Nothing ran, and any approval is still unused. If the world's settings changed, restoring them lets the campaign resume. A damaged record can't be restored. The message above says which this is.";
+  "This is a refusal, not a failed repair. Nothing ran, and any approval is still unused. If the world's settings or its bound identity changed, restoring them lets the campaign resume. A damaged record can't be restored. The message above says which this is.";
 
 /** failed / settings_changed: the campaign has ended, so a resume does nothing. */
 export const BLOCKED_ENDED_HELP =
-  "The fixture changed before the approval was used, so the campaign stopped. The approval is unspent, and this campaign can't continue.";
+  "A pinned setting changed before the approval was used, so the campaign stopped. No repair ran, so this is not a failed repair. The approval is unspent, and this campaign can't continue.";
 
 export interface FailureSummary {
   state: FailureState;

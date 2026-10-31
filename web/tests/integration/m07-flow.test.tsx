@@ -440,6 +440,24 @@ test("a resume refused by settings_changed is blocked, and restoring them lets i
   assert.equal(unwrap(await client.getApproval(approval.request.approval_id)).effective_status, "consumed");
 });
 
+test("a withdrawn binding refuses the resume, leaves the approval unspent, and restoring it finishes", async () => {
+  const { live, approval, campaignId } = await pausedCampaign(client, "group-journey/1", "binding", "outcome-binding-at-resume");
+  const decided = unwrap(await client.decideApproval(buildSubmission(approval, "approve", ""), `binding-decision-${nonce}`));
+  assert.equal(decided.resumed, false);
+  assert.equal(decided.resume_error?.reason, "settings_changed");
+  assert.equal(decided.resume_error?.error.message, "the world identity no longer owns this");
+  const failure: Failure = { kind: "service", status: 409, ...decided.resume_error! };
+  assert.equal(describeFailure(failure).state, "blocked");
+  const held = await until(live, "awaiting_approval");
+  assert.equal(held.repair, null, "no repair ran, so none can read as failed");
+  assert.equal(unwrap(await client.getApproval(approval.request.approval_id)).effective_status, "approved");
+
+  unwrap(await client.resumeCampaign(campaignId));
+  const done = await until(live, "completed", "failed", "budget_exhausted");
+  assert.equal(done.outcome, "repair_verified");
+  assert.equal(unwrap(await client.getApproval(approval.request.approval_id)).effective_status, "consumed");
+});
+
 test("credential-shaped client text is refused, stores nothing and approves nothing", async () => {
   const objective = { ...spec("refund-world/1"), objective: "Check token=abcd1234 handling" };
   const created = failureOf(await client.createCampaign(objective, `secret-${nonce}`));

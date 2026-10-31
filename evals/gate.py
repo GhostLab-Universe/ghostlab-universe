@@ -15,11 +15,13 @@ import sys
 from pathlib import Path
 
 from .harness import FIXTURE_LABEL
-from .score import SCHEMA, score_directory
+from .identity import evidence_sha256
+from .score import RUN_IDENTITY, SCHEMA, score_directory
 
 REPORT_FILE = "report.json"
 REQUIRED_FIELDS = ("schema", "inference", "live_provider_contacted", "fixture_label",
-                   "environment", "aggregate", "cases", "deferred", "commit", "dirty")
+                   "environment", "aggregate", "cases", "deferred", "commit", "dirty",
+                   "code_sha256")
 CASE_FIELDS = ("case_id", "category", "world", "status", "failed_expectations", "expectations",
                "metrics", "telemetry_records", "local_wall_ms", "fingerprint")
 
@@ -59,18 +61,22 @@ def verified_report(directory: Path) -> tuple[dict, str | None, list[str]]:
     Returns the rescored report, the digest of the stored file's bytes, and any problems.
     """
     report = score_directory(directory)
+    identity = Path(directory) / RUN_IDENTITY
+    recorded = json.loads(identity.read_text("utf-8")) if identity.exists() else {}
+    sealed = recorded.get("evidence_sha256") == evidence_sha256(directory)
+    seal = [] if sealed else [f"{RUN_IDENTITY} doesn't match the evidence files"]
     path = Path(directory) / REPORT_FILE
     if not path.exists():
-        return report, None, [f"no {REPORT_FILE} in the evidence directory"]
+        return report, None, [*seal, f"no {REPORT_FILE} in the evidence directory"]
     data = path.read_bytes()
     try:
         stored = json.loads(data)
     except ValueError:
-        return report, hashlib.sha256(data).hexdigest(), [f"{REPORT_FILE} isn't JSON"]
+        return report, hashlib.sha256(data).hexdigest(), [*seal, f"{REPORT_FILE} isn't JSON"]
     same = isinstance(stored, dict) and (
         {key: value for key, value in stored.items() if key != "environment"}
         == {key: value for key, value in report.items() if key != "environment"})
-    problems = [] if same else [f"{REPORT_FILE} doesn't match the evidence"]
+    problems = [*seal, *([] if same else [f"{REPORT_FILE} doesn't match the evidence"])]
     return report, hashlib.sha256(data).hexdigest(), problems
 
 
@@ -124,6 +130,7 @@ def main(argv=None) -> int:
     report, _, problems = verified_report(args.directory)
     failures = [*problems, *check(report, json.loads(args.expected.read_text("utf-8")))]
     print(json.dumps({"gate": "blocked" if failures else "passed",
+                      "inference": report["inference"], "fixture_label": report["fixture_label"],
                       "aggregate": report["aggregate"], "failures": failures}, indent=2))
     return 1 if failures else 0
 

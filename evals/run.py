@@ -10,27 +10,15 @@ import argparse
 import json
 import os
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
 from .cases import CASES, Recorder
 from .gate import REPORT_FILE, check, expected_from
+from .identity import evidence_sha256, run_identity
 from .score import RUN_IDENTITY, score_directory
 
 DEFAULT_EXPECTED = Path(__file__).with_name("expected.json")
-
-
-def run_identity() -> dict:
-    """The commit this evidence came from, and whether the tree matched it."""
-    root = Path(__file__).resolve().parent.parent
-
-    def git(*args):
-        done = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True,
-                              check=False)
-        return done.stdout.strip() if done.returncode == 0 else None
-
-    return {"commit": git("rev-parse", "HEAD"), "dirty": git("status", "--porcelain") != ""}
 
 
 def run_case(case, out: Path) -> None:
@@ -72,16 +60,22 @@ def main(argv=None) -> int:
     if args.out.exists() and any(args.out.iterdir()):
         parser.error(f"{args.out} is already used: old evidence could pass for this run")
     args.out.mkdir(parents=True, exist_ok=True)
-    (args.out / RUN_IDENTITY).write_text(json.dumps(run_identity()), "utf-8")
+    began = run_identity()
     errors = run_all(args.out, only=args.only)
+    if args.write_expected:
+        args.expected.write_text(json.dumps(expected_from(score_directory(args.out)), indent=1,
+                                            sort_keys=True) + "\n", "utf-8")
+    ended = run_identity()
+    identity = {**began, "evidence_sha256": evidence_sha256(args.out),
+                # A run that rewrote its own expectations can't be released.
+                "dirty": began["dirty"] or ended != began or args.write_expected}
+    (args.out / RUN_IDENTITY).write_text(json.dumps(identity), "utf-8")
     report = score_directory(args.out)
     (args.out / REPORT_FILE).write_text(json.dumps(report, indent=1, sort_keys=True), "utf-8")
-    if args.write_expected:
-        args.expected.write_text(json.dumps(expected_from(report), indent=1, sort_keys=True)
-                                 + "\n", "utf-8")
     expected = json.loads(args.expected.read_text("utf-8")) if args.expected.exists() else {}
     failures = [*errors, *check(report, expected)]
     print(json.dumps({"gate": "blocked" if failures else "passed",
+                      "inference": report["inference"], "fixture_label": report["fixture_label"],
                       "aggregate": report["aggregate"], "failures": failures}, indent=2))
     return 1 if failures else 0
 

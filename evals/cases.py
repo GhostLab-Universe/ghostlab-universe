@@ -137,6 +137,8 @@ def expect_refund_flow(ev: dict) -> dict:
     return {
         "campaign_repair_verified": (main["status"], main["outcome"]) == (
             "completed", "repair_verified"),
+        "the_order_is_the_synthetic_inr_2500": main["fixture"]["paid_minor"] == 250_000
+        and main["fixture"]["currency"] == "INR",
         "baseline_refunds_once": baseline["refunded_minor"] == baseline["paid_minor"],
         "fork_shows_the_double_refund": fork["refunded_minor"] == 2 * fork["paid_minor"]
         and not fork["within_payment"],

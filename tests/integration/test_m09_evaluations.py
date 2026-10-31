@@ -3,20 +3,25 @@
 import hashlib
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
+import sys
 
 import pytest
 
 from evals import gate
 from evals.cases import CASES
 from evals.evidence import canonical_sha256, scan_stores
-from evals.harness import SECRET, SYNTHETIC_SECRET
-from evals.release import REQUIRED_PROBES, SECURITY_GATES, build_record, target_problems
+from evals.harness import FIXTURE_LABEL, SECRET, SYNTHETIC_SECRET
+from evals.identity import code_sha256_at, evidence_sha256
+from evals.release import (NO_VERIFIABLE_ORIGIN, REQUIRED_PROBES, SECURITY_GATES, build_record,
+                           target_problems)
 from evals.run import DEFAULT_EXPECTED, main as run_main
 from evals.run import run_all
 from evals.score import RUN_IDENTITY, score_directory
 from ghostlab.budgets import BudgetAccountant
+from ghostlab.observability import read_records
 from ghostlab.core import run_agent
 from ghostlab.orchestration import (REQUIRED_COMPATIBILITY_CHECKS, CampaignController,
                                     JourneyDriver, RefundDriver)
@@ -44,13 +49,21 @@ def edit_evidence(out, case_id, change):
     path.write_text(json.dumps(data), "utf-8")
 
 
-def bound_copy(evaluated, tmp_path, *, commit=COMMIT, dirty=False):
+def seal(out, *, commit=COMMIT, dirty=False, code=None):
+    """Write run.json and report.json the way evals.run does."""
+    (out / RUN_IDENTITY).write_text(json.dumps({
+        "commit": commit, "dirty": dirty, "package_path": "src/ghostlab",
+        "code_sha256": code or code_sha256_at(ROOT, COMMIT),
+        "evidence_sha256": evidence_sha256(out)}), "utf-8")
+    (out / gate.REPORT_FILE).write_text(json.dumps(score_directory(out)), "utf-8")
+    return out
+
+
+def bound_copy(evaluated, tmp_path, **options):
     """Evidence as evals.run leaves it: tied to a commit, with its report stored."""
     out = tmp_path / "bound"
     shutil.copytree(evaluated[0], out)
-    (out / RUN_IDENTITY).write_text(json.dumps({"commit": commit, "dirty": dirty}), "utf-8")
-    (out / gate.REPORT_FILE).write_text(json.dumps(score_directory(out)), "utf-8")
-    return out
+    return seal(out, **options)
 
 
 def fork(data, campaign="main"):
@@ -432,6 +445,59 @@ def test_a_resealed_inconsistent_run_blocks(evaluated, tmp_path, name, change, e
     assert any(f"flow.refund: failed expectation {expectation}" in item for item in failures(out))
 
 
+def test_dropping_the_decision_event_blocks_promotion(tmp_path, monkeypatch):
+    real = CampaignController._event
+
+    def without_decisions(self, state, kind, summary, **kwargs):
+        if kind == "approval_decided":
+            return list(state.get("events", []))
+        return real(self, state, kind, summary, **kwargs)
+
+    monkeypatch.setattr(CampaignController, "_event", without_decisions)
+    cases = run_and_score(tmp_path, "flow.refund")
+    assert "approval_events_match_the_decisions" in cases["flow.refund"]["failed_expectations"]
+
+
+def test_events_are_pinned_in_the_fingerprint(evaluated):
+    case = next(c for c in score_directory(evaluated[0])["cases"] if c["case_id"] == "flow.refund")
+    assert "approval_decided" in case["fingerprint"]["campaigns"]["main"]["events"]
+
+
+def test_citing_the_wrong_events_blocks_promotion(tmp_path, monkeypatch):
+    real = CampaignController._verify
+
+    def wrong_events(self, state):
+        update = real(self, state)
+        update["findings"] = [{**item, "evidence_event_ids": [1] if item["evidence_event_ids"]
+                               else []} for item in update["findings"]]
+        return update
+
+    monkeypatch.setattr(CampaignController, "_verify", wrong_events)
+    cases = run_and_score(tmp_path, "flow.")
+    for case_id in ("flow.refund", "flow.journey"):
+        assert "cited_events_match_a_recomputation" in cases[case_id]["failed_expectations"]
+
+
+def test_a_swapped_reality_diff_blocks_promotion(tmp_path, monkeypatch):
+    real = worlds.RefundDriver.diff
+    monkeypatch.setattr(worlds.RefundDriver, "diff",
+                        lambda self, fixture, baseline, fork: real(self, fixture, fork, baseline))
+    cases = run_and_score(tmp_path, "flow.refund")
+    assert "reality_diff_matches_the_stored_runs" in cases["flow.refund"]["failed_expectations"]
+
+
+def test_a_mocked_trace_says_so(evaluated):
+    records, _ = read_records(evaluated[0] / "telemetry" / "flow.refund.main.jsonl")
+    assert all(r["attributes"]["transport"] == "mock" for r in records
+               if r["name"] in ("model.attempt", "campaign.run"))
+
+
+def test_the_gate_says_the_inference_was_mocked(bound, capsys):
+    assert gate.main([str(bound), "--expected", str(DEFAULT_EXPECTED)]) == 0
+    printed = capsys.readouterr().out
+    assert '"inference": "mocked"' in printed and FIXTURE_LABEL in printed
+
+
 def test_a_memory_failure_blocks_promotion(tmp_path, monkeypatch):
     """Probe 4: nothing is stored, which the negative checks alone never noticed."""
     monkeypatch.setattr(CampaignController, "_capture", lambda self, state, findings, ref: [])
@@ -505,8 +571,7 @@ def bound(evaluated, tmp_path_factory):
 
 
 def release(evidence, **changes):
-    return build_record(**{"evidence": evidence, "expected": EXPECTED, "targets": TARGETS,
-                           "commit": COMMIT, "root": ROOT, "repo": ROOT, **changes})
+    return build_record(**{"evidence": evidence, "commit": COMMIT, "repo": ROOT, **changes})
 
 
 def test_a_clean_report_is_promotable_and_statuses_stay_separate(bound):
@@ -585,10 +650,91 @@ def test_a_commit_that_doesnt_exist_is_refused(bound):
 
 
 def test_evidence_from_another_commit_is_refused(evaluated, tmp_path):
-    parent = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD~1"], capture_output=True,
-                            text=True, check=True).stdout.strip()
-    out = bound_copy(evaluated, tmp_path, commit=parent)
+    out = bound_copy(evaluated, tmp_path, commit="2" * 40)
     assert "the evidence didn't come from the candidate commit" in release(out)["blockers"]
+
+
+def test_a_run_that_rewrote_its_expectations_cant_be_released(tmp_path, monkeypatch):
+    monkeypatch.setattr("evals.run.run_all", lambda out, only=None: [])
+    monkeypatch.setattr("evals.run.run_identity", lambda: {
+        "commit": COMMIT, "dirty": False, "package_path": "x", "code_sha256": "0" * 64})
+    run_main(["--out", str(tmp_path / "out"), "--write-expected",
+              "--expected", str(tmp_path / "expected.json")])
+    assert json.loads((tmp_path / "out" / gate.REPORT_FILE).read_text("utf-8"))["dirty"] is True
+
+
+def test_a_tree_that_changes_during_the_run_is_dirty(tmp_path, monkeypatch):
+    seen = iter([False, True])
+    monkeypatch.setattr("evals.run.run_all", lambda out, only=None: [])
+    monkeypatch.setattr("evals.run.run_identity", lambda: {
+        "commit": COMMIT, "dirty": next(seen), "package_path": "x", "code_sha256": "0" * 64})
+    run_main(["--out", str(tmp_path / "out"), "--expected", str(tmp_path / "expected.json")])
+    assert json.loads((tmp_path / "out" / gate.REPORT_FILE).read_text("utf-8"))["dirty"] is True
+
+
+def test_the_release_ignores_a_working_tree_that_blesses_a_regression(bound, tmp_path):
+    """Probe: regress, rewrite expected.json locally, release. The commit's own file decides."""
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", str(ROOT), str(clone)], check=True)
+    subprocess.run(["git", "-C", str(clone), "fetch", "-q", str(ROOT), COMMIT], check=True)
+    subprocess.run(["git", "-C", str(clone), "checkout", "-q", COMMIT], check=True)
+    out = tmp_path / "regressed"
+    shutil.copytree(bound, out)
+    edit_evidence(out, "flow.refund", lambda d: d["observations"].update(regressed=True))
+    seal(out)
+    blessed = json.dumps(gate.expected_from(score_directory(out)), indent=1, sort_keys=True)
+    (clone / "evals" / "expected.json").write_text(blessed, "utf-8")
+    (clone / "uv.lock").write_text("changed locally", "utf-8")
+    record = release(out, repo=clone)
+    assert record["promotable"] is False
+    assert any("flow.refund.observations.regressed" in item for item in record["blockers"])
+    assert record["evaluation"]["expected_sha256"] == hashlib.sha256(
+        subprocess.run(["git", "-C", str(ROOT), "show", f"{COMMIT}:evals/expected.json"],
+                       capture_output=True, check=True).stdout.replace(b"\r\n", b"\n")).hexdigest()
+    assert record["dependency"]["uv_lock_sha256"] == release(bound)["dependency"]["uv_lock_sha256"]
+
+
+def test_mutant_code_on_the_path_cant_claim_the_clean_commit(tmp_path):
+    """Probe: a mutated package is imported, and git still reports a clean commit."""
+    mutant = tmp_path / "mutant"
+    shutil.copytree(ROOT / "src", mutant / "src")
+    for part in ("skills", "prompts", "migrations"):
+        shutil.copytree(ROOT / part, mutant / part)
+    path = mutant / "src" / "ghostlab" / "core.py"
+    path.write_text(path.read_text("utf-8") + "\n# mutated\n", "utf-8")
+    out = tmp_path / "out"
+    done = subprocess.run(
+        [sys.executable, "-m", "evals.run", "--out", str(out), "--only", "flow.refund",
+         "--expected", str(tmp_path / "none.json")], cwd=ROOT, capture_output=True, text=True,
+        env={**os.environ, "PYTHONPATH": str(mutant / "src")}, timeout=300, check=False)
+    assert done.returncode == 1
+    report = json.loads((out / gate.REPORT_FILE).read_text("utf-8"))
+    assert report["package_path"].startswith(str(mutant.resolve()))
+    assert report["code_sha256"] != code_sha256_at(ROOT, COMMIT)
+    identity = json.loads((out / RUN_IDENTITY).read_text("utf-8"))
+    (out / RUN_IDENTITY).write_text(json.dumps({**identity, "commit": COMMIT, "dirty": False}),
+                                    "utf-8")
+    (out / gate.REPORT_FILE).write_text(json.dumps(score_directory(out)), "utf-8")
+    assert "the code that ran isn't the candidate's code" in release(out)["blockers"]
+
+
+def test_restamping_evidence_onto_a_commit_with_other_code_is_refused(evaluated, tmp_path):
+    history = subprocess.run(["git", "-C", str(ROOT), "rev-list", "--max-count=40", "HEAD"],
+                             capture_output=True, text=True, check=True).stdout.split()
+    other = next((sha for sha in history
+                  if code_sha256_at(ROOT, sha) != code_sha256_at(ROOT, COMMIT)), None)
+    if other is None:
+        pytest.skip("no other code in this checkout's history")
+    out = bound_copy(evaluated, tmp_path, commit=other)
+    assert "the code that ran isn't the candidate's code" in release(out, commit=other)["blockers"]
+
+
+def test_evidence_edited_after_the_run_breaks_the_seal(bound, tmp_path):
+    out = tmp_path / "copy"
+    shutil.copytree(bound, out)
+    edit_evidence(out, "flow.refund", lambda d: d["observations"].update(edited=True))
+    assert "run.json doesn't match the evidence files" in release(out)["blockers"]
+    assert gate.main([str(out), "--expected", str(DEFAULT_EXPECTED)]) == 1
 
 
 def test_evidence_from_a_dirty_tree_is_refused(evaluated, tmp_path):
@@ -702,14 +848,17 @@ def test_the_future_shape_differs_from_the_probe_only_by_what_it_must_prove(tmp_
     assert "timeout_cancel_rate_limit" in written["not_probed"]
 
 
-def test_a_fully_evidenced_customer_target_is_allowed(bound, tmp_path):
+def test_customer_use_stays_false_with_every_requirement_met(bound, tmp_path):
+    """Probe: all of this can be typed by hand, so meeting it proves nothing yet."""
     report = future_report(tmp_path)
     (tmp_path / "root").mkdir()
     record = release(bound, targets=customer_target(tmp_path / "root", report),
                      root=tmp_path / "root")
-    assert record["customer_connected_use_allowed"] is True
-    assert record["customer_connected_blockers"] == []
+    assert record["customer_connected_use_allowed"] is False
+    assert record["customer_connected_why_not"] == NO_VERIFIABLE_ORIGIN
+    assert record["customer_connected_blockers"] == [NO_VERIFIABLE_ORIGIN]
     assert record["live_evidence"] == {"validated": True, "problems": []}
+    assert record["promotable"] is True
 
 
 def test_the_reviewers_reproduction_stays_false(bound):
@@ -732,7 +881,8 @@ def test_a_local_target_stays_false_even_with_perfect_evidence(bound, tmp_path):
     record = release(bound, targets=targets, root=root)
     assert record["live_evidence"]["validated"] is True
     assert record["customer_connected_use_allowed"] is False
-    assert record["customer_connected_blockers"] == ["this release target is local-only"]
+    assert record["customer_connected_blockers"] == [NO_VERIFIABLE_ORIGIN,
+                                                     "this release target is local-only"]
     assert record["promotable"] is True
 
 
@@ -817,6 +967,7 @@ MUTATIONS = {
     "report_lists_timeouts_as_not_probed": _report(
         not_probed={"timeout_cancel_rate_limit": "not provoked"}),
     "report_lists_budgets_as_not_probed": _report(not_probed={"budget_enforcement": "no"}),
+    "report_hides_a_limit_in_capitals": _report(not_probed={"TIMEOUT_Cancel": "no"}),
     "report_has_no_not_probed_list": _without_report_key("not_probed"),
     "report_omits_a_required_probe": _report(probed_limits=["timeout", "cancel", "rate_limit"]),
     "report_of_unknown_version": _report(report_version=2),
@@ -838,7 +989,7 @@ def test_any_missing_requirement_blocks_customer_use_and_nothing_else(bound, tmp
     MUTATIONS[name](targets, root)
     record = release(bound, targets=targets, root=root)
     assert record["customer_connected_use_allowed"] is False
-    assert record["customer_connected_blockers"]
+    assert record["customer_connected_blockers"] != [NO_VERIFIABLE_ORIGIN]  # it was noticed
     assert record["promotable"] is True, record["blockers"]
 
 

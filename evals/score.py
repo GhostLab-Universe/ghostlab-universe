@@ -18,7 +18,8 @@ from ghostlab.observability import find_secrets, read_records
 from .cases import CASES
 from .evidence import canonical_sha256
 from .harness import FIXTURE_LABEL, REFUND, SECRETS
-from .oracles import expected_verdicts, fault_evidence, journey_oracle, refund_oracle, tool_counts
+from .oracles import (expected_citations, expected_verdicts, fault_evidence, journey_oracle,
+                      refund_oracle, tool_counts)
 
 SCHEMA = "ghostlab-evaluation/1"
 RUN_IDENTITY = "run.json"  # the commit the evidence came from, written by evals.run
@@ -71,6 +72,58 @@ def _verdicts_match(campaign: dict) -> bool:
         if found != expected:
             return False
     return True
+
+
+def _citations_match(campaign: dict) -> bool:
+    """Each failed finding must cite exactly the events a recomputation points to."""
+    for name, run in campaign["runs"].items():
+        if name.endswith("/baseline"):
+            continue
+        run_id = run["artifact_id"].split(".", 1)[1]
+        cited = {item["invariant"]: item["evidence_event_ids"] for item in campaign["findings"]
+                 if item["run_id"] == run_id and item["verdict"] == "failed"}
+        if cited != expected_citations(campaign["world"], campaign["fixture"], run["body"]):
+            return False
+    return True
+
+
+def _first_difference(baseline: dict, fork: dict) -> int | None:
+    for index in range(max(len(baseline["trace"]), len(fork["trace"]))):
+        left = baseline["trace"][index] if index < len(baseline["trace"]) else None
+        right = fork["trace"][index] if index < len(fork["trace"]) else None
+        if left != right:
+            return index + 1
+    return None
+
+
+def _diffs_match(campaign: dict) -> bool:
+    """The Reality Diff shown to the operator must say what the stored runs say."""
+    for experiment_id, diff in campaign["diffs"].items():
+        baseline, fork = (campaign["runs"][f"{experiment_id}/{name}"]["body"]
+                          for name in ("baseline", "fork"))
+        expected = expected_verdicts(campaign["world"], campaign["fixture"], fork)
+        if sorted(diff["violated_invariants"]) != sorted(
+                name for name, passed in expected.items() if not passed):
+            return False
+        if diff["first_divergence_event"] != _first_difference(baseline, fork):
+            return False
+        if campaign["world"] == REFUND and (
+                diff["baseline_refunded_minor"] != baseline["final_state"]["total_refunded_minor"]
+                or diff["faulted_refunded_minor"] != fork["final_state"]["total_refunded_minor"]):
+            return False
+    return True
+
+
+def _approval_events_match(campaign: dict) -> bool:
+    """Events are numbered in order, and a human's decision is always on the record."""
+    kinds = [event["kind"] for event in campaign["events"]]
+    if [event["sequence"] for event in campaign["events"]] != list(range(1, len(kinds) + 1)):
+        return False
+    approval = campaign["approval"]
+    if approval is None:
+        return "approval_requested" not in kinds
+    decided = approval["status"] in {"approved", "rejected", "consumed"}
+    return "approval_requested" in kinds and ("approval_decided" in kinds) == decided
 
 
 def _runs_are_consistent(campaign: dict, oracles: dict) -> bool:
@@ -188,8 +241,11 @@ def _fingerprint(evidence: dict, metrics: dict) -> dict:
                              "runs": {key: run["sha256"] for key, run in c["runs"].items()},
                              "approval": (c["approval"] or {}).get("status"),
                              "findings": sorted([item["run_id"].rsplit("-", 1)[-1],
-                                                 item["invariant"], item["verdict"]]
+                                                 item["invariant"], item["verdict"],
+                                                 item["evidence_event_ids"]]
                                                 for item in c["findings"]),
+                             "events": [event["kind"] for event in c["events"]],
+                             "diffs": list(c["diffs"].values()),
                              "coverage": sorted(c["coverage"].values(),
                                                 key=lambda item: json.dumps(item, sort_keys=True)),
                              "memory": c["memory"],
@@ -214,6 +270,12 @@ def score_case(case, evidence: dict, telemetry_dir: Path) -> dict:
         "evidence_digests_match": broken == [],
         "every_invariant_verdict_matches_a_recomputation": all(
             _verdicts_match(c) for c in evidence["campaigns"].values()),
+        "cited_events_match_a_recomputation": all(
+            _citations_match(c) for c in evidence["campaigns"].values()),
+        "reality_diff_matches_the_stored_runs": all(
+            _diffs_match(c) for c in evidence["campaigns"].values()),
+        "approval_events_match_the_decisions": all(
+            _approval_events_match(c) for c in evidence["campaigns"].values()),
         "stored_runs_are_internally_consistent": all(
             _runs_are_consistent(c, oracles[name])
             for name, c in evidence["campaigns"].items()),
@@ -309,6 +371,7 @@ def score_directory(directory: Path) -> dict:
     bound = json.loads(identity.read_text("utf-8")) if identity.exists() else {}
     return {"schema": SCHEMA, "inference": "mocked", "live_provider_contacted": False,
             "commit": bound.get("commit"), "dirty": bound.get("dirty"),
+            "package_path": bound.get("package_path"), "code_sha256": bound.get("code_sha256"),
             "fixture_label": FIXTURE_LABEL,
             "environment": {"python": platform.python_version(), "platform": sys.platform},
             "aggregate": summary, "cases": results, "deferred": DEFERRED}

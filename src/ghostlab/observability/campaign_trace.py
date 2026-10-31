@@ -45,7 +45,8 @@ def emit_campaign_trace(telemetry: Telemetry, state: Mapping, *,
     """Write one campaign's trace. Returns the root span id.
 
     ``usage`` is the campaign total, and unknown stays unknown when it's omitted.
-    ``attempts`` lists HTTP attempts as ``{"http_status": int | None, "outcome": str}``.
+    ``attempts`` lists HTTP attempts as ``{"http_status": int | None, "outcome": str}``, with
+    an optional ``transport`` (``mock`` or ``network``), so a mocked trace says so.
     """
     trace_id = state["trace_id"]
     provider = state.get("provider") or {}
@@ -79,7 +80,8 @@ def emit_campaign_trace(telemetry: Telemetry, state: Mapping, *,
     for index, attempt in enumerate(attempts, 1):
         telemetry.event("model.attempt", context, at=ended, attempt=index,
                         outcome=attempt.get("outcome"),
-                        attributes={"http_status": attempt.get("http_status")})
+                        attributes={"http_status": attempt.get("http_status"),
+                                    "transport": attempt.get("transport")})
 
     approval = state.get("approval") or {}
     root = TraceContext(trace_id=trace_id, project_id=context.project_id,
@@ -92,5 +94,7 @@ def emit_campaign_trace(telemetry: Telemetry, state: Mapping, *,
         validation_failures=sum(error["code"] in _VALIDATION_CODES for error in errors),
         approval_id=approval.get("approval_id"), approval_status=approval_status,
         attributes={"iteration": state.get("iteration"), "event_count": len(events),
-                    "finding_count": len(state.get("findings", ()))})
+                    "finding_count": len(state.get("findings", ())),
+                    "transport": next((a["transport"] for a in attempts if a.get("transport")),
+                                      None)})
     return root_id

@@ -4,23 +4,21 @@ Runtime, dependency and live-capability statuses stay separate, because passing 
 nothing about the others. Offline evaluations can never move the live status: that takes
 a sanitized M01 compatibility report from an authorized live run.
 
-A record is built from an evidence directory, not from a report. The evidence is rescored,
-the stored report must say the same, and it must come from the candidate commit on a
-clean tree. A dict or a file saying "passed" proves nothing.
+A record is built from an evidence directory and a candidate commit. The evidence is
+rescored, the stored report must say the same, and it must come from that commit on a clean
+tree, running that commit's code. The expectations, targets and lock digests are read from
+the commit's own objects, never the working tree. See ``evals/identity.py`` for what this
+does and doesn't prove.
 
-A status in the targets file is a claim. ``promotable`` is about offline promotion only.
-``customer_connected_use_allowed`` is decided separately and needs all of this:
+``promotable`` is about offline promotion only. **``customer_connected_use_allowed`` is
+false, unconditionally.** Every input to that decision is a file someone can type, and
+nothing yet shows where a report or a security review came from. The requirements stay
+in ``customer_connected_blockers`` so the gap is visible, but meeting them all doesn't turn
+it on. Enabling it needs evidence of verifiable origin, which is a change to this file.
 
-- a target of kind ``customer_connected``, so a local target can never allow it;
-- an authenticated runtime, and every security gate marked passed with an evidence file;
-- a documented provider, endpoint and model, accepted by the real ``ProviderConfig``;
-- a compatibility report inside the release root that passes the same check the
-  controller applies before a paid call, made real calls, and shows the limits AGENTS.md
-  requires were probed.
-
-**That last part is unreachable today, on purpose.** ``scripts/probe_provider.py`` lists
-timeout, cancel and rate-limit handling under ``not_probed``, reports no budget probe and
-writes no ``structured_schemas``, so no report it can write allows customer-connected use.
+Today's probe wouldn't qualify anyway: ``scripts/probe_provider.py`` lists timeout, cancel
+and rate-limit handling under ``not_probed``, reports no budget probe and writes no
+``structured_schemas``.
 
 Nothing here deploys, merges or tags. ``promotable: false`` exits non-zero.
 """
@@ -29,7 +27,6 @@ import argparse
 import hashlib
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -41,6 +38,7 @@ from ghostlab.providers import Credential, ProviderConfig
 from ghostlab.providers.base import ENV, ProviderConfigError
 
 from .gate import check, verified_report
+from .identity import code_sha256_at, commit_exists, file_at
 
 SCHEMA = "ghostlab-release/1"
 TARGETS_SCHEMA = "ghostlab-release-targets/1"
@@ -56,11 +54,14 @@ DOCUMENTED_MODELS = {"meta_responses": {"muse-spark-1.3"},
                      "baseten_chat_completions": {"meta-models/muse-spark-open",
                                                   "meta-models/muse-spark-open-1026"}}
 REPORT_VERSION = 1
+EXPECTED_FILE, TARGETS_FILE = "evals/expected.json", "deploy/release-targets.json"
 REQUIRED_PROBES = ("timeout", "cancel", "rate_limit", "budgets")
+NO_VERIFIABLE_ORIGIN = ("no evidence of verifiable origin exists: reports and security reviews "
+                        "are files anyone can type, so this stays false until that changes")
 
 
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+def _sha256(data: bytes | None) -> str | None:
+    return None if data is None else hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
 
 
 def target_problems(targets: dict) -> list[str]:
@@ -113,7 +114,8 @@ def _report_problems(path: Path) -> list[str]:
     if not isinstance(skipped, dict):
         problems.append("the report doesn't say what it didn't probe")
     elif listed := [key for key in skipped
-                    if any(word in key for word in ("timeout", "cancel", "rate", "budget"))]:
+                    if any(word in str(key).lower()
+                           for word in ("timeout", "cancel", "rate", "budget"))]:
         problems.append(f"listed as not probed: {', '.join(sorted(listed))}")
     if find_secrets(text):
         problems.append("it isn't sanitized")
@@ -154,7 +156,7 @@ def live_evidence_problems(live: dict, root: Path) -> list[str]:
 def customer_connected_blockers(targets: dict, root: Path) -> list[str]:
     """Everything standing between this record and customer-connected use."""
     statuses = targets.get("statuses") or {}
-    blockers = []
+    blockers = [NO_VERIFIABLE_ORIGIN]
     if (targets.get("release_target") or {}).get("kind") != CUSTOMER_TARGET:
         blockers.append("this release target is local-only")
     if (statuses.get("runtime") or {}).get("status") != CUSTOMER_RUNTIME:
@@ -171,21 +173,36 @@ def customer_connected_blockers(targets: dict, root: Path) -> list[str]:
 def _commit_problems(report: dict, commit: str, repo: Path) -> list[str]:
     if not _COMMIT.match(str(commit)):
         return ["the candidate must be a full commit id"]
-    found = subprocess.run(["git", "-C", str(repo), "cat-file", "-e", f"{commit}^{{commit}}"],
-                           capture_output=True, check=False)
-    problems = [] if found.returncode == 0 else ["the candidate commit doesn't exist"]
+    problems = [] if commit_exists(repo, commit) else ["the candidate commit doesn't exist"]
     if report.get("commit") != commit:
         problems.append("the evidence didn't come from the candidate commit")
     if report.get("dirty") is not False:
         problems.append("the evidence came from a tree with local changes")
+    if report.get("code_sha256") is None or report["code_sha256"] != code_sha256_at(repo, commit):
+        problems.append("the code that ran isn't the candidate's code")
     return problems
 
 
-def build_record(*, evidence: Path, expected: dict, targets: dict, commit: str, root: Path,
-                 repo: Path | None = None) -> dict:
+def _json_at(repo: Path, commit: str, path: str) -> tuple[dict, bytes | None]:
+    data = file_at(repo, commit, path) if _COMMIT.match(str(commit)) else None
+    try:
+        return (json.loads(data) if data else {}), data
+    except ValueError:
+        return {}, data
+
+
+def build_record(*, evidence: Path, commit: str, repo: Path, targets: dict | None = None,
+                 root: Path | None = None) -> dict:
+    """``targets`` and ``root`` exist for tests of the customer rules. The CLI has neither."""
+    root = root or repo
     report, report_sha256, stored_problems = verified_report(evidence)
+    expected, expected_bytes = _json_at(repo, commit, EXPECTED_FILE)
+    if targets is None:
+        targets = _json_at(repo, commit, TARGETS_FILE)[0]
     blockers = [*stored_problems, *check(report, expected), *target_problems(targets),
-                *_commit_problems(report, commit, repo or root)]
+                *_commit_problems(report, commit, repo)]
+    if expected_bytes is None:
+        blockers.append(f"the candidate has no {EXPECTED_FILE}")
     if commit == (targets.get("rollback_target") or {}).get("commit"):
         blockers.append("the candidate equals its own rollback target")
     statuses = targets.get("statuses") or {}
@@ -198,15 +215,20 @@ def build_record(*, evidence: Path, expected: dict, targets: dict, commit: str, 
         "rollback_target": targets.get("rollback_target"),
         "evaluation": {"schema": report.get("schema"), "inference": report.get("inference"),
                        "commit": report.get("commit"),
+                       "package_path": report.get("package_path"),
+                       "code_sha256": report.get("code_sha256"),
+                       "expected_sha256": _sha256(expected_bytes),
                        "cases": (report.get("aggregate") or {}).get("cases"),
                        "report_sha256": report_sha256},
         "runtime": statuses.get("runtime"),
         "dependency": {**(statuses.get("dependency") or {}),
-                       "uv_lock_sha256": _sha256(root / "uv.lock"),
-                       "web_lock_sha256": _sha256(root / "web" / "package-lock.json")},
+                       "uv_lock_sha256": _sha256(file_at(repo, commit, "uv.lock")),
+                       "web_lock_sha256": _sha256(file_at(repo, commit,
+                                                          "web/package-lock.json"))},
         "live_capability": live,  # as claimed; ``live_evidence`` says if it was proven
         "live_evidence": {"validated": not live_problems, "problems": live_problems},
-        "customer_connected_use_allowed": not blockers and not customer_blockers,
+        "customer_connected_use_allowed": False,  # see the module docstring
+        "customer_connected_why_not": NO_VERIFIABLE_ORIGIN,
         "customer_connected_blockers": customer_blockers,
         "blockers": blockers, "promotable": not blockers}
 
@@ -216,14 +238,9 @@ def main(argv=None) -> int:
     parser.add_argument("--evidence", type=Path, required=True,
                         help="The directory evals.run wrote")
     parser.add_argument("--commit", required=True)
-    parser.add_argument("--expected", type=Path, default=Path("evals/expected.json"))
-    parser.add_argument("--targets", type=Path, default=Path("deploy/release-targets.json"))
-    parser.add_argument("--root", type=Path, default=Path("."))
+    parser.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args(argv)
-    record = build_record(evidence=args.evidence,
-                          expected=json.loads(args.expected.read_text("utf-8")),
-                          targets=json.loads(args.targets.read_text("utf-8")),
-                          commit=args.commit, root=args.root)
+    record = build_record(evidence=args.evidence, commit=args.commit, repo=args.repo)
     print(json.dumps(record, indent=2))
     return 0 if record["promotable"] else 1
 

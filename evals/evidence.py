@@ -59,6 +59,15 @@ def _approval(stack: Stack, state: dict) -> dict | None:
             "action_digest": stored.action_digest}
 
 
+def _diff(diff: dict) -> dict:
+    """What the Reality Diff told the operator, as stored."""
+    first = diff["first_divergence"]
+    return {"first_divergence_event": first["event_id"] if first else None,
+            "violated_invariants": diff["violated_invariants"],
+            "baseline_refunded_minor": diff.get("baseline_refunded_minor"),
+            "faulted_refunded_minor": diff.get("faulted_refunded_minor")}
+
+
 def _memory(stack: Stack, state: dict) -> dict:
     """How many records this campaign stored, by status, read back from the store."""
     scope = root_scope(PROJECT, OPERATOR)
@@ -90,6 +99,8 @@ def campaign_evidence(stack: Stack, campaign_id: str) -> dict:
         "approval": _approval(stack, state),
         "coverage": {experiment_id: experiment.get("coverage")
                      for experiment_id, experiment in state.get("experiments", {}).items()},
+        "diffs": {experiment_id: _diff(experiment["diff"])
+                  for experiment_id, experiment in state.get("experiments", {}).items()},
         "runs": _runs(stack, state), "ledger": _ledger(stack, state),
         "memory_ids": len(state["memory_ids"]),
         "memory": _memory(stack, state)}
@@ -116,7 +127,8 @@ def write_trace(stack: Stack, campaign_id: str, evidence: dict, path: Path) -> N
     telemetry = Telemetry(FileSink(path), redactor=Redactor([SECRET]), clock=stack.clock,
                           strict=True)
     emit_campaign_trace(telemetry, state, versions=versions, usage=_usage(evidence),
-                        attempts=stack.transport.attempts,
+                        attempts=[{**item, "transport": "mock"}
+                                  for item in stack.transport.attempts],
                         approval_status=(evidence["approval"] or {}).get("status"))
     telemetry.close()
 

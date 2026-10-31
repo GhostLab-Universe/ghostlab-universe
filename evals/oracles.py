@@ -97,42 +97,47 @@ def journey_oracle(run: dict) -> dict:
         "withdrawn": sorted(withdrawn), "trace_contiguous": trace_is_contiguous(run)}
 
 
-def _infeasible(fixture: dict, final: dict) -> list[str]:
-    """Infeasibilities at any event, later repairs included, and any left at the end."""
+def _infeasible(fixture: dict, final: dict) -> list[int]:
+    """Events showing an infeasibility, at any point or left at the end. Empty is feasible."""
     arrivals = {option["option_id"]: option["arrive"] for option in fixture["options"]}
     deadlines = dict(tuple(pair) for pair in fixture["intents"])
     mandatory = set(fixture["mandatory"])
     reservations = sorted(final["reservations"].values(), key=lambda r: r["confirmed_at"])
-    problems = []
+    problems = set()
     for index, reservation in enumerate(reservations):
         at = reservation["confirmed_at"]
         version = _value_at(final["approval_timeline"], at, "version", default=None)
         if arrivals[reservation["option_id"]] > deadlines[version]:
-            problems.append(f"late:{at}")
+            problems.add(at)
         if mandatory - set(reservation["travellers"]):
-            problems.append(f"incomplete:{at}")
+            problems.add(at)
         for earlier in reservations[:index]:
             still_held = earlier["cancelled_at"] is None or earlier["cancelled_at"] >= at
             if still_held and set(earlier["travellers"]) & set(reservation["travellers"]):
-                problems.append(f"double:{at}")
-    calendars = {traveller: {"outbound": fixture["outbound"]} for traveller in mandatory}
+                problems.update({earlier["confirmed_at"], at})
+    calendars = {traveller: {"outbound": (fixture["outbound"], None)} for traveller in mandatory}
     for row in final["commitment_log"]:
         if row["kind"] != "calendar":
             continue
         entries = calendars[row["participant_id"]]
-        entries[row["entry_id"]] = row["window"]
+        entries[row["entry_id"]] = (row["window"], row["event_id"])
         start, end = row["window"]
-        if any(name != row["entry_id"] and start < other[1] and other[0] < end
-               for name, other in entries.items()):
-            problems.append(f"overlap:{row['event_id']}")
+        for name, (other, written) in entries.items():
+            if name != row["entry_id"] and start < other[1] and other[0] < end:
+                problems.update(item for item in (row["event_id"], written) if item is not None)
     by_id = {r["reservation_id"]: r for r in final["reservations"].values()}
+    last_write = {(row["participant_id"], row["entry_id"]): row["event_id"]
+                  for row in final["commitment_log"] if row["kind"] == "calendar"}
     for traveller in mandatory:
         for entry in final["calendar"][traveller]:
             booked = entry["reservation_id"]
             if booked is not None and (booked not in by_id
                                        or by_id[booked]["status"] != "confirmed"):
-                problems.append(f"dangling:{entry['entry_id']}")
-    return problems
+                reservation = by_id.get(booked) or {}
+                problems.update(item for item in (
+                    last_write.get((traveller, entry["entry_id"])), reservation.get("cancelled_at"))
+                    if item is not None)
+    return sorted(problems)
 
 
 def expected_verdicts(world: str, fixture: dict, run: dict) -> dict[str, bool]:
@@ -150,6 +155,25 @@ def expected_verdicts(world: str, fixture: dict, run: dict) -> dict[str, bool]:
     return {"commitments_use_approved_intent": not oracle["stale_commitments"],
             "mandatory_participants_feasible": not _infeasible(fixture, run["final_state"]),
             "delivered_messages_permitted": not oracle["unpermitted_deliveries"]}
+
+
+def expected_citations(world: str, fixture: dict, run: dict) -> dict[str, list[int]]:
+    """The events each failed invariant must cite, recomputed from the stored run."""
+    verdicts = expected_verdicts(world, fixture, run)
+    if world == "refund-world/1":
+        ledger_grew, previous = [], 0
+        for event in run["trace"]:
+            rows = len(event["state"]["ledger"])
+            if rows != previous:
+                ledger_grew.append(event["event_id"])
+            previous = rows
+        cited = {name: ledger_grew for name in verdicts}
+    else:
+        oracle = journey_oracle(run)
+        cited = {"commitments_use_approved_intent": oracle["stale_commitments"],
+                 "mandatory_participants_feasible": _infeasible(fixture, run["final_state"]),
+                 "delivered_messages_permitted": oracle["unpermitted_deliveries"]}
+    return {name: cited[name] for name, passed in verdicts.items() if not passed}
 
 
 def fault_evidence(world: str, run: dict) -> bool:

@@ -1391,13 +1391,13 @@ def test_the_explorer_is_told_the_usable_cap(tmp_path):
     lab = JourneyLab(tmp_path, Script(journey_reply(cap=20), journey_reply(cap=15)))
     with lab.controller() as controller:
         state = controller.start(CID, journey_spec(max_tool_calls=30))
-    assert "at most 15" in questions_sent(lab, 0)
+    assert "Set max_tool_calls to at most 15." in questions_sent(lab, 0)
     assert state["experiments"] != {}
 
 
 def test_the_usable_cap_stops_at_the_target_limit(tmp_path):
     lab, _ = start(tmp_path)
-    assert "at most 20" in questions_sent(lab, 0)
+    assert "Set max_tool_calls to at most 20." in questions_sent(lab, 0)  # the skill adds ";"
 
 
 def test_a_rejected_explorer_hears_why_in_controller_words(tmp_path):
@@ -1804,9 +1804,11 @@ def test_the_longest_usable_id_runs(tmp_path):
     assert state["status"] == "awaiting_approval"
 
 
-def test_a_secret_in_the_objective_is_scrubbed_at_the_start(tmp_path):
+@pytest.mark.parametrize("field, value", [("objective", f"Use {SECRET}"),
+                                          ("success_criteria", [f"Show {SECRET}"])])
+def test_a_secret_in_the_spec_is_scrubbed_at_the_start(tmp_path, field, value):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
-    spec_with_secret = journey_spec().model_copy(update={"objective": f"Use {SECRET}"})
+    spec_with_secret = journey_spec().model_copy(update={field: value})
     with lab.controller() as controller:
         state = controller.start(CID, spec_with_secret)
     assert_clean(json.dumps(state), questions_sent(lab, 0))

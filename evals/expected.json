@@ -3,9 +3,22 @@
   "campaigns": {
    "main": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "internal"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 0,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "budget_check_failed",
     "paused": false,
     "runs": {},
@@ -84,9 +97,45 @@
   "campaigns": {
    "journey_tool_cap": {
     "approval": null,
+    "coverage": [
+     {
+      "baseline": "budget_exhausted",
+      "complete": false,
+      "faults_triggered": false,
+      "fork": "budget_exhausted"
+     }
+    ],
     "errors": [
      "budget_exhausted"
     ],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 6,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "coverage_incomplete",
     "paused": false,
     "runs": {
@@ -119,9 +168,22 @@
    },
    "model_calls": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "budget_exhausted"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 2,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "model_calls",
     "paused": false,
     "runs": {},
@@ -151,10 +213,23 @@
    },
    "tool_calls": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "validation_failed",
      "validation_failed"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "no_experiment_ran",
     "paused": false,
     "runs": {},
@@ -184,9 +259,22 @@
    },
    "wall_clock": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "deadline_exceeded"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 0,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "wall_clock_ms",
     "paused": false,
     "runs": {},
@@ -275,9 +363,22 @@
   "campaigns": {
    "journey_unbound": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "forbidden"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "policy_denied",
     "paused": false,
     "runs": {},
@@ -307,7 +408,50 @@
    },
    "main": {
     "approval": "pending",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 5,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
     "outcome": null,
     "paused": true,
     "runs": {
@@ -348,9 +492,22 @@
    },
    "refund_other_customer": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "forbidden"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "policy_denied",
     "paused": false,
     "runs": {},
@@ -380,9 +537,22 @@
    },
    "refund_unbound": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "forbidden"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "policy_denied",
     "paused": false,
     "runs": {},
@@ -488,7 +658,45 @@
   "campaigns": {
    "main": {
     "approval": "pending",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 24,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": null,
     "paused": true,
     "runs": {
@@ -596,7 +804,50 @@
   "campaigns": {
    "main": {
     "approval": "pending",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 5,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
     "outcome": null,
     "paused": true,
     "runs": {
@@ -705,7 +956,60 @@
   "campaigns": {
    "after_execute": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 41,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -747,7 +1051,60 @@
    },
    "control": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 41,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -789,7 +1146,60 @@
    },
    "mid_model_call": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 2,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 41,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -892,7 +1302,70 @@
   "campaigns": {
    "after_execute": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ],
+     [
+      "repaired",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "repaired",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "repaired",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "repaired",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 8,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -934,7 +1407,70 @@
    },
    "control": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ],
+     [
+      "repaired",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "repaired",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "repaired",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "repaired",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 8,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -976,7 +1512,70 @@
    },
    "mid_model_call": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ],
+     [
+      "repaired",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "repaired",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "repaired",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "repaired",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 2,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 8,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -1079,7 +1678,45 @@
   "campaigns": {
    "main": {
     "approval": "pending",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 24,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": null,
     "paused": true,
     "runs": {
@@ -1179,7 +1816,50 @@
   "campaigns": {
    "main": {
     "approval": "pending",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 5,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
     "outcome": null,
     "paused": true,
     "runs": {
@@ -1279,9 +1959,62 @@
   "campaigns": {
    "main": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [
      "provider_transient"
     ],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 2,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 41,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -1385,9 +2118,72 @@
   "campaigns": {
    "main": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [
      "provider_transient"
     ],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ],
+     [
+      "repaired",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "repaired",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "repaired",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "repaired",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 2,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 8,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -1491,10 +2287,23 @@
   "campaigns": {
    "main": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "provider_invalid_output",
      "provider_invalid_output"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 2,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "explorer_failed",
     "paused": false,
     "runs": {},
@@ -1578,7 +2387,43 @@
   "campaigns": {
    "adapter_rechecks": {
     "approval": null,
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 35,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "no_failure_found",
     "paused": false,
     "runs": {
@@ -1611,9 +2456,47 @@
    },
    "journey_after_consume": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [
      "forbidden"
     ],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 24,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "policy_denied",
     "paused": false,
     "runs": {
@@ -1654,9 +2537,47 @@
    },
    "journey_during_resume": {
     "approval": "approved",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [
      "approval_invalid"
     ],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 24,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "settings_changed",
     "paused": false,
     "runs": {
@@ -1697,7 +2618,60 @@
    },
    "journey_restored": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 41,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -1739,9 +2713,52 @@
    },
    "refund_after_consume": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [
      "forbidden"
     ],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 5,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
     "outcome": "policy_denied",
     "paused": false,
     "runs": {
@@ -1782,9 +2799,52 @@
    },
    "refund_during_resume": {
     "approval": "approved",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [
      "approval_invalid"
     ],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 5,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
     "outcome": "settings_changed",
     "paused": false,
     "runs": {
@@ -1825,7 +2885,70 @@
    },
    "refund_restored": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ],
+     [
+      "repaired",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "repaired",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "repaired",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "repaired",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 8,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -1951,10 +3074,23 @@
   "campaigns": {
    "busy": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "provider_transient",
      "provider_transient"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 4,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "explorer_failed",
     "paused": false,
     "runs": {},
@@ -1984,10 +3120,23 @@
    },
    "garbled": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "provider_invalid_output",
      "provider_invalid_output"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 2,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "explorer_failed",
     "paused": false,
     "runs": {},
@@ -2017,9 +3166,52 @@
    },
    "malformed_then_valid": {
     "approval": "pending",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [
      "provider_invalid_output"
     ],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 2,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 5,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
     "outcome": null,
     "paused": true,
     "runs": {
@@ -2060,7 +3252,50 @@
    },
    "rate_limited_then_valid": {
     "approval": "pending",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 2,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 5,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
     "outcome": null,
     "paused": true,
     "runs": {
@@ -2101,9 +3336,22 @@
    },
    "unauthorized": {
     "approval": null,
+    "coverage": [],
     "errors": [
      "unauthenticated"
     ],
+    "findings": [],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 0,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "explorer_failed",
     "paused": false,
     "runs": {},
@@ -2133,7 +3381,50 @@
    },
    "usage_not_reported": {
     "approval": "pending",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 5,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
     "outcome": null,
     "paused": true,
     "runs": {
@@ -2246,7 +3537,60 @@
   "campaigns": {
    "cap_lifted": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 41,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -2288,7 +3632,60 @@
    },
    "lost_fault": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "failed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "failed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 46,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_incomplete",
     "paused": false,
     "runs": {
@@ -2330,7 +3727,60 @@
    },
    "truncated": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 36,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "repair_incomplete",
     "paused": false,
     "runs": {
@@ -2425,11 +3875,318 @@
   },
   "observations": {}
  },
+ "adversarial.stale_intent": {
+  "campaigns": {
+   "delayed_update": {
+    "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
+    "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "failed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "failed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 46,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-a0b9274675997787/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-a0b9274675997787/fork": "d536221eece63b2a14aa09dd797194c8d1ecdfb31c151e2f3e454d83a5ce5e23",
+     "repaired": "d7ab0b3bfc407afce06655e25d396bc0913017f2f201c190ceca00c7808d655e"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   },
+   "stale_memory": {
+    "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
+    "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "failed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "failed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 42,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-f3ec48e5d00f958b/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-f3ec48e5d00f958b/fork": "bc3ff964934ad34c56e2783ff3316360b95f41fc4a39fc7f303522248a7c0854",
+     "repaired": "12ca4f594883be3eb1acf2bf6a8d7f34cfe079afd9cf9cdd777075563bf897e0"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   }
+  },
+  "http": {
+   "delayed_update": [
+    200
+   ],
+   "stale_memory": [
+    200
+   ]
+  },
+  "metrics": {
+   "cost_minor": null,
+   "cost_per_successful_task": null,
+   "fixture_tokens": {
+    "input": {
+     "known_sum": 1400,
+     "unknown_count": 0
+    },
+    "output": {
+     "known_sum": 240,
+     "unknown_count": 0
+    }
+   },
+   "handoffs": {
+    "failed": 0,
+    "total": 10
+   },
+   "human_decisions": {
+    "decided": 2,
+    "pending": 0,
+    "rejected": 0
+   },
+   "model_attempts": 2,
+   "provider_latency_ms": null,
+   "recovery": {
+    "attempted": 0,
+    "succeeded": 0
+   },
+   "successful_campaigns": 2,
+   "tasks": {
+    "succeeded": 14,
+    "total": 14
+   },
+   "tool_calls": {
+    "failed": 0,
+    "failed_guard_denied": 0,
+    "failed_injected_fault": 0,
+    "succeeded": 88,
+    "total": 88
+   }
+  },
+  "observations": {}
+ },
  "adversarial.uncertain_commit": {
   "campaigns": {
    "before_repair": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ],
+     [
+      "repaired",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "repaired",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "repaired",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "repaired",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 8,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -2471,7 +4228,70 @@
    },
    "consume_window": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ],
+     [
+      "repaired",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "repaired",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "repaired",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "repaired",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 8,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -2575,9 +4395,45 @@
   "campaigns": {
    "journey_fault_after_the_run": {
     "approval": null,
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": false,
+      "faults_triggered": false,
+      "fork": "completed"
+     }
+    ],
     "errors": [
      "budget_exhausted"
     ],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 24,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "coverage_incomplete",
     "paused": false,
     "runs": {
@@ -2610,9 +4466,50 @@
    },
    "refund_no_fault": {
     "approval": null,
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": false,
+      "faults_triggered": false,
+      "fork": "completed"
+     }
+    ],
     "errors": [
      "budget_exhausted"
     ],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 4,
+      "unknown": 0
+     }
+    },
+    "memory": {},
     "outcome": "coverage_incomplete",
     "paused": false,
     "runs": {
@@ -2699,7 +4596,50 @@
   "campaigns": {
    "main": {
     "approval": "rejected",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 5,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 2
+    },
     "outcome": "repair_rejected",
     "paused": false,
     "runs": {
@@ -2791,7 +4731,60 @@
   "campaigns": {
    "main": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 41,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -2896,7 +4889,60 @@
   "campaigns": {
    "main": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "fork",
+      "delivered_messages_permitted",
+      "failed"
+     ],
+     [
+      "fork",
+      "mandatory_participants_feasible",
+      "passed"
+     ],
+     [
+      "repaired",
+      "commitments_use_approved_intent",
+      "passed"
+     ],
+     [
+      "repaired",
+      "delivered_messages_permitted",
+      "passed"
+     ],
+     [
+      "repaired",
+      "mandatory_participants_feasible",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 54,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 1
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -2995,7 +5041,70 @@
   "campaigns": {
    "main": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ],
+     [
+      "repaired",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "repaired",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "repaired",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "repaired",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 8,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {
@@ -3101,7 +5210,70 @@
   "campaigns": {
    "main": {
     "approval": "consumed",
+    "coverage": [
+     {
+      "baseline": "completed",
+      "complete": true,
+      "faults_triggered": true,
+      "fork": "completed"
+     }
+    ],
     "errors": [],
+    "findings": [
+     [
+      "fork",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "fork",
+      "no_duplicate_full_refund",
+      "failed"
+     ],
+     [
+      "fork",
+      "total_refund_within_payment",
+      "failed"
+     ],
+     [
+      "fork",
+      "unique_idempotency_keys",
+      "passed"
+     ],
+     [
+      "repaired",
+      "authorized_refunds",
+      "passed"
+     ],
+     [
+      "repaired",
+      "no_duplicate_full_refund",
+      "passed"
+     ],
+     [
+      "repaired",
+      "total_refund_within_payment",
+      "passed"
+     ],
+     [
+      "repaired",
+      "unique_idempotency_keys",
+      "passed"
+     ]
+    ],
+    "ledger": {
+     "model_calls": {
+      "committed": 1,
+      "unknown": 0
+     },
+     "tool_calls": {
+      "committed": 8,
+      "unknown": 0
+     }
+    },
+    "memory": {
+     "verified": 3
+    },
     "outcome": "repair_verified",
     "paused": false,
     "runs": {

@@ -1609,7 +1609,7 @@
      ]
     ]
    },
-   "journey_authority_withdrawn": {
+   "journey_after_consume": {
     "approval": "consumed",
     "errors": [
      "forbidden"
@@ -1652,7 +1652,92 @@
      ]
     ]
    },
-   "refund_authority_withdrawn": {
+   "journey_during_resume": {
+    "approval": "approved",
+    "errors": [
+     "approval_invalid"
+    ],
+    "outcome": "settings_changed",
+    "paused": false,
+    "runs": {
+     "exp-9e4e59c2a2c402f3/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-9e4e59c2a2c402f3/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08"
+    },
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "failed"
+     ],
+     [
+      "execute_run",
+      "skipped"
+     ]
+    ]
+   },
+   "journey_restored": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-9e4e59c2a2c402f3/baseline": "5fb4b06c2f8f084fa6156e78090d5730c77719836fe7ca10d602f7d3830a77ce",
+     "exp-9e4e59c2a2c402f3/fork": "3e011a62608d7568afd9b8a858836e5bc2568c5309c5121537aa7e2407778b08",
+     "repaired": "02981ee91114eeb8eb5bc72604ad31be4ea19893bf2da3a7ebc07962f8da4a35"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
+   },
+   "refund_after_consume": {
     "approval": "consumed",
     "errors": [
      "forbidden"
@@ -1694,16 +1779,113 @@
       "failed"
      ]
     ]
+   },
+   "refund_during_resume": {
+    "approval": "approved",
+    "errors": [
+     "approval_invalid"
+    ],
+    "outcome": "settings_changed",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+    },
+    "status": "failed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "failed"
+     ],
+     [
+      "execute_run",
+      "skipped"
+     ]
+    ]
+   },
+   "refund_restored": {
+    "approval": "consumed",
+    "errors": [],
+    "outcome": "repair_verified",
+    "paused": false,
+    "runs": {
+     "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6",
+     "repaired": "1f2fe3df29abcc869e36a2dc599a67f0836df00329b9a59d605eab021ecc0b49"
+    },
+    "status": "completed",
+    "tasks": [
+     [
+      "propose_experiment",
+      "succeeded"
+     ],
+     [
+      "validate_proposal",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ],
+     [
+      "verify_run",
+      "succeeded"
+     ],
+     [
+      "record_memory",
+      "succeeded"
+     ],
+     [
+      "await_approval",
+      "succeeded"
+     ],
+     [
+      "execute_run",
+      "succeeded"
+     ]
+    ]
    }
   },
   "http": {
    "adapter_rechecks": [
     200
    ],
-   "journey_authority_withdrawn": [
+   "journey_after_consume": [
     200
    ],
-   "refund_authority_withdrawn": [
+   "journey_during_resume": [
+    200
+   ],
+   "journey_restored": [
+    200
+   ],
+   "refund_after_consume": [
+    200
+   ],
+   "refund_during_resume": [
+    200
+   ],
+   "refund_restored": [
     200
    ]
   },
@@ -1712,43 +1894,58 @@
    "cost_per_successful_task": null,
    "fixture_tokens": {
     "input": {
-     "known_sum": 2100,
+     "known_sum": 4900,
      "unknown_count": 0
     },
     "output": {
-     "known_sum": 360,
+     "known_sum": 840,
      "unknown_count": 0
     }
    },
    "handoffs": {
-    "failed": 2,
-    "total": 14
+    "failed": 4,
+    "total": 34
    },
    "human_decisions": {
-    "decided": 2,
+    "decided": 6,
     "pending": 0,
     "rejected": 0
    },
-   "model_attempts": 3,
+   "model_attempts": 7,
    "provider_latency_ms": null,
    "recovery": {
     "attempted": 0,
     "succeeded": 0
    },
-   "successful_campaigns": 0,
+   "successful_campaigns": 2,
    "tasks": {
-    "succeeded": 17,
-    "total": 19
+    "succeeded": 41,
+    "total": 47
    },
    "tool_calls": {
-    "failed": 1,
+    "failed": 4,
     "failed_guard_denied": 0,
-    "failed_injected_fault": 1,
-    "succeeded": 63,
-    "total": 64
+    "failed_injected_fault": 4,
+    "succeeded": 138,
+    "total": 142
    }
   },
-  "observations": {}
+  "observations": {
+   "journey": {
+    "approval_after_refusal": "approved",
+    "changed_at_resume": "CampaignSettingsChanged",
+    "paused_after_refusal": true,
+    "repaired_run_after_refusal": false,
+    "withdrawn_at_resume": "CampaignSettingsChanged"
+   },
+   "refund": {
+    "approval_after_refusal": "approved",
+    "changed_at_resume": "CampaignSettingsChanged",
+    "paused_after_refusal": true,
+    "repaired_run_after_refusal": false,
+    "withdrawn_at_resume": "CampaignSettingsChanged"
+   }
+  }
  },
  "adversarial.provider_errors": {
   "campaigns": {

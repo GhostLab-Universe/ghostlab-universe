@@ -112,6 +112,29 @@ test("identifier_too_long is a validation error with its reason", () => {
   assert.equal(describeFailure(failure).reason, "identifier_too_long");
 });
 
+test("cancel_incomplete says the campaign did not stop, with M07's reason", () => {
+  const failure: Failure = {
+    kind: "service",
+    status: 409,
+    reason: "cancel_incomplete",
+    error: { code: "conflict", message: "The campaign did not stop", ref: null, retryable: false, side_effect: "none" },
+  };
+  assert.equal(failureState(failure), "conflict");
+  assert.equal(describeFailure(failure).reason, "cancel_incomplete");
+  assert.equal(describeFailure(failure).message, "The campaign did not stop");
+});
+
+test("scripted_scenario_unavailable is a validation error with its reason", () => {
+  const failure: Failure = {
+    kind: "service",
+    status: 422,
+    reason: "scripted_scenario_unavailable",
+    error: { code: "validation_failed", message: "No such scenario", ref: null, retryable: false, side_effect: "none" },
+  };
+  assert.equal(failureState(failure), "validation_error");
+  assert.equal(describeFailure(failure).reason, "scripted_scenario_unavailable");
+});
+
 test("cancelling a paused campaign ends it and leaves the approval unspent", async () => {
   const source = createFixtureSource();
   const view = await source.getCampaign("fx-refund");

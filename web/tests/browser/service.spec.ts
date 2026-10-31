@@ -201,6 +201,20 @@ test("cancelling a paused campaign ends it; a later decision moves nothing", asy
   await shot(page, "service-decision-on-stopped");
 });
 
+test("cancel_incomplete says the campaign did not stop, and its status stays", async ({ page }) => {
+  await start(page, REFUND);
+  await paused(page);
+  const refused = JSON.stringify({
+    reason: "cancel_incomplete",
+    error: { code: "conflict", message: "The campaign did not stop", ref: null, retryable: false, side_effect: "none" },
+  });
+  await page.route("**/cancel", (route) => route.fulfill({ status: 409, contentType: "application/json", body: refused }));
+  await page.getByRole("button", { name: "Cancel campaign" }).click();
+  await expect(page.getByTestId("state-conflict")).toContainText("cancel_incomplete", POLLED);
+  await expect(page.getByTestId("state-conflict")).toContainText("The campaign did not stop");
+  await expect(page.locator(".status-line")).toContainText("Awaiting approval");
+});
+
 test("a violation before truncation reaches approval", async ({ page }) => {
   await start(page, JOURNEY, "outcome-violation");
   await paused(page);

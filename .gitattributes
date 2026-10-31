@@ -5,3 +5,5 @@ examples/contracts/** text eol=lf
 uv.lock text eol=lf
 web/package.json text eol=lf
 web/package-lock.json text eol=lf
+src/ghostlab/api/openapi.v1.json text eol=lf
+web/src/api/openapi.v1.json text eol=lf

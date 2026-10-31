@@ -18,7 +18,8 @@ from ghostlab.observability import find_secrets, read_records
 from .cases import CASES
 from .evidence import canonical_sha256
 from .harness import FIXTURE_LABEL, REFUND, SECRETS
-from .oracles import agrees_with_controller, journey_oracle, refund_oracle, tool_counts
+from .oracles import (agrees_with_controller, fault_evidence, journey_oracle, refund_oracle,
+                      tool_counts)
 
 SCHEMA = "ghostlab-evaluation/1"
 DEFERRED = [
@@ -68,10 +69,14 @@ def _agreement(campaign: dict) -> bool:
 def _coverage_matches(campaign: dict) -> bool:
     """Each experiment's recorded coverage must say what its stored runs say."""
     for experiment_id, coverage in campaign["coverage"].items():
-        statuses = [campaign["runs"][f"{experiment_id}/{name}"]["body"]["status"]
-                    for name in ("baseline", "fork")]
-        if coverage != {"baseline": statuses[0], "fork": statuses[1],
-                        "complete": statuses == ["completed", "completed"]}:
+        baseline, fork = (campaign["runs"][f"{experiment_id}/{name}"]["body"]
+                          for name in ("baseline", "fork"))
+        triggered = coverage["faults_triggered"]
+        finished = baseline["status"] == fork["status"] == "completed"
+        if coverage != {"baseline": baseline["status"], "fork": fork["status"],
+                        "faults_triggered": triggered, "complete": triggered and finished}:
+            return False
+        if triggered and not fault_evidence(campaign["world"], fork):
             return False
     return True
 
@@ -79,10 +84,14 @@ def _coverage_matches(campaign: dict) -> bool:
 def _coverage_matches(campaign: dict) -> bool:
     """Each experiment's recorded coverage must say what its stored runs say."""
     for experiment_id, coverage in campaign["coverage"].items():
-        statuses = [campaign["runs"][f"{experiment_id}/{name}"]["body"]["status"]
-                    for name in ("baseline", "fork")]
-        if coverage != {"baseline": statuses[0], "fork": statuses[1],
-                        "complete": statuses == ["completed", "completed"]}:
+        baseline, fork = (campaign["runs"][f"{experiment_id}/{name}"]["body"]
+                          for name in ("baseline", "fork"))
+        triggered = coverage["faults_triggered"]
+        finished = baseline["status"] == fork["status"] == "completed"
+        if coverage != {"baseline": baseline["status"], "fork": fork["status"],
+                        "faults_triggered": triggered, "complete": triggered and finished}:
+            return False
+        if triggered and not fault_evidence(campaign["world"], fork):
             return False
     return True
 

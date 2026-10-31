@@ -94,6 +94,20 @@ def journey_oracle(run: dict) -> dict:
         "withdrawn": sorted(withdrawn), "trace_contiguous": trace_is_contiguous(run)}
 
 
+def fault_evidence(world: str, run: dict) -> bool:
+    """Did a run hold any sign of a fault? Necessary for "triggered", not sufficient.
+
+    M05 also requires the fault to have changed something the run could act on.
+    """
+    if world == "refund-world/1":
+        return any(event["outcome"].get("error") == "PaymentTimeout" for event in run["trace"])
+    if any(not row["sharing"] for row in run["final_state"]["permission_timeline"]):
+        return True
+    results = [event["outcome"].get("result") or {} for event in run["trace"]]
+    return any("remembered_intent" in result or "incoming_update" in result for result in results
+               if isinstance(result, dict))
+
+
 def agrees_with_controller(world: str, oracle: dict, findings: list[dict]) -> bool:
     """The controller's findings for one run must say what the oracle measured."""
     failed = {finding["invariant"] for finding in findings if finding["verdict"] == "failed"}

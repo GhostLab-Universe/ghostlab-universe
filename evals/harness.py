@@ -6,6 +6,7 @@ labeled fixture, no network request is made and no model is called.
 """
 
 import json
+import sqlite3
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -15,7 +16,8 @@ import httpx
 
 from ghostlab.contracts import ApprovalSubmission, CampaignSpec, Principal
 from ghostlab.contracts.world import WorldCampaignSpec
-from ghostlab.orchestration import CampaignController, Services, TrustedSession
+from ghostlab.orchestration import (DEFAULT_WORLDS, CampaignController, JourneyDriver, Services,
+                                    TrustedSession)
 from ghostlab.policy import (ApprovalService, ProjectApproverAllowlist, StaticPrincipalBinding,
                              StaticWorldBinding)
 from ghostlab.providers import Credential, ProviderConfig, RetryPolicy, Runtime, adapter_for
@@ -127,9 +129,14 @@ def refund_proposal(**changes) -> dict:
             "expected_signal": "total_refund_within_payment fails", **changes}
 
 
-def revocation(after_event=None) -> dict:
+def revocation(after_event=None, recipient=VIEWER) -> dict:
     return {"fault_id": "sharing_revoked_while_queued", "after_event": after_event,
-            "parameters": [{"name": "recipient_id", "value": VIEWER}]}
+            "parameters": [{"name": "recipient_id", "value": recipient}]}
+
+
+def delayed_update(events=3) -> dict:
+    return {"fault_id": "delayed_itinerary_update", "after_event": None,
+            "parameters": [{"name": "delay_events", "value": events}]}
 
 
 def journey_proposal(adapter=NAIVE, *, faults=None, cap=20, **changes) -> dict:
@@ -159,11 +166,35 @@ def spec_for(world: str, **budget):
         "world_version": world, "budget": _budget(**budget)})
 
 
+class CappedRepair(JourneyDriver):
+    """Stands in for a fixture whose repaired adapter needs more than the target limit."""
+
+    def __init__(self, cap: int):
+        self.repair_cap = cap
+
+    def repair_action(self, experiment_id, proposal):
+        action = super().repair_action(experiment_id, proposal)
+        return {**action, "scenario": {**action["scenario"], "max_tool_calls": self.repair_cap}}
+
+
+class BrokenLedger:
+    """A ledger that can't answer, as with a disk error. It's not an exhausted budget."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+    def reserve(self, *args, **kwargs):
+        raise sqlite3.OperationalError("disk I/O error")
+
+
 class Stack:
     """One private local storage root plus everything a controller needs."""
 
     def __init__(self, root: Path, transport: Transport, *, retry_attempts=3, binding=None,
-                 world_binding=None, on_node=None):
+                 world_binding=None, on_node=None, worlds=None):
         self.root, self.transport = Path(root), transport
         self.paths = StoragePaths(self.root)
         app = open_database(self.paths.app_db)
@@ -180,6 +211,7 @@ class Stack:
         self.world_binding = world_binding or StaticWorldBinding(
             {(PROJECT, OPERATOR.principal_id, JOURNEY): ORGANIZER})
         self.on_node = on_node or (lambda name, state: None)
+        self.worlds = {**DEFAULT_WORLDS, **(worlds or {})}
         self.runtime = Runtime(transport=httpx.MockTransport(transport), sleep=self.timer.sleep,
                                monotonic=self.timer.monotonic, jitter=lambda: 0.0)
         self.config = ProviderConfig(provider="meta_responses", model=MODEL,
@@ -194,7 +226,7 @@ class Stack:
                         skills=SkillRegistry.load(), binding=self.binding,
                         adapter_factory=lambda runtime: adapter_for(self.config, runtime),
                         runtime=self.runtime, clock=self.clock, on_node=self.on_node,
-                        world_binding=self.world_binding)
+                        world_binding=self.world_binding, worlds=self.worlds)
 
     @contextmanager
     def controller(self, session=None, **options):

@@ -19,15 +19,16 @@ from ghostlab.contracts import Provenance
 from ghostlab.contracts.world_refund import capsule_digest
 from ghostlab.memory import MemoryPipeline
 from ghostlab.memory.pipeline import Observation
-from ghostlab.orchestration import TrustedSession
+from ghostlab.orchestration import TrustedSession, ledger_key
 from ghostlab.policy import StaticPrincipalBinding, root_scope, supervisor_scope
 from ghostlab.worlds import journey_capsule
 
 from .evidence import campaign_evidence, scan_stores, write_trace
-from .harness import (BUSY, CHECKED, JOURNEY, OPERATOR, OTHER_PROJECT, PROJECT,
+from .harness import (BUSY, CHECKED, JOURNEY, NAIVE, OPERATOR, ORGANIZER, OTHER_PROJECT, PROJECT,
                       RACE_AFTER_EVENT, RATE_LIMITED, REFUND, STRANGER, SYNTHETIC_SECRET,
-                      UNAUTHORIZED, SimulatedCrash, Stack, Transport, journey_proposal, meta_reply,
-                      refund_proposal, reply, revocation, spec_for, without_world_binding)
+                      UNAUTHORIZED, BrokenLedger, CappedRepair, SimulatedCrash, Stack, Transport,
+                      delayed_update, journey_proposal, meta_reply, refund_proposal, reply,
+                      revocation, spec_for, without_world_binding)
 
 CID = "campaign-eval"
 INJECTION_MARKER = "EVAL-INJECTION-MARKER"
@@ -516,7 +517,8 @@ def expect_budget_exhaustion(ev: dict) -> dict:
             "budget_exhausted", "model_calls") and len(ev["http_attempts"]["model_calls"]) == 2
         and calls["ledger"]["model_calls"]["committed"] == 2,
         "unaffordable_runs_never_execute": tools["runs"] == {}
-        and tools["ledger"]["tool_calls"]["committed"] == 0,
+        and tools["ledger"]["tool_calls"]["committed"] == 0
+        and (tools["status"], tools["outcome"]) == ("failed", "no_experiment_ran"),
         "the_deadline_stops_before_any_call": wall["status"] == "budget_exhausted"
         and wall["outcome"] == "wall_clock_ms" and ev["http_attempts"]["wall_clock"] == [],
         "a_truncated_run_is_recorded_as_truncated": all(
@@ -528,23 +530,82 @@ def expect_budget_exhaustion(ev: dict) -> dict:
         and capped["memory_ids"] == 0}
 
 
-def run_repair_truncated(rec: Recorder) -> None:
-    """The lab failure fits the cap; the repaired adapter needs more calls than that."""
-    stack = rec.stack("main", reply(journey_proposal(cap=13)))
-    approve_and_resume(stack, start(stack, JOURNEY))
+def run_untested_fault(rec: Recorder) -> None:
+    """Nothing failed, but the fault never happened, so nothing was tested."""
+    refund = rec.stack("refund_no_fault", reply(refund_proposal(
+        scenario={"timeout_after_commit": False, "max_tool_calls": 20})))
+    start(refund, REFUND, max_iterations=1)
+    rec.capture("refund_no_fault", refund)
+    journey = rec.stack("journey_fault_after_the_run", reply(journey_proposal(
+        faults=[revocation(after_event=15)])))
+    start(journey, JOURNEY, max_iterations=1)
+    rec.capture("journey_fault_after_the_run", journey)
+
+
+def expect_untested_fault(ev: dict) -> dict:
+    campaigns = list(ev["campaigns"].values())
+    refund = oracle(ev, "fork", campaign="refund_no_fault")
+    journey = oracle(ev, "fork", campaign="journey_fault_after_the_run")
+    return {
+        "a_clean_run_that_met_no_fault_is_not_clean": all(
+            (c["status"], c["outcome"]) == ("budget_exhausted", "coverage_incomplete")
+            for c in campaigns),
+        "the_stored_runs_agree_no_fault_fired": refund["commits_reported_as_timeouts"] == []
+        and journey["withdrawn"] == [],
+        "both_runs_finished": all(item["fork"] == "completed" and item["complete"] is False
+                                  and item["faults_triggered"] is False
+                                  for c in campaigns for item in c["coverage"].values()),
+        "no_verified_memory_is_written": all(c["memory_ids"] == 0 for c in campaigns)}
+
+
+def run_budget_check_failure(rec: Recorder) -> None:
+    stack = rec.stack("main", reply(refund_proposal()))
+    stack.ledger = BrokenLedger(stack.ledger)
+    start(stack, REFUND)
     rec.capture("main", stack)
 
 
-def expect_repair_truncated(ev: dict) -> dict:
-    main, fork = ev["campaigns"]["main"], oracle(ev, "fork")
-    repair = main["repair"]
-    return {"the_lab_failure_is_kept": fork["unpermitted_deliveries"] == [12],
-            "an_unfinished_repair_is_not_verified": (main["status"], main["outcome"]) == (
-                "budget_exhausted", "repair_incomplete") and repair["verified"] is False,
-            "the_record_says_why": repair["run_status"] == "budget_exhausted"
-            and repair["held_by"] is None,
-            "the_stored_run_stopped_at_the_cap": len(
-                main["runs"]["repaired"]["body"]["trace"]) == 13}
+def expect_budget_check_failure(ev: dict) -> dict:
+    main = ev["campaigns"]["main"]
+    return {"a_broken_check_isnt_called_exhausted": (main["status"], main["outcome"]) == (
+                "failed", "budget_check_failed"),
+            "nothing_was_sent_or_run": ev["http_attempts"]["main"] == [] and main["runs"] == {}}
+
+
+def run_repair_incomplete(rec: Recorder) -> None:
+    lifted = rec.stack("cap_lifted", reply(journey_proposal(cap=12)))
+    approve_and_resume(lifted, start(lifted, JOURNEY))
+    rec.capture("cap_lifted", lifted)
+
+    capped = rec.stack("truncated", reply(journey_proposal(cap=12)),
+                       worlds={JOURNEY: CappedRepair(12)})
+    approve_and_resume(capped, start(capped, JOURNEY))
+    rec.capture("truncated", capped)
+
+    lost = rec.stack("lost_fault", reply(journey_proposal(NAIVE, faults=[
+        delayed_update(), revocation(after_event=11, recipient=ORGANIZER)])))
+    approve_and_resume(lost, start(lost, JOURNEY))
+    rec.capture("lost_fault", lost)
+
+
+def expect_repair_incomplete(ev: dict) -> dict:
+    lifted, capped, lost = (ev["campaigns"][name] for name in ("cap_lifted", "truncated",
+                                                               "lost_fault"))
+    return {
+        "the_experiment_cap_doesnt_bind_the_repair": lifted["outcome"] == "repair_verified"
+        and oracle(ev, "fork", campaign="cap_lifted")["tools"]["total"] == 12
+        and oracle(ev, "repaired", campaign="cap_lifted")["tools"]["total"] > 12,
+        "the_lab_failure_is_kept": oracle(ev, "fork", campaign="truncated")[
+            "unpermitted_deliveries"] == [12],
+        "an_unfinished_repair_is_not_verified": (capped["status"], capped["outcome"]) == (
+            "budget_exhausted", "repair_incomplete") and capped["repair"]["verified"] is False
+        and capped["repair"]["run_status"] == "budget_exhausted"
+        and capped["repair"]["held_by"] is None
+        and len(capped["runs"]["repaired"]["body"]["trace"]) == 12,
+        "a_repair_that_missed_a_fault_is_not_verified": (lost["status"], lost["outcome"]) == (
+            "failed", "repair_incomplete") and lost["repair"]["verified"] is False
+        and lost["repair"]["lost_faults"] == ["sharing_revoked_while_queued"]
+        and lost["repair"]["held_by"] is None}
 
 
 def run_provider_errors(rec: Recorder) -> None:
@@ -673,7 +734,19 @@ def run_uncertain_commit(rec: Recorder) -> None:
         rec.observe(crashed_after_consume=True)
     stack.approvals = inner
     done = recover(stack)
-    rec.observe(status_after_recovery=done["status"], outcome_after_recovery=done["outcome"])
+
+    def tool_calls():
+        return stack.ledger.committed(ledger_key(PROJECT, CID), "tool_calls")[0]
+
+    charged = tool_calls()
+    recover(stack)
+    resume(stack)
+    rec.observe(status_after_recovery=done["status"], outcome_after_recovery=done["outcome"],
+                tool_calls_after_recovery=charged, tool_calls_after_more_entries=tool_calls(),
+                second_consume=refused(lambda: stack.approvals.consume(
+                    project_id=PROJECT, approval_id=done["approval"]["approval_id"],
+                    action=done["approval"]["action"], now=stack.clock())))
+    rec.recovered(done["outcome"] == "repair_verified")
     rec.capture("consume_window", stack)
 
     crashes = []
@@ -696,11 +769,15 @@ def expect_uncertain_commit(ev: dict) -> dict:
     window, resumed = ev["campaigns"]["consume_window"], ev["campaigns"]["before_repair"]
     fork = oracle(ev, "fork", campaign="consume_window")
     repaired = oracle(ev, "repaired", campaign="before_repair")
+    recovered = oracle(ev, "repaired", campaign="consume_window")
+    seen = ev["observations"]
     return {
         "the_world_commit_behind_a_timeout_is_visible": fork["commits_reported_as_timeouts"] == [2],
-        "a_lost_consume_fails_closed_and_never_runs_the_repair":
-            window["status"] == "failed" and "repaired" not in window["runs"]
-            and window["approval"]["status"] == "consumed",
+        "a_lost_consume_recovers_and_repairs_once": window["outcome"] == "repair_verified"
+        and window["approval"]["status"] == "consumed" and recovered["refund_rows"] == 1,
+        "later_entries_run_nothing_more": seen["tool_calls_after_more_entries"]
+        == seen["tool_calls_after_recovery"]
+        and seen["second_consume"] == "ApprovalDenied:not_approved",
         "a_crash_after_consume_finishes_exactly_once": resumed["outcome"] == "repair_verified"
         and repaired["refund_rows"] == 1 and resumed["approval"]["status"] == "consumed"}
 
@@ -813,8 +890,12 @@ CASES: tuple[Case, ...] = (
          run_journey_capsule_tampering, expect_capsule_tampering),
     Case("adversarial.budget_exhaustion", "adversarial", REFUND, run_budget_exhaustion,
          expect_budget_exhaustion),
-    Case("adversarial.repair_truncated", "adversarial", JOURNEY, run_repair_truncated,
-         expect_repair_truncated),
+    Case("adversarial.untested_fault", "adversarial", JOURNEY, run_untested_fault,
+         expect_untested_fault),
+    Case("adversarial.budget_check_failure", "adversarial", REFUND, run_budget_check_failure,
+         expect_budget_check_failure),
+    Case("adversarial.repair_incomplete", "adversarial", JOURNEY, run_repair_incomplete,
+         expect_repair_incomplete),
     Case("adversarial.provider_errors", "adversarial", REFUND, run_provider_errors,
          expect_provider_errors),
     Case("adversarial.crash_restart.refund", "adversarial", REFUND,

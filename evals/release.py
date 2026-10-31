@@ -24,6 +24,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from ghostlab.observability import find_secrets
+from ghostlab.orchestration import DEFAULT_WORLDS
 from ghostlab.orchestration.inference import LiveInferenceAuthorization, LiveInferenceRefused
 from ghostlab.policy import ceiling_for
 
@@ -89,10 +90,12 @@ def live_evidence_problems(live: dict, root: Path) -> list[str]:
     config = SimpleNamespace(provider=live["provider"], base_url=live["endpoint"],
                              model=live["model"])
     try:
-        authorization.check(config, ceiling_for("supervisor"))
+        # A release ships every runnable world, so the report must cover each one's schema.
+        for schema in sorted({driver.output_schema for driver in DEFAULT_WORLDS.values()}):
+            authorization.check(config, ceiling_for("supervisor"), schema)
     except LiveInferenceRefused as error:
         return [f"compatibility report refused: {error}"]
-    except (AttributeError, TypeError, ValueError):  # a report of the wrong shape
+    except (TypeError, ValueError):  # for example, no spending cap
         return ["compatibility report refused: malformed report or spending cap"]
     if find_secrets(path.read_text("utf-8")):
         return ["compatibility report refused: it isn't sanitized"]

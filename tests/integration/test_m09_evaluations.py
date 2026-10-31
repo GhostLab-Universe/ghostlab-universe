@@ -13,7 +13,8 @@ from evals.release import SECURITY_GATES, build_record, target_problems
 from evals.run import DEFAULT_EXPECTED, run_all
 from evals.score import score_directory
 from ghostlab.core import run_agent
-from ghostlab.orchestration import REQUIRED_COMPATIBILITY_CHECKS, CampaignController
+from ghostlab.orchestration import (REQUIRED_COMPATIBILITY_CHECKS, CampaignController,
+                                    JourneyDriver, RefundDriver)
 from ghostlab.policy import LAB
 
 from conftest import ROOT
@@ -175,6 +176,17 @@ def test_store_scan_finds_both_secrets_and_names_neither(tmp_path):
                     "files_with_secret": ["a.sqlite:secret[0]", "b.sqlite:secret[1]"]}
 
 
+def test_a_fault_claimed_without_evidence_blocks(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+
+    def claim_the_fault_fired(data):
+        for item in data["campaigns"]["refund_no_fault"]["coverage"].values():
+            item["faults_triggered"] = item["complete"] = True
+
+    edit_evidence(out, "adversarial.untested_fault", claim_the_fault_fired)
+    assert any("coverage_matches_the_stored_runs" in item for item in failures(out))
+
+
 def test_coverage_that_disagrees_with_the_stored_runs_blocks(evaluated, tmp_path):
     out = copy_of(evaluated, tmp_path)
 
@@ -238,6 +250,35 @@ def test_calling_a_truncated_experiment_clean_blocks_promotion(tmp_path, monkeyp
     case = next(c for c in report["cases"] if c["case_id"] == "adversarial.budget_exhaustion")
     assert "a_truncated_experiment_proves_nothing" in case["failed_expectations"]
     assert "coverage_matches_the_stored_runs" in case["failed_expectations"]
+
+
+def test_counting_an_unmet_fault_as_tested_blocks_promotion(tmp_path, monkeypatch):
+    """Back to judging by run status alone: a clean run with no fault passes as clean."""
+    monkeypatch.setattr(RefundDriver, "faults_triggered", lambda self, proposal, fork: True)
+    monkeypatch.setattr(JourneyDriver, "faults_triggered", lambda self, proposal, fork: True)
+    assert run_all(tmp_path, only="untested_fault") == []
+    case = next(c for c in score_directory(tmp_path)["cases"]
+                if c["case_id"] == "adversarial.untested_fault")
+    assert "a_clean_run_that_met_no_fault_is_not_clean" in case["failed_expectations"]
+    assert "coverage_matches_the_stored_runs" in case["failed_expectations"]
+
+
+def test_ignoring_a_lost_fault_blocks_promotion(tmp_path, monkeypatch):
+    """The repair gets credit for a fault it never met."""
+    monkeypatch.setattr(JourneyDriver, "faults_fired", lambda self, proposal, run: set())
+    assert run_all(tmp_path, only="repair_incomplete") == []
+    case = next(c for c in score_directory(tmp_path)["cases"]
+                if c["case_id"] == "adversarial.repair_incomplete")
+    assert "a_repair_that_missed_a_fault_is_not_verified" in case["failed_expectations"]
+
+
+def test_losing_consume_recovery_blocks_promotion(tmp_path, monkeypatch):
+    """Recovery stops recognising its own consumed approval, so the case no longer completes."""
+    monkeypatch.setattr(CampaignController, "_consumed_here", lambda self, state, approval: False)
+    assert run_all(tmp_path, only="uncertain_commit") == []
+    case = next(c for c in score_directory(tmp_path)["cases"]
+                if c["case_id"] == "adversarial.uncertain_commit")
+    assert case["status"] == "failed"
 
 
 def test_removing_the_guard_blocks_promotion(tmp_path, monkeypatch):
@@ -310,6 +351,7 @@ def valid_report() -> dict:
     """A labeled test fixture shaped like a passing live M01 report. No call was made."""
     return {"live": True, "mode": "live", "transport": "network", "provider": PROVIDER,
             "endpoint": ENDPOINT, "model": MODEL,
+            "structured_schemas": ["experiment_proposal", "world_experiment_proposal"],
             "checks": [{"check": name, "status": "passed"}
                        for name in sorted(REQUIRED_COMPATIBILITY_CHECKS)]}
 
@@ -430,6 +472,9 @@ MUTATIONS = {
     "report_with_a_failed_check": _checks("failed", *["passed"] * 4),
     "report_with_a_skipped_check": _checks("skipped", *["passed"] * 4),
     "report_holds_a_secret": _report(note=f"key {SECRET}"),
+    "report_covers_only_the_refund_schema": _report(structured_schemas=["experiment_proposal"]),
+    "report_names_no_schemas": _raw_report(json.dumps(
+        {key: value for key, value in valid_report().items() if key != "structured_schemas"})),
     "gate_marked_failed": _set((*FIRST_GATE, "status"), "failed"),
     "gate_evidence_missing": _set((*FIRST_GATE, "evidence"), "evidence/missing.md"),
     "gate_evidence_blank": _set((*FIRST_GATE, "evidence"), " "),

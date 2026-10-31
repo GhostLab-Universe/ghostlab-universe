@@ -52,18 +52,20 @@ and right before each delivery. It still leaks, and no model is involved.
 `python -m ghostlab journey-demo`, excerpt from the `revocation_race` key:
 
 ```json
-"revoked_after_event": 17,
-"version_checked_lab": {
-  "adapter": "journey-version-checked",
-  "events": 18,
-  "violated_invariants": {
-    "delivered_messages_permitted": {
-      "evidence_event_ids": [18],
-      "observed": 1,
-      "unit": "unpermitted_deliveries"
-    }
-  },
-  "denied": []
+    "revoked_after_event": 17,
+    "version_checked_lab": {
+      "adapter": "journey-version-checked",
+      "events": 18,
+      "violated_invariants": {
+        "delivered_messages_permitted": {
+          "evidence_event_ids": [
+            18
+          ],
+          "observed": 1,
+          "unit": "unpermitted_deliveries"
+        }
+      },
+      "denied": [],
 ```
 
 The same failure through the controller, from `python -m evals.demo`:
@@ -185,13 +187,13 @@ different result from an adapter improvement, which records `"held_by": "adapter
 `journey-demo` shows the same outcome in `version_checked_guarded`, excerpt:
 
 ```json
-"violated_invariants": {},
-"denied": [
-  {
-    "event_id": 18,
-    "error": "PermissionWithdrawnDenied"
-  }
-]
+      "violated_invariants": {},
+      "denied": [
+        {
+          "event_id": 18,
+          "error": "PermissionWithdrawnDenied"
+        }
+      ],
 ```
 
 "Enforcement" here is the in-process world-rule guard on a synthetic world's tool call. It

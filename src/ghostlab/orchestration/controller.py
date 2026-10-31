@@ -229,6 +229,8 @@ class CampaignController:
         Completed nodes are not re-run; the interrupted node runs again.
         """
         self._check_owner(campaign_id)
+        if not self.graph.get_state(self._config(campaign_id)).next:
+            return self._snapshot(campaign_id)  # finished: nothing to recover
         self._check_entry(self._snapshot(campaign_id))
         return self._invoke(None, campaign_id)
 
@@ -533,9 +535,6 @@ class CampaignController:
         driver, fixture = self._world_driver(state), self._fixture(state)
         target = driver.target(self.session.project_id, self.session.principal)
         accountant = self._accountant(state)
-        # Re-entry after a crash discards the earlier runs, so only these are charged.
-        # World runs are in-process and spend no money. Model attempts are never voided.
-        accountant.void_task(task_id, "tool_calls")
         task_cap = ceiling_for("target").max_tool_calls * len(runs)
         reservations = []
         try:
@@ -556,6 +555,15 @@ class CampaignController:
         finally:
             for reservation in reservations:  # a refused reservation or a raising run
                 accountant.release(reservation)
+
+    def _discard_earlier_runs(self, state, task_id):
+        """Re-entry after a crash discards that task's runs, so they stop counting.
+
+        This comes before the node's stop checks, or a campaign stopped on recovery
+        would keep the dead runs' charges. World runs are in-process and spend no
+        money. Model attempts are never voided.
+        """
+        self._accountant(state).void_task(task_id, "tool_calls")
 
     def _denied(self, state, tasks, task_id, decision):
         """A policy refusal stops the campaign. The run left no world mutation."""
@@ -748,9 +756,10 @@ class CampaignController:
                                       task_id=task_id)}
 
     def _execute(self, state):
+        task_id = f"{self._prefix(state)}-execute"
+        self._discard_earlier_runs(state, task_id)
         if (stop := self._guard(state)) is not None:
             return stop
-        task_id = f"{self._prefix(state)}-execute"
         tasks = board.start(state["tasks"], task_id)
         experiment_id = state["experiment_id"]
         try:
@@ -964,9 +973,10 @@ class CampaignController:
                 and stored.action_digest == action_digest(approval["action"]))
 
     def _execute_repair(self, state):
+        repair_id = f"{state['campaign_id']}-execute-repair"
+        self._discard_earlier_runs(state, repair_id)
         if (stop := self._guard(state)) is not None:
             return stop
-        repair_id = f"{state['campaign_id']}-execute-repair"
         tasks = board.start(state["tasks"], repair_id)
         action = state["approval"]["action"]
         try:

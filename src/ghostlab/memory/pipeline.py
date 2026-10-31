@@ -66,6 +66,11 @@ def record_id_for(scope: TrustedScope, observation: Observation, content: str) -
     return "memory-" + hashlib.sha256(key.encode()).hexdigest()[:32]
 
 
+def _facts(record: MemoryRecord) -> tuple:
+    """What a caller asked to store. Status isn't one: it changes after capture."""
+    return (record.provenance, record.evidence, record.supersedes, record.retention)
+
+
 class MemoryPipeline:
     def __init__(self, store: SqliteMemoryStore):
         self.store = store
@@ -91,7 +96,10 @@ class MemoryPipeline:
         try:
             self.store.put(scope, record)
         except Conflict:
-            return self.store.get(scope, record_id)
+            existing = self.store.get(scope, record_id)
+            if _facts(existing) != _facts(record):  # same text, but not what was asked for
+                raise Conflict("Another record already holds this content") from None
+            return existing
         return record
 
     def retrieve(self, scope: TrustedScope, query: MemoryQuery) -> Sequence[MemoryRecord]:
@@ -101,8 +109,16 @@ class MemoryPipeline:
                   observation: Observation) -> MemoryRecord:
         """Store a replacement and retire the old record. Both stay auditable."""
         old = self.store.get(scope, old_record_id)
+        if observation.supersedes:
+            raise ValueError("supersede retires exactly the record it names")
+        if observation.world_version != old.world_version:
+            raise ValueError("A record can only be superseded from its own world")
+        if old.status == "verified" and initial_status(observation) != "verified":
+            raise ValueError("Unverified input cannot retire a verified record")
         replacement = self.capture(scope, Observation(**{
-            **observation.__dict__, "supersedes": (*observation.supersedes, old_record_id)}))
+            **observation.__dict__, "supersedes": (old_record_id,)}))
+        if replacement.status != initial_status(observation):  # since contradicted or retired
+            raise Conflict("The replacement is no longer usable")
         if old.status in {"unverified", "verified"}:
             self.store.transition(scope, old_record_id, expected_status=old.status,
                                   new_status="superseded")

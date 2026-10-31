@@ -2,7 +2,7 @@
 
 M02's world and adapters are used through their public classes and are not edited.
 
-Every run, in every mode, passes each tool call through ``authorize_world_tool``
+Every evidence run, in every mode, passes each tool call through ``authorize_world_tool``
 before dispatch: project, scope, role, tool validation and ownership. A denial
 raises before the world's ``call``, so it leaves no trace event and no state
 change, and the adapter can't carry on past it.
@@ -53,6 +53,8 @@ class _AuthorizedCalls:
         actor = binding.actor_for(project_id, scope.principal, WORLD_VERSION)
         if actor is None:
             raise PolicyDenied(deny("unbound_principal", "no world identity is bound"))
+        if actor not in fixture.participants:  # or every call would be refused and look clean
+            raise PolicyDenied(deny("identity_mismatch", "the bound identity isn't in this journey"))
         super().__init__(fixture, scenario, actor_id=actor)
         self.scope, self.project_id, self.binding = scope, project_id, binding
         self.should_stop = should_stop

@@ -927,6 +927,35 @@ def test_a_competitor_with_only_some_capacity_excuses_nothing():
                                                                "job-2": "unresolved"}
 
 
+TWO_FOR_ONE_PART = replace(FIXTURE, competitors=(), jobs=(
+    RelayJob("job-1", "conversation-1", PART), RelayJob("job-2", "conversation-2", PART)))
+ONE_TECHNICIAN = replace(FIXTURE, competitors=(), resources=(
+    RelayResource(TECH_A, "technician", 1), RelayResource(PART, "part", 1)))
+
+
+def test_jobs_trading_a_lease_that_lapses_do_not_excuse_each_other():
+    fixture = replace(TWO_FOR_ONE_PART, lease_ttl_events=1)
+    world = RelayWorld(fixture, CLEAN)
+    reserve(world, "job-1", PART, "k1")     # job-2 could not have had it here
+    reserve(world, "job-2", PART, "k2")     # job-1's lapsed; job-1 could not have had it here
+    inspect(world)
+    assert set(task_outcome(fixture, world.snapshot())["jobs"].values()) == {"unresolved"}
+
+
+def test_a_lease_given_back_excuses_nobody():
+    world = RelayWorld(ONE_TECHNICIAN, CLEAN)
+    reserve(world, "job-1", TECH_A, "k1")
+    world.call("release_resource", {"lease_id": "lease-1"})
+    assert task_outcome(ONE_TECHNICIAN, world.snapshot())["jobs"]["job-2"] == "unresolved"
+
+
+def test_capacity_a_confirmed_job_kept_is_capacity_lost():
+    world = RelayWorld(ONE_TECHNICIAN, CLEAN)
+    book(world)                             # job-1 keeps the only technician
+    assert task_outcome(ONE_TECHNICIAN, world.snapshot())["jobs"] == {
+        "job-1": "confirmed", "job-2": "capacity_lost"}
+
+
 def test_one_taken_technician_is_not_capacity_lost():
     fixture = replace(FIXTURE, competitors=(RelayCompetitor("job-4", TECH_B),))
     world = RelayWorld(fixture, scenario((STALE, None, {"competing_jobs": 1})))

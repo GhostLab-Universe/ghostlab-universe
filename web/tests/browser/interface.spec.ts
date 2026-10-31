@@ -148,6 +148,7 @@ test("the shipped CSP has no development socket", async ({ page }) => {
   const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
   expect(policy).toContain("connect-src 'self'");
   expect(policy).not.toContain("ws:");
+  expect(policy).toContain("connect-src 'self'; base-uri 'none'; form-action 'none'");
 });
 
 test("coverage_incomplete is never success, in the campaign or the diff", async ({ page }) => {

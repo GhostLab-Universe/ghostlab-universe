@@ -15,7 +15,7 @@ export default defineConfig({
     {
       name: "production-csp",
       // Only the dev server needs its HMR socket, so a build ships without it.
-      transformIndexHtml: (html, context) => (context.server ? html : html.replace(/ ws:\/\/\S+/g, "").replace(/ ws:\/\/[^;]+/g, "")),
+      transformIndexHtml: (html, context) => (context.server ? html : html.replace(/ ws:\/\/[^\s;]+/g, "")),
     },
   ],
   root: path("./src"),

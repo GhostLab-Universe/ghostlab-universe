@@ -107,7 +107,7 @@ export function leakSentence(leak: Leak): string {
 /** What makes an apparently careful agent's leak a race, when the run shows it. */
 export function checkSentence(leak: Leak): string | null {
   if (leak.lastReadAllowedAt === null) return null;
-  return `The run last read their sharing as allowed at event ${leak.lastReadAllowedAt}, so it delivered on a stale check.`;
+  return `The run last read their sharing as allowed at event ${leak.lastReadAllowedAt}, and did not read it again before delivering.`;
 }
 
 /** Sharing the fork lost at the first divergence. The baseline has no such row. */

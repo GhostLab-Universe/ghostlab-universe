@@ -28,9 +28,14 @@ def summarize_findings(findings: Sequence[InvariantFinding], *, item_id: str, ru
         detail = f"{finding.invariant} {finding.verdict}"
         if finding.evidence_event_ids:
             detail += " at events " + ", ".join(map(str, finding.evidence_event_ids))
-        if finding.observed_minor is not None and finding.limit_minor is not None:
+        if getattr(finding, "observed_minor", None) is not None \
+                and finding.limit_minor is not None:
             detail += (f" (observed {finding.observed_minor} vs limit "
                        f"{finding.limit_minor} minor units)")
+        elif getattr(finding, "observed_value", None) is not None \
+                and getattr(finding, "limit_value", None) is not None:
+            detail += (f" (observed {finding.observed_value} vs limit "
+                       f"{finding.limit_value} {finding.unit})")
         parts.append(f"{detail} [{finding.finding_id}]")
     failed = sum(f.verdict == "failed" for f in findings)
     content = (f"Run {run_ref.id}: {len(findings)} verifier findings, {failed} failed. "

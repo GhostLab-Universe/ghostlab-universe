@@ -26,12 +26,14 @@ from ghostlab.contracts.world import (WorldCampaignRecord, WorldCampaignSpec,
                                       WorldExperimentProposal, WorldInvariantFinding,
                                       WorldRealityDiff, WorldRunResult)
 from ghostlab.core import Fixture, Scenario, reality_diff
-from ghostlab.policy import (ExecutionMode, PolicyDenied, delegate, delegate_world,
+from ghostlab.core import run as refund_run
+from ghostlab.policy import (ExecutionMode, PolicyDenied, ceiling_for, delegate, delegate_world,
                              execution_mode_for, root_scope, supervisor_scope, world_root_scope)
 from ghostlab.policy.authorization import deny
 from ghostlab.worlds import journey_capsule
 from ghostlab.worlds.journey import WORLD_VERSION as JOURNEY_WORLD
-from ghostlab.worlds.journey import JourneyFixture, JourneyScenario, scenario_json
+from ghostlab.worlds.journey import (BudgetExceeded, JourneyFixture, JourneyScenario,
+                                     JourneyWorld, scenario_json)
 from ghostlab.worlds.journey_run import ADAPTERS as JOURNEY_ADAPTERS
 from ghostlab.worlds.journey_run import findings as journey_findings
 from ghostlab.worlds.journey_run import reality_diff as journey_diff
@@ -59,6 +61,7 @@ class RefundDriver:
     spec_model = CampaignSpec
     record_model = CampaignRecord
     proposal_model = ExperimentProposal
+    output_schema = "experiment_proposal"
 
     def current_fixture(self, services) -> Fixture:
         return services.fixture
@@ -84,6 +87,20 @@ class RefundDriver:
     def explored(self, proposal: dict) -> str:
         return (f"adapter={proposal['adapter']} "
                 f"timeout_after_commit={proposal['scenario']['timeout_after_commit']}")
+
+    def faults_fired(self, proposal: dict, run: dict) -> set[str]:
+        timed_out = any(event["outcome"].get("error") == "PaymentTimeout" for event in run["trace"])
+        return {"timeout_after_commit"} if timed_out else set()
+
+    def faults_triggered(self, proposal: dict, fork: dict) -> bool:
+        return bool(self.faults_fired(proposal, fork))
+
+    def minimum_cap(self, fixture: Fixture) -> int:
+        return min(len(refund_run(fixture, Scenario(timeout_after_commit=True), adapter)["trace"])
+                   for adapter in ("vulnerable", "repaired"))
+
+    def explorer_facts(self, fixture: Fixture) -> tuple[str, ...]:
+        return ()
 
     def experiment_runs(self, proposal: dict) -> list[RunRequest]:
         cap, adapter = self.cap(proposal), proposal["adapter"]
@@ -159,12 +176,32 @@ def _guard_denials(run: dict) -> list[dict]:
                                                  "PermissionWithdrawnDenied"}]
 
 
+def _journey_fault_fired(fault: dict, run: dict) -> bool:
+    """A fault counts only if it changed something the run could have acted on."""
+    final = run["final_state"]
+    if fault["fault_id"] == "sharing_revoked_while_queued":
+        recipient = next(p["value"] for p in fault["parameters"] if p["name"] == "recipient_id")
+        revoked = [row["from_event"] for row in final["permission_timeline"]
+                   if row["participant"] == recipient and not row["sharing"]]
+        if not revoked:
+            return False
+        sent = [m for m in final["messages"].values() if m["recipient_id"] == recipient]
+        return not sent or any(m["delivered_at"] is None or m["delivered_at"] >= revoked[0]
+                               for m in sent)  # not a revocation after everything arrived
+    seen = {"stale_preference_memory": "remembered_intent",
+            "delayed_itinerary_update": "incoming_update"}[fault["fault_id"]]
+    versions = [event["outcome"].get("result", {}).get(seen, {}).get("intent_version")
+                for event in run["trace"]]
+    return any(v not in (None, final["current_intent_version"]) for v in versions)
+
+
 class JourneyDriver:
     world_version = JOURNEY_WORLD
     skill_id = "propose-journey-scenario"
     spec_model = WorldCampaignSpec
     record_model = WorldCampaignRecord
     proposal_model = WorldExperimentProposal
+    output_schema = "world_experiment_proposal"
 
     def current_fixture(self, services) -> JourneyFixture:
         return services.journey_fixture
@@ -201,6 +238,43 @@ class JourneyDriver:
         faults = sorted(f"{f['fault_id']}@{f['after_event']}"
                         for f in proposal["scenario"]["faults"])
         return f"adapter={proposal['adapter_id']} faults={faults}"
+
+    def faults_fired(self, proposal: dict, run: dict) -> set[str]:
+        return {fault["fault_id"] for fault in proposal["scenario"]["faults"]
+                if _journey_fault_fired(fault, run)}
+
+    def faults_triggered(self, proposal: dict, fork: dict) -> bool:
+        """True when every fault demonstrably took effect, read from the run itself."""
+        faults = proposal["scenario"]["faults"]
+        return bool(faults) and self.faults_fired(proposal, fork) == {
+            fault["fault_id"] for fault in faults}
+
+    @staticmethod
+    def _adapter_calls(fixture: JourneyFixture) -> dict[str, int]:
+        """Tool calls each adapter makes on this fixture, measured with no fault."""
+        counts = {}
+        for name, adapter in JOURNEY_ADAPTERS.items():
+            world = JourneyWorld(replace(fixture, guarded=False),
+                                 JourneyScenario.from_json(scenario_json()),
+                                 actor_id=fixture.organizer)
+            try:
+                adapter(world)
+            except BudgetExceeded:
+                pass  # past any cap a proposal can use
+            counts[name] = world.calls
+        return counts
+
+    def minimum_cap(self, fixture: JourneyFixture) -> int:
+        return min(self._adapter_calls(fixture).values())
+
+    def explorer_facts(self, fixture: JourneyFixture) -> tuple[str, ...]:
+        """Facts of the pinned fixture, which may not be the one the skill describes."""
+        superseded = [v for v, _ in fixture.intents if v != fixture.current_version]
+        needs = ", ".join(f"{name} {calls}" for name, calls in self._adapter_calls(fixture).items())
+        return (f"Mandatory travellers: {', '.join(fixture.mandatory)}. "
+                f"Viewers: {', '.join(fixture.viewers) or 'none'}.",
+                f"Superseded intent versions: {superseded or 'none'}.",
+                f"Tool calls each adapter needs with no fault: {needs}.")
 
     def experiment_runs(self, proposal: dict) -> list[RunRequest]:
         """Baseline and fork share one mode, so a difference comes from the fault alone."""
@@ -245,9 +319,11 @@ class JourneyDriver:
         return True  # a lab failure in either adapter has an enforced repair to try
 
     def repair_action(self, experiment_id: str, proposal: dict) -> dict:
+        # The proposal's cap fits its own adapter, and the repair may need more calls.
+        scenario = {**proposal["scenario"], "max_tool_calls": ceiling_for("target").max_tool_calls}
         return {"kind": "apply_repair", "experiment_id": experiment_id,
                 "adapter": REPAIRED_JOURNEY_ADAPTER, "world_version": JOURNEY_WORLD,
-                "scenario": proposal["scenario"],
+                "scenario": scenario,
                 "execution": execution_mode_for("repair").as_json()}
 
     repair_summary = ("Run the checked-in version-checked adapter on the guarded boundary "

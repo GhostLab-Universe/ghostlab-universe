@@ -4,8 +4,14 @@
    "main": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "internal"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "campaign_status_changed"
     ],
     "findings": [],
     "ledger": {
@@ -105,24 +111,44 @@
       "fork": "budget_exhausted"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": null,
+      "violated_invariants": []
+     }
+    ],
     "errors": [
+     "budget_exhausted"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
      "budget_exhausted"
     ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -169,7 +195,13 @@
    "model_calls": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
+     "budget_exhausted"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
      "budget_exhausted"
     ],
     "findings": [],
@@ -214,9 +246,17 @@
    "tool_calls": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "validation_failed",
      "validation_failed"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "campaign_status_changed"
     ],
     "findings": [],
     "ledger": {
@@ -260,8 +300,14 @@
    "wall_clock": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "deadline_exceeded"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "budget_exhausted"
     ],
     "findings": [],
     "ledger": {
@@ -364,8 +410,16 @@
    "journey_unbound": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "forbidden"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "campaign_status_changed"
     ],
     "findings": [],
     "ledger": {
@@ -416,27 +470,57 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -493,8 +577,16 @@
    "refund_other_customer": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "forbidden"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "campaign_status_changed"
     ],
     "findings": [],
     "ledger": {
@@ -538,8 +630,16 @@
    "refund_unbound": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "forbidden"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "campaign_status_changed"
     ],
     "findings": [],
     "ledger": {
@@ -666,22 +766,46 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -812,27 +936,57 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -964,37 +1118,66 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -1059,37 +1242,66 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -1154,37 +1366,66 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -1310,47 +1551,85 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "repaired",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -1415,47 +1694,85 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "repaired",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -1520,47 +1837,85 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "repaired",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -1686,22 +2041,46 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -1824,27 +2203,57 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -1967,39 +2376,69 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [
      "provider_transient"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
     ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -2126,49 +2565,88 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [
      "provider_transient"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
     ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "repaired",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -2288,9 +2766,16 @@
    "main": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "provider_invalid_output",
      "provider_invalid_output"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "campaign_status_changed"
     ],
     "findings": [],
     "ledger": {
@@ -2395,22 +2880,42 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 17,
+      "violated_invariants": []
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -2464,24 +2969,50 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [
      "forbidden"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
     ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -2545,24 +3076,50 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [
      "approval_invalid"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
     ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -2626,37 +3183,66 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -2721,29 +3307,61 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [
      "forbidden"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
     ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -2807,29 +3425,61 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [
      "approval_invalid"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
     ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -2893,47 +3543,85 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "repaired",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -3075,9 +3763,16 @@
    "busy": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "provider_transient",
      "provider_transient"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "campaign_status_changed"
     ],
     "findings": [],
     "ledger": {
@@ -3121,9 +3816,16 @@
    "garbled": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "provider_invalid_output",
      "provider_invalid_output"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "campaign_status_changed"
     ],
     "findings": [],
     "ledger": {
@@ -3174,29 +3876,60 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [
      "provider_invalid_output"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested"
     ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -3260,27 +3993,57 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -3337,8 +4100,14 @@
    "unauthorized": {
     "approval": null,
     "coverage": [],
+    "diffs": [],
     "errors": [
      "unauthenticated"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "campaign_status_changed"
     ],
     "findings": [],
     "ledger": {
@@ -3389,27 +4158,57 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -3545,37 +4344,66 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -3640,37 +4468,75 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 6,
+      "violated_invariants": [
+       "commitments_use_approved_intent",
+       "mandatory_participants_feasible",
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "failed"
+      "failed",
+      [
+       8,
+       9,
+       10
+      ]
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       14
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "failed"
+      "failed",
+      [
+       3,
+       8
+      ]
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -3735,37 +4601,66 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -3887,37 +4782,72 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 6,
+      "violated_invariants": [
+       "commitments_use_approved_intent",
+       "mandatory_participants_feasible"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "failed"
+      "failed",
+      [
+       8,
+       9,
+       10
+      ]
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "failed"
+      "failed",
+      [
+       3,
+       8
+      ]
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -3982,37 +4912,71 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 1,
+      "violated_invariants": [
+       "commitments_use_approved_intent",
+       "mandatory_participants_feasible"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "failed"
+      "failed",
+      [
+       3,
+       4,
+       5
+      ]
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "failed"
+      "failed",
+      [
+       3
+      ]
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -4131,47 +5095,85 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "repaired",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -4236,47 +5238,85 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "repaired",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -4403,24 +5443,44 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": null,
+      "violated_invariants": []
+     }
+    ],
     "errors": [
+     "budget_exhausted"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
      "budget_exhausted"
     ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -4474,29 +5534,52 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 250000,
+      "first_divergence_event": null,
+      "violated_invariants": []
+     }
+    ],
     "errors": [
+     "budget_exhausted"
+    ],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
      "budget_exhausted"
     ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -4604,27 +5687,58 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -4739,37 +5853,66 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 10,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       12
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -4897,37 +6040,66 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": null,
+      "faulted_refunded_minor": null,
+      "first_divergence_event": 18,
+      "violated_invariants": [
+       "delivered_messages_permitted"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "delivered_messages_permitted",
-      "failed"
+      "failed",
+      [
+       18
+      ]
      ],
      [
       "fork",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "commitments_use_approved_intent",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "delivered_messages_permitted",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "mandatory_participants_feasible",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -5049,47 +6221,85 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "repaired",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {
@@ -5218,47 +6428,85 @@
       "fork": "completed"
      }
     ],
+    "diffs": [
+     {
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "first_divergence_event": 2,
+      "violated_invariants": [
+       "total_refund_within_payment",
+       "no_duplicate_full_refund"
+      ]
+     }
+    ],
     "errors": [],
+    "events": [
+     "campaign_created",
+     "campaign_status_changed",
+     "task_status_changed",
+     "task_status_changed",
+     "run_completed",
+     "finding_recorded",
+     "approval_requested",
+     "approval_decided",
+     "campaign_status_changed"
+    ],
     "findings": [
      [
       "fork",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "fork",
       "no_duplicate_full_refund",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "total_refund_within_payment",
-      "failed"
+      "failed",
+      [
+       2,
+       3
+      ]
      ],
      [
       "fork",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "authorized_refunds",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "no_duplicate_full_refund",
-      "passed"
+      "passed",
+      []
      ],
      [
       "repaired",
       "total_refund_within_payment",
-      "passed"
+      "passed",
+      [
+       2
+      ]
      ],
      [
       "repaired",
       "unique_idempotency_keys",
-      "passed"
+      "passed",
+      []
      ]
     ],
     "ledger": {

@@ -55,7 +55,7 @@ def test_runs_scenarios_and_invocations_validate_unchanged(result):
 
 def test_diffs_and_findings_validate(result):
     diffs = [case["diff"] for case in result["faults"].values()]
-    diffs += [race["diff"] for race in result["races"].values()]
+    diffs += [race["diff"] for race in result["races"].values() if "diff" in race]
     for diff in diffs:
         assert WorldRealityDiff.model_validate(diff).model_dump(mode="json") == diff
     for index, (fixture, _, recorded) in enumerate(cases(result)):

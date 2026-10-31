@@ -852,7 +852,7 @@ def test_two_jobs_may_share_a_resource_with_capacity_for_both():
     assert verify(fixture, world.snapshot())["allocations_within_capacity"] is True
 
 
-def test_a_release_after_the_violation_does_not_excuse_a_confirmation():
+def test_a_lease_taken_after_the_confirmation_does_not_excuse_it():
     # The customer was told at event 2 with no part leased; nothing later changes that.
     world = RelayWorld(FIXTURE, CLEAN)
     reserve(world, "job-1", TECH_A, "k1")
@@ -868,6 +868,45 @@ def test_releasing_a_confirmed_lease_undoes_the_backing_at_the_end():
     world.call("release_resource", {"lease_id": "lease-1"})  # event 4: the part goes
     detail = verify_details(FIXTURE, world.snapshot())["confirmations_backed_by_reservations"]
     assert (detail["passed"], detail["evidence_event_ids"]) == (False, [3, 4])
+
+
+def swap_after_confirming(world):
+    reserve(world, "job-2", TECH_A, "k1")   # event 1
+    confirm(world, "job-2")                 # event 2: committed
+    reserve(world, "job-2", TECH_B, "k2")   # event 3: live, but never committed
+    world.call("release_resource", {"lease_id": "lease-1"})  # event 4
+
+
+@pytest.mark.parametrize("reads_after", [0, 1, 11, 30])
+def test_releasing_a_committed_lease_fails_at_its_event_however_long_the_run(reads_after):
+    world = RelayWorld(FIXTURE, CLEAN)
+    swap_after_confirming(world)
+    for _ in range(reads_after):
+        inspect(world)
+    detail = verify_details(FIXTURE, world.snapshot())["confirmations_backed_by_reservations"]
+    assert (detail["passed"], detail["evidence_event_ids"]) == (False, [2, 4])
+
+
+def test_the_verifier_is_as_strict_as_the_guard_about_a_committed_lease():
+    world = make_world(GUARDED, CLEAN)
+    reserve(world, "job-2", TECH_A, "k1")
+    confirm(world, "job-2")
+    reserve(world, "job-2", TECH_B, "k2")
+    with pytest.raises(ConfirmedLeaseDenied):
+        world.call("release_resource", {"lease_id": "lease-1"})
+
+
+def test_a_spare_committed_lease_may_be_released():
+    fixture = replace(FIXTURE, competitors=())
+    world = RelayWorld(fixture, CLEAN)
+    reserve(world, "job-2", TECH_A, "k1")
+    reserve(world, "job-2", TECH_B, "k2")   # both are live when the confirmation commits them
+    confirm(world, "job-2")
+    world.call("release_resource", {"lease_id": "lease-1"})
+    assert verify(fixture, world.snapshot())["confirmations_backed_by_reservations"] is True
+    world.call("release_resource", {"lease_id": "lease-2"})  # the last one is not spare
+    detail = verify_details(fixture, world.snapshot())["confirmations_backed_by_reservations"]
+    assert (detail["passed"], detail["evidence_event_ids"]) == (False, [3, 5])
 
 
 def test_a_confirmation_cannot_lean_on_an_oversold_lease():
@@ -963,6 +1002,23 @@ def test_one_taken_technician_is_not_capacity_lost():
     assert set(task_outcome(fixture, world.snapshot())["jobs"].values()) == {"unresolved"}
 
 
+def test_the_automations_own_stranded_lease_excuses_nothing(result):
+    guarded = result["faults"][STALE]["guarded"]
+    assert {lease["resource_id"]: lease["job_id"]
+            for lease in guarded["final_state"]["leases"].values()}[TECH_A] == "job-1"
+    assert task_outcome(GUARDED, guarded["final_state"])["jobs"] == {
+        "job-1": "capacity_lost", "job-2": "unresolved"}
+
+
+@pytest.mark.parametrize("fault_id", [STALE, LOST])
+def test_a_promise_that_did_not_hold_is_not_a_confirmed_job(result, fault_id):
+    state = result["faults"][fault_id]["faulted"]["final_state"]
+    outcome = task_outcome(FIXTURE, state)
+    held = not [key for key in outcome["jobs"].values() if key == "unbacked"]
+    assert outcome["all_jobs_confirmed"] is held
+    assert verify(FIXTURE, state)["confirmations_backed_by_reservations"] is held
+
+
 def test_a_hand_off_is_not_an_excuse_by_itself():
     world = RelayWorld(FIXTURE, CLEAN)
     world.call("hand_off_to_owner", {"conversation_id": "conversation-1"})
@@ -1028,6 +1084,32 @@ def test_capsules_with_colon_ids_replay(tmp_path):
         path = tmp_path / f"{adapter}.json"
         relay_capsule.export_capsule(path, COLON, data, recorded)
         assert relay_capsule.replay(path)["reproduced"]
+
+
+@pytest.mark.parametrize("fixture", [
+    replace(FIXTURE, competitors=()),
+    replace(FIXTURE, lease_ttl_events=1),
+    replace(FIXTURE, lease_ttl_events=2),
+    replace(FIXTURE, jobs=(RelayJob("job-1", "conversation-1", None),)),
+    replace(FIXTURE, resources=(RelayResource(TECH_A, "technician", 2),
+                                RelayResource(TECH_B, "technician", 1),
+                                RelayResource(PART, "part", 3))),
+], ids=["no-competitors", "ttl-1", "ttl-2", "one-job", "spare-capacity"])
+def test_experiment_runs_on_any_valid_fixture(fixture):
+    produced = experiment(fixture)
+    assert set(produced["faults"]) == set(FAULTS)
+    assert set(produced["races"]) <= {"owner_takeover", "capacity", "lease_expiry"}
+
+
+def test_a_fixture_whose_clean_run_never_confirms_has_no_confirmation_race():
+    assert "owner_takeover" not in experiment(replace(FIXTURE, lease_ttl_events=1))["races"]
+
+
+def test_every_reality_diff_compares_runs_from_one_fixture(result):
+    race = result["races"]["lease_expiry"]
+    assert "diff" not in race
+    assert {"owner_takeover", "capacity"} == {
+        name for name, case in result["races"].items() if "diff" in case}
 
 
 def test_findings_cover_exactly_the_invariants(result):
@@ -1098,6 +1180,9 @@ def exported(result, tmp_path):
     lambda p: p["run"]["final_state"]["mutation_log"].pop(),
     lambda p: p["run"]["final_state"]["ownership_timeline"].pop(),
     lambda p: p["run"]["final_state"]["lease_log"].pop(),
+    lambda p: p["run"]["final_state"]["confirmation_log"][0].update(promise_version=1.0),
+    lambda p: p["run"]["final_state"]["promises"].update({"job-1": True}),
+    lambda p: p["run"]["trace"][3]["outcome"]["result"].update(promise_version=1.0),
     lambda p: p["run"]["trace"].pop(),
     lambda p: p["run"]["trace"][3]["outcome"]["result"].update(status="declined"),
     lambda p: p["run"]["trace"][0]["state"].update(shop_id="another-shop"),

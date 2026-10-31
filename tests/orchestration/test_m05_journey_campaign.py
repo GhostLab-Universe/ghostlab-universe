@@ -1633,12 +1633,17 @@ def test_a_binding_withdrawn_during_the_resume_spends_nothing(tmp_path):
     assert stored_approval(lab, state).status == "approved"
 
 
-def test_a_changed_refund_binding_keeps_the_approval(tmp_path):
+@pytest.mark.parametrize("bindings", [{}, {(PROJECT, OPERATOR.principal_id): "synthetic-customer-2"}])
+@pytest.mark.parametrize("pinned", [True, False])
+def test_a_changed_refund_binding_keeps_the_approval(tmp_path, bindings, pinned):
     lab = JourneyLab(tmp_path, Script(proposal()))
     with lab.controller() as controller:
         state = controller.start(CID, spec())
+        if not pinned:  # a checkpoint from before fixtures were pinned
+            controller.graph.update_state(controller._config(CID),
+                                          {"fixture": None, "fixture_sha256": None})
     lab.approve(state)
-    original, lab.binding = lab.binding, StaticPrincipalBinding({})
+    original, lab.binding = lab.binding, StaticPrincipalBinding(bindings)
     with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
         controller.resume(CID)
     assert stored_approval(lab, state).status == "approved"

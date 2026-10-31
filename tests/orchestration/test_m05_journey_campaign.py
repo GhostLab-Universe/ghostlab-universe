@@ -1604,6 +1604,53 @@ def test_a_cancelled_recovery_closes_after_a_crash_past_consume(tmp_path):
         assert controller.recover(CID)["status"] == "cancelled"
 
 
+@pytest.mark.parametrize("bindings", [{}, {(PROJECT, OPERATOR.principal_id, J): "nobody"},
+                                      {(PROJECT, OPERATOR.principal_id, J): VIEWER}])
+def test_a_withdrawn_binding_keeps_the_approval_and_can_be_restored(tmp_path, bindings):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    original, lab.world_binding = lab.world_binding, StaticWorldBinding(bindings)
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.resume(CID)
+    assert stored_approval(lab, state).status == "approved"
+    lab.world_binding = original
+    with lab.controller() as controller:
+        assert controller.resume(CID)["outcome"] == "repair_verified"
+
+
+def test_a_binding_withdrawn_during_the_resume_spends_nothing(tmp_path):
+    def withdraw(name, state):
+        if name == "consume":
+            held["controller"].s.world_binding = StaticWorldBinding({})
+
+    held = {}
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=withdraw)
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    with lab.controller() as controller:
+        held["controller"] = controller
+        done = controller.resume(CID)
+    assert (done["status"], done["outcome"]) == ("failed", "settings_changed")
+    assert stored_approval(lab, state).status == "approved"
+
+
+def test_a_changed_refund_binding_keeps_the_approval(tmp_path):
+    lab = JourneyLab(tmp_path, Script(proposal()))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    lab.approve(state)
+    original, lab.binding = lab.binding, StaticPrincipalBinding({})
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.resume(CID)
+    assert stored_approval(lab, state).status == "approved"
+    lab.binding = original
+    with lab.controller() as controller:
+        assert controller.resume(CID)["outcome"] == "repair_verified"
+
+
 def test_a_changed_fixture_still_blocks_a_pending_approval(tmp_path):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
     with lab.controller() as controller:

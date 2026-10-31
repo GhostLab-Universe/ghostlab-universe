@@ -36,9 +36,6 @@ SECRET = "sk-eval-fixture-credential-0123456789"
 # Secret-shaped text a fixture model echoes back. Nothing may store it.
 SYNTHETIC_SECRET = "sk-model-echoed-token-abcdefghijklmnop"
 SECRETS = (SECRET, SYNTHETIC_SECRET)
-# Secret-shaped text a fixture model echoes back. Nothing may store it.
-SYNTHETIC_SECRET = "sk-model-echoed-token-abcdefghijklmnop"
-SECRETS = (SECRET, SYNTHETIC_SECRET)
 MODEL = "fixture-model"
 OPERATOR = Principal(principal_id="eval-operator", kind="human")
 REVIEWER = Principal(principal_id="eval-reviewer", kind="human")

@@ -59,6 +59,14 @@ def _approval(stack: Stack, state: dict) -> dict | None:
             "action_digest": stored.action_digest}
 
 
+def _memory(stack: Stack, state: dict) -> dict:
+    """How many records this campaign stored, by status, read back from the store."""
+    scope = root_scope(PROJECT, OPERATOR)
+    statuses = [stack.memory_store.get(scope, record_id).status
+                for record_id in state["memory_ids"]]
+    return {status: statuses.count(status) for status in sorted(set(statuses))}
+
+
 def campaign_evidence(stack: Stack, campaign_id: str) -> dict:
     """Everything the campaign left behind, read back through the real stores."""
     with stack.controller() as controller:
@@ -82,10 +90,9 @@ def campaign_evidence(stack: Stack, campaign_id: str) -> dict:
         "approval": _approval(stack, state),
         "coverage": {experiment_id: experiment.get("coverage")
                      for experiment_id, experiment in state.get("experiments", {}).items()},
-        "coverage": {experiment_id: experiment.get("coverage")
-                     for experiment_id, experiment in state.get("experiments", {}).items()},
         "runs": _runs(stack, state), "ledger": _ledger(stack, state),
-        "memory_ids": len(state["memory_ids"])}
+        "memory_ids": len(state["memory_ids"]),
+        "memory": _memory(stack, state)}
 
 
 def _usage(evidence: dict) -> Usage:

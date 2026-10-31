@@ -28,12 +28,15 @@ _REDACTION_MODULE = "ghostlab.security.redaction"
 _PRIVATE_NAME = "ghostlab._observability_redaction"
 
 _SAFE_TEXT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@+#=-]{0,199}$")
-_OPAQUE_RUN = re.compile(r"[A-Za-z0-9+/=]{40,}")
-_HEX = re.compile(r"^[0-9a-f]+$")
+_OPAQUE_RUN = re.compile(r"[A-Za-z0-9+/=]{33,}")
+_EVIDENCE_HEX = re.compile(r"^(?:[0-9a-f]{32}|[0-9a-f]{64})$")  # W3C ids and sha256 digests
+_MIXED_RUN = re.compile(r"[A-Za-z0-9]{24,}")
 # Common credential shapes M06's patterns don't name. Reported as a gap in M09.md.
 _CREDENTIAL_SHAPES = re.compile(
     r"(?i)(?:^|[^a-z0-9])(?:gh[pousr]_[a-z0-9]{16,}|github_pat_[a-z0-9_]{16,}|"
     r"xox[abprs]-[a-z0-9-]{10,}|akia[0-9a-z]{16}|sk_(?:live|test)_[a-z0-9]{16,}|"
+    r"aiza[0-9a-z_-]{30,}|ya29\.[0-9a-z_-]{16,}|sig=[^\s&]{16,}|"
+    r"(?:pwd|passphrase|client_secret)\s*[:=]\s*\S{4,}|[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@|"
     r"eyj[a-z0-9_-]{8,}\.[a-z0-9_-]{8,}\.[a-z0-9_-]{8,})")
 _SECRET_NAME = re.compile(r"(?i)(api[_-]?key|authorization|auth|bearer|cookie|credential|"
                           r"passphrase|passw|private[_-]?key|secret|session|token)")
@@ -112,7 +115,11 @@ class Sanitizer:
         if _CREDENTIAL_SHAPES.search(cleaned):
             return self.marker
         for run in _OPAQUE_RUN.findall(cleaned):
-            if not _HEX.match(run):
+            if not _EVIDENCE_HEX.match(run):
+                return self.marker
+        for run in _MIXED_RUN.findall(cleaned):  # hyphens can split a token into parts
+            if not run.islower() and not run.isupper() and not run.isdigit() and any(
+                    char.isdigit() for char in run):
                 return self.marker
         return cleaned
 

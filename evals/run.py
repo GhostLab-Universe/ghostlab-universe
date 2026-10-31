@@ -10,14 +10,27 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 from .cases import CASES, Recorder
-from .gate import check, expected_from
-from .score import score_directory
+from .gate import REPORT_FILE, check, expected_from
+from .score import RUN_IDENTITY, score_directory
 
 DEFAULT_EXPECTED = Path(__file__).with_name("expected.json")
+
+
+def run_identity() -> dict:
+    """The commit this evidence came from, and whether the tree matched it."""
+    root = Path(__file__).resolve().parent.parent
+
+    def git(*args):
+        done = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True,
+                              check=False)
+        return done.stdout.strip() if done.returncode == 0 else None
+
+    return {"commit": git("rev-parse", "HEAD"), "dirty": git("status", "--porcelain") != ""}
 
 
 def run_case(case, out: Path) -> None:
@@ -35,9 +48,10 @@ def run_case(case, out: Path) -> None:
 
 def run_all(out: Path, *, only: str | None = None) -> list[str]:
     errors = []
-    for case in CASES:
-        if only and only not in case.case_id:
-            continue
+    selected = [case for case in CASES if not only or only in case.case_id]
+    if not selected:
+        return [f"--only {only!r} matched no case"]
+    for case in selected:
         try:
             run_case(case, out)
         except Exception as error:  # noqa: BLE001 - a crash is a failed case, not a pass
@@ -53,10 +67,15 @@ def main(argv=None) -> int:
     parser.add_argument("--only", help="Run matching cases; the gate then reports the rest")
     args = parser.parse_args(argv)
     os.environ.setdefault("LANGSMITH_TRACING", "false")
+    if args.write_expected and args.only:
+        parser.error("--write-expected needs the whole suite, not --only")
+    if args.out.exists() and any(args.out.iterdir()):
+        parser.error(f"{args.out} is already used: old evidence could pass for this run")
     args.out.mkdir(parents=True, exist_ok=True)
+    (args.out / RUN_IDENTITY).write_text(json.dumps(run_identity()), "utf-8")
     errors = run_all(args.out, only=args.only)
     report = score_directory(args.out)
-    (args.out / "report.json").write_text(json.dumps(report, indent=1, sort_keys=True), "utf-8")
+    (args.out / REPORT_FILE).write_text(json.dumps(report, indent=1, sort_keys=True), "utf-8")
     if args.write_expected:
         args.expected.write_text(json.dumps(expected_from(report), indent=1, sort_keys=True)
                                  + "\n", "utf-8")

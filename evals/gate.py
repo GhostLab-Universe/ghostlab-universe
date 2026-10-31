@@ -9,14 +9,17 @@ produce one, and a report whose schema it doesn't know.
 """
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
 
+from .harness import FIXTURE_LABEL
 from .score import SCHEMA, score_directory
 
+REPORT_FILE = "report.json"
 REQUIRED_FIELDS = ("schema", "inference", "live_provider_contacted", "fixture_label",
-                   "environment", "aggregate", "cases", "deferred")
+                   "environment", "aggregate", "cases", "deferred", "commit", "dirty")
 CASE_FIELDS = ("case_id", "category", "world", "status", "failed_expectations", "expectations",
                "metrics", "telemetry_records", "local_wall_ms", "fingerprint")
 
@@ -31,9 +34,44 @@ def validate_report(report: dict) -> list[str]:
         problems.append("unknown schema")
     if report["inference"] != "mocked" or report["live_provider_contacted"] is not False:
         problems.append("this suite runs on mocked inference only")
+    if report["fixture_label"] != FIXTURE_LABEL:
+        problems.append("the fixture label isn't this suite's label")
     for case in report["cases"]:
         problems.extend(f"case missing {name}" for name in CASE_FIELDS if name not in case)
     return problems
+
+
+def _case_problems(case: dict) -> list[str]:
+    """A case passes only if every part of it says so."""
+    expectations = case["expectations"]
+    wrong = sorted(name for name, passed in expectations.items() if not passed)
+    if case["status"] != "passed" and not case["failed_expectations"] and not wrong:
+        return [f"{case['case_id']}: status {case['status']}"]
+    if not expectations and not case["failed_expectations"]:
+        return [f"{case['case_id']}: no expectations were measured"]
+    return [f"{case['case_id']}: failed expectation {name}"
+            for name in sorted({*case["failed_expectations"], *wrong})]
+
+
+def verified_report(directory: Path) -> tuple[dict, str | None, list[str]]:
+    """Rescore the evidence. The stored report must say the same, or it isn't trusted.
+
+    Returns the rescored report, the digest of the stored file's bytes, and any problems.
+    """
+    report = score_directory(directory)
+    path = Path(directory) / REPORT_FILE
+    if not path.exists():
+        return report, None, [f"no {REPORT_FILE} in the evidence directory"]
+    data = path.read_bytes()
+    try:
+        stored = json.loads(data)
+    except ValueError:
+        return report, hashlib.sha256(data).hexdigest(), [f"{REPORT_FILE} isn't JSON"]
+    same = isinstance(stored, dict) and (
+        {key: value for key, value in stored.items() if key != "environment"}
+        == {key: value for key, value in report.items() if key != "environment"})
+    problems = [] if same else [f"{REPORT_FILE} doesn't match the evidence"]
+    return report, hashlib.sha256(data).hexdigest(), problems
 
 
 def _diff(path: str, expected, observed) -> list[str]:
@@ -58,9 +96,12 @@ def check(report: dict, expected: dict) -> list[str]:
     if failures:
         return failures
     cases = {case["case_id"]: case for case in report["cases"]}
+    passed = sum(case["status"] == "passed" for case in report["cases"])
+    if (report["aggregate"].get("cases") or {}) != {"total": len(report["cases"]),
+                                                    "passed": passed}:
+        failures.append("the aggregate doesn't match the cases")
     for case in report["cases"]:
-        for name in case["failed_expectations"]:
-            failures.append(f"{case['case_id']}: failed expectation {name}")
+        failures.extend(_case_problems(case))
     for missing in sorted(set(expected) - set(cases)):
         failures.append(f"{missing}: expected case did not run")
     for extra in sorted(set(cases) - set(expected)):
@@ -80,8 +121,8 @@ def main(argv=None) -> int:
     parser.add_argument("directory", type=Path)
     parser.add_argument("--expected", type=Path, default=Path("evals/expected.json"))
     args = parser.parse_args(argv)
-    report = score_directory(args.directory)
-    failures = check(report, json.loads(args.expected.read_text("utf-8")))
+    report, _, problems = verified_report(args.directory)
+    failures = [*problems, *check(report, json.loads(args.expected.read_text("utf-8")))]
     print(json.dumps({"gate": "blocked" if failures else "passed",
                       "aggregate": report["aggregate"], "failures": failures}, indent=2))
     return 1 if failures else 0

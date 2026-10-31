@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .redact import Sanitizer, TextRedactor
-from .schema import (APPROVAL_STATUSES, NAME_PATTERN, SCHEMA, SPAN_ID_PATTERN, TIMESTAMP_PATTERN,
+from .schema import (APPROVAL_STATUSES, MAX_COUNT, NAME_PATTERN, SCHEMA, SPAN_ID_PATTERN, TIMESTAMP_PATTERN,
                      TelemetryRecord, TraceContext, Usage, Versions)
 from .sinks import NullSink, TelemetrySink
 
@@ -178,6 +178,11 @@ class Telemetry:
             raise ValueError("unknown approval status")
         if not isinstance(usage, Usage):
             raise ValueError("usage must be a Usage; None means unknown")
+        for count in (latency_ms, attempt, retries, validation_failures):
+            if count is not None and (type(count) is not int or not 0 <= count <= MAX_COUNT):
+                raise ValueError("counts must be non-negative integers or None")
+        if cancelled is not None and type(cancelled) is not bool:
+            raise ValueError("cancelled must be a boolean or None")
         clean = self.sanitizer
         kept, dropped = clean.attribute_map(attributes)
         versions: Versions = context.versions

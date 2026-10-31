@@ -18,10 +18,10 @@ from ghostlab.observability import find_secrets, read_records
 from .cases import CASES
 from .evidence import canonical_sha256
 from .harness import FIXTURE_LABEL, REFUND, SECRETS
-from .oracles import (agrees_with_controller, fault_evidence, journey_oracle, refund_oracle,
-                      tool_counts)
+from .oracles import expected_verdicts, fault_evidence, journey_oracle, refund_oracle, tool_counts
 
 SCHEMA = "ghostlab-evaluation/1"
+RUN_IDENTITY = "run.json"  # the commit the evidence came from, written by evals.run
 DEFERRED = [
     {"item": "random vs one-pass vs adaptive exploration",
      "reason": "Inference is scripted, so there's nothing to sample. A fair comparison needs "
@@ -48,22 +48,47 @@ def _oracles(campaign: dict) -> tuple[dict, list[str]]:
     for name, run in campaign["runs"].items():
         if canonical_sha256(run["body"]) != run["sha256"]:
             broken.append(name)
-        short = name.rsplit("/", 1)[-1]
-        results[short] = {**_run_oracle(campaign["world"], campaign["fixture"], run["body"]),
-                          "tools": tool_counts(run["body"])}
+        results[name] = {**_run_oracle(campaign["world"], campaign["fixture"], run["body"]),
+                         "tools": tool_counts(run["body"])}
     return results, broken
 
 
-def _agreement(campaign: dict) -> bool:
-    """The controller's findings for each run must match the independent oracle."""
+def _verdicts_match(campaign: dict) -> bool:
+    """Every invariant, recomputed here, must match the stored checks and the findings.
+
+    A fork or repaired run must have a finding for every invariant: none is a failure,
+    not an agreement. A baseline run has no findings, so only its checks are compared.
+    """
     for name, run in campaign["runs"].items():
+        expected = expected_verdicts(campaign["world"], campaign["fixture"], run["body"])
+        if run["body"]["checks"] != expected:
+            return False
+        if name.endswith("/baseline"):
+            continue
         run_id = run["artifact_id"].split(".", 1)[1]
-        findings = [item for item in campaign["findings"] if item["run_id"] == run_id]
-        if findings and not agrees_with_controller(
-                campaign["world"], _run_oracle(campaign["world"], campaign["fixture"],
-                                               run["body"]), findings):
+        found = {item["invariant"]: item["verdict"] == "passed"
+                 for item in campaign["findings"] if item["run_id"] == run_id}
+        if found != expected:
             return False
     return True
+
+
+def _runs_are_consistent(campaign: dict, oracles: dict) -> bool:
+    """Each stored run hangs together, whatever its verdicts say."""
+    for oracle in oracles.values():
+        if not oracle["trace_contiguous"] or not oracle["final_state_matches_trace"]:
+            return False
+        if oracle.get("wrong_customer_or_order") or oracle.get("mutations_outside_issue_refund"):
+            return False
+        if oracle.get("mutated_on_denial"):
+            return False
+    return True
+
+
+def _tool_ledger_matches(campaign: dict) -> bool:
+    """The ledger charges exactly the tool calls in the runs that were kept."""
+    charged = sum(len(run["body"]["trace"]) for run in campaign["runs"].values())
+    return campaign["ledger"]["tool_calls"] == {"committed": charged, "unknown": 0}
 
 
 def _coverage_matches(campaign: dict) -> bool:
@@ -76,22 +101,15 @@ def _coverage_matches(campaign: dict) -> bool:
         if coverage != {"baseline": baseline["status"], "fork": fork["status"],
                         "faults_triggered": triggered, "complete": triggered and finished}:
             return False
-        if triggered and not fault_evidence(campaign["world"], fork):
+        seen = fault_evidence(campaign["world"], fork)
+        if triggered and not seen:
             return False
-    return True
-
-
-def _coverage_matches(campaign: dict) -> bool:
-    """Each experiment's recorded coverage must say what its stored runs say."""
-    for experiment_id, coverage in campaign["coverage"].items():
-        baseline, fork = (campaign["runs"][f"{experiment_id}/{name}"]["body"]
-                          for name in ("baseline", "fork"))
-        triggered = coverage["faults_triggered"]
-        finished = baseline["status"] == fork["status"] == "completed"
-        if coverage != {"baseline": baseline["status"], "fork": fork["status"],
-                        "faults_triggered": triggered, "complete": triggered and finished}:
+        # A refund fault is exact. A journey fault may be seen yet change nothing, so only
+        # a delivery that broke permission proves that it fired.
+        if campaign["world"] == REFUND and seen and not triggered:
             return False
-        if triggered and not fault_evidence(campaign["world"], fork):
+        if campaign["world"] != REFUND and not triggered and (
+                journey_oracle(fork)["unpermitted_deliveries"]):
             return False
     return True
 
@@ -105,9 +123,13 @@ def _trace_problems(telemetry_dir: Path, case_id: str, evidence: dict) -> dict:
             continue
         stored, found = read_records(path)
         records += len(stored)
+        campaign = evidence["campaigns"][name]
+        wanted = (len(campaign["events"]) + len(campaign["tasks"]) + len(campaign["errors"])
+                  + len(evidence["http_attempts"][name]) + 1)  # the root span
+        if len(stored) != wanted:
+            problems.append(f"{name}: {len(stored)} records, the campaign needs {wanted}")
         problems.extend(f"{name}: {item}" for item in found)
         roots = [r for r in stored if r["name"] == "campaign.run" and r["parent_span_id"] is None]
-        campaign = evidence["campaigns"][name]
         if len(roots) != 1 or roots[0]["trace_id"] != campaign["trace_id"]:
             problems.append(f"{name}: root span missing or from another trace")
         if {r["trace_id"] for r in stored} != {campaign["trace_id"]}:
@@ -164,7 +186,15 @@ def _fingerprint(evidence: dict, metrics: dict) -> dict:
                              "tasks": [[t["kind"], t["status"]] for t in c["tasks"]],
                              "errors": [e["code"] for e in c["errors"]],
                              "runs": {key: run["sha256"] for key, run in c["runs"].items()},
-                             "approval": (c["approval"] or {}).get("status")}
+                             "approval": (c["approval"] or {}).get("status"),
+                             "findings": sorted([item["run_id"].rsplit("-", 1)[-1],
+                                                 item["invariant"], item["verdict"]]
+                                                for item in c["findings"]),
+                             "coverage": sorted(c["coverage"].values(),
+                                                key=lambda item: json.dumps(item, sort_keys=True)),
+                             "memory": c["memory"],
+                             "ledger": {name: c["ledger"][name]
+                                        for name in ("model_calls", "tool_calls")}}
                       for name, c in evidence["campaigns"].items()},
         "observations": evidence["observations"],
         "http": {name: [item["http_status"] for item in items]
@@ -182,8 +212,13 @@ def score_case(case, evidence: dict, telemetry_dir: Path) -> dict:
     text = json.dumps(evidence)
     expectations = {
         "evidence_digests_match": broken == [],
-        "findings_match_the_independent_oracle": all(
-            _agreement(c) for c in evidence["campaigns"].values()),
+        "every_invariant_verdict_matches_a_recomputation": all(
+            _verdicts_match(c) for c in evidence["campaigns"].values()),
+        "stored_runs_are_internally_consistent": all(
+            _runs_are_consistent(c, oracles[name])
+            for name, c in evidence["campaigns"].items()),
+        "tool_ledger_matches_the_stored_runs": all(
+            _tool_ledger_matches(c) for c in evidence["campaigns"].values()),
         "coverage_matches_the_stored_runs": all(
             _coverage_matches(c) for c in evidence["campaigns"].values()),
         "no_secret_in_stores": evidence["store_scan"]["files_with_secret"] == []
@@ -267,7 +302,13 @@ def score_directory(directory: Path) -> dict:
         results.append(score_case(case, json.loads(path.read_text("utf-8")),
                                   directory / "telemetry"))
     scored = [case for case in results if case["metrics"] is not None]
+    summary = aggregate(scored)
+    summary["cases"] = {"total": len(results),  # a case with no evidence still counts
+                        "passed": sum(case["status"] == "passed" for case in results)}
+    identity = directory / RUN_IDENTITY
+    bound = json.loads(identity.read_text("utf-8")) if identity.exists() else {}
     return {"schema": SCHEMA, "inference": "mocked", "live_provider_contacted": False,
+            "commit": bound.get("commit"), "dirty": bound.get("dirty"),
             "fixture_label": FIXTURE_LABEL,
             "environment": {"python": platform.python_version(), "platform": sys.platform},
-            "aggregate": aggregate(scored), "cases": results, "deferred": DEFERRED}
+            "aggregate": summary, "cases": results, "deferred": DEFERRED}

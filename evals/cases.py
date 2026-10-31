@@ -146,6 +146,8 @@ def expect_refund_flow(ev: dict) -> dict:
         and repaired["commits_reported_as_timeouts"] == [2],
         "repair_record_is_complete": _repair_finished(main)
         and main["repair"]["task_complete"] is True,
+        "verified_findings_were_stored": main["memory"] == {"verified": main["memory_ids"]}
+        and main["memory_ids"] >= 1,
         "human_decided_before_repair": ev["observations"]["paused_before_decision"]
         and ev["observations"]["repaired_runs_before_decision"] == 0
         and main["approval"]["status"] == "consumed",
@@ -177,6 +179,8 @@ def expect_journey_flow(ev: dict) -> dict:
         "withdrawn_message_stays_queued": repaired["still_queued"] == ["msg-3"],
         "repair_record_is_complete": _repair_finished(main)
         and main["repair"]["task_outcome"]["reservation_confirmed"] is True,
+        "verified_findings_were_stored": main["memory"] == {"verified": main["memory_ids"]}
+        and main["memory_ids"] >= 1,
         "repair_ran_enforced_lab_did_not": main["repair"]["execution"] == {
             "mode": "enforced", "guarded": True},
         "repair_held_by_adapter": main["repair"]["held_by"] == "adapter",
@@ -213,6 +217,29 @@ def expect_race(ev: dict) -> dict:
         "record_names_the_boundary": main["repair"]["held_by"] == "guarded_boundary",
         "campaign_repair_verified": main["outcome"] == "repair_verified",
         "denied_run_replays": ev["observations"]["replay_repaired"]["reproduced"] is True}
+
+
+def run_stale_intent(rec: Recorder) -> None:
+    """Superseded plans, so the two other journey invariants really fail."""
+    stale = {"fault_id": "stale_preference_memory", "after_event": None,
+             "parameters": [{"name": "preference_version", "value": 1}]}
+    for name, fault in (("stale_memory", stale), ("delayed_update", delayed_update())):
+        stack = rec.stack(name, reply(journey_proposal(faults=[fault])))
+        approve_and_resume(stack, start(stack, JOURNEY))
+        rec.capture(name, stack)
+
+
+def expect_stale_intent(ev: dict) -> dict:
+    def fails(name):
+        run = next(item for key, item in ev["campaigns"][name]["runs"].items()
+                   if key.endswith("/fork"))
+        return sorted(key for key, passed in run["body"]["checks"].items() if not passed)
+
+    both = ["commitments_use_approved_intent", "mandatory_participants_feasible"]
+    return {"stale_memory_breaks_both_invariants": fails("stale_memory") == both,
+            "a_delayed_update_breaks_both_invariants": fails("delayed_update") == both,
+            "the_repairs_hold": all(campaign["outcome"] == "repair_verified"
+                                    for campaign in ev["campaigns"].values())}
 
 
 def run_human_rejection(rec: Recorder) -> None:
@@ -265,7 +292,7 @@ def _memory_case(world: str, proposal: dict):
             forged_verified_status=planted["forged_status"], promotion=planted["promotion"],
             stored_status=stack.memory_store.get(planted["scope"], planted["id"]).status,
             paused_for_human=state["paused"],
-            repaired_before_decision="repaired" in str(state.get("repair")))
+            repaired_before_decision=bool((state.get("repair") or {}).get("run")))
         rec.capture("main", stack)
     return run
 
@@ -916,7 +943,8 @@ def expect_recovery_drill(ev: dict) -> dict:
 
 def oracle(ev: dict, run: str, *, campaign: str = "main") -> dict:
     """The oracle result ``evals.score`` attached to a stored run."""
-    return ev["oracles"][campaign][run]
+    results = {name.rsplit("/", 1)[-1]: result for name, result in ev["oracles"][campaign].items()}
+    return results[run]  # a run that's missing is a KeyError, which scoring reports as failed
 
 
 @dataclass(frozen=True)
@@ -934,6 +962,8 @@ CASES: tuple[Case, ...] = (
     Case("flow.refund", "end_to_end", REFUND, run_refund_flow, expect_refund_flow),
     Case("flow.journey", "end_to_end", JOURNEY, run_journey_flow, expect_journey_flow),
     Case("flow.journey_check_to_delivery_race", "end_to_end", JOURNEY, run_race, expect_race),
+    Case("adversarial.stale_intent", "adversarial", JOURNEY, run_stale_intent,
+         expect_stale_intent),
     Case("flow.human_rejection", "end_to_end", REFUND, run_human_rejection,
          expect_human_rejection),
     Case("adversarial.memory_injection.refund", "adversarial", REFUND,

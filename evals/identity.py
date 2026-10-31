@@ -76,7 +76,14 @@ def code_sha256_at(repo: Path, commit: str) -> str | None:
 
 def file_at(repo: Path, commit: str, path: str) -> bytes | None:
     """A file as the commit holds it, whatever the working tree says."""
-    return _git(repo, "show", f"{commit}:{path}")
+    found = _git(repo, "cat-file", "--batch", data=f"{commit}:{path}
+".encode())
+    if found is None:
+        return None
+    header, _, body = found.partition(b"
+")
+    fields = header.split()
+    return body[:int(fields[2])] if len(fields) == 3 and fields[1] == b"blob" else None
 
 
 def commit_exists(repo: Path, commit: str) -> bool:

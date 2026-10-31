@@ -1,7 +1,10 @@
 """M04 storage interfaces, version ``ghostlab-storage/1``.
 
 Consumers in this wave: M03 reads memory through ``MemoryStore``; M06 persists
-approval transitions through ``ApprovalStore``. Budget, artifact and checkpoint
+approval transitions through ``ApprovalStore``. Memory stays version 1 and gains
+world records additively: ``put`` also takes ``WorldMemoryRecord``, ``query`` also
+takes ``WorldMemoryQuery``, and non-refund rows come back as ``WorldMemoryRecord``
+(a ``MemoryRecord`` subclass). Refund rows and callers are unchanged. Budget, artifact and checkpoint
 interfaces follow in M04's implementation for M05.
 
 Stores own transactions and isolation, never policy. They do not decide whether

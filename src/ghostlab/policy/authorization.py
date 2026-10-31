@@ -51,7 +51,8 @@ SUPERVISOR_ONLY: frozenset[str] = frozenset({"delegate", "write_memory", "export
 DenialCode = Literal[
     "unknown_policy", "cross_project", "unknown_tool", "invalid_arguments",
     "tool_not_in_scope", "tool_not_in_role_ceiling", "unbound_principal",
-    "identity_mismatch", "capability_denied", "delegation_denied",
+    "identity_mismatch", "capability_denied", "delegation_denied", "world_not_runnable",
+    "permission_withdrawn",
 ]
 
 

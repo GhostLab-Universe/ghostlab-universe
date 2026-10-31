@@ -71,12 +71,13 @@
    "tool_calls": {
     "approval": null,
     "errors": [
+     "validation_failed",
      "validation_failed"
     ],
-    "outcome": "no_failure_found",
+    "outcome": "no_experiment_ran",
     "paused": false,
     "runs": {},
-    "status": "completed",
+    "status": "failed",
     "tasks": [
      [
       "propose_experiment",
@@ -765,7 +766,7 @@
    "cost_per_successful_task": null,
    "fixture_tokens": {
     "input": {
-     "known_sum": 2522,
+     "known_sum": 2849,
      "unknown_count": 0
     },
     "output": {
@@ -952,7 +953,7 @@
    "cost_per_successful_task": null,
    "fixture_tokens": {
     "input": {
-     "known_sum": 2461,
+     "known_sum": 2478,
      "unknown_count": 0
     },
     "output": {
@@ -2102,16 +2103,15 @@
    },
    "consume_window": {
     "approval": "consumed",
-    "errors": [
-     "approval_invalid"
-    ],
-    "outcome": "approval_not_approved",
+    "errors": [],
+    "outcome": "repair_verified",
     "paused": false,
     "runs": {
      "exp-57929e3e96ed971a/baseline": "fa8f6e96b7298bed3497baf818aa260a313e6d05078216077be9b5bfd358cac4",
-     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6"
+     "exp-57929e3e96ed971a/fork": "a651e635eec84f38f23e66a14a483d8a2eba8c56e453f0e305a2a550e4dbfda6",
+     "repaired": "1f2fe3df29abcc869e36a2dc599a67f0836df00329b9a59d605eab021ecc0b49"
     },
-    "status": "failed",
+    "status": "completed",
     "tasks": [
      [
       "propose_experiment",
@@ -2135,11 +2135,11 @@
      ],
      [
       "await_approval",
-      "failed"
+      "succeeded"
      ],
      [
       "execute_run",
-      "skipped"
+      "succeeded"
      ]
     ]
    }
@@ -2166,7 +2166,7 @@
     }
    },
    "handoffs": {
-    "failed": 1,
+    "failed": 0,
     "total": 10
    },
    "human_decisions": {
@@ -2177,27 +2177,30 @@
    "model_attempts": 2,
    "provider_latency_ms": null,
    "recovery": {
-    "attempted": 1,
-    "succeeded": 1
+    "attempted": 2,
+    "succeeded": 2
    },
-   "successful_campaigns": 1,
+   "successful_campaigns": 2,
    "tasks": {
-    "succeeded": 12,
+    "succeeded": 14,
     "total": 14
    },
    "tool_calls": {
-    "failed": 3,
+    "failed": 4,
     "failed_guard_denied": 0,
-    "failed_injected_fault": 3,
-    "succeeded": 10,
-    "total": 13
+    "failed_injected_fault": 4,
+    "succeeded": 12,
+    "total": 16
    }
   },
   "observations": {
    "crash_before_repair": "RuntimeError",
    "crashed_after_consume": true,
-   "outcome_after_recovery": "approval_not_approved",
-   "status_after_recovery": "failed"
+   "outcome_after_recovery": "repair_verified",
+   "second_consume": "ApprovalDenied:not_approved",
+   "status_after_recovery": "completed",
+   "tool_calls_after_more_entries": 8,
+   "tool_calls_after_recovery": 8
   }
  },
  "flow.human_rejection": {

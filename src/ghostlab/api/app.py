@@ -17,6 +17,7 @@ from ghostlab.storage.checkpoints import graph_checkpointer
 from .errors import install
 from .middleware import RequestGuard
 from .plane import ApiConfig, ControlPlane
+from .rootlock import RootLock
 from .routes import router
 from .sessions import NoSessions, require_local_deployment
 
@@ -41,7 +42,9 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
         if config is None:
             yield
             return
-        with graph_checkpointer(config.graph_db, app_db=config.app_db) as saver:
+        # The only way to a ControlPlane, so every entry point holds the root's lock.
+        with RootLock(config.graph_db.parent), graph_checkpointer(
+                config.graph_db, app_db=config.app_db) as saver:
             plane = app.state.plane = ControlPlane(config, saver)
             try:
                 yield

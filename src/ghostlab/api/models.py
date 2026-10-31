@@ -24,7 +24,8 @@ from ghostlab.contracts.world_packs import PackVersion
 
 RunName = Literal["baseline", "fork", "repaired"]
 AuthMode = Literal["local_dev", "configured_tokens"]
-InferenceMode = Literal["disabled", "fixture", "live"]
+# "scripted" and "fixture" are checked-in replies, never a model; "disabled" reaches nothing.
+InferenceMode = Literal["disabled", "fixture", "scripted", "live"]
 RunStatus = Literal["completed", "budget_exhausted"]
 NotProduction = Annotated[Literal[False], _exact_type(bool)]
 
@@ -45,7 +46,7 @@ class SessionInfo(StrictModel):
     auth_mode: AuthMode
     production_authenticated: NotProduction  # no production authentication exists yet
     can_approve: bool
-    inference: InferenceMode  # "fixture" is scripted test data, never a model
+    inference: InferenceMode  # this server's mode; each campaign also carries its own
     runnable_worlds: list[PackVersion] = Field(max_length=16)
 
 
@@ -127,6 +128,7 @@ class CampaignView(StrictModel):
     """Authoritative status from the campaign's checkpoint. Safe to read after reconnect."""
 
     record: WorldCampaignRecord
+    inference: InferenceMode  # what produced this campaign's proposals
     outcome: ShortText | None  # final outcomes are listed in docs/modules/M07.md
     fixture_sha256: Sha256Hex | None  # the pinned fixture; null on an older refund checkpoint
     job: JobStatus
@@ -142,6 +144,7 @@ class EventPage(StrictModel):
     """Application events by ascending sequence. Not model-token streaming."""
 
     campaign_id: Identifier
+    inference: InferenceMode
     events: list[ExperimentEvent] = Field(max_length=200)
     next_after: Count  # pass back as ``after`` to continue
     has_more: bool
@@ -149,6 +152,7 @@ class EventPage(StrictModel):
 
 class ExperimentView(StrictModel):
     experiment_id: Identifier
+    inference: InferenceMode
     iteration: int = Field(ge=1, le=1_000)
     proposal: WorldExperimentProposal  # model output, validated: untrusted data
     execution: ExecutionRecord | None
@@ -162,11 +166,13 @@ class RealityDiffView(StrictModel):
     """A diff with its coverage: alone, a truncated run's diff would read as clean."""
 
     experiment_id: Identifier
+    inference: InferenceMode
     diff: WorldRealityDiff
     coverage: Coverage | None
 
 
 class RunView(StrictModel):
+    inference: InferenceMode
     run_id: Identifier
     experiment_id: Identifier
     run: RunName
@@ -182,13 +188,15 @@ class CapsuleInfo(StrictModel):
     artifact: Ref
     world_version: PackVersion
     capsule_schema_version: Literal[1, 2]
+    inference: InferenceMode | None  # null for an import: nothing vouches for its origin
 
 
 class ReplayResult(StrictModel):
     """Recorded-action replay. It never calls a model, so ``model_calls`` is always 0."""
 
     world_version: PackVersion
-    run_status: RunStatus  # what the recorded run did; ``reproduced`` is about the replay only
+    inference: InferenceMode | None  # null when the capsule isn't tied to a campaign
+    run_status: RunStatus  # checked against the adapter; a forged status is refused
     reproduced: bool
     matches: dict[str, bool]
     checks: dict[str, bool]
@@ -206,6 +214,7 @@ class ApprovalView(StrictModel):
     """``action`` is the exact payload the digest binds, recomputed before it is shown."""
 
     request: ApprovalRequest
+    inference: InferenceMode | None  # null if the campaign can't be read
     effective_status: ApprovalStatus  # "expired" once past expiry, even before it is marked
     action: dict[str, JsonValue] | None
     decision: ApprovalDecision | None

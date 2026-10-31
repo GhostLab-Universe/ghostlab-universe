@@ -1,8 +1,9 @@
-"""Local-development wiring: real stores, the local-dev session, inference disabled.
+"""Local-development wiring: real stores, the local-dev session, no model.
 
 This is not a production configuration. No provider credential is read and no model is
-reachable, so creating a campaign is refused as ``inference_not_authorized``. Reads,
-approvals over existing records, capsule import and replay all work.
+reachable. By default creating a campaign is refused as ``inference_not_authorized``, and
+reads, approvals over existing records, capsule import and replay all work. The explicit
+``scripted`` opt-in serves checked-in proposals in process (``ghostlab.api.scripted``).
 """
 
 from datetime import datetime, timezone
@@ -24,7 +25,8 @@ from ghostlab.worlds.journey import WORLD_VERSION as JOURNEY_WORLD
 from ghostlab.worlds.journey import JourneyFixture
 
 from .plane import ApiConfig
-from .sessions import LocalDevSessions
+from .scripted import scripted_adapter, scripted_runtime
+from .sessions import LocalDevSessions, require_local_deployment
 
 
 def _utc_now() -> datetime:
@@ -35,8 +37,11 @@ def _inference_disabled(runtime):
     raise LiveInferenceRefused("this server has no provider configured")
 
 
-def local_config(root: Path, sessions: LocalDevSessions, *, bind_host: str) -> ApiConfig:
+def local_config(root: Path, sessions: LocalDevSessions, *, bind_host: str,
+                 scripted: bool = False, environ: dict | None = None) -> ApiConfig:
     """The trusted host's wiring: the local principal, bound to the synthetic actors."""
+    if scripted:
+        require_local_deployment(bind_host, environ)
     paths = StoragePaths(root)
     app_db = open_database(paths.app_db)
     project, principal = sessions.project_id, sessions.principal
@@ -51,6 +56,8 @@ def local_config(root: Path, sessions: LocalDevSessions, *, bind_host: str) -> A
                                         Fixture().customer_id}),
         world_binding=StaticWorldBinding({(project, principal.principal_id, JOURNEY_WORLD):
                                           JourneyFixture().organizer}),
-        adapter_factory=_inference_disabled, runtime=Runtime(), clock=_utc_now)
+        adapter_factory=scripted_adapter if scripted else _inference_disabled,
+        runtime=scripted_runtime() if scripted else Runtime(), clock=_utc_now)
     return ApiConfig(services=services, sessions=sessions, approvers=approvers,
-                     graph_db=paths.graph_db, app_db=paths.app_db, bind_host=bind_host)
+                     graph_db=paths.graph_db, app_db=paths.app_db, bind_host=bind_host,
+                     environ=environ, scripted=scripted)

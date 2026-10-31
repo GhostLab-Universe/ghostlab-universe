@@ -17,6 +17,7 @@ from ghostlab.contracts.world import (CapsuleV2, WorldCampaignRecord, WorldInvar
                                       WorldMemoryQuery, WorldRunResult)
 from ghostlab.core import Fixture
 from ghostlab.orchestration import worlds as worlds_module
+from ghostlab.orchestration.worlds import canonical
 from ghostlab.orchestration import (DEFAULT_WORLDS, CampaignController,
                                     CampaignSettingsChanged, JourneyDriver,
                                     LiveInferenceAuthorization, LiveInferenceRefused,
@@ -935,15 +936,86 @@ def test_a_journey_campaign_without_a_recorded_fixture_is_refused(tmp_path):
             controller.export_capsule(CID)
 
 
-def test_a_refund_checkpoint_from_before_pinning_still_resumes(tmp_path):
-    lab = JourneyLab(tmp_path, Script(proposal()))
+def unpinned(lab, world_spec, reply):
+    lab.script.add(reply)
     with lab.controller() as controller:
-        state = controller.start(CID, spec())
+        state = controller.start(CID, world_spec)
         controller.graph.update_state(controller._config(CID),
                                       {"fixture": None, "fixture_sha256": None})
+    return state
+
+
+def test_a_checkpoint_with_no_pinned_fixture_is_refused_and_spends_nothing(tmp_path):
+    lab = JourneyLab(tmp_path, Script())
+    state = unpinned(lab, spec(), proposal())
+    lab.approve(state)
+    lab.refund_fixture = Fixture(order_id="synthetic-order-2", paid_minor=100_000)
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.resume(CID)
+    assert stored_approval(lab, state).status == "approved"
+
+
+def test_a_checkpoint_with_no_pinned_fixture_can_still_be_cancelled(tmp_path):
+    lab = JourneyLab(tmp_path, Script())
+    state = unpinned(lab, spec(), proposal())
+    cancel = threading.Event()
+    cancel.set()
+    with lab.controller(cancel=cancel) as controller:
+        assert controller.resume(CID)["status"] == "cancelled"
+    assert stored_approval(lab, state).status == "pending"
+
+
+@pytest.mark.parametrize("node", ["validate", "verify", "remember"])
+@pytest.mark.parametrize("stop", ["cancel", "deadline"])
+def test_a_withdrawn_world_closes_from_a_node_with_no_stop_check(tmp_path, node, stop):
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=CrashOnce(node))
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.start(CID, journey_spec())
+    lab.worlds = {}
+    cancel = threading.Event()
+    cancel.set() if stop == "cancel" else lab.clock.advance(minutes=30)
+    with lab.controller(cancel=cancel) as controller:
+        done = controller.recover(CID)
+    assert done["status"] in {"cancelled", "budget_exhausted"} and not done["paused"]
+
+
+def test_a_stop_closes_a_campaign_whose_snapshot_cannot_be_restored(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+        broken = {**state["fixture"], "extra": 1}
+        controller.graph.update_state(controller._config(CID), {
+            "fixture": broken, "fixture_sha256": hashlib.sha256(canonical(broken)).hexdigest()})
+    cancel = threading.Event()
+    cancel.set()
+    with lab.controller(cancel=cancel) as controller:
+        assert controller.resume(CID)["status"] == "cancelled"
+
+
+def test_a_withdrawn_world_still_refuses_a_recovery_with_no_stop(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=CrashOnce("verify"))
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.start(CID, journey_spec())
+    lab.worlds = {}
+    with lab.controller() as controller, pytest.raises(PolicyDenied):
+        controller.recover(CID)
+
+
+def test_a_world_withdrawn_at_consume_closes_with_the_approval_unspent(tmp_path):
+    def withdraw(name, state):
+        if name == "consume":
+            held["controller"].s.worlds = {}
+
+    held = {}
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=withdraw)
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
     lab.approve(state)
     with lab.controller() as controller:
-        assert controller.resume(CID)["outcome"] == "repair_verified"
+        held["controller"] = controller
+        done = controller.resume(CID)
+    assert (done["status"], done["outcome"]) == ("failed", "world_not_runnable")
+    assert stored_approval(lab, state).status == "approved"
 
 
 # --- 11. a verified repair has to have run ---------------------------------------------------
@@ -1634,14 +1706,10 @@ def test_a_binding_withdrawn_during_the_resume_spends_nothing(tmp_path):
 
 
 @pytest.mark.parametrize("bindings", [{}, {(PROJECT, OPERATOR.principal_id): "synthetic-customer-2"}])
-@pytest.mark.parametrize("pinned", [True, False])
-def test_a_changed_refund_binding_keeps_the_approval(tmp_path, bindings, pinned):
+def test_a_changed_refund_binding_keeps_the_approval(tmp_path, bindings):
     lab = JourneyLab(tmp_path, Script(proposal()))
     with lab.controller() as controller:
         state = controller.start(CID, spec())
-        if not pinned:  # a checkpoint from before fixtures were pinned
-            controller.graph.update_state(controller._config(CID),
-                                          {"fixture": None, "fixture_sha256": None})
     lab.approve(state)
     original, lab.binding = lab.binding, StaticPrincipalBinding(bindings)
     with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
@@ -1733,21 +1801,25 @@ def test_a_crash_in_an_experiment_run_does_not_use_up_the_budget(tmp_path, monke
 
 
 @pytest.mark.parametrize("stop", ["cancel", "deadline"])
-def test_a_crashed_experiment_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch, stop):
+@pytest.mark.parametrize("worlds", [None, {}])
+def test_a_crashed_experiment_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch, stop,
+                                                                    worlds):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
     die_in_a_run(monkeypatch)
     with lab.controller() as controller, pytest.raises(RuntimeError):
         controller.start(CID, journey_spec())
     monkeypatch.undo()
+    lab.worlds = worlds
     cancel = threading.Event()
     cancel.set() if stop == "cancel" else lab.clock.advance(minutes=30)
     with lab.controller(cancel=cancel) as controller:
         state = controller.recover(CID)
-        assert state["experiments"] == {} and controller.record(CID).usage.tool_calls == 0
+    assert state["experiments"] == {} and tool_calls(lab) == 0
     assert open_reservations(lab) == []
 
 
-def test_a_crashed_repair_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch):
+@pytest.mark.parametrize("worlds", [None, {}])
+def test_a_crashed_repair_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch, worlds):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
     with lab.controller() as controller:
         state = controller.start(CID, journey_spec())
@@ -1757,6 +1829,7 @@ def test_a_crashed_repair_stopped_on_recovery_leaves_no_charges(tmp_path, monkey
     with lab.controller() as controller, pytest.raises(RuntimeError):
         controller.resume(CID)
     monkeypatch.undo()
+    lab.worlds = worlds
     lab.clock.advance(minutes=30)
     with lab.controller() as controller:
         done = controller.recover(CID)
@@ -1805,6 +1878,112 @@ def test_recovering_a_finished_repair_run_charges_and_remembers_it_once(tmp_path
     with closing(sqlite3.connect(lab.paths.app_db)) as conn:
         stored = [row[0] for row in conn.execute("SELECT record_id FROM memory_records")]
     assert len(stored) == len(set(stored)) and sorted(stored) == sorted(done["memory_ids"])
+
+
+def memory_rows(lab):
+    with closing(sqlite3.connect(lab.paths.app_db)) as conn:
+        return [row[0] for row in conn.execute("SELECT record_id FROM memory_records")]
+
+
+@pytest.mark.parametrize("stop", ["cancel", "deadline", None])
+def test_a_crash_before_repair_memory_keeps_the_run_and_its_charges(tmp_path, stop):
+    lab = JourneyLab(tmp_path, Script(proposal()), on_node=CrashOnce("remember_repair"))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    lab.approve(state)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    charged, before = tool_calls(lab), memory_rows(lab)
+    cancel = threading.Event()
+    if stop == "cancel":
+        cancel.set()
+    elif stop == "deadline":
+        lab.clock.advance(minutes=30)
+    with lab.controller(cancel=cancel) as controller:
+        done = controller.recover(CID)
+    assert done["outcome"] == "repair_verified" and tool_calls(lab) == charged
+    assert sorted(memory_rows(lab)) == sorted(done["memory_ids"]) and len(memory_rows(lab)) > len(before)
+
+
+def test_a_crash_before_repair_memory_finishes_under_changed_settings(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=CrashOnce("remember_repair"))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    lab.journey_fixture = CHANGED  # the outcome is settled, so nothing is left to refuse
+    with lab.controller() as controller:
+        assert controller.recover(CID)["outcome"] == "repair_verified"
+
+
+def test_repair_memory_waits_for_a_withdrawn_world_to_return(tmp_path):
+    lab = JourneyLab(tmp_path, Script(proposal()), on_node=CrashOnce("remember_repair"))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    lab.approve(state)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    before = memory_rows(lab)
+    lab.worlds = {}
+    with lab.controller() as controller, pytest.raises(PolicyDenied):
+        controller.recover(CID)
+    assert memory_rows(lab) == before
+    lab.worlds = None
+    with lab.controller() as controller:
+        done = controller.recover(CID)
+    assert done["outcome"] == "repair_verified" and not done["paused"]
+    assert sorted(memory_rows(lab)) == sorted(done["memory_ids"])
+    assert len(memory_rows(lab)) > len(before)
+
+
+def test_a_repair_with_no_memory_to_write_closes_without_its_world(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=CrashOnce("remember_repair"))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    lab.worlds = {}
+    with lab.controller() as controller:
+        done = controller.recover(CID)
+    assert done["outcome"] == "repair_verified" and not done["paused"]
+
+
+def test_a_stop_cannot_rewrite_a_finished_campaign(tmp_path):
+    lab = JourneyLab(tmp_path, Script(proposal()), on_node=CrashOnce("remember_repair"))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    lab.approve(state)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    lab.worlds = {}
+    cancel = threading.Event()
+    cancel.set()
+    with lab.controller(cancel=cancel) as controller, pytest.raises(PolicyDenied):
+        controller.recover(CID)
+    lab.worlds = None
+    with lab.controller() as controller:
+        done = controller.recover(CID)
+    assert (done["status"], done["outcome"]) == ("completed", "repair_verified")
+
+
+def test_a_crash_in_the_repaired_run_leaves_no_repair_memory_behind(tmp_path, monkeypatch):
+    lab = JourneyLab(tmp_path, Script(proposal()))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    lab.approve(state)
+    kept = tool_calls(lab)
+    monkeypatch.setattr(CampaignController, "_repair_verdict", lambda *_: 1 / 0)
+    with lab.controller() as controller, pytest.raises(ZeroDivisionError):
+        controller.resume(CID)
+    monkeypatch.undo()
+    cancel = threading.Event()
+    cancel.set()
+    with lab.controller(cancel=cancel) as controller:
+        done = controller.recover(CID)
+    assert done["status"] == "cancelled" and tool_calls(lab) == kept
+    assert sorted(memory_rows(lab)) == sorted(done["memory_ids"])
 
 
 def test_voiding_a_task_touches_only_that_task_and_resource(tmp_path):

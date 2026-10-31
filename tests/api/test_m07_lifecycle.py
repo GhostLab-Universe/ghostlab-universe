@@ -277,16 +277,50 @@ def test_cancel_stops_a_running_campaign_at_its_next_guard(stack):
     assert api.post(f"/v1/campaigns/{campaign_id}/cancel").status_code == 202  # still a retry
 
 
-def test_a_paused_campaign_refuses_cancel_and_keeps_its_approval(stack):
+def test_cancelling_a_paused_campaign_ends_it_with_its_approval_unspent(stack):
     api = stack(proposal())
     paused = api.paused()
     campaign_id = paused["record"]["campaign_id"]
-    response = api.post(f"/v1/campaigns/{campaign_id}/cancel")
-    assert response.status_code == 409
-    assert response.json()["reason"] == "awaiting_approval"
-    assert api.view(campaign_id)["record"]["status"] == "awaiting_approval"
-    api.decide(paused)
-    assert api.wait(campaign_id, "completed")["outcome"] == "repair_verified"
+    assert api.post(f"/v1/campaigns/{campaign_id}/cancel").status_code == 202
+    done = api.wait(campaign_id, "cancelled")
+    assert done["outcome"] == "cancelled_by_request" and done["repair"] is None
+    assert experiment_count(api) == 2
+    assert api.post(f"/v1/campaigns/{campaign_id}/cancel").status_code == 202  # still a retry
+    url = f"/v1/approvals/{paused['approval']['approval_id']}"
+    assert api.get(url).json()["request"]["status"] == "pending"
+
+    late = api.decide(paused)  # recording it runs nothing: the campaign has stopped
+    assert late.status_code == 200
+    assert late.json()["resumed"] is False
+    assert late.json()["resume_error"]["reason"] == "campaign_finished"
+    assert api.wait(campaign_id, "cancelled")["repair"] is None
+    assert experiment_count(api) == 2
+
+
+def test_cancel_after_a_decision_leaves_the_approval_unspent(stack):
+    gate = Gate("consume")
+    api = stack(proposal(), lab_options={"on_node": gate})
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    assert api.decide(paused).status_code == 200
+    assert gate.reached.wait(30)
+    assert api.post(f"/v1/campaigns/{campaign_id}/cancel").status_code == 202
+    gate.release.set()
+    done = api.wait(campaign_id, "cancelled")
+    assert done["repair"] is None and experiment_count(api) == 2
+    approval = api.get(f"/v1/approvals/{paused['approval']['approval_id']}").json()
+    assert approval["request"]["status"] == "approved"  # not consumed by a stopped campaign
+
+
+def test_cancel_reaches_a_paused_campaign_whose_settings_changed(stack):
+    api = stack(journey_reply())
+    paused = api.paused(J)
+    campaign_id = paused["record"]["campaign_id"]
+    plane = api.client.app.state.plane
+    plane.services = dataclasses.replace(plane.services, journey_fixture=JourneyFixture(
+        journey_id="journey-changed"))
+    assert api.post(f"/v1/campaigns/{campaign_id}/cancel").status_code == 202
+    assert api.wait(campaign_id, "cancelled")["outcome"] == "cancelled_by_request"
 
 
 def test_a_finished_campaign_refuses_cancel(stack):
@@ -314,7 +348,8 @@ def test_cancel_during_the_repair_stops_before_it_runs(stack):
     assert done["repair"] == {"authorized": True, "verified": False, "run": None,
                               "run_status": None, "safety_held": None, "task_complete": None,
                               "task_outcome": None, "adapter": None, "execution": None,
-                              "guard_denials": None, "held_by": None, "refunded_minor": None}
+                              "guard_denials": None, "held_by": None, "lost_faults": None,
+                              "refunded_minor": None}
     assert experiment_count(api) == 2
 
 
@@ -323,9 +358,9 @@ def test_cancel_during_the_repair_stops_before_it_runs(stack):
 def test_a_decision_during_the_pause_window_is_not_lost():
     ran, gate = [], threading.Event()
     registry = JobRegistry(limit=2, on_failure=lambda key, error: None)
-    job, started = registry.submit("k", "start", lambda job: gate.wait(30))
+    job, started = registry.submit("k", lambda job: gate.wait(30))
     assert started
-    joined, started = registry.submit("k", "resume", lambda job: ran.append("resume"), follow=True)
+    joined, started = registry.submit("k", lambda job: ran.append("resume"), follow=True)
     assert joined is job and not started
     gate.set()
     job.settled.wait(30)

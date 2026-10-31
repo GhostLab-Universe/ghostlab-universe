@@ -4,10 +4,14 @@ Inference is a labeled fixture (httpx.MockTransport). Worlds, verifier, approval
 and capsules are the real code.
 """
 
+import sqlite3
+
 import pytest
 
 from conftest import spec_json
-from ghostlab.api.sessions import ApiSession
+from ghostlab.api.jobs import Job
+from ghostlab.api.sessions import ApiSession, TokenSessions
+from ghostlab.budgets import BudgetAccountant
 from ghostlab.orchestration.worlds import DEFAULT_WORLDS, JourneyDriver
 from ghostlab.security.redaction import Redactor
 from ghostlab.worlds.journey import JourneyFixture, JourneyOption
@@ -78,18 +82,88 @@ def test_a_violation_seen_before_truncation_still_goes_to_a_human(stack):
 
 
 def test_one_complete_experiment_does_not_hide_a_truncated_one(stack):
-    api = stack(journey_reply("journey-version-checked", faults=[], cap=3),
-                journey_reply("journey-version-checked", faults=[], cap=20))
+    api = stack(journey_reply("journey-version-checked", cap=3),
+                journey_reply("journey-version-checked", cap=20))
     campaign_id = api.create(J).json()["record"]["campaign_id"]
     view = api.wait(campaign_id, "budget_exhausted")
     assert view["outcome"] == "coverage_incomplete"
     assert sorted(e["coverage"]["complete"] for e in view["experiments"]) == [False, True]
 
 
+def test_a_fault_that_never_fired_proves_nothing(stack):
+    timeout_free = (proposal(timeout_after_commit=False),
+                    proposal(timeout_after_commit=False, max_tool_calls=19))
+    api = stack(*timeout_free)
+    campaign_id = api.create(REFUND).json()["record"]["campaign_id"]
+    view = api.wait(campaign_id, "budget_exhausted")
+    assert view["outcome"] == "coverage_incomplete"
+    assert_no_success(view)
+    assert view["experiments"][0]["coverage"] == {
+        "baseline": "completed", "fork": "completed", "faults_triggered": False,
+        "complete": False}
+
+
+def test_no_experiment_ran_is_a_failure_not_a_clean_result(stack):
+    api = stack(proposal(max_tool_calls=21), proposal(max_tool_calls=22))
+    campaign_id = api.create(REFUND).json()["record"]["campaign_id"]
+    view = api.wait(campaign_id, "failed")
+    assert view["outcome"] == "no_experiment_ran"
+    assert_no_success(view)
+    assert view["experiments"] == [] and view["errors"][-1]["code"] == "validation_failed"
+
+
+def test_a_failed_budget_check_is_not_reported_as_exhaustion(stack, monkeypatch):
+    def broken(*_, **__):
+        raise sqlite3.OperationalError("disk I/O error")
+
+    api = stack(journey_reply())
+    monkeypatch.setattr(BudgetAccountant, "reserve", broken)
+    campaign_id = api.create(J).json()["record"]["campaign_id"]
+    view = api.wait(campaign_id, "failed")
+    assert view["outcome"] == "budget_check_failed"
+    assert_no_success(view)
+    assert view["errors"][-1]["code"] == "internal"
+    assert view["job"]["state"] == "idle"
+
+
+def test_ids_too_long_to_derive_are_refused_before_anything_exists(stack):
+    long_project = "p" * 100
+    tokens = {"operator": (OPERATOR, long_project)}
+    api = stack(proposal(), sessions=TokenSessions(tokens))
+    response = api.create(REFUND)
+    assert response.status_code == 422
+    assert response.json()["reason"] == "identifier_too_long"
+    assert api.script.requests == []
+
+
 # -- repairs that didn't verify ---------------------------------------------------------------
 
+class CappedRepair(JourneyDriver):
+    """Gives the repair too few calls; the checked-in repair action has its own cap."""
+
+    def repair_action(self, experiment_id, proposal):
+        action = super().repair_action(experiment_id, proposal)
+        return {**action, "scenario": {**action["scenario"], "max_tool_calls": 12}}
+
+
+def test_a_repair_that_missed_a_fault_the_fork_met_is_not_verified(stack):
+    faults = [{"fault_id": "delayed_itinerary_update", "after_event": None,
+               "parameters": [{"name": "delay_events", "value": 3}]},
+              {"fault_id": "sharing_revoked_while_queued", "after_event": 11,
+               "parameters": [{"name": "recipient_id", "value": "traveller-a"}]}]
+    api = stack(journey_reply(faults=faults))
+    paused = api.paused(J)
+    assert paused["experiments"][0]["coverage"]["faults_triggered"] is True
+    api.decide(paused)
+    view = api.wait(paused["record"]["campaign_id"], "failed")
+    assert view["outcome"] == "repair_incomplete"
+    assert_no_success(view)
+    assert view["repair"]["lost_faults"] == ["sharing_revoked_while_queued"]
+
+
 def test_a_truncated_repair_is_incomplete_not_verified(stack):
-    api = stack(journey_reply(cap=12))
+    api = stack(journey_reply(cap=12),
+                lab_options={"worlds": {**DEFAULT_WORLDS, J: CappedRepair()}})
     paused = api.paused(J)
     assert api.decide(paused).json()["resumed"] is True
     view = api.wait(paused["record"]["campaign_id"], "budget_exhausted")
@@ -131,6 +205,39 @@ def test_a_verified_repair_can_leave_its_task_unfinished_and_says_so(stack):
     assert view["outcome"] == "repair_verified"
     assert view["repair"]["task_complete"] is False
     assert view["repair"]["task_outcome"]["mandatory_informed"] is False
+
+
+def test_a_view_takes_status_and_outcome_from_one_read(stack, monkeypatch):
+    from ghostlab.orchestration import CampaignController
+
+    api = stack(proposal())
+    paused = api.paused()
+    record = CampaignController.record
+
+    def newer(self, campaign):  # a worker finished between the two reads
+        data = record(self, campaign).model_dump(mode="json")
+        return type(record(self, campaign)).model_validate({**data, "status": "completed"})
+
+    monkeypatch.setattr(CampaignController, "record", newer)
+    view = api.view(paused["record"]["campaign_id"])
+    assert view["record"]["status"] == "awaiting_approval" and view["outcome"] is None
+
+
+def test_a_worker_ending_during_a_read_never_reads_as_stalled(stack, monkeypatch):
+    from ghostlab.orchestration import CampaignController
+
+    api = stack(proposal())
+    campaign_id = api.paused()["record"]["campaign_id"]
+    jobs = api.client.app.state.plane.jobs
+    monkeypatch.setattr(jobs, "get", lambda key: Job())  # a worker is running
+    read = CampaignController.state
+
+    def worker_ends_now(self, campaign):
+        monkeypatch.setattr(jobs, "get", lambda key: None)
+        return {**read(self, campaign), "status": "running", "paused": True}
+
+    monkeypatch.setattr(CampaignController, "state", worker_ends_now)
+    assert api.view(campaign_id)["job"]["state"] == "active"
 
 
 # -- the pinned fixture ------------------------------------------------------------------------

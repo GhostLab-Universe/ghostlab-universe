@@ -26,7 +26,6 @@ Work = Callable[["Job"], object]
 class Job:
     """One thread's lifetime for one campaign, and how its first moments are reported."""
 
-    kind: str
     cancel: threading.Event = field(default_factory=threading.Event)
     settled: threading.Event = field(default_factory=threading.Event)
     entered: bool = False  # the controller's own gates passed and the graph began
@@ -46,7 +45,7 @@ class JobRegistry:
         with self._lock:
             return self._jobs.get(key)
 
-    def submit(self, key: str, kind: str, work: Work, *, cancel: bool = False,
+    def submit(self, key: str, work: Work, *, cancel: bool = False,
                follow: bool = False) -> tuple[Job, bool]:
         """Start ``work``, or join the job already running: returns (job, started).
 
@@ -67,7 +66,7 @@ class JobRegistry:
                 raise ApiError(429, "rate_limited", "Too many campaigns are running",
                                reason="too_many_campaigns", retryable=True,
                                headers={"Retry-After": "5"})
-            job = Job(kind)
+            job = Job()
             if cancel:
                 job.cancel.set()
             thread = threading.Thread(target=self._run, args=(key, job, work), daemon=True,

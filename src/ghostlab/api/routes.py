@@ -97,11 +97,11 @@ def list_events(campaign_id: CampaignId, control: Plane, who: Session,
 @router.post("/campaigns/{campaign_id}/cancel", response_model=CampaignView, status_code=202,
              operation_id="cancelCampaign", tags=["campaigns"], responses=WRITE_ERRORS)
 def cancel_campaign(campaign_id: CampaignId, control: Plane, who: Session):
-    """Ask a running campaign to stop at its next guarded step. Repeating is harmless.
+    """Stop a running, paused or stalled campaign at its next guard. Repeating is harmless.
 
-    A campaign awaiting approval has nothing running: this is a 409 with reason
-    ``awaiting_approval``, and rejecting the approval is how to end it. A finished
-    campaign is a 409 with reason ``campaign_finished``, unless it was already cancelled.
+    An approval that was not yet used stays unspent, and can't run anything afterwards.
+    A finished campaign is a 409 with reason ``campaign_finished``, unless it was
+    already cancelled.
     """
     return control.cancel(who, campaign_id)
 

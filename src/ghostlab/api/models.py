@@ -69,14 +69,16 @@ class ApprovalSummary(StrictModel):
 
 
 class Coverage(StrictModel):
-    """Whether an experiment's runs finished. Null only on a checkpoint older than coverage.
+    """Whether an experiment tested anything. Null only on a checkpoint older than coverage.
 
-    ``complete: false`` means a run stopped at its tool cap: a clean result from it
-    proves nothing, and only the violations it did reach count.
+    ``complete: false`` means a run stopped at its tool cap or a fault never fired: a
+    clean result from it proves nothing, and only the violations it did reach count.
+    ``faults_triggered`` is null on a checkpoint from before it was recorded.
     """
 
     baseline: RunStatus
     fork: RunStatus
+    faults_triggered: bool | None
     complete: bool
 
 
@@ -108,6 +110,7 @@ class RepairView(StrictModel):
     execution: ExecutionRecord | None
     guard_denials: list[GuardDenial] | None = Field(max_length=1_000)
     held_by: Literal["adapter", "guarded_boundary"] | None
+    lost_faults: list[ShortText] | None = Field(max_length=16)  # met by the fork, not the repair
     refunded_minor: Count | None
 
 

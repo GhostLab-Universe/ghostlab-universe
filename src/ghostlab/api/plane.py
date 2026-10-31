@@ -21,6 +21,7 @@ from pathlib import Path
 
 import httpx
 from fastapi.responses import Response
+from pydantic import ValidationError
 
 from ghostlab.capsule import MAX_CAPSULE_BYTES
 from ghostlab.contracts import (ApprovalDecision, ApprovalRequest, ApprovalSubmission, CapsuleV1,
@@ -100,7 +101,7 @@ class ControlPlane:
                               self.redactor)
         self._failures[key] = body.error
 
-    def _launch(self, session: TrustedSession, campaign_id: str, kind: str,
+    def _launch(self, session: TrustedSession, campaign_id: str,
                 call: Callable[[CampaignController], object], *, cancel: bool = False,
                 follow: bool = False) -> tuple[Job, bool]:
         key = ledger_key(session.project_id, campaign_id)
@@ -117,7 +118,7 @@ class ControlPlane:
             services = dataclasses.replace(self.services, on_node=on_node)
             call(self._controller(session, services=services, cancel=job.cancel))
 
-        return self.jobs.submit(key, kind, work, cancel=cancel, follow=follow)
+        return self.jobs.submit(key, work, cancel=cancel, follow=follow)
 
     def _text(self, value: str) -> str:
         return self.redactor.text(value)[:MAX_TEXT]
@@ -169,12 +170,16 @@ class ControlPlane:
                                             idempotency_key)
         replayed = self._existing(trusted, campaign_id) is not None
         if not replayed:
-            job, started = self._launch(trusted, campaign_id, "start",
+            job, started = self._launch(trusted, campaign_id,
                                         lambda controller: controller.start(campaign_id, spec))
             try:
                 self.jobs.wait_for_first_step(job)  # the controller's gates run and raise here
             except CampaignExists:
                 started = False
+            except ValidationError as error:  # the only one before a checkpoint exists
+                raise ApiError(422, "validation_failed", "This project's identifiers are too "
+                               "long to derive a campaign's ids; nothing was stored",
+                               reason="identifier_too_long") from error
             replayed = not started
         state = self._controller(trusted).state(campaign_id)
         if state["spec"] != spec.model_dump(mode="json"):
@@ -188,9 +193,7 @@ class ControlPlane:
         except PolicyDenied:
             return None
 
-    def _job_status(self, project_id: str, campaign_id: str, state: dict) -> JobStatus:
-        key = ledger_key(project_id, campaign_id)
-        job = self.jobs.get(key)
+    def _job_status(self, project_id: str, key: str, job: Job | None, state: dict) -> JobStatus:
         if job is not None:
             return JobStatus(state="active", cancel_requested=job.cancel.is_set(), error=None)
         error = self._failures.get(key)
@@ -205,13 +208,6 @@ class ControlPlane:
         approval = state.get("approval")
         return approval is not None and self.services.approval_store.get(
             project_id, approval["approval_id"]).status != "pending"
-
-    def _record(self, controller: CampaignController, campaign_id: str,
-                state: dict) -> WorldCampaignRecord:
-        # record() reports any unfinished graph as awaiting_approval, which is wrong
-        # while a worker runs; the checkpoint's own status is the authoritative one.
-        record = controller.record(campaign_id).model_dump(mode="json")
-        return WorldCampaignRecord.model_validate({**record, "status": state["status"]})
 
     def _errors(self, state: dict) -> list[ErrorInfo]:
         return [ErrorInfo.model_validate({**error, "message": self._text(error["message"])})
@@ -229,7 +225,8 @@ class ControlPlane:
     @staticmethod
     def _coverage(experiment: dict) -> Coverage | None:
         coverage = experiment.get("coverage")
-        return Coverage(**coverage) if coverage else None
+        return Coverage.model_validate({"faults_triggered": None, **coverage}) if coverage \
+            else None
 
     @staticmethod
     def _repaired_experiment(state: dict) -> str | None:
@@ -256,18 +253,22 @@ class ControlPlane:
                           execution=ExecutionRecord(**execution) if execution else None,
                           guard_denials=(None if denials is None
                                          else [GuardDenial(**denial) for denial in denials]),
-                          held_by=repair.get("held_by"),
+                          held_by=repair.get("held_by"), lost_faults=repair.get("lost_faults"),
                           refunded_minor=repair.get("refunded_minor"))
 
     def campaign_view(self, session: ApiSession, campaign_id: str) -> CampaignView:
         controller = self._controller(session.trusted)
+        key = ledger_key(session.project_id, campaign_id)
+        job = self.jobs.get(key)  # before the state: a worker ending now mustn't read as a stall
         state = controller.state(campaign_id)  # the owner check: otherwise reads as not found
-        record = self._record(controller, campaign_id, state)
+        # One view, one read: record() reads again, and a worker may have moved on since.
+        record = WorldCampaignRecord.model_validate(
+            {**controller.record(campaign_id).model_dump(mode="json"), "status": state["status"]})
         approval = state.get("approval")
         return CampaignView(
             record=record, outcome=state["outcome"],
             fixture_sha256=state.get("fixture_sha256"),
-            job=self._job_status(session.project_id, campaign_id, state),
+            job=self._job_status(session.project_id, key, job, state),
             tasks=[TaskSpec.model_validate(task) for task in state["tasks"]],
             approval=(ApprovalSummary(approval_id=approval["approval_id"],
                                       action_digest=approval["action_digest"],
@@ -286,43 +287,46 @@ class ControlPlane:
                          next_after=page[-1].sequence if page else after,
                          has_more=len(pending) > limit)
 
-    def cancel(self, session: ApiSession, campaign_id: str) -> CampaignView:
-        """Only an active or stalled campaign has anything to stop.
+    @staticmethod
+    def _proceed(campaign_id: str) -> Callable[[CampaignController], object]:
+        """Run the graph on: past an approval pause, or from a crash's last checkpoint."""
+        def call(controller: CampaignController):
+            state = controller.state(campaign_id)
+            if state["paused"]:
+                paused = state["status"] == "awaiting_approval"
+                return (controller.resume if paused else controller.recover)(campaign_id)
+            return state
 
-        ``await_approval`` has no cancellation exit: resuming with the cancel flag set
-        would spend an approved action's single use before stopping (M05 request).
+        return call
+
+    def cancel(self, session: ApiSession, campaign_id: str) -> CampaignView:
+        """Stop at the next guard, whatever is or isn't running.
+
+        A worker already running sees the flag; a paused or stalled campaign needs one
+        to reach its guard. The follow-up covers a worker on its way to a pause. M05
+        checks the guard before consuming, so an unused approval stays unspent.
         """
         trusted = session.trusted
         state = self._controller(trusted).state(campaign_id)
-        job = self.jobs.get(ledger_key(session.project_id, campaign_id))
-        waiting = state["status"] == "awaiting_approval"
-        if job is not None and not (waiting and job.kind == "start"):
-            job.cancel.set()
-        elif waiting:
-            raise ApiError(409, "conflict", "Nothing is running: this campaign is awaiting an "
-                           "approval decision. Rejecting the approval ends it.",
-                           reason="awaiting_approval")
-        elif not state["paused"]:
+        if not state["paused"]:
             if state["status"] != "cancelled":
                 raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
                                reason="campaign_finished")
-        else:  # stalled: continue from the checkpoint only to reach its cancellation guard
-            self.jobs.wait_for_first_step(self._launch(
-                trusted, campaign_id, "recover",
-                lambda controller: controller.recover(campaign_id), cancel=True)[0])
+            return self.campaign_view(session, campaign_id)
+        job, started = self._launch(trusted, campaign_id, self._proceed(campaign_id),
+                                    cancel=True, follow=True)
+        job.cancel.set()
+        if started:
+            self.jobs.wait_for_first_step(job)
         return self.campaign_view(session, campaign_id)
 
     def resume(self, session: ApiSession, campaign_id: str) -> CampaignView:
         trusted = session.trusted
         state = self._controller(trusted).state(campaign_id)
         if state["paused"]:
-            paused = state["status"] == "awaiting_approval"  # else: from a crash's checkpoint
-
-            def proceed(controller: CampaignController):
-                return (controller.resume if paused else controller.recover)(campaign_id)
-
             # Following a running worker matters only at a pause; see JobRegistry.submit.
-            job, started = self._launch(trusted, campaign_id, "resume", proceed, follow=paused)
+            job, started = self._launch(trusted, campaign_id, self._proceed(campaign_id),
+                                        follow=state["status"] == "awaiting_approval")
             if started:
                 self.jobs.wait_for_first_step(job)
         return self.campaign_view(session, campaign_id)
@@ -553,9 +557,12 @@ class ControlPlane:
         """
         owner = TrustedSession(request.scope.principal, project_id)
         try:
-            job, started = self._launch(
-                owner, request.campaign_id, "resume",
-                lambda controller: controller.resume(request.campaign_id), follow=True)
+            state = self._controller(owner).state(request.campaign_id)
+            if not state["paused"]:  # for example cancelled: this decision has nothing to move
+                raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
+                               reason="campaign_finished")
+            job, started = self._launch(owner, request.campaign_id,
+                                        self._proceed(request.campaign_id), follow=True)
             if started:
                 self.jobs.wait_for_first_step(job)
         except (ApiError, CampaignSettingsChanged, LiveInferenceRefused, PolicyDenied) as error:

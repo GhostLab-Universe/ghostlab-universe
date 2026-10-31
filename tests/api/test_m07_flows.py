@@ -30,7 +30,7 @@ def test_refund_flow_from_create_to_replayed_repair(stack):
     base = f"/v1/campaigns/{campaign_id}/experiments/{experiment['experiment_id']}"
     compared = api.get(f"{base}/diff").json()
     assert compared["coverage"] == {"baseline": "completed", "fork": "completed",
-                                    "complete": True}
+                                    "faults_triggered": True, "complete": True}
     diff = compared["diff"]
     assert diff["world_version"] == REFUND
     assert diff["baseline_metrics"] == {"refunded_minor": 250000}
@@ -90,6 +90,7 @@ def test_journey_flow_from_create_to_replayed_repair(stack):
     assert done["repair"]["execution"] == {"mode": "enforced", "guarded": True}
     assert done["repair"]["held_by"] == "adapter"
     assert done["repair"]["safety_held"] is True
+    assert done["repair"]["lost_faults"] == []
 
     repaired = api.get(f"{base}/runs/repaired").json()
     assert repaired["execution"]["guarded"] is True
@@ -153,7 +154,7 @@ def test_a_refund_capsule_may_be_imported_in_either_published_form(stack):
 
 def test_an_experiment_with_no_failure_finishes_without_an_approval(stack):
     clean = proposal(adapter="repaired")
-    second = proposal(adapter="repaired", timeout_after_commit=False)
+    second = proposal(adapter="repaired", max_tool_calls=19)
     api = stack(clean, second)
     campaign_id = api.create(REFUND).json()["record"]["campaign_id"]
     done = api.wait(campaign_id, "completed")

@@ -476,6 +476,12 @@ def test_relay_examples_are_one_consistent_recorded_failure():
     assert ex("world_reality_diff.relay_fixture")["violated_invariants"] == [finding["invariant"]]
 
 
+def test_the_relay_manifest_states_the_bound_the_engine_enforces():
+    from ghostlab.worlds.relay import MAX_COMPETING_JOBS
+    (parameter,) = pack(R).fault("stale_availability_competition").parameters
+    assert f"1 to {MAX_COMPETING_JOBS}" in parameter.description
+
+
 def test_relay_tool_invocations_match_the_pack():
     world = pack(R)
     for tool in world.tools:

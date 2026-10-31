@@ -279,17 +279,19 @@ _PACK_DATA = [
         "faults": [
             {"fault_id": "stale_availability_competition", "fault_pack": "stale_availability",
              "parameters": [{"name": "competing_jobs", "type": "integer",
-                             "description": "Competing jobs that take a free resource"}],
-             "description": "Competing jobs take resources while the availability counters "
-                            "stay stale; the lease list stays true"},
+                             "description": "How many competitors try, 1 to 8; each wants one "
+                                            "fixed resource and gets it only if it is free"}],
+             "description": "Competing jobs try for their resources while the availability "
+                            "counters stay stale; the lease list stays true"},
             {"fault_id": "lost_reservation_ack", "fault_pack": "lost_acknowledgement",
              "parameters": [],
              "description": "A reservation commits but its acknowledgement is lost; whether "
                             "to retry, and under which key, is the adapter's choice"},
             {"fault_id": "takeover_with_queued_confirmation", "fault_pack": "owner_takeover",
              "parameters": [],
-             "description": "The owner takes over the first job's conversation once its "
-                            "leases are in place, while the automated confirmation is pending"}],
+             "description": "The owner takes over the first job's conversation: with no "
+                            "after_event, once its leases are in place and the automated "
+                            "confirmation is pending; with one, from the next event"}],
         "invariants": [
             {"name": "allocations_within_capacity", "evidence": "resource_leases",
              "description": "No lease, at its grant, takes a technician slot or part past "
@@ -306,7 +308,8 @@ _PACK_DATA = [
             {"adapter_id": "relay-lease-checked", "kind": "repaired",
              "description": "Plans from the lease list, re-reads leases, the promise version "
                             "and ownership before confirming, and otherwise releases its "
-                            "leases and hands the conversation to the owner"}],
+                            "leases and hands the conversation to the owner, unless the owner "
+                            "already holds it, when the leases stay for the owner to decide"}],
         "replay": {"capsule_schema_versions": [2], "dispatch": "recorded_actions"},
         "source": "ghostlab.worlds.relay service-relay/1 and relay-adapters/1 "
                   "(designed in the GhostLab priority-worlds plan)",

@@ -56,6 +56,9 @@ REFUND_WORLD = "refund-world/1"
 TARGET_TOOLS = {"get_order", "issue_refund", "get_refund_status"}
 REPAIRED_JOURNEY_ADAPTER = "journey-version-checked"
 REPAIRED_RELAY_ADAPTER = "relay-lease-checked"
+# Refusals only something outside the adapter can cause: a takeover, or a competing lease
+# taking capacity or moving a promise. The others refuse the adapter's own state.
+RELAY_WORLD_MOVED = frozenset({"OwnerTakeoverDenied", "CapacityDenied", "StalePromiseDenied"})
 
 
 @dataclass(frozen=True)
@@ -407,13 +410,22 @@ def _relay_denials(run: dict) -> list[dict]:
             for event in run["trace"] if event["outcome"].get("error") in RELAY_DENIALS]
 
 
+def _counters_were_wrong(read: dict) -> bool:
+    """True if a read's availability counters differ from the leases it returned with them."""
+    held = [lease["resource_id"] for lease in read.get("leases", [])]
+    return any(resource["available"] != max(0, resource["capacity"]
+                                            - held.count(resource["resource_id"]))
+               for resource in read.get("resources", []))
+
+
 def _relay_fault_fired(fault: dict, run: dict) -> bool:
     """A fault counts only if it changed something the run could have acted on."""
     state = run["final_state"]
-    if fault["fault_id"] == "stale_availability_competition":  # someone read the frozen counters
-        return any(event["outcome"].get("result", {}).get("availability_as_of",
-                                                          event["event_id"]) != event["event_id"]
-                   for event in run["trace"])
+    if fault["fault_id"] == "stale_availability_competition":
+        return (any(row["source"] == "world" and row["kind"] == "granted"
+                    for row in state["lease_log"])
+                or any(_counters_were_wrong(event["outcome"].get("result", {}))
+                       for event in run["trace"]))
     if fault["fault_id"] == "lost_reservation_ack":
         return any(event["outcome"].get("error") == "ReservationAckLost"
                    for event in run["trace"])
@@ -478,6 +490,13 @@ class RelayDriver:
     def baseline_scenario(self, proposal: dict) -> dict:
         return relay_scenario_json(max_tool_calls=proposal["scenario"]["max_tool_calls"])
 
+    def identity_problem(self, services, fixture: RelayFixture, project_id: str,
+                         principal: Principal) -> str | None:
+        """A repair changes the world, so the bound identity must be the operator. The
+        business owner may read, but can't run the repair."""
+        bound = services.world_binding.actor_for(project_id, principal, RELAY_WORLD)
+        return None if bound == fixture.operator else "the world identity no longer owns this"
+
     def faults_fired(self, proposal: dict, run: dict) -> set[str]:
         return {fault["fault_id"] for fault in proposal["scenario"]["faults"]
                 if _relay_fault_fired(fault, run)}
@@ -512,7 +531,8 @@ class RelayDriver:
                          for job in fixture.jobs)
         needs = ", ".join(f"{name} {calls}" for name, calls in self._adapter_calls(fixture).items())
         return (f"Jobs: {jobs}. Competing jobs available: {len(fixture.competitors)}.",
-                f"Tool calls each adapter needs with no fault: {needs}.")
+                f"Tool calls each adapter needs with no fault, a floor that faults raise: "
+                f"{needs}.")
 
     def execute(self, services, fixture: RelayFixture, request: RunRequest, *,
                 scope: TrustedScope, project_id: str,
@@ -571,11 +591,14 @@ class RelayDriver:
 
         Every job needs its own explanation. It is confirmed, or the evidence shows why
         it could not be: the owner took it over, other jobs held what it needed, or the
-        guard refused a call for that job. Otherwise the run never tested the repair, and
-        passing checks would mean nothing. A denial for one job excuses no other job.
+        guard refused a call for that job because the world moved under it. A refusal of
+        the adapter's own state, such as a lease it let lapse, explains nothing. Otherwise
+        the run never tested the repair, and passing checks would mean nothing. A denial
+        for one job excuses no other job.
         """
         task = relay_task_outcome(fixture, run["final_state"])
-        refused = {denial["job_id"] for denial in _relay_denials(run)}
+        refused = {denial["job_id"] for denial in _relay_denials(run)
+                   if denial["error"] in RELAY_WORLD_MOVED}
         unexplained = [job_id for job_id, outcome in task["jobs"].items()
                        if outcome == "unresolved" and job_id not in refused]
         finished, safe = run["status"] == "completed", _safety_held(findings)

@@ -134,6 +134,16 @@ def test_the_stated_caps_are_enough_and_are_needed(skills):
     assert trace_length(CHECKED, worst, 40) == caps[CHECKED]
 
 
+def test_a_no_fault_need_never_replaces_the_fault_safe_caps(skills):
+    steps = " ".join(skills.get(SKILL).spec.steps)
+    assert "is a floor, not a cap to use" in steps
+    assert "tool-call needs for this campaign" not in steps
+    # the floor the skill quotes is the default fixture's real no-fault need
+    from ghostlab.orchestration import RelayDriver
+    calls = RelayDriver._adapter_calls(RelayFixture())
+    assert f"default fixture's {calls[LOCAL]} and {calls[CHECKED]}" in steps
+
+
 def test_a_proposal_built_from_the_skill_is_accepted():
     data = scenario_json(((STALE, None, {"competing_jobs": 2}), (LOST, 3, {}), (TAKEOVER, 5, {})),
                          20)

@@ -410,6 +410,61 @@ def test_an_identity_outside_the_shop_is_denied_not_a_clean_run(tmp_path, bound,
     assert open_reservations(lab) == []
 
 
+def paused_and_approved(tmp_path):
+    lab, state = start(tmp_path)
+    lab.approve(state)
+    return lab, state
+
+
+def approval_status(lab, state):
+    return lab.approval_store.get(PROJECT, state["approval"]["approval_id"]).status
+
+
+@pytest.mark.parametrize("bindings", [
+    {}, {(PROJECT, OPERATOR.principal_id, R): BUSINESS_OWNER},
+    {(PROJECT, OPERATOR.principal_id, R): "nobody"}], ids=["removed", "owner", "stranger"])
+def test_a_withdrawn_binding_keeps_the_approval_and_can_be_restored(tmp_path, bindings):
+    lab, state = paused_and_approved(tmp_path)
+    original, lab.world_binding = lab.world_binding, StaticWorldBinding(bindings)
+    with lab.controller() as controller:
+        with pytest.raises(CampaignSettingsChanged, match="no longer owns"):
+            controller.resume(CID)
+        assert controller.state(CID)["repair"] is None
+    assert approval_status(lab, state) == "approved"  # nothing was spent
+    lab.world_binding = original
+    with lab.controller() as controller:
+        assert controller.resume(CID)["outcome"] == "repair_verified"
+    assert approval_status(lab, state) == "consumed"
+
+
+def test_recovery_refuses_a_swapped_binding_too(tmp_path):
+    lab = RelayLab(tmp_path, Script(relay_reply()), on_node=CrashOnce("verify"))
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.start(CID, relay_spec())
+    original, lab.world_binding = lab.world_binding, binding(BUSINESS_OWNER)
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.recover(CID)
+    lab.world_binding = original
+    with lab.controller() as controller:
+        assert controller.recover(CID)["paused"]
+
+
+def test_a_binding_withdrawn_during_the_resume_spends_nothing(tmp_path):
+    lab, state = paused_and_approved(tmp_path)
+    held = {}
+
+    def swap(name, _):
+        if name == "consume":
+            held["controller"].s.world_binding = binding(BUSINESS_OWNER)
+
+    lab.on_node = swap
+    with lab.controller() as controller:
+        held["controller"] = controller
+        done = controller.resume(CID)
+    assert (done["status"], done["outcome"]) == ("failed", "settings_changed")
+    assert approval_status(lab, state) == "approved"
+
+
 def test_an_unbound_principal_runs_nothing(tmp_path):
     lab, state = start(tmp_path, world_binding=StaticWorldBinding({}))
     assert (state["status"], state["outcome"]) == ("failed", "policy_denied")
@@ -806,13 +861,56 @@ def test_a_denial_for_one_job_does_not_excuse_another():
     assert assess(without_confirmation(run, "job-2"))["verified"] is False
 
 
-def test_a_denial_explains_the_job_it_refused():
+def refused_confirmation(error):
     run = repaired_run([])
     without_confirmation(run, "job-2")
     denied = next(event for event in run["trace"] if event["request"]["tool"] == "confirm_service"
                   and event["request"]["arguments"]["job_id"] == "job-2")
-    denied["outcome"] = {"error": "StalePromiseDenied", "message": "stale"}
-    assert assess(run)["verified"]
+    denied["outcome"] = {"error": error, "message": "refused"}
+    return run
+
+
+@pytest.mark.parametrize("error", ["StalePromiseDenied", "CapacityDenied", "OwnerTakeoverDenied"])
+def test_a_refusal_the_world_caused_explains_the_job_it_refused(error):
+    assert assess(refused_confirmation(error))["verified"]
+
+
+@pytest.mark.parametrize("error", ["UnbackedConfirmationDenied", "DuplicateLeaseDenied",
+                                   "ConfirmedLeaseDenied"])
+def test_a_refusal_of_the_adapters_own_state_explains_nothing(error):
+    assert assess(refused_confirmation(error))["verified"] is False
+
+
+def test_every_guard_denial_is_classified():
+    from ghostlab.execution.relay_guard import DENIALS
+    from ghostlab.orchestration.worlds import RELAY_WORLD_MOVED
+    assert RELAY_WORLD_MOVED < DENIALS
+
+
+TWO_NEED_THE_PART = RelayFixture(
+    lease_ttl_events=3, jobs=(RelayJob("job-1", "conversation-1", "part-compressor"),
+                              RelayJob("job-2", "conversation-2", "part-compressor")))
+
+
+def test_a_repair_that_only_let_its_own_leases_lapse_verifies_nothing(tmp_path):
+    # Both confirmations are refused because the part's lease lapsed: no fault did that.
+    lab, state = start(tmp_path, relay_reply(CHECKED, faults=[]),
+                       relay_fixture=TWO_NEED_THE_PART)
+    done = resume_after_approval(lab, state)
+    repair = done["repair"]
+    assert repair["task_outcome"]["handed_off"] == ["job-1", "job-2"]
+    assert [d["error"] for d in repair["guard_denials"]] == ["UnbackedConfirmationDenied"] * 2
+    assert (done["status"], done["outcome"]) == ("failed", "repair_incomplete")
+    assert repair["verified"] is False and repair["held_by"] is None
+
+
+def test_a_deployment_fixture_can_reach_the_lease_expiry_race(tmp_path):
+    # The Explorer can't set this, but Services.relay_fixture is public and the campaign pins it.
+    lab, state = start(tmp_path, relay_reply(CHECKED, faults=[]),
+                       relay_fixture=RelayFixture(lease_ttl_events=3))
+    assert failed(state)[0]["invariant"] == "confirmations_backed_by_reservations"
+    assert failed(state)[0]["evidence_event_ids"] == [FIRST_CONFIRM_EVENT]
+    assert state["fixture"]["lease_ttl_events"] == 3
 
 
 def test_a_lost_acknowledgement_explains_nothing():
@@ -936,17 +1034,42 @@ def fired(faults, proposal_faults, adapter=CHECKED):
     return DRIVER.faults_triggered(proposal_json(adapter, faults=proposal_faults), run)
 
 
-def test_competition_counts_only_if_someone_read_the_frozen_counters():
-    late = fault("stale_availability_competition", 8, competing_jobs=1)  # arrives at the last call
-    assert not fired([("stale_availability_competition", 8, {"competing_jobs": 1})], [late])
-    early = fault("stale_availability_competition", 2, competing_jobs=1)
-    assert fired([("stale_availability_competition", 2, {"competing_jobs": 1})], [early])
+def competition(after_event, competing_jobs):
+    return (fault("stale_availability_competition", after_event, competing_jobs=competing_jobs),
+            ("stale_availability_competition", after_event, {"competing_jobs": competing_jobs}))
 
 
-def test_a_competition_that_found_nothing_free_still_fired():
-    # There's nobody to arrive, but the counters froze, and the adapter read them.
+@pytest.mark.parametrize("after_event", [3, 4])
+def test_a_competition_that_changed_nothing_has_not_fired(after_event):
+    # job-3 loses the part at the counter, and the one later read equals the live numbers.
+    proposed, injected = competition(after_event, 1)
+    run = run_directly(LOCAL, [injected], LAB).run
+    assert not [row for row in run["final_state"]["lease_log"] if row["source"] == "world"]
+    assert run["final_state"]["cached_availability"] is not None  # the counters did freeze
+    assert not DRIVER.faults_triggered(proposal_json(LOCAL, faults=[proposed]), run)
+
+
+def test_a_competition_that_changed_nothing_cannot_end_as_a_clean_result(tmp_path):
+    first, second = competition(3, 1)[0], competition(4, 1)[0]
+    lab, state = start(tmp_path, relay_reply(faults=[first]), relay_reply(faults=[second]))
+    assert (state["status"], state["outcome"]) == ("budget_exhausted", "coverage_incomplete")
+    assert all(e["coverage"]["complete"] is False for e in state["experiments"].values())
+
+
+def test_a_competitor_lease_fires_the_fault_even_with_no_read_after_it():
+    # job-4 takes tech-b at event 6, after the last read of the counters.
+    proposed, injected = competition(5, 2)
+    run = run_directly(LOCAL, [injected], LAB).run
+    assert [row["job_id"] for row in run["final_state"]["lease_log"]
+            if row["source"] == "world"] == ["job-4"]
+    assert DRIVER.faults_triggered(proposal_json(LOCAL, faults=[proposed]), run)
+
+
+def test_counters_that_differ_from_the_leases_fire_the_fault_without_a_competitor():
+    # Nobody arrives, but the frozen counters miss the adapter's own leases at its re-read.
     run = run_directly(CHECKED, [("stale_availability_competition", None, {"competing_jobs": 2})],
                        LAB, fixture=RelayFixture(competitors=())).run
+    assert not [row for row in run["final_state"]["lease_log"] if row["source"] == "world"]
     assert DRIVER.faults_triggered(proposal_json(CHECKED, faults=[COMPETITION]), run)
 
 
@@ -966,7 +1089,7 @@ def test_the_explorer_is_told_the_pinned_fixture(tmp_path):
     sent = lab.script.requests[0].content.decode()
     assert "job-1 (needs part-compressor), job-2, job-7" in sent
     assert "Competing jobs available: 2" in sent
-    assert "relay-local-success 10, relay-lease-checked 13" in sent
+    assert "a floor that faults raise: relay-local-success 10, relay-lease-checked 13" in sent
 
 
 def test_no_call_is_paid_for_when_no_adapter_could_finish(tmp_path):

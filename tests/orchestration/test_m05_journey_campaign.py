@@ -1600,6 +1600,53 @@ def test_a_cancelled_recovery_closes_after_a_crash_past_consume(tmp_path):
         assert controller.recover(CID)["status"] == "cancelled"
 
 
+@pytest.mark.parametrize("bindings", [{}, {(PROJECT, OPERATOR.principal_id, J): "nobody"},
+                                      {(PROJECT, OPERATOR.principal_id, J): VIEWER}])
+def test_a_withdrawn_binding_keeps_the_approval_and_can_be_restored(tmp_path, bindings):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    original, lab.world_binding = lab.world_binding, StaticWorldBinding(bindings)
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.resume(CID)
+    assert stored_approval(lab, state).status == "approved"
+    lab.world_binding = original
+    with lab.controller() as controller:
+        assert controller.resume(CID)["outcome"] == "repair_verified"
+
+
+def test_a_binding_withdrawn_during_the_resume_spends_nothing(tmp_path):
+    def withdraw(name, state):
+        if name == "consume":
+            held["controller"].s.world_binding = StaticWorldBinding({})
+
+    held = {}
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=withdraw)
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    with lab.controller() as controller:
+        held["controller"] = controller
+        done = controller.resume(CID)
+    assert (done["status"], done["outcome"]) == ("failed", "settings_changed")
+    assert stored_approval(lab, state).status == "approved"
+
+
+def test_a_changed_refund_binding_keeps_the_approval(tmp_path):
+    lab = JourneyLab(tmp_path, Script(proposal()))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    lab.approve(state)
+    original, lab.binding = lab.binding, StaticPrincipalBinding({})
+    with lab.controller() as controller, pytest.raises(CampaignSettingsChanged):
+        controller.resume(CID)
+    assert stored_approval(lab, state).status == "approved"
+    lab.binding = original
+    with lab.controller() as controller:
+        assert controller.resume(CID)["outcome"] == "repair_verified"
+
+
 def test_a_changed_fixture_still_blocks_a_pending_approval(tmp_path):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
     with lab.controller() as controller:
@@ -1678,6 +1725,46 @@ def test_a_crash_in_an_experiment_run_does_not_use_up_the_budget(tmp_path, monke
         state = controller.recover(CID)
     assert len(state["experiments"]) == 1 and open_reservations(lab) == []
     assert tool_calls(lab) == 24  # the runs that were kept, nothing more
+
+
+@pytest.mark.parametrize("stop", ["cancel", "deadline"])
+def test_a_crashed_experiment_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch, stop):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    die_in_a_run(monkeypatch)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.start(CID, journey_spec())
+    monkeypatch.undo()
+    cancel = threading.Event()
+    cancel.set() if stop == "cancel" else lab.clock.advance(minutes=30)
+    with lab.controller(cancel=cancel) as controller:
+        state = controller.recover(CID)
+        assert state["experiments"] == {} and controller.record(CID).usage.tool_calls == 0
+    assert open_reservations(lab) == []
+
+
+def test_a_crashed_repair_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    kept = tool_calls(lab)
+    lab.approve(state)
+    die_in_a_run(monkeypatch)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    monkeypatch.undo()
+    lab.clock.advance(minutes=30)
+    with lab.controller() as controller:
+        done = controller.recover(CID)
+    assert done["outcome"] == "wall_clock_ms" and tool_calls(lab) == kept
+    assert open_reservations(lab) == []
+
+
+def test_recovering_a_finished_campaign_returns_it_whatever_changed(tmp_path):
+    lab, state = start(tmp_path)
+    done = resume_after_approval(lab, state)
+    lab.journey_fixture = CHANGED
+    with lab.controller() as controller:
+        assert controller.recover(CID)["outcome"] == done["outcome"]
 
 
 def test_a_crash_in_the_repaired_run_can_still_finish_the_repair(tmp_path, monkeypatch):

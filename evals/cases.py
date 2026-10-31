@@ -26,7 +26,8 @@ from ghostlab.worlds import journey_capsule
 from .evidence import campaign_evidence, scan_stores, write_trace
 from .harness import (BUSY, CHECKED, JOURNEY, NAIVE, OPERATOR, ORGANIZER, OTHER_PROJECT, PROJECT,
                       RACE_AFTER_EVENT, RATE_LIMITED, REFUND, STRANGER, SYNTHETIC_SECRET,
-                      UNAUTHORIZED, BrokenLedger, CappedRepair, SimulatedCrash, Stack, Transport,
+                      UNAUTHORIZED, BrokenLedger, CappedRepair, SimulatedCrash, Stack,
+                      SwitchableBinding, Transport,
                       delayed_update, journey_proposal, meta_reply, refund_proposal, reply,
                       revocation, spec_for, without_world_binding)
 
@@ -782,31 +783,94 @@ def expect_uncertain_commit(ev: dict) -> dict:
         and repaired["refund_rows"] == 1 and resumed["approval"]["status"] == "consumed"}
 
 
+OWNERS = {"refund": (REFUND, "synthetic-customer-1"), "journey": (JOURNEY, ORGANIZER)}
+
+
+def _proposal_for(world: str) -> dict:
+    return refund_proposal() if world == REFUND else journey_proposal()
+
+
+def _refused_then_restored(rec: Recorder, name: str) -> None:
+    """The binding goes after the human approves: resume refuses until it's back."""
+    world, owner = OWNERS[name]
+    binding = SwitchableBinding(owner)
+    stack = rec.stack(f"{name}_restored", reply(_proposal_for(world)), binding=binding,
+                      world_binding=binding)
+    state = start(stack, world)
+    stack.decide(state)
+    binding.identity = None
+    withdrawn = refused(lambda: resume(stack))
+    binding.identity = "someone-else"
+    changed = refused(lambda: resume(stack))
+    with stack.controller() as controller:
+        waiting = controller.state(CID)
+    stored = stack.approval_store.get(PROJECT, state["approval"]["approval_id"])
+    rec.observe(**{name: {"withdrawn_at_resume": withdrawn, "changed_at_resume": changed,
+                          "approval_after_refusal": stored.status,
+                          "paused_after_refusal": waiting["paused"],
+                          "repaired_run_after_refusal": bool(
+                              (waiting.get("repair") or {}).get("run"))}})
+    binding.identity = owner
+    resume(stack)
+    rec.capture(f"{name}_restored", stack)
+
+
+def _withdrawn_at_node(rec: Recorder, name: str, node: str, label: str) -> None:
+    """The binding goes partway through a resume that passed its entry check."""
+    world, owner = OWNERS[name]
+    binding = SwitchableBinding(owner)
+
+    def withdraw(current, state):
+        if current == node:
+            binding.identity = None
+
+    stack = rec.stack(f"{name}_{label}", reply(_proposal_for(world)), binding=binding,
+                      world_binding=binding, on_node=withdraw)
+    state = start(stack, world)
+    stack.decide(state)
+    resume(stack)
+    rec.capture(f"{name}_{label}", stack)
+
+
 def run_permission_revocation(rec: Recorder) -> None:
     checked = rec.stack("adapter_rechecks", reply(journey_proposal(CHECKED)))
     start(checked, JOURNEY, max_iterations=1)
     rec.capture("adapter_rechecks", checked)
-
-    for name, world, proposal in (("journey_authority_withdrawn", JOURNEY, journey_proposal()),
-                                  ("refund_authority_withdrawn", REFUND, refund_proposal())):
-        stack = rec.stack(name, reply(proposal))
-        state = start(stack, world)
-        stack.decide(state)
-        without_world_binding(stack)
-        resume(stack)
-        rec.capture(name, stack)
+    for name in OWNERS:
+        _refused_then_restored(rec, name)
+        _withdrawn_at_node(rec, name, "consume", "during_resume")
+        _withdrawn_at_node(rec, name, "execute_repair", "after_consume")
 
 
 def expect_permission_revocation(ev: dict) -> dict:
-    campaigns = ev["campaigns"]
+    campaigns, seen = ev["campaigns"], ev["observations"]
     run = oracle(ev, "fork", campaign="adapter_rechecks")
+    worlds = list(OWNERS)
     return {
         "a_rechecking_adapter_leaves_the_message_queued": run["unpermitted_deliveries"] == []
         and run["still_queued"] == ["msg-3"],
-        "withdrawn_authority_stops_an_approved_repair": all(
-            campaigns[name]["status"] == "failed" and campaigns[name]["outcome"] == "policy_denied"
-            and "repaired" not in campaigns[name]["runs"]
-            for name in ("journey_authority_withdrawn", "refund_authority_withdrawn"))}
+        "resume_refuses_a_withdrawn_or_changed_identity": all(
+            seen[name]["withdrawn_at_resume"] == seen[name]["changed_at_resume"]
+            == "CampaignSettingsChanged" for name in worlds),
+        "a_refusal_spends_nothing_and_runs_nothing": all(
+            seen[name]["approval_after_refusal"] == "approved"
+            and seen[name]["paused_after_refusal"] is True
+            and seen[name]["repaired_run_after_refusal"] is False for name in worlds),
+        "restoring_the_identity_finishes_the_repair": all(
+            campaigns[f"{name}_restored"]["outcome"] == "repair_verified"
+            and campaigns[f"{name}_restored"]["approval"]["status"] == "consumed"
+            and "repaired" in campaigns[f"{name}_restored"]["runs"] for name in worlds),
+        "withdrawal_during_a_resume_spends_nothing": all(
+            (campaigns[f"{name}_during_resume"]["status"],
+             campaigns[f"{name}_during_resume"]["outcome"]) == ("failed", "settings_changed")
+            and campaigns[f"{name}_during_resume"]["approval"]["status"] == "approved"
+            and "repaired" not in campaigns[f"{name}_during_resume"]["runs"] for name in worlds),
+        "withdrawal_after_consume_still_stops_the_run": all(
+            (campaigns[f"{name}_after_consume"]["status"],
+             campaigns[f"{name}_after_consume"]["outcome"]) == ("failed", "policy_denied")
+            and campaigns[f"{name}_after_consume"]["approval"]["status"] == "consumed"
+            and "repaired" not in campaigns[f"{name}_after_consume"]["runs"]
+            for name in worlds)}
 
 
 def backup_store(source: Path, target: Path) -> None:

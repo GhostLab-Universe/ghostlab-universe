@@ -263,6 +263,18 @@ def test_counting_an_unmet_fault_as_tested_blocks_promotion(tmp_path, monkeypatc
     assert "coverage_matches_the_stored_runs" in case["failed_expectations"]
 
 
+def test_dropping_the_identity_setting_blocks_promotion(tmp_path, monkeypatch):
+    """Resume stops checking the binding, so a withdrawn identity reaches the approval."""
+    for driver in (RefundDriver, JourneyDriver):
+        monkeypatch.setattr(driver, "identity_problem", lambda self, *args: None)
+    errors = run_all(tmp_path, only="permission_revocation")
+    case = next(c for c in score_directory(tmp_path)["cases"]
+                if c["case_id"] == "adversarial.permission_revocation")
+    assert errors or "resume_refuses_a_withdrawn_or_changed_identity" in (
+        case["failed_expectations"])
+    assert case["status"] == "failed"
+
+
 def test_ignoring_a_lost_fault_blocks_promotion(tmp_path, monkeypatch):
     """The repair gets credit for a fault it never met."""
     monkeypatch.setattr(JourneyDriver, "faults_fired", lambda self, proposal, run: set())

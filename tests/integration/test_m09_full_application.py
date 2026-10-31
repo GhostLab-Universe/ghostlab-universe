@@ -3,6 +3,10 @@
 These are placeholders, not results. Each test names what it must prove once the API and
 interface are integrated. They stay skipped, so nothing here counts as passing evidence:
 pytest reports them as skipped, and the M09 report lists them as a remaining dependency.
+
+The milestone they prove, through real routes and the real interface on the integrated
+head: create a campaign, find the failure, inspect the evidence and Reality Diff, approve
+the repair, verify it, then export and replay the capsule.
 """
 
 import pytest
@@ -18,12 +22,12 @@ def test_api_session_derives_identity_and_cannot_read_another_project():
 
 @pytest.mark.skip(reason=M07)
 def test_refund_campaign_end_to_end_through_the_api():
-    """Start, stream status, approve, resume, download the capsule, replay."""
+    """Create, find the failure, read the Reality Diff, approve, verify, export, replay."""
 
 
 @pytest.mark.skip(reason=M07)
 def test_journey_campaign_end_to_end_through_the_api():
-    """The same path for group-journey/1, including the guarded repair."""
+    """The same milestone for group-journey/1, including the guarded repair."""
 
 
 @pytest.mark.skip(reason=M07)

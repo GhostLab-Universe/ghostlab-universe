@@ -190,6 +190,19 @@ class BrokenLedger:
         raise sqlite3.OperationalError("disk I/O error")
 
 
+class SwitchableBinding:
+    """The session's bound world identity, which an operator can withdraw or change."""
+
+    def __init__(self, identity: str | None):
+        self.identity = identity
+
+    def customer_id_for(self, project_id, principal):
+        return self.identity
+
+    def actor_for(self, project_id, principal, world_version):
+        return self.identity
+
+
 class Stack:
     """One private local storage root plus everything a controller needs."""
 

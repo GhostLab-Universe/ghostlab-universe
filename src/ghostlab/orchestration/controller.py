@@ -1033,6 +1033,8 @@ class CampaignController:
         """Its own checkpointed step: memory is written only from a run that was kept."""
         run_id = f"{state['experiment_id']}-repaired"
         kept = [f for f in state["findings"] if f["run_id"] == run_id and f["evidence_event_ids"]]
+        if not kept:  # nothing to write, so nothing needs the world
+            return {"next": "end"}
         ids = self._capture(state, kept, state["repair"]["run"])
         return {"memory_ids": [*state["memory_ids"], *ids], "next": "end"}
 

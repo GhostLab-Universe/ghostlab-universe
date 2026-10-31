@@ -2,8 +2,8 @@
 
 plan → propose (Explorer, M01 via M03 context) → validate → execute (baseline and
 fork, M06-authorized world calls) → verify (deterministic findings) → remember
-(M04 memory) → [request_repair → await_approval ⟲ → consume → execute_repair] →
-plan … → end.
+(M04 memory) → plan … → end, or → request_repair → await_approval ⟲ → consume →
+execute_repair → remember_repair → end.
 
 Trust rules:
 
@@ -86,7 +86,7 @@ class CampaignSettingsChanged(Exception):
 
 
 ROUTES = ("plan", "propose", "validate", "execute", "verify", "remember", "request_repair",
-          "await_approval", "consume", "execute_repair")
+          "await_approval", "consume", "execute_repair", "remember_repair")
 
 
 def ledger_key(project_id: str, campaign_id: str) -> str:
@@ -324,8 +324,14 @@ class CampaignController:
     def _wrap(self, name, node):
         def run(state):
             self.s.on_node(name, state)
+            if name == "execute":
+                self._discard_earlier_runs(state, f"{self._prefix(state)}-execute")
+            elif name == "execute_repair":
+                self._discard_earlier_runs(state, f"{state['campaign_id']}-execute-repair")
             # With no usable world, only a stop can move the campaign, at whichever node.
-            if self._unusable(state) and (stop := self._guard(state)) is not None:
+            # A finished campaign has nothing to stop: its memory waits for the world.
+            if not state.get("finished_at") and self._unusable(state) and (
+                    stop := self._guard(state)) is not None:
                 return stop
             return node(state)
         return run
@@ -363,7 +369,7 @@ class CampaignController:
     def _unusable(self, state) -> bool:
         try:
             self._fixture(state)
-        except (PolicyDenied, CampaignSettingsChanged):
+        except (PolicyDenied, CampaignSettingsChanged, ValueError, TypeError):
             return True
         return False
 
@@ -383,7 +389,7 @@ class CampaignController:
 
     def _can_only_close(self, state) -> bool:
         """Cancellation, the deadline or a dead approval stop the campaign at its next node."""
-        if self.cancel.is_set() or self._deadline_passed(state):
+        if state.get("finished_at") or self.cancel.is_set() or self._deadline_passed(state):
             return True
         approval = state.get("approval")
         if approval is None:
@@ -565,9 +571,9 @@ class CampaignController:
     def _discard_earlier_runs(self, state, task_id):
         """Re-entry after a crash discards that task's runs, so they stop counting.
 
-        This comes before the node's stop checks, or a campaign stopped on recovery
-        would keep the dead runs' charges. World runs are in-process and spend no
-        money. Model attempts are never voided.
+        This comes before every stop check, in the node wrapper, or a campaign stopped on
+        recovery would keep the dead runs' charges. World runs are in-process and spend
+        no money. Model attempts are never voided.
         """
         self._accountant(state).void_task(task_id, "tool_calls")
 
@@ -763,7 +769,6 @@ class CampaignController:
 
     def _execute(self, state):
         task_id = f"{self._prefix(state)}-execute"
-        self._discard_earlier_runs(state, task_id)
         if (stop := self._guard(state)) is not None:
             return stop
         tasks = board.start(state["tasks"], task_id)
@@ -982,7 +987,6 @@ class CampaignController:
 
     def _execute_repair(self, state):
         repair_id = f"{state['campaign_id']}-execute-repair"
-        self._discard_earlier_runs(state, repair_id)
         if (stop := self._guard(state)) is not None:
             return stop
         tasks = board.start(state["tasks"], repair_id)
@@ -1016,16 +1020,23 @@ class CampaignController:
         assessment = {**assessment, "lost_faults": lost,
                       "verified": assessment["verified"] and not lost}
         verified = assessment["verified"]
-        ids = self._capture(state, [f for f in findings if f["evidence_event_ids"]], ref)
         tasks = board.finish(tasks, repair_id, "succeeded" if verified else "failed",
                              output_ref=ref)
         update = self._stop({**state, "findings": [*state["findings"], *findings]},
                             *self._repair_verdict(assessment), tasks=tasks)
-        update.update({"findings": [*state["findings"], *findings],
-                       "memory_ids": [*state["memory_ids"], *ids],
+        update.update({"findings": [*state["findings"], *findings], "next": "remember_repair",
                        "repair": {"authorized": True, "run": ref, **assessment,
                                   **driver.repair_result(outcome.run, action, verified)}})
         return update
+
+    def _remember_repair(self, state):
+        """Its own checkpointed step: memory is written only from a run that was kept."""
+        run_id = f"{state['experiment_id']}-repaired"
+        kept = [f for f in state["findings"] if f["run_id"] == run_id and f["evidence_event_ids"]]
+        if not kept:  # nothing to write, so nothing needs the world
+            return {"next": "end"}
+        ids = self._capture(state, kept, state["repair"]["run"])
+        return {"memory_ids": [*state["memory_ids"], *ids], "next": "end"}
 
     def _repair_verdict(self, assessment):
         """Passing checks on a run that never got there verify nothing."""

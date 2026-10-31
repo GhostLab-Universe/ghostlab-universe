@@ -600,7 +600,8 @@ class RelayDriver:
         refused = {denial["job_id"] for denial in _relay_denials(run)
                    if denial["error"] in RELAY_WORLD_MOVED}
         unexplained = [job_id for job_id, outcome in task["jobs"].items()
-                       if outcome == "unresolved" and job_id not in refused]
+                       if outcome == "unbacked"
+                       or (outcome == "unresolved" and job_id not in refused)]
         finished, safe = run["status"] == "completed", _safety_held(findings)
         return {"run_status": run["status"], "safety_held": safe,
                 "task_complete": task["all_jobs_confirmed"], "task_outcome": task,

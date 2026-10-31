@@ -881,6 +881,15 @@ def test_a_refusal_of_the_adapters_own_state_explains_nothing(error):
     assert assess(refused_confirmation(error))["verified"] is False
 
 
+def test_an_unbacked_confirmation_is_never_explained():
+    run = repaired_run([])
+    assert assess(run)["verified"]
+    run["final_state"]["confirmation_log"][1]["promise_version"] = 99
+    assessment = assess(run)
+    assert assessment["task_outcome"]["jobs"]["job-2"] == "unbacked"
+    assert assessment["verified"] is False
+
+
 def test_every_guard_denial_is_classified():
     from ghostlab.execution.relay_guard import DENIALS
     from ghostlab.orchestration.worlds import RELAY_WORLD_MOVED

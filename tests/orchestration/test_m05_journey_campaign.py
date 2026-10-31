@@ -1937,6 +1937,24 @@ def test_repair_memory_waits_for_a_withdrawn_world_to_return(tmp_path):
     assert len(memory_rows(lab)) > len(before)
 
 
+def test_a_stop_cannot_rewrite_a_finished_campaign(tmp_path):
+    lab = JourneyLab(tmp_path, Script(proposal()), on_node=CrashOnce("remember_repair"))
+    with lab.controller() as controller:
+        state = controller.start(CID, spec())
+    lab.approve(state)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    lab.worlds = {}
+    cancel = threading.Event()
+    cancel.set()
+    with lab.controller(cancel=cancel) as controller, pytest.raises(PolicyDenied):
+        controller.recover(CID)
+    lab.worlds = None
+    with lab.controller() as controller:
+        done = controller.recover(CID)
+    assert (done["status"], done["outcome"]) == ("completed", "repair_verified")
+
+
 def test_a_crash_in_the_repaired_run_leaves_no_repair_memory_behind(tmp_path, monkeypatch):
     lab = JourneyLab(tmp_path, Script(proposal()))
     with lab.controller() as controller:

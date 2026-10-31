@@ -22,6 +22,8 @@ const CAMPAIGN: Record<CampaignStatus, StatusLabel> = {
 
 export function campaignStatus(status: CampaignStatus, outcome: string | null = null): StatusLabel {
   if (outcome === "settings_changed") return { label: "Blocked: settings changed", tone: "warn" };
+  // Recorded as budget_exhausted, but the budget may be barely touched: nothing was shown.
+  if (outcome === "coverage_incomplete") return { label: "Inconclusive", tone: "warn" };
   return CAMPAIGN[status];
 }
 

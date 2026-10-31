@@ -153,7 +153,8 @@ test("the shipped CSP has no development socket", async ({ page }) => {
 
 test("coverage_incomplete is never success, in the campaign or the diff", async ({ page }) => {
   await go(page, "campaign/fx-coverage-incomplete");
-  await expect(page.locator(".status-line")).toContainText("Budget exhausted");
+  await expect(page.locator(".status-line")).toContainText("Inconclusive");
+  await expect(page.locator(".status-line")).not.toContainText("Budget exhausted");
   await expect(page.getByTestId("state-incomplete")).toBeVisible();
   await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
   await shot(page, "coverage-incomplete-campaign");
@@ -175,6 +176,11 @@ test("a fault that never fired is never clean, though both runs finished", async
   await view(page, "Reality Diff");
   await expect(page.getByTestId("state-incomplete")).toContainText("Both runs finished, but a fault never fired");
   await shot(page, "coverage-unfired-diff");
+  await view(page, "Capsule");
+  await page.getByRole("button", { name: "Export capsule" }).click();
+  await page.getByRole("button", { name: "Replay capsule" }).click();
+  await expect(page.getByTestId("replay-verdict")).toContainText("this run tested nothing");
+  await expect(page.getByTestId("replay-verdict")).toHaveAttribute("data-tone", "warn");
 });
 
 test("a repair that missed a fault shows lost_faults and no success", async ({ page }) => {

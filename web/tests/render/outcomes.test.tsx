@@ -148,11 +148,57 @@ test("the evidence view names each delivery in plain words", () => {
   assert.match(page, /participant-c lost sharing/);
 });
 
+test("the diff ignores a repair's findings", () => {
+  const experiment = scenario("fx-journey").stage.experiment!;
+  const stray = { ...experiment.findings[0]!, run_id: "experiment-1-repaired", verdict: "failed" as const, evidence_event_ids: [3] };
+  const view = { ...experimentView(experiment), findings: [...experiment.findings, stray] };
+  const withFork = html(
+    <DiffPanel campaignId="fx" experiment={view} origins={[]} baseline={runView(experiment, "baseline")} fork={runView(experiment, "fork")} runOrigins={[]} />,
+  );
+  assert.doesNotMatch(text(withFork), /Violation evidence Event 3/);
+  const loading = html(<DiffPanel campaignId="fx" experiment={view} origins={[]} baseline={null} fork={null} runOrigins={[]} />);
+  assert.doesNotMatch(text(loading), /Violation evidence Event 3/);
+});
+
+test("a scripted campaign doesn't count model calls", () => {
+  assert.match(text(campaignPage("fx-refund")), /Scripted proposal calls/);
+  assert.doesNotMatch(text(campaignPage("fx-refund")), /Model calls/);
+  const { view, origins } = scenario("fx-refund").stage;
+  const live = html(<CampaignPanel view={{ ...view, inference: "live" }} origins={origins} source={source} refresh={refresh} />);
+  assert.match(text(live), /Model calls/);
+});
+
+test("a lost response stays visible until the service shows the decision", () => {
+  const transport: Failure = { kind: "transport", message: "Failed to fetch" };
+  assert.match(panel("fx-refund", { failure: transport }), /data-testid="state-reconnecting"/);
+  const decided = html(
+    <DecisionPanel
+      approval={scenario("fx-refund").approved!.approval!}
+      session={null}
+      busy={false}
+      failure={transport}
+      result={null}
+      origins={[]}
+      onDecide={() => undefined}
+      onResume={() => undefined}
+    />,
+  );
+  assert.doesNotMatch(decided, /state-reconnecting/);
+});
+
 test("no text calls scripted proposals model output", () => {
   const experiment = scenario("fx-journey").stage.experiment!;
   const proposal = text(html(<ProposalSection experiment={experimentView(experiment)} origins={[]} />));
   assert.match(proposal, /proposal text, untrusted/);
   assert.doesNotMatch(proposal + text(campaignPage("fx-journey")), /model output/);
+});
+
+test("the capsule verdict for a fault that never fired says it tested nothing", () => {
+  const { replay } = scenario("fx-coverage-unfired").stage.experiment!;
+  const markup = html(<ReplayPanel result={replay} origins={[]} faultNeverFired />);
+  assert.match(markup, /data-tone="warn"[^>]*data-testid="replay-verdict"/);
+  assert.match(text(markup), /Reproduced, but this run tested nothing/);
+  assert.doesNotMatch(text(markup), /every check it records passed/);
 });
 
 test("a replay of a repair that missed a fault warns", () => {

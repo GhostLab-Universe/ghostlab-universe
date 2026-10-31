@@ -91,7 +91,9 @@ export function DiffPanel({
   fork: RunView | null;
   runOrigins: readonly Origin[];
 }) {
-  const { diff, findings, experiment_id: experimentId } = experiment;
+  const { diff, experiment_id: experimentId } = experiment;
+  // The experiment's findings cover every run, including a repair's.
+  const findings = fork?.findings ?? experiment.findings.filter((finding) => !finding.run_id.endsWith("-repaired"));
   const first = diff.first_divergence;
   const violating = violatingEventIds(findings);
   const violated = violatedInvariants(diff, findings);

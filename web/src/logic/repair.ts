@@ -60,6 +60,14 @@ export function presentRepair(
     repair.safety_held === true &&
     lost.length === 0;
 
+  if (agrees && repair.lost_faults === null) {
+    return {
+      tone: "warn",
+      headline: "Repair verified, fault coverage not recorded",
+      detail: "This older record doesn't say whether the repair met every fault the fork met.",
+      fields,
+    };
+  }
   if (agrees && repair.task_complete === true) {
     return {
       tone: "ok",

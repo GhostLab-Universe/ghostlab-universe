@@ -32,12 +32,46 @@ test("the race reads as clearly: the careful adapter's last check, then the leak
   assert.equal(race.fork.adapter_id, "journey-version-checked");
   const [leak] = leaksIn(race.fork, race.findings);
   assert.equal(leakSentence(leak!), "participant-c lost sharing at event 18; msg-3 was delivered to them at event 18.");
-  assert.equal(leak?.lastReadAllowedAt, 17);
+  assert.deepEqual(leak?.lastRead, { eventId: 17, saw: true });
   assert.match(checkSentence(leak!) ?? "", /allowed at event 17/);
   assert.equal(
     divergenceCause(race.diff.first_divergence!),
     "The worlds separate because participant-c lost sharing at event 18. The same event delivered msg-3 to them.",
   );
+});
+
+test("a run that read the withdrawal is not said to have missed it", () => {
+  const truncated = recorded.journey_truncated_violation;
+  assert.equal(truncated.fork.adapter_id, "journey-naive");
+  const [leak] = leaksIn(truncated.fork, truncated.findings);
+  assert.equal(leak?.eventId, 10);
+  assert.deepEqual(leak?.lastRead, { eventId: 6, saw: false });
+  assert.equal(checkSentence(leak!), "The run read the withdrawal at event 6 and delivered anyway.");
+  assert.doesNotMatch(checkSentence(leak!) ?? "", /allowed|did not read/);
+});
+
+test("the sentence follows the latest read, not the latest allowed one", () => {
+  const race = recorded.journey_race;
+  const trace = race.fork.trace.map((event) => {
+    if (event.event_id !== 17) return event;
+    const text = JSON.stringify(event).replace(
+      /("participant_id":"participant-c","sharing":)true|("sharing":)true(,"participant_id":"participant-c")/,
+      (_, left, right, tail) => (left ? `${left}false` : `${right}false${tail}`),
+    );
+    return JSON.parse(text) as WorldTraceEvent;
+  });
+  const [leak] = leaksIn({ ...race.fork, trace }, race.findings);
+  assert.deepEqual(leak?.lastRead, { eventId: 17, saw: false });
+});
+
+test("a run that never read their sharing gets no sentence about it", () => {
+  const race = recorded.journey_race;
+  const trace = race.fork.trace.map((event) =>
+    event.request.tool === "inspect_constraints" ? { ...event, outcome: { result: {} } } : event,
+  );
+  const [leak] = leaksIn({ ...race.fork, trace }, race.findings);
+  assert.equal(leak?.lastRead, null);
+  assert.equal(checkSentence(leak!), null);
 });
 
 test("the story changes with the evidence: it is never written by hand", () => {
@@ -102,6 +136,19 @@ test("a replay of a repair that missed a fault is not read as clean", () => {
   const missed = presentReplay(clean, ["sharing_revoked_while_queued"]);
   assert.equal(missed.tone, "warn");
   assert.match(missed.detail, /never met sharing_revoked_while_queued/);
+});
+
+test("a replay of a run whose fault never fired says it tested nothing", () => {
+  const { replay } = recorded.journey_unfired;
+  assert.equal(replay.reproduced, true);
+  assert.equal(replay.run_status, "completed");
+  assert.ok(Object.values(replay.checks).every(Boolean), "the trap: every check passes");
+  const shown = presentReplay(replay, [], true);
+  assert.equal(shown.tone, "warn");
+  assert.match(shown.headline, /tested nothing/);
+  assert.doesNotMatch(shown.detail, /every check/);
+  const failing = presentReplay(recorded.refund_replay, [], true);
+  assert.equal(failing.headline, "Failure reproduced", "a recorded failure still stands");
 });
 
 test("expiry wording follows the recorded time", () => {

@@ -259,8 +259,11 @@ export function DecisionPanel({
           </p>
         </form>
       ) : null}
-      {/* A second refusal of the same resume would only repeat the notice below. */}
-      {failure === null || (refused && failureState(failure) === "blocked") ? null : (
+      {/* A second refusal of the same resume would only repeat the notice below. A lost
+          response is moot once the service's own record shows the decision. */}
+      {failure === null ||
+      (refused && failureState(failure) === "blocked") ||
+      (failure.kind === "transport" && approval.decision !== null) ? null : (
         <FailureNotice failure={failure} />
       )}
       {refused ? (

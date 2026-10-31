@@ -96,6 +96,13 @@ for (const [outcome, title] of [
   });
 }
 
+test("coverage_incomplete reads as inconclusive, not as a spent budget", () => {
+  const label = campaignStatus("budget_exhausted", "coverage_incomplete");
+  assert.equal(label.label, "Inconclusive");
+  assert.equal(label.tone, "warn");
+  assert.equal(campaignStatus("budget_exhausted", "tool_calls").label, "Budget exhausted");
+});
+
 test("other outcomes need no extra notice", () => {
   assert.equal(outcomeNotice("repair_verified"), null);
   assert.equal(outcomeNotice(null), null);

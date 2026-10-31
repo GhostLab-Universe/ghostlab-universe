@@ -132,7 +132,7 @@ test("rejecting: 'completed' does not read as success", async ({ page }) => {
 test("coverage_incomplete: campaign, diff and replay", async ({ page }) => {
   await start(page, JOURNEY, "outcome-truncated");
   await expect(page.locator(".status-line")).toContainText("coverage_incomplete", POLLED);
-  await expect(page.locator(".status-line")).toContainText("Budget exhausted");
+  await expect(page.locator(".status-line")).toContainText("Inconclusive");
   await expect(page.getByTestId("state-incomplete")).toBeVisible();
   await expect(page.getByTestId("coverage").first()).toContainText("complete false");
   await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
@@ -221,6 +221,7 @@ test("a violation before truncation reaches approval", async ({ page }) => {
   await view(page, "Reality Diff");
   await expect(page.getByTestId("state-incomplete")).toContainText("violation recorded");
   await expect(page.getByTestId("violating-events")).toContainText("Event 10");
+  await expect(page.getByTestId("leak-story")).toContainText("read the withdrawal at event 6 and delivered anyway");
   await approval(page);
   await expect(page.getByTestId("state-incomplete")).toBeVisible();
   await expect(page.getByRole("button", { name: "Approve this action" })).toBeVisible();

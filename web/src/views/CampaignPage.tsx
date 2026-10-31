@@ -78,7 +78,7 @@ export function CampaignPanel({
         <ExperimentList view={view} />
       </Section>
       <Section title="Budget" origins={origins}>
-        <BudgetTable limits={record.spec.budget} usage={record.usage} />
+        <BudgetTable limits={record.spec.budget} usage={record.usage} inference={view.inference} />
       </Section>
       <Section title="Tasks" origins={origins}>
         <TaskTimeline view={view} />
@@ -261,9 +261,18 @@ export function RepairResult({
   );
 }
 
-function BudgetTable({ limits, usage }: { limits: BudgetLimits; usage: BudgetUsage }) {
+function BudgetTable({
+  limits,
+  usage,
+  inference,
+}: {
+  limits: BudgetLimits;
+  usage: BudgetUsage;
+  inference: CampaignView["inference"];
+}) {
+  const scripted = inference === "scripted" || inference === "fixture";
   const rows: Array<[string, string, string]> = [
-    ["Model calls", formatCount(usage.model_calls), formatCount(limits.max_model_calls)],
+    [scripted ? "Scripted proposal calls" : "Model calls", formatCount(usage.model_calls), formatCount(limits.max_model_calls)],
     ["Tool calls", formatCount(usage.tool_calls), formatCount(limits.max_tool_calls)],
     ["Input tokens", formatCount(usage.input_tokens), formatCount(limits.max_input_tokens)],
     ["Output tokens", formatCount(usage.output_tokens), formatCount(limits.max_output_tokens)],

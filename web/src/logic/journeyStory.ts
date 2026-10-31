@@ -66,19 +66,24 @@ function lostAt(event: WorldTraceEvent, participant: string): number | null {
   return typeof last === "number" ? last : null;
 }
 
-/** The last event before `before` where the run itself read this participant as sharing. */
-function lastReadAllowed(run: WorldRunResult, participant: string, before: number): number | null {
-  const reads = run.trace.filter((event) => {
-    if (event.event_id >= before || isErrorOutcome(event.outcome)) return false;
+export interface SharingRead {
+  eventId: number;
+  saw: boolean;
+}
+
+/** The last time the run itself read this participant's sharing, whatever it saw. */
+function lastRead(run: WorldRunResult, participant: string, before: number): SharingRead | null {
+  const reads = run.trace.flatMap((event): SharingRead[] => {
+    if (event.event_id >= before || isErrorOutcome(event.outcome)) return [];
     const seen = rows(row(event.outcome.result)?.participants).find((item) => item.participant_id === participant);
-    return seen?.sharing === true;
+    return typeof seen?.sharing === "boolean" ? [{ eventId: event.event_id, saw: seen.sharing }] : [];
   });
-  return reads.at(-1)?.event_id ?? null;
+  return reads.at(-1) ?? null;
 }
 
 export interface Leak extends Delivery {
   lostAtEvent: number | null;
-  lastReadAllowedAt: number | null;
+  lastRead: SharingRead | null;
 }
 
 /** Deliveries the verifier cites where the recorded state shows sharing already gone. */
@@ -93,7 +98,7 @@ export function leaksIn(run: WorldRunResult | null, findings: readonly WorldInva
       {
         ...delivery,
         lostAtEvent: lostAt(event, delivery.recipient),
-        lastReadAllowedAt: lastReadAllowed(run, delivery.recipient, event.event_id),
+        lastRead: lastRead(run, delivery.recipient, event.event_id),
       },
     ];
   });
@@ -104,10 +109,13 @@ export function leakSentence(leak: Leak): string {
   return `${lost}; ${leak.messageId} was delivered to them at event ${leak.eventId}.`;
 }
 
-/** What makes an apparently careful agent's leak a race, when the run shows it. */
+/** What the run knew when it delivered: a stale check is a race, a seen withdrawal is not. */
 export function checkSentence(leak: Leak): string | null {
-  if (leak.lastReadAllowedAt === null) return null;
-  return `The run last read their sharing as allowed at event ${leak.lastReadAllowedAt}, and did not read it again before delivering.`;
+  if (leak.lastRead === null) return null;
+  const { eventId, saw } = leak.lastRead;
+  return saw
+    ? `The run last read their sharing as allowed at event ${eventId}, and did not read it again before delivering.`
+    : `The run read the withdrawal at event ${eventId} and delivered anyway.`;
 }
 
 /** Sharing the fork lost at the first divergence. The baseline has no such row. */

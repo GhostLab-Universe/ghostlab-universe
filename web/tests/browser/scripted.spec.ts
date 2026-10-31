@@ -88,16 +88,53 @@ test("the default journey names the delivery that broke the rule", async ({ page
   await shot(page, "scripted-journey-diff");
 });
 
-test("an incomplete experiment reads as inconclusive", async ({ page }) => {
-  await start(page, "group-journey/1", "fault_never_fires");
-  await expect(page.locator(".status-line")).toContainText("coverage_incomplete", POLLED);
-  await expect(page.getByTestId("state-incomplete")).toContainText("proves nothing");
-  await expect(page.getByTestId("coverage").first()).toContainText("faults_triggered false");
-  await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
-  await shot(page, "demo-8-inconclusive");
+for (const [world, name] of [
+  ["group-journey/1", "journey"],
+  ["refund-world/1", "refund"],
+] as const) {
+  test(`an experiment whose fault never fired is inconclusive, in ${name}`, async ({ page }) => {
+    await start(page, world, "fault_never_fires");
+    await expect(page.locator(".status-line")).toContainText("coverage_incomplete", POLLED);
+    await expect(page.locator(".status-line")).toContainText("Inconclusive");
+    await expect(page.locator(".status-line")).not.toContainText("Budget exhausted");
+    await expect(page.getByTestId("state-incomplete")).toContainText("proves nothing");
+    await expect(page.getByTestId("coverage").first()).toContainText("faults_triggered false");
+    await expect(page.getByText("Scripted proposal calls")).toBeVisible();
+    await expect(page.getByText("Model calls")).toHaveCount(0);
+    await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
+    await shot(page, `demo-8-inconclusive-${name}`);
+    await view(page, "Capsule");
+    await page.getByRole("button", { name: "Export capsule" }).click();
+    await page.getByRole("button", { name: "Replay capsule" }).click();
+    const verdict = page.getByTestId("replay-verdict");
+    await expect(verdict).toContainText("this run tested nothing");
+    await expect(verdict).toHaveAttribute("data-tone", "warn");
+    await expect(page.getByText("every check it records passed")).toHaveCount(0);
+    await shot(page, `demo-9-inconclusive-replay-${name}`);
+  });
+}
+
+test("the refund flow runs end to end on the same server", async ({ page }) => {
+  await start(page, "refund-world/1", "default");
+  await paused(page);
+  await view(page, "Evidence");
+  await expect(page.getByTestId("event-2")).toContainText("PaymentTimeout");
+  await view(page, "Reality Diff");
+  await eventsCompared(page);
+  await expect(page.getByTestId("first-divergence")).toContainText("Event 2");
+  await expect(page.getByText("Total refunded 500000 minor units")).toBeVisible();
+  await view(page, /Approval/);
+  await page.getByRole("button", { name: "Approve this action" }).click();
+  await expect(page.getByTestId("repair-verdict")).toContainText("Repair verified", POLLED);
+  await view(page, "Capsule");
+  await page.getByLabel("Run").selectOption("repaired");
+  await page.getByRole("button", { name: "Export capsule" }).click();
+  await page.getByRole("button", { name: "Replay capsule" }).click();
+  await expect(page.getByTestId("replay-fields")).toContainText(/model_calls\s*0/);
+  await expect(page.getByTestId("replay-verdict")).toContainText("Reproduced");
 });
 
-test("the refund flow runs on the same server", async ({ page }) => {
+test("rejecting on the same server leaves nothing unspent to warn about", async ({ page }) => {
   await start(page, "refund-world/1", "default");
   await paused(page);
   await view(page, /Approval/);

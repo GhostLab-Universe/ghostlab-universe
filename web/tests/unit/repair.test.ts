@@ -116,6 +116,13 @@ test("a lost fault outweighs a record that claims verified", () => {
   assert.equal(view.headline, "Inconsistent repair record");
 });
 
+test("a verified repair with no lost-fault record is not plain success", () => {
+  const older = { ...base, verified: true, task_complete: true, lost_faults: null };
+  const view = presentRepair(older, "repair_verified", JOURNEY);
+  assert.equal(view.tone, "warn");
+  assert.match(view.headline, /not recorded/);
+});
+
 test("no lost faults reads as none, and an older record as not recorded", () => {
   assert.equal(value(base, "repair_incomplete", "lost_faults"), "none");
   assert.equal(value({ ...base, lost_faults: null }, "repair_incomplete", "lost_faults"), "not recorded yet");

@@ -168,6 +168,7 @@ function CapsuleControls({
           result={replayed.result}
           origins={replayed.origins}
           lostFaults={run === "repaired" ? (view.repair?.lost_faults ?? []) : []}
+          faultNeverFired={run === "fork" && experiment.coverage?.faults_triggered === false}
         />
       )}
     </>
@@ -178,12 +179,14 @@ export function ReplayPanel({
   result,
   origins,
   lostFaults = [],
+  faultNeverFired = false,
 }: {
   result: ReplayResult;
   origins: readonly Origin[];
   lostFaults?: readonly string[];
+  faultNeverFired?: boolean;
 }) {
-  const shown = presentReplay(result, lostFaults);
+  const shown = presentReplay(result, lostFaults, faultNeverFired);
   return (
     <Section title="Replay result" origins={origins}>
       <dl className="recorded" data-testid="replay-fields">

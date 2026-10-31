@@ -142,10 +142,18 @@ def verify(fixture, state: dict) -> dict:
 
 
 def _capacity_lost(fixture, state, job):
-    """True if other jobs ever held everything of a kind this job needs."""
+    """True if other jobs ever held everything of a kind this job needs.
+
+    Only a competitor's lease or a confirmed job's counts. An unconfirmed lease of the
+    automation's own proves nothing: two jobs trading a part on leases that lapse would
+    otherwise excuse each other with nothing confirmed.
+    """
+    confirmed = {row["lease_id"] for row in state["lease_log"] if row["kind"] == "committed"}
+
     def full(resource, held):
         taken = [row for row in held.values() if row["resource_id"] == resource.resource_id
-                 and row["job_id"] != job.job_id]
+                 and row["job_id"] != job.job_id
+                 and (row["holder"] != "automation" or row["lease_id"] in confirmed)]
         return len(taken) >= resource.capacity
 
     technicians = [r for r in fixture.resources if r.kind == "technician"]

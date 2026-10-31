@@ -14,13 +14,17 @@ import sys
 from pathlib import Path
 
 import uvicorn
+from pydantic import TypeAdapter, ValidationError
 
+from ghostlab.contracts.primitives import Identifier
+from ghostlab.orchestration import ledger_key
 from ghostlab.security.local_dev import LocalDevRefused
 
 from .app import create_app
 from .local import local_config
 from .rootlock import RootLock, RootLocked
 from .sessions import DEFAULT_PROJECT, LocalDevSessions
+from .tracing import drop_provider_keys
 
 
 def main(argv=None) -> int:
@@ -33,6 +37,14 @@ def main(argv=None) -> int:
     parser.add_argument("--scripted", action="store_true",
                         help="serve checked-in proposals: no model, no network, no key")
     args = parser.parse_args(argv)
+    if args.scripted:
+        drop_provider_keys()
+    try:
+        # The longest key a campaign in this project will need, so a bad id fails here.
+        TypeAdapter(Identifier).validate_python(ledger_key(args.project, f"c-{'0' * 32}"))
+    except ValidationError:
+        print("Refused: --project is not a usable project id", file=sys.stderr)
+        return 2
     try:
         sessions = LocalDevSessions.from_environment(args.host, project_id=args.project)
         with RootLock(args.root):  # a clear refusal; the server takes its own at startup

@@ -7,6 +7,10 @@ twice. The job registry can't see across processes, so the root is locked instea
 
 The operating system releases the lock when the process ends, however it ends. A crash
 can't block a restart, and the leftover ``server.lock`` file means nothing by itself.
+
+The lock only helps if everything a campaign touches lives under the locked root, so
+``require_one_root`` refuses a layout that splits them: two servers with different graph
+files over one approvals database could otherwise both start and both run a repair.
 """
 
 import os
@@ -36,6 +40,16 @@ else:
 
 class RootLocked(Exception):
     """Another server holds this storage root."""
+
+
+class SplitStorage(Exception):
+    """Checkpoints and application stores must share one locked root."""
+
+
+def require_one_root(graph_db: Path, *stores: Path | None) -> None:
+    root = Path(graph_db).resolve().parent
+    if any(store is None or Path(store).resolve().parent != root for store in stores):
+        raise SplitStorage(f"every store must live directly under {root}, the locked root")
 
 
 class RootLock:

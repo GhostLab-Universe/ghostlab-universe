@@ -25,7 +25,8 @@ from ghostlab.contracts.world_packs import PackVersion
 RunName = Literal["baseline", "fork", "repaired"]
 AuthMode = Literal["local_dev", "configured_tokens"]
 # "scripted" and "fixture" are checked-in replies, never a model; "disabled" reaches nothing.
-InferenceMode = Literal["disabled", "fixture", "scripted", "live"]
+# A campaign's mode is pinned at start. "unrecorded" means one has no pin to read.
+InferenceMode = Literal["disabled", "fixture", "scripted", "live", "unrecorded"]
 RunStatus = Literal["completed", "budget_exhausted"]
 NotProduction = Annotated[Literal[False], _exact_type(bool)]
 
@@ -128,7 +129,9 @@ class CampaignView(StrictModel):
     """Authoritative status from the campaign's checkpoint. Safe to read after reconnect."""
 
     record: WorldCampaignRecord
-    inference: InferenceMode  # what produced this campaign's proposals
+    # What produced this campaign's proposals. Under "scripted" or "fixture", no model ran:
+    # ``record.usage.model_calls`` then counts checked-in replies, not model calls.
+    inference: InferenceMode
     outcome: ShortText | None  # final outcomes are listed in docs/modules/M07.md
     fixture_sha256: Sha256Hex | None  # the pinned fixture; null if the checkpoint has none
     job: JobStatus
@@ -196,7 +199,7 @@ class ReplayResult(StrictModel):
 
     world_version: PackVersion
     inference: InferenceMode | None  # null when the capsule isn't tied to a campaign
-    run_status: RunStatus  # checked against the adapter; a forged status is refused
+    run_status: RunStatus | None  # null unless reproduced; a forged status is refused
     reproduced: bool
     matches: dict[str, bool]
     checks: dict[str, bool]

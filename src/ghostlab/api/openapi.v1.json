@@ -316,7 +316,8 @@
                   "disabled",
                   "fixture",
                   "scripted",
-                  "live"
+                  "live",
+                  "unrecorded"
                 ],
                 "type": "string"
               },
@@ -549,7 +550,8 @@
               "disabled",
               "fixture",
               "scripted",
-              "live"
+              "live",
+              "unrecorded"
             ],
             "title": "Inference",
             "type": "string"
@@ -647,7 +649,8 @@
                   "disabled",
                   "fixture",
                   "scripted",
-                  "live"
+                  "live",
+                  "unrecorded"
                 ],
                 "type": "string"
               },
@@ -1049,7 +1052,8 @@
               "disabled",
               "fixture",
               "scripted",
-              "live"
+              "live",
+              "unrecorded"
             ],
             "title": "Inference",
             "type": "string"
@@ -1302,7 +1306,8 @@
               "disabled",
               "fixture",
               "scripted",
-              "live"
+              "live",
+              "unrecorded"
             ],
             "title": "Inference",
             "type": "string"
@@ -1694,7 +1699,8 @@
               "disabled",
               "fixture",
               "scripted",
-              "live"
+              "live",
+              "unrecorded"
             ],
             "title": "Inference",
             "type": "string"
@@ -2041,7 +2047,8 @@
                   "disabled",
                   "fixture",
                   "scripted",
-                  "live"
+                  "live",
+                  "unrecorded"
                 ],
                 "type": "string"
               },
@@ -2077,12 +2084,19 @@
             "type": "boolean"
           },
           "run_status": {
-            "enum": [
-              "completed",
-              "budget_exhausted"
+            "anyOf": [
+              {
+                "enum": [
+                  "completed",
+                  "budget_exhausted"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Run Status",
-            "type": "string"
+            "title": "Run Status"
           },
           "world_version": {
             "enum": [
@@ -2199,7 +2213,8 @@
               "disabled",
               "fixture",
               "scripted",
-              "live"
+              "live",
+              "unrecorded"
             ],
             "title": "Inference",
             "type": "string"
@@ -2277,7 +2292,8 @@
               "disabled",
               "fixture",
               "scripted",
-              "live"
+              "live",
+              "unrecorded"
             ],
             "title": "Inference",
             "type": "string"
@@ -3611,7 +3627,7 @@
     },
     "/v1/campaigns": {
       "post": {
-        "description": "Start a campaign in the session's project.\n\nThe campaign id is derived from the session and the key, so a retry finds the same\ncampaign and its current state instead of starting another. Reusing a key with a\ndifferent spec is a 409. The world, budget and inference gates run before anything\nis stored. ``service-relay/1`` is a registered design, not a runnable world: 403.\nText shaped like a credential is refused (422), not stored. ``scripted_scenario``\nselects a checked-in proposal on a ``--scripted`` server; anywhere else, or for a world\nwithout that scenario, it is a 422 with reason ``scripted_scenario_unavailable``.",
+        "description": "Start a campaign in the session's project.\n\nThe campaign id is derived from the session and the key, so a retry finds the same\ncampaign and its current state instead of starting another. Reusing a key with a\ndifferent spec is a 409. The world, budget and inference gates run before anything\nis stored. ``service-relay/1`` is a registered design, not a runnable world: 403.\nText shaped like a credential is refused (422), not stored. ``scripted_scenario``\nselects a checked-in proposal on a ``--scripted`` server; anywhere else, or for a world\nwithout that scenario, it is a 422 with reason ``scripted_scenario_unavailable``. A key\nreused with another scenario is a 409, as for another spec.",
         "operationId": "createCampaign",
         "parameters": [
           {
@@ -4827,7 +4843,7 @@
     },
     "/v1/campaigns/{campaign_id}/resume": {
       "post": {
-        "description": "Owner only. Re-check a paused campaign, or continue a stalled one.\n\nThis grants nothing: a pending approval pauses again, and a rejected, expired or\nused one ends the campaign. A decision already resumes the campaign, so this is\nfor retrying after ``settings_changed`` or a stall. Repeating is harmless.",
+        "description": "Owner only. Re-check a paused campaign, or continue a stalled one.\n\nThis grants nothing: a pending approval pauses again, and a rejected, expired or\nused one ends the campaign. A decision already resumes the campaign, so this is\nfor retrying after ``settings_changed`` or a stall. A finished campaign is a 409 with\nreason ``campaign_finished``, because there is nothing to resume.",
         "operationId": "resumeCampaign",
         "parameters": [
           {

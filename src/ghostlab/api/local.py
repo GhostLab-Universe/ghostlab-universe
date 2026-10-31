@@ -26,7 +26,7 @@ from ghostlab.worlds.journey import JourneyFixture
 
 from .plane import ApiConfig
 from .scripted import scripted_adapter, scripted_runtime
-from .sessions import LocalDevSessions, require_local_deployment
+from .sessions import LocalDevSessions
 
 
 def _utc_now() -> datetime:
@@ -40,8 +40,6 @@ def _inference_disabled(runtime):
 def local_config(root: Path, sessions: LocalDevSessions, *, bind_host: str,
                  scripted: bool = False, environ: dict | None = None) -> ApiConfig:
     """The trusted host's wiring: the local principal, bound to the synthetic actors."""
-    if scripted:
-        require_local_deployment(bind_host, environ)
     paths = StoragePaths(root)
     app_db = open_database(paths.app_db)
     project, principal = sessions.project_id, sessions.principal

@@ -1905,6 +1905,18 @@ def test_a_crash_before_repair_memory_keeps_the_run_and_its_charges(tmp_path, st
     assert sorted(memory_rows(lab)) == sorted(done["memory_ids"]) and len(memory_rows(lab)) > len(before)
 
 
+def test_a_crash_before_repair_memory_finishes_under_changed_settings(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=CrashOnce("remember_repair"))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+    lab.approve(state)
+    with lab.controller() as controller, pytest.raises(RuntimeError):
+        controller.resume(CID)
+    lab.journey_fixture = CHANGED  # the outcome is settled, so nothing is left to refuse
+    with lab.controller() as controller:
+        assert controller.recover(CID)["outcome"] == "repair_verified"
+
+
 def test_a_crash_in_the_repaired_run_leaves_no_repair_memory_behind(tmp_path, monkeypatch):
     lab = JourneyLab(tmp_path, Script(proposal()))
     with lab.controller() as controller:

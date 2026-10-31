@@ -309,12 +309,30 @@
             "title": "Effective Status",
             "type": "string"
           },
+          "inference": {
+            "anyOf": [
+              {
+                "enum": [
+                  "disabled",
+                  "fixture",
+                  "scripted",
+                  "live"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inference"
+          },
           "request": {
             "$ref": "#/components/schemas/ApprovalRequest"
           }
         },
         "required": [
           "request",
+          "inference",
           "effective_status",
           "action",
           "decision"
@@ -526,6 +544,16 @@
             ],
             "title": "Fixture Sha256"
           },
+          "inference": {
+            "enum": [
+              "disabled",
+              "fixture",
+              "scripted",
+              "live"
+            ],
+            "title": "Inference",
+            "type": "string"
+          },
           "job": {
             "$ref": "#/components/schemas/JobStatus"
           },
@@ -566,6 +594,7 @@
         },
         "required": [
           "record",
+          "inference",
           "outcome",
           "fixture_sha256",
           "job",
@@ -611,6 +640,23 @@
             "title": "Capsule Schema Version",
             "type": "integer"
           },
+          "inference": {
+            "anyOf": [
+              {
+                "enum": [
+                  "disabled",
+                  "fixture",
+                  "scripted",
+                  "live"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inference"
+          },
           "world_version": {
             "enum": [
               "refund-world/1",
@@ -624,7 +670,8 @@
         "required": [
           "artifact",
           "world_version",
-          "capsule_schema_version"
+          "capsule_schema_version",
+          "inference"
         ],
         "title": "CapsuleInfo",
         "type": "object"
@@ -997,6 +1044,16 @@
             "title": "Has More",
             "type": "boolean"
           },
+          "inference": {
+            "enum": [
+              "disabled",
+              "fixture",
+              "scripted",
+              "live"
+            ],
+            "title": "Inference",
+            "type": "string"
+          },
           "next_after": {
             "maximum": 1000000000000.0,
             "minimum": 0.0,
@@ -1006,6 +1063,7 @@
         },
         "required": [
           "campaign_id",
+          "inference",
           "events",
           "next_after",
           "has_more"
@@ -1239,6 +1297,16 @@
             "title": "Findings",
             "type": "array"
           },
+          "inference": {
+            "enum": [
+              "disabled",
+              "fixture",
+              "scripted",
+              "live"
+            ],
+            "title": "Inference",
+            "type": "string"
+          },
           "iteration": {
             "maximum": 1000.0,
             "minimum": 1.0,
@@ -1264,6 +1332,7 @@
         },
         "required": [
           "experiment_id",
+          "inference",
           "iteration",
           "proposal",
           "execution",
@@ -1619,10 +1688,21 @@
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
             "title": "Experiment Id",
             "type": "string"
+          },
+          "inference": {
+            "enum": [
+              "disabled",
+              "fixture",
+              "scripted",
+              "live"
+            ],
+            "title": "Inference",
+            "type": "string"
           }
         },
         "required": [
           "experiment_id",
+          "inference",
           "diff",
           "coverage"
         ],
@@ -1954,6 +2034,23 @@
             ],
             "title": "Guarded"
           },
+          "inference": {
+            "anyOf": [
+              {
+                "enum": [
+                  "disabled",
+                  "fixture",
+                  "scripted",
+                  "live"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inference"
+          },
           "matches": {
             "additionalProperties": {
               "type": "boolean"
@@ -1999,6 +2096,7 @@
         },
         "required": [
           "world_version",
+          "inference",
           "run_status",
           "reproduced",
           "matches",
@@ -2096,6 +2194,16 @@
             "title": "Findings",
             "type": "array"
           },
+          "inference": {
+            "enum": [
+              "disabled",
+              "fixture",
+              "scripted",
+              "live"
+            ],
+            "title": "Inference",
+            "type": "string"
+          },
           "result": {
             "$ref": "#/components/schemas/WorldRunResult"
           },
@@ -2115,6 +2223,7 @@
           }
         },
         "required": [
+          "inference",
           "run_id",
           "experiment_id",
           "run",
@@ -2167,6 +2276,7 @@
             "enum": [
               "disabled",
               "fixture",
+              "scripted",
               "live"
             ],
             "title": "Inference",
@@ -3088,6 +3198,13 @@
         "title": "WorldTraceEvent",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "description": "Configured bearer tokens. In local_dev mode the session is the single local principal and no token is needed. Neither is production authentication.",
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -3132,7 +3249,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -3173,8 +3297,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Approval",
         "tags": [
           "approvals"
@@ -3228,7 +3367,15 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Idempotency-Replayed": {
+                "description": "Present and true when this request's identity was already used",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -3238,7 +3385,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -3298,9 +3452,41 @@
                 }
               }
             },
-            "description": "Too many campaigns running; retry later"
+            "description": "Too many campaigns running; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The server is shutting down; retry later"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Decide Approval",
         "tags": [
           "approvals"
@@ -3326,9 +3512,23 @@
         "responses": {
           "200": {
             "content": {
-              "application/octet-stream": {}
+              "application/json": {
+                "schema": {}
+              }
             },
-            "description": "Artifact bytes, verified against their digest"
+            "description": "Artifact bytes, verified against their digest",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -3338,7 +3538,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -3379,8 +3586,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Download Artifact",
         "tags": [
           "evidence"
@@ -3389,9 +3611,26 @@
     },
     "/v1/campaigns": {
       "post": {
-        "description": "Start a campaign in the session's project.\n\nThe campaign id is derived from the session and the key, so a retry finds the same\ncampaign and its current state instead of starting another. Reusing a key with a\ndifferent spec is a 409. The world, budget and inference gates run before anything\nis stored. ``service-relay/1`` is a registered design, not a runnable world: 403.\nText shaped like a credential is refused (422), not stored.",
+        "description": "Start a campaign in the session's project.\n\nThe campaign id is derived from the session and the key, so a retry finds the same\ncampaign and its current state instead of starting another. Reusing a key with a\ndifferent spec is a 409. The world, budget and inference gates run before anything\nis stored. ``service-relay/1`` is a registered design, not a runnable world: 403.\nText shaped like a credential is refused (422), not stored. ``scripted_scenario``\nselects a checked-in proposal on a ``--scripted`` server; anywhere else, or for a world\nwithout that scenario, it is a 422 with reason ``scripted_scenario_unavailable``.",
         "operationId": "createCampaign",
         "parameters": [
+          {
+            "description": "Scripted servers only: which checked-in proposal to use. Not every world has every scenario.",
+            "in": "query",
+            "name": "scripted_scenario",
+            "required": false,
+            "schema": {
+              "default": "default",
+              "description": "Scripted servers only: which checked-in proposal to use. Not every world has every scenario.",
+              "enum": [
+                "default",
+                "revocation_race",
+                "fault_never_fires"
+              ],
+              "title": "Scripted Scenario",
+              "type": "string"
+            }
+          },
           {
             "description": "Client-generated identity of this action. A retry with the same key and body returns the same result and performs no second action.",
             "in": "header",
@@ -3424,7 +3663,15 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Idempotency-Replayed": {
+                "description": "Present and true when this request's identity was already used",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -3434,7 +3681,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -3494,9 +3748,41 @@
                 }
               }
             },
-            "description": "Too many campaigns running; retry later"
+            "description": "Too many campaigns running; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The server is shutting down; retry later"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create Campaign",
         "tags": [
           "campaigns"
@@ -3538,7 +3824,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -3579,8 +3872,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Campaign",
         "tags": [
           "campaigns"
@@ -3589,7 +3897,7 @@
     },
     "/v1/campaigns/{campaign_id}/cancel": {
       "post": {
-        "description": "Stop a running, paused or stalled campaign at its next guard. Repeating is harmless.\n\nAn approval that was not yet used stays unspent, and can't run anything afterwards.\nA finished campaign is a 409 with reason ``campaign_finished``, unless it was\nalready cancelled.",
+        "description": "Stop a running, paused or stalled campaign at its next guard. Repeating is harmless.\n\nA 202 means it stopped, or a worker has the request: read ``job.cancel_requested`` and\nthe status. A 409 with reason ``cancel_incomplete`` means the campaign could not be\nstopped because its interrupted step can't finish; it is unchanged, and ``job.error``\nsays why. A finished campaign is a 409 with reason ``campaign_finished``, unless it was\nalready cancelled. An approval not yet used stays unspent and can't run anything.",
         "operationId": "cancelCampaign",
         "parameters": [
           {
@@ -3622,7 +3930,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -3682,9 +3997,41 @@
                 }
               }
             },
-            "description": "Too many campaigns running; retry later"
+            "description": "Too many campaigns running; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The server is shutting down; retry later"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Cancel Campaign",
         "tags": [
           "campaigns"
@@ -3750,7 +4097,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -3791,8 +4145,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List Events",
         "tags": [
           "campaigns"
@@ -3843,7 +4212,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -3884,8 +4260,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Experiment",
         "tags": [
           "evidence"
@@ -3951,7 +4342,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -4011,9 +4409,41 @@
                 }
               }
             },
-            "description": "Too many campaigns running; retry later"
+            "description": "Too many campaigns running; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The server is shutting down; retry later"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Export Capsule",
         "tags": [
           "capsules"
@@ -4079,7 +4509,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -4120,8 +4557,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Replay Campaign Capsule",
         "tags": [
           "capsules"
@@ -4173,7 +4625,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -4214,8 +4673,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Diff",
         "tags": [
           "evidence"
@@ -4280,7 +4754,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -4321,8 +4802,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Run",
         "tags": [
           "evidence"
@@ -4364,7 +4860,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -4424,9 +4927,41 @@
                 }
               }
             },
-            "description": "Too many campaigns running; retry later"
+            "description": "Too many campaigns running; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The server is shutting down; retry later"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Resume Campaign",
         "tags": [
           "campaigns"
@@ -4435,7 +4970,7 @@
     },
     "/v1/capsules/import": {
       "post": {
-        "description": "Validate a capsule, replay it, and store it in the session's project.\n\nAn imported capsule is untrusted data. It is identified by its checksum, so a retry\nis the same. A capsule that doesn't reproduce is stored and reported as not reproduced.",
+        "description": "Validate a capsule, replay it, and store it in the session's project.\n\nAn imported capsule is untrusted data. It is identified by its checksum, so a retry\nis the same. A capsule that doesn't reproduce is stored and reported as not reproduced.\nOne that claims what its adapter doesn't do (422 ``capsule_invalid``), or holds text\nshaped like a credential (422 ``secret_shaped_text``), is refused and not stored.",
         "operationId": "importCapsule",
         "requestBody": {
           "content": {
@@ -4474,7 +5009,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -4534,9 +5076,41 @@
                 }
               }
             },
-            "description": "Too many campaigns running; retry later"
+            "description": "Too many campaigns running; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The server is shutting down; retry later"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Import Capsule",
         "tags": [
           "capsules"
@@ -4578,7 +5152,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -4619,8 +5200,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Replay Capsule",
         "tags": [
           "capsules"
@@ -4649,7 +5245,14 @@
                 }
               }
             },
-            "description": "No valid session"
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "403": {
             "content": {
@@ -4690,8 +5293,23 @@
               }
             },
             "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Session",
         "tags": [
           "session"

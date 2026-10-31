@@ -213,6 +213,7 @@ test("without the field, the diff falls back to the recorded run statuses", () =
       execution: experiment.execution,
       result: run.result,
       findings: run.findings,
+      inference: "fixture" as const,
     };
   };
   const source = coverageOf({ coverage: null }, view("baseline"), view("fork"));

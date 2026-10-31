@@ -136,6 +136,8 @@ test("the session reports what the interface must show", async () => {
   assert.equal(session.auth_mode, "local_dev");
   assert.equal(session.production_authenticated, false);
   assert.equal(session.inference, "fixture");
+  const created = unwrap(await client.createCampaign(spec("refund-world/1"), `label-${nonce}`));
+  assert.equal(created.inference, "fixture", "each campaign carries its own label");
   assert.equal(session.can_approve, true);
 });
 

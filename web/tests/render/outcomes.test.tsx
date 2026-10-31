@@ -7,6 +7,7 @@ import { createFixtureSource } from "../../src/data/fixtureSource.ts";
 import type { Failure } from "../../src/data/source.ts";
 import { recorded } from "../../src/fixtures/recorded.generated.ts";
 import { SCENARIOS, type ExperimentFixture } from "../../src/fixtures/scenarios.ts";
+import { stoppedNote } from "../../src/logic/approval.ts";
 import { ServiceModeNotice, SessionFacts } from "../../src/ui/App.tsx";
 import { FailureNotice, RecordedErrors } from "../../src/ui/components.tsx";
 import { DecisionPanel } from "../../src/views/ApprovalPage.tsx";
@@ -37,6 +38,7 @@ function experimentView(experiment: ExperimentFixture, withCoverage = true): Exp
     findings: fields.findings,
     runs: Object.keys(fields.runs) as ["baseline", "fork"],
     coverage: withCoverage ? fields.coverage : null,
+    inference: "fixture",
   };
 }
 
@@ -50,6 +52,7 @@ function runView(experiment: ExperimentFixture, name: "baseline" | "fork"): RunV
     execution: experiment.execution,
     result: run.result,
     findings: run.findings,
+    inference: "fixture",
   };
 }
 
@@ -115,6 +118,49 @@ for (const [id, title, words] of [
     assert.doesNotMatch(page, /data-tone="ok"/);
   });
 }
+
+test("the journey diff says who leaked with every JSON panel collapsed", () => {
+  const markup = diffPage(scenario("fx-journey").stage.experiment!);
+  const collapsed = text(markup.replace(/<details[\s\S]*?<\/details>/g, ""));
+  assert.match(collapsed, /participant-c lost sharing at event 10; msg-3 was delivered to them at event 12\./);
+  assert.match(collapsed, /The worlds separate because participant-c lost sharing at event 10/);
+  assert.match(collapsed, /msg-1 went to traveller-a, who still had sharing, and is not the violation/);
+  assert.match(collapsed, /Recipient participant-c/);
+  assert.match(collapsed, /Message msg-3/);
+  assert.match(collapsed, /Their sharing at delivery false/);
+});
+
+test("the race says the same thing, with the careful adapter's last check", () => {
+  const markup = diffPage(scenario("fx-journey-race").stage.experiment!);
+  const collapsed = text(markup.replace(/<details[\s\S]*?<\/details>/g, ""));
+  assert.match(collapsed, /participant-c lost sharing at event 18; msg-3 was delivered to them at event 18\./);
+  assert.match(collapsed, /last read their sharing as allowed at event 17/);
+  assert.match(collapsed, /The same event delivered msg-3 to them/);
+});
+
+test("the evidence view names each delivery in plain words", () => {
+  const experiment = scenario("fx-journey").stage.experiment!;
+  const page = text(
+    html(<RunEvidence campaignId="fx" experiment={experimentView(experiment)} run={runView(experiment, "fork")} origins={[]} focusEventId={null} />),
+  );
+  assert.match(page, /Delivered msg-3 to participant-c\. Their sharing at this event: false/);
+  assert.match(page, /Delivered msg-1 to traveller-a\. Their sharing at this event: true/);
+  assert.match(page, /participant-c lost sharing/);
+});
+
+test("no text calls scripted proposals model output", () => {
+  const experiment = scenario("fx-journey").stage.experiment!;
+  const proposal = text(html(<ProposalSection experiment={experimentView(experiment)} origins={[]} />));
+  assert.match(proposal, /proposal text, untrusted/);
+  assert.doesNotMatch(proposal + text(campaignPage("fx-journey")), /model output/);
+});
+
+test("a replay of a repair that missed a fault warns", () => {
+  const clean = { ...recorded.journey_replay, checks: { a: true } };
+  const markup = html(<ReplayPanel result={clean} origins={[]} lostFaults={["sharing_revoked_while_queued"]} />);
+  assert.match(markup, /data-tone="warn"[^>]*data-testid="replay-verdict"/);
+  assert.match(text(markup), /Reproduced, but this repair missed a fault/);
+});
 
 test("a paused campaign offers cancel and says what it does", () => {
   const page = text(campaignPage("fx-refund"));
@@ -277,7 +323,7 @@ test("a decision on a stopped campaign says it moved nothing and offers no resum
       error: { code: "conflict" as const, message: "Campaign is already cancelled", ref: null, retryable: false, side_effect: "none" as const },
     },
   };
-  const markup = panel("fx-journey", { result, stopped: true });
+  const markup = panel("fx-journey", { result, stoppedText: "any text" });
   assert.match(text(markup), /Decision recorded, campaign not resumed/);
   assert.match(text(markup), /Campaign is already cancelled/);
   assert.match(text(markup), /campaign_finished/);
@@ -286,7 +332,8 @@ test("a decision on a stopped campaign says it moved nothing and offers no resum
 });
 
 test("before deciding on a stopped campaign, the panel warns it can run nothing", () => {
-  const markup = text(panel("fx-journey", { stopped: true }));
+  const stoppedText = stoppedNote("pending", true, false);
+  const markup = text(panel("fx-journey", { stoppedText }));
   assert.match(markup, /This campaign has stopped/);
   assert.match(markup, /can't run anything/);
 });

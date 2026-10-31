@@ -3,7 +3,7 @@ import type { CampaignView, SessionInfo } from "../api/api.generated.ts";
 import type { FixtureHarness } from "../data/fixtureSource.ts";
 import type { DataSource } from "../data/source.ts";
 import type { LiveState } from "../logic/live.ts";
-import { failureState } from "../logic/failure.ts";
+import { looksExpired } from "../logic/approval.ts";
 import { campaignHref, VIEWS, type Route } from "../logic/routes.ts";
 import { campaignStatus } from "../logic/status.ts";
 import { HomePage } from "../views/HomePage.tsx";
@@ -15,20 +15,11 @@ import { EvidencePage } from "../views/EvidencePage.tsx";
 import { FailureNotice, Loading, Mono, Notice, OriginNote, Tag } from "./components.tsx";
 import { useCampaignLive, useResource, useRoute } from "./hooks.ts";
 
-const SESSION_RETRY_MS = 5000;
-
 export function App({ source, harness }: { source: DataSource; harness: FixtureHarness | null }) {
   const route = useRoute();
-  const { resource: session, reload: reloadSession } = useResource("session", 0, () => source.getSession());
+  const { resource: session } = useResource("session", 0, () => source.getSession());
   const main = useRef<HTMLElement | null>(null);
   const sessionInfo = session.status === "ready" ? session.data : null;
-  const unreachable = session.status === "failed" && failureState(session.failure) === "reconnecting";
-
-  useEffect(() => {
-    if (!unreachable) return;
-    const timer = setTimeout(reloadSession, SESSION_RETRY_MS);
-    return () => clearTimeout(timer);
-  });
 
   return (
     <>
@@ -93,7 +84,7 @@ export function ServiceModeNotice({ session }: { session: SessionInfo }) {
   if (session.inference === "live") return null;
   return (
     <div className="service-mode" role="note">
-      {session.inference === "fixture"
+      {session.inference === "fixture" || session.inference === "scripted"
         ? "This service's inference is scripted test data, not a model."
         : "Inference is disabled on this service, so it cannot start new campaigns."}
     </div>
@@ -212,6 +203,11 @@ function CampaignUnavailable({ state, campaignId }: { state: LiveState; campaign
   return state.connection === "reconnecting" ? null : <Loading what="campaign" />;
 }
 
+function inferenceLabel(inference: CampaignView["inference"]): string {
+  if (inference === "fixture" || inference === "scripted") return "Proposals scripted: checked-in replies, not a model";
+  return `inference ${inference}`;
+}
+
 function CampaignHeading({
   view,
   state,
@@ -235,6 +231,9 @@ function CampaignHeading({
         <span className="muted" data-testid="synthetic-label">
           Synthetic world: no real people or money
         </span>
+        <span className="muted" data-testid="campaign-inference">
+          {inferenceLabel(view.inference)}
+        </span>
         {view.outcome === null ? null : (
           <span>
             Outcome <Mono>{view.outcome}</Mono>
@@ -253,6 +252,7 @@ function ViewNav({ view, route }: { view: CampaignView; route: CampaignRoute }) 
         {VIEWS.map((item) => {
           const current = route.view === item.name;
           const waiting = item.name === "approval" && view.record.status === "awaiting_approval";
+          const expired = waiting && looksExpired(view.approval?.expires_at, Date.now());
           return (
             <li key={item.name}>
               <a
@@ -260,7 +260,7 @@ function ViewNav({ view, route }: { view: CampaignView; route: CampaignRoute }) 
                 {...(current ? { "aria-current": "page" as const } : {})}
               >
                 {item.label}
-                {waiting ? <span className="nav-flag"> (awaiting decision)</span> : null}
+                {waiting ? <span className="nav-flag"> ({expired ? "approval expired" : "awaiting decision"})</span> : null}
               </a>
             </li>
           );

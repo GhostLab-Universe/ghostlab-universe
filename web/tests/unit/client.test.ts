@@ -69,7 +69,7 @@ test("reads go to the contract's path, escaped, with no client identity", async 
 
 test("events page by the sequence cursor", async () => {
   const seen: Seen[] = [];
-  const page = { campaign_id: "c", events: [], next_after: 7, has_more: false };
+  const page = { campaign_id: "c", events: [], next_after: 7, has_more: false, inference: "fixture" };
   const client = createApiClient({ fetch: stub(200, page, seen) });
   const result = await client.listEvents("c", 7);
   assert.ok(result.ok);
@@ -87,6 +87,16 @@ test("a decision posts only the submission, with its Idempotency-Key", async () 
   assert.equal(seen[0]?.method, "POST");
   assert.equal(seen[0]?.headers["Idempotency-Key"], "decision-1");
   assert.deepEqual(JSON.parse(seen[0]?.body ?? ""), submission);
+});
+
+test("a scripted scenario travels as the contract's query, and never otherwise", async () => {
+  const seen: Seen[] = [];
+  const client = createApiClient({ fetch: stub(202, CAMPAIGN, seen) });
+  await client.createCampaign({} as never, "key-1", "revocation_race");
+  await client.createCampaign({} as never, "key-2");
+  assert.equal(seen[0]?.url, "/v1/campaigns?scripted_scenario=revocation_race");
+  assert.equal(seen[1]?.url, "/v1/campaigns");
+  assert.deepEqual(OPERATIONS.createCampaign.queryValues.scripted_scenario, ["default", "revocation_race", "fault_never_fires"]);
 });
 
 test("an error body keeps the service's code and reason", async () => {

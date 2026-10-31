@@ -2,6 +2,6 @@
   "note": "openapi.v1.json is a verbatim copy of M07's published contract. Do not edit it; refresh both files, then run src/api/generate.mjs.",
   "source_path": "src/ghostlab/api/openapi.v1.json",
   "source_branch": "origin/feature/m07-api",
-  "source_commit": "96b261f9d019101b7479d5bea6bd90757aea8e61",
-  "sha256": "02f3fd553372c39bbc3b624bd9e6c93e7a500d6fdea1dbf5d1969c9316d9c5ad"
+  "source_commit": "bfa605c2e493072d77b9a5cc5bf8821b178ff6fc",
+  "sha256": "d39776b4119c0c063263d3c4432876d3ea45f10b7908f3218002bb40f918d5ac"
 }

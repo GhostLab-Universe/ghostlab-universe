@@ -176,6 +176,7 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
           events,
           next_after: events.at(-1)?.sequence ?? after,
           has_more: rest.length > events.length,
+          inference: "fixture",
         };
         return ok(page, stage.origins);
       }),
@@ -206,6 +207,7 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
               findings: experiment.findings,
               runs: Object.keys(experiment.runs) as ExperimentView["runs"],
               coverage: experiment.coverage,
+              inference: "fixture",
             },
             experiment.origins,
           ),
@@ -225,6 +227,7 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
               execution: name === "repaired" ? { mode: "enforced", guarded: true } : experiment.execution,
               result: run.result,
               findings: run.findings,
+              inference: "fixture",
             },
             run.origins,
           );
@@ -242,6 +245,7 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
               artifact: { kind: "artifact", id: artifactId, sha256: experiment.capsule.sha256 },
               world_version: experiment.diff.world_version,
               capsule_schema_version: experiment.capsuleSchemaVersion,
+              inference: "fixture",
             },
             experiment.capsuleOrigins,
           );

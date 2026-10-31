@@ -108,13 +108,13 @@ def refund_repair(run_id, recorded, fork):
             "repair": repair_view(run_id, assessment, result)}
 
 
-def truncated_experiment(scenario):
+def truncated_experiment(scenario, adapter=NAIVE):
     """A baseline and fork that hit their tool cap, as Controller._execute records them."""
     driver = DEFAULT_WORLDS[JOURNEY]
     fixture = JourneyFixture()
     cap = scenario["max_tool_calls"]
-    baseline = run(fixture, JourneyScenario.from_json(scenario_json(max_tool_calls=cap)), NAIVE)
-    fork = run(fixture, JourneyScenario.from_json(scenario), NAIVE)
+    baseline = run(fixture, JourneyScenario.from_json(scenario_json(max_tool_calls=cap)), adapter)
+    fork = run(fixture, JourneyScenario.from_json(scenario), adapter)
     lab = execution_mode_for("experiment").as_json()
     statuses = {baseline["status"], fork["status"]}
     triggered = driver.faults_triggered({"scenario": scenario}, fork)
@@ -142,7 +142,8 @@ def bound_action(driver, fixture, proposal):
 def refund_replay(path):
     result = refund_capsule.replay(path)
     status = json.loads(path.read_text("utf-8"))["payload"]["run"]["status"]
-    return {"world_version": REFUND, "run_status": status, "reproduced": result["reproduced"],
+    return {"world_version": REFUND, "inference": "fixture", "run_status": status,
+            "reproduced": result["reproduced"],
             "matches": result["matches"], "checks": result["checks"],
             "metrics": {"refunded_minor": result["total_refunded_minor"]},
             "guarded": None, "model_calls": result["model_calls"]}
@@ -151,7 +152,8 @@ def refund_replay(path):
 def journey_replay(path):
     result = journey_capsule.replay(path)
     status = json.loads(path.read_text("utf-8"))["payload"]["run"]["status"]
-    return {"world_version": JOURNEY, "run_status": status, "reproduced": result["reproduced"],
+    return {"world_version": JOURNEY, "inference": "fixture", "run_status": status,
+            "reproduced": result["reproduced"],
             "matches": result["matches"], "checks": result["checks"],
             "metrics": result["metrics"], "guarded": result["guarded"],
             "model_calls": result["model_calls"]}
@@ -202,6 +204,9 @@ def record(examples: Path, source_commit: str) -> dict:
             journey_repair("journey-repair-lost", faulted_scenario(20, faults=missed_fault)),
         "journey_repair_action": bound_action(journey, fixture, journey_proposal),
         "journey_unfired": truncated_experiment(faulted_scenario(20, after_event=15)),
+        "journey_race": truncated_experiment(faulted_scenario(20, after_event=17), CHECKED),
+        "journey_race_action": bound_action(journey, fixture, {
+            "adapter_id": CHECKED, "scenario": faulted_scenario(20, after_event=17)}),
         "journey_truncated_clean": truncated_experiment(faulted_scenario(3)),
         "journey_truncated_violation": truncated_experiment(truncated_violation),
         "journey_truncated_action": bound_action(journey, fixture, {

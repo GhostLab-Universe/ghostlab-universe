@@ -11,9 +11,10 @@ import type { DataSource, Origin, RunName } from "../data/source.ts";
 import { readCoverage } from "../logic/coverage.ts";
 import { findingsForEvent, isErrorOutcome, parseEventRef, violatingEventIds } from "../logic/evidence.ts";
 import { formatTimestamp } from "../logic/format.ts";
+import { deliveryAt, deliveryLabel, sharingLostAt } from "../logic/journeyStory.ts";
 import { campaignHref, type Route } from "../logic/routes.ts";
 import { Facts, FailureNotice, JsonBlock, Loading, Mono, Notice, Section, Tag } from "../ui/components.tsx";
-import { CoverageNotice, ExperimentGate, ExperimentPicker, useExperiment, useRun } from "./experimentData.tsx";
+import { CoverageNotice, ExperimentGate, ExperimentPicker, LostFaultsNotice, useExperiment, useRun } from "./experimentData.tsx";
 
 type CampaignRoute = Extract<Route, { page: "campaign" }>;
 
@@ -48,6 +49,7 @@ export function EvidencePage({
             <ExperimentPicker view={view} current={experiment.experiment_id} target="evidence" />
             <ProposalSection experiment={experiment} origins={origins} />
             <RunPicker view={view} experiment={experiment} current={runName} />
+            {runName === "repaired" ? <LostFaultsNotice repair={view.repair} /> : null}
             {!available ? (
               <Notice state="empty" title={`No ${RUN_LABEL[runName].toLowerCase()} run recorded`} />
             ) : run.status === "loading" ? (
@@ -86,8 +88,8 @@ export function ProposalSection({ experiment, origins }: { experiment: Experimen
       )}
       <Facts
         facts={[
-          { term: "Hypothesis (model output, untrusted)", detail: proposal.hypothesis },
-          { term: "Expected signal (model output, untrusted)", detail: proposal.expected_signal },
+          { term: "Hypothesis (proposal text, untrusted)", detail: proposal.hypothesis },
+          { term: "Expected signal (proposal text, untrusted)", detail: proposal.expected_signal },
           { term: "Adapter", detail: <Mono>{proposal.adapter_id}</Mono> },
           {
             term: "Execution mode",
@@ -291,6 +293,8 @@ function ToolEvent({
     item.current?.scrollIntoView({ block: "center" });
   }, [focused]);
   const failed = isErrorOutcome(event.outcome);
+  const delivery = deliveryAt(event);
+  const lostSharing = sharingLostAt(event);
   return (
     <li ref={item} {...(focused ? { tabIndex: -1 } : {})} data-tone={failed ? "warn" : "neutral"} data-testid={`event-${event.event_id}`}>
       <div className="event-head">
@@ -299,7 +303,18 @@ function ToolEvent({
         {failed ? <Tag tone="warn">{(event.outcome as { error: string }).error}</Tag> : null}
         {isFirstDivergence ? <Tag tone="active">First divergence</Tag> : null}
         {isViolating ? <Tag tone="fail">Violation evidence</Tag> : null}
+        {lostSharing.map((participant) => (
+          <Tag key={participant} tone="warn">
+            {participant} lost sharing
+          </Tag>
+        ))}
       </div>
+      {delivery === null ? null : (
+        <p data-testid={`delivery-${event.event_id}`}>
+          {delivery.denied === null ? "Delivered" : "Denied"} {deliveryLabel(delivery)}. Their sharing at this event:{" "}
+          <Mono>{delivery.sharing === null ? "not recorded" : String(delivery.sharing)}</Mono>
+        </p>
+      )}
       {failed ? <p>{(event.outcome as { message: string }).message}</p> : null}
       {findings.length > 0 ? (
         <p className="muted">

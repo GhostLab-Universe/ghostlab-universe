@@ -36,7 +36,7 @@ export type Result<T> =
 export interface DataSource {
   readonly kind: "api" | "fixture";
   getSession(): Promise<Result<SessionInfo>>;
-  createCampaign(spec: WorldCampaignSpec, idempotencyKey: string): Promise<Result<CampaignView>>;
+  createCampaign(spec: WorldCampaignSpec, idempotencyKey: string, scriptedScenario?: string): Promise<Result<CampaignView>>;
   getCampaign(campaignId: string): Promise<Result<CampaignView>>;
   listEvents(campaignId: string, after: number): Promise<Result<EventPage>>;
   cancelCampaign(campaignId: string): Promise<Result<CampaignView>>;

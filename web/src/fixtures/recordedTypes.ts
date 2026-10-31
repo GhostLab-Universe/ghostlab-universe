@@ -49,6 +49,8 @@ export interface RecordedCoreOutputs {
   journey_repair_idle: RecordedRepair;
   journey_repair_lost_fault: RecordedRepair;
   journey_unfired: RecordedTruncation;
+  journey_race: RecordedTruncation;
+  journey_race_action: RecordedAction;
   journey_repair_action: RecordedAction;
   journey_truncated_clean: RecordedTruncation;
   journey_truncated_violation: RecordedTruncation;

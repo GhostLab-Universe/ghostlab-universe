@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { DataSource, Failure, Origin, Result } from "../data/source.ts";
+import { failureState } from "../logic/failure.ts";
 import { CampaignLive, type LiveState } from "../logic/live.ts";
 import { parseRoute, type Route } from "../logic/routes.ts";
 
@@ -8,9 +9,12 @@ export type Resource<T> =
   | { status: "ready"; data: T; origins: readonly Origin[] }
   | { status: "failed"; failure: Failure };
 
+const RETRY_MS = 3000;
+
 /**
  * Loads one thing. A new `key` is a different thing, so it shows loading; a new
- * `version` re-reads the same thing in place. Only the newest response is applied.
+ * `version` re-reads the same thing in place. Only the newest response is applied. While
+ * the service can't be reached it retries, because no event will announce its return.
  */
 export function useResource<T>(
   key: string | null,
@@ -37,6 +41,13 @@ export function useResource<T>(
     });
     // `load` closes over what `key` and `version` identify.
   }, [key, version, tick]);
+
+  const unreachable = resource.status === "failed" && failureState(resource.failure) === "reconnecting";
+  useEffect(() => {
+    if (!unreachable) return;
+    const timer = setTimeout(() => setTick((value) => value + 1), RETRY_MS);
+    return () => clearTimeout(timer);
+  }, [unreachable, tick]);
 
   return { resource, reload: () => setTick((value) => value + 1) };
 }

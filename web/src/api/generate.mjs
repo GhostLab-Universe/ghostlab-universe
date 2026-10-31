@@ -69,6 +69,11 @@ for (const [path, methods] of Object.entries(doc.paths)) {
       path,
       success: Number(success),
       query: (operation.parameters ?? []).filter((p) => p.in === "query").map((p) => p.name),
+      queryValues: Object.fromEntries(
+        (operation.parameters ?? [])
+          .filter((p) => p.in === "query" && p.schema?.enum)
+          .map((p) => [p.name, p.schema.enum]),
+      ),
       idempotencyKey: (operation.parameters ?? []).some((p) => p.name === "Idempotency-Key"),
       required: name ? doc.components.schemas[name].required ?? [] : [],
     };

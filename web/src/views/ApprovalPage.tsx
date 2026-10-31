@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { ApprovalView, CampaignView, DecisionResult, SessionInfo } from "../api/api.generated.ts";
 import type { DataSource, Failure, Origin } from "../data/source.ts";
-import { actionFacts, buildSubmission, decisionGate, IdempotencyKeys, type Decision } from "../logic/approval.ts";
+import { actionFacts, buildSubmission, decisionGate, IdempotencyKeys, stoppedNote, type Decision } from "../logic/approval.ts";
 import { readCoverage } from "../logic/coverage.ts";
 import { BLOCKED_ENDED_HELP, CAMPAIGN_FINISHED, describeFailure, failureState } from "../logic/failure.ts";
 import { formatTimestamp, prettyJson } from "../logic/format.ts";
@@ -28,6 +28,7 @@ export function ApprovalPage({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [result, setResult] = useState<DecisionResult | null>(null);
+  const decisionRegion = useRef<HTMLDivElement | null>(null);
 
   if (approvalId === null) {
     return (
@@ -61,10 +62,13 @@ export function ApprovalPage({
     await refresh();
     reload();
     setBusy(false);
+    // The buttons are gone by now, so keep keyboard users where the result appears.
+    decisionRegion.current?.focus();
   }
 
   async function resume() {
     setBusy(true);
+    setFailure(null);
     const outcome = await source.resumeCampaign(view.record.campaign_id);
     if (outcome.ok) setResult(null);
     else setFailure(outcome.failure);
@@ -78,19 +82,21 @@ export function ApprovalPage({
       {/* An approval is only requested after a failed finding, so a violation exists. */}
       {truncated === undefined ? null : <CoverageNotice coverage={truncated} violations={1} />}
       <ApprovalDetail approval={resource.data} origins={resource.origins} />
-      <DecisionPanel
-        approval={resource.data}
-        session={session}
-        busy={busy}
-        failure={failure}
-        result={result}
-        origins={resource.origins}
-        unspent={unspent}
-        blocked={blocked}
-        stopped={stopped}
-        onDecide={(decision, reason) => void decide(resource.data, decision, reason)}
-        onResume={() => void resume()}
-      />
+      <div ref={decisionRegion} tabIndex={-1} data-testid="decision-region">
+        <DecisionPanel
+          approval={resource.data}
+          session={session}
+          busy={busy}
+          failure={failure}
+          result={result}
+          origins={resource.origins}
+          unspent={unspent}
+          blocked={blocked}
+          stoppedText={stoppedNote(resource.data.effective_status, stopped, view.repair !== null)}
+          onDecide={(choice, reason) => void decide(resource.data, choice, reason)}
+          onResume={() => void resume()}
+        />
+      </div>
       {view.repair === null ? null : (
         <RepairResult
           repair={view.repair}
@@ -180,7 +186,7 @@ export function DecisionPanel({
   origins,
   unspent = false,
   blocked = false,
-  stopped = false,
+  stoppedText = null,
   onDecide,
   onResume,
 }: {
@@ -192,7 +198,7 @@ export function DecisionPanel({
   origins: readonly Origin[];
   unspent?: boolean;
   blocked?: boolean;
-  stopped?: boolean;
+  stoppedText?: string | null;
   onDecide: (decision: Decision, reason: string) => void;
   onResume: () => void;
 }) {
@@ -207,9 +213,9 @@ export function DecisionPanel({
   const canResume = resumeFailure?.reason !== CAMPAIGN_FINISHED;
   return (
     <Section title="Decision" origins={origins}>
-      {stopped && !blocked && !refused ? (
+      {stoppedText !== null && !blocked && !refused ? (
         <Notice state="conflict" title="This campaign has stopped">
-          <p>A decision is still recorded, but it can&apos;t run anything. The approval stays unspent.</p>
+          <p>{stoppedText}</p>
         </Notice>
       ) : null}
       {approval.decision === null ? null : (

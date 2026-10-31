@@ -33,6 +33,28 @@ export function decisionGate(view: ApprovalView, session: SessionInfo | null): D
   return { open: true, note: null };
 }
 
+/**
+ * What to say on a stopped campaign, only while the approval is still undecided or really
+ * is unspent. A used or rejected approval has nothing left to warn about.
+ */
+export function stoppedNote(
+  effectiveStatus: ApprovalView["effective_status"],
+  stopped: boolean,
+  repairRan: boolean,
+): string | null {
+  if (!stopped) return null;
+  if (effectiveStatus === "pending") {
+    return "A decision is still recorded, but it can't run anything. The approval stays unspent.";
+  }
+  if (effectiveStatus === "approved" && !repairRan) return "The approval was never used, and it can't run anything now.";
+  return null;
+}
+
+/** Wording only: the service decides whether an approval has expired. */
+export function looksExpired(expiresAt: string | undefined, now: number): boolean {
+  return expiresAt !== undefined && Date.parse(expiresAt) <= now;
+}
+
 export interface ActionFacts {
   adapter: string | null;
   mode: string | null;

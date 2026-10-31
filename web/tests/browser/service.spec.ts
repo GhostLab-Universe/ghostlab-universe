@@ -98,6 +98,8 @@ test("journey end to end: both events, enforced repair held by the adapter", asy
   await view(page, "Reality Diff");
   const first = page.getByTestId("first-divergence");
   const violating = page.getByTestId("violating-events");
+  await expect(first).toContainText("Event 10");
+  await expect(violating).toContainText("Event 12");
   await expect(violating).toContainText("different event from the first divergence");
   await eventsCompared(page);
   await shot(page, "service-journey-diff");
@@ -105,7 +107,6 @@ test("journey end to end: both events, enforced repair held by the adapter", asy
   await expect(page.locator(".events > li:focus")).toBeInViewport();
   await expect(page.locator(".events > li:focus")).toContainText("Violation evidence");
   await shot(page, "service-journey-evidence");
-  await expect(first).toHaveCount(0);
 
   await approval(page);
   await expect(page.getByTestId("execution-mode")).toContainText("enforced");
@@ -176,6 +177,13 @@ test("a repair that missed a fault shows lost_faults", async ({ page }) => {
   await expect(page.getByTestId("repair-fields")).toContainText("sharing_revoked_while_queued");
   await expect(page.locator('[data-tone="ok"]')).toHaveCount(0);
   await shot(page, "service-repair-lost-fault");
+  await page.goto(`${page.url().split("/approval")[0]}/evidence?run=repaired`);
+  await expect(page.getByText("This repair missed a fault")).toBeVisible(POLLED);
+  await view(page, "Capsule");
+  await page.getByLabel("Run").selectOption("repaired");
+  await page.getByRole("button", { name: "Export capsule" }).click();
+  await page.getByRole("button", { name: "Replay capsule" }).click();
+  await expect(page.getByTestId("replay-verdict")).toContainText("missed a fault");
 });
 
 test("cancelling a paused campaign ends it; a later decision moves nothing", async ({ page }) => {
@@ -245,8 +253,16 @@ test("a resume refused by settings_changed is blocked, then restoring finishes i
 
   await page.reload();
   await expect(page.getByText("Approved, not yet used")).toBeVisible(POLLED);
+  const refused = JSON.stringify({
+    reason: "settings_changed",
+    error: { code: "conflict", message: "still refused", ref: null, retryable: false, side_effect: "none" },
+  });
+  await page.route("**/resume", (route) => route.fulfill({ status: 409, contentType: "application/json", body: refused }), { times: 1 });
+  await page.getByRole("button", { name: "Resume campaign" }).click();
+  await expect(page.getByTestId("state-blocked")).toContainText("still refused", POLLED);
   await page.getByRole("button", { name: "Resume campaign" }).click();
   await expect(page.getByTestId("repair-verdict")).toContainText("Repair verified", POLLED);
+  await expect(page.getByTestId("state-blocked")).toHaveCount(0);
 });
 
 test("a withdrawn binding is a refusal, then restoring it finishes the repair", async ({ page }) => {
@@ -301,6 +317,21 @@ test("keyboard: start, navigate and decide with no pointer", async ({ page }) =>
   await expect(page.getByTestId("repair-verdict")).toContainText("Repair verified", POLLED);
 });
 
+for (const [name, pattern] of [
+  ["approval", "**/v1/approvals/**"],
+  ["Reality Diff", "**/experiments/**"],
+] as const) {
+  test(`the ${name} view recovers when the service returns`, async ({ page }) => {
+    await start(page, REFUND);
+    await paused(page);
+    await page.route(pattern, (route) => route.abort());
+    await view(page, name === "approval" ? /Approval/ : name);
+    await expect(page.getByTestId("state-reconnecting").first()).toBeVisible(POLLED);
+    await page.unroute(pattern);
+    await expect(page.getByTestId(name === "approval" ? "exact-action" : "first-divergence")).toBeVisible(POLLED);
+  });
+}
+
 test("an unknown campaign is not found", async ({ page }) => {
   await page.goto("/#/campaign/does-not-exist");
   await expect(page.getByTestId("state-not_found")).toBeVisible();
@@ -308,6 +339,7 @@ test("an unknown campaign is not found", async ({ page }) => {
 
 test("a foreign id in the URL is handled as data", async ({ page }) => {
   await page.goto("/#/campaign/%3Cimg%20src%3Dx%3E");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("<img src=x>");
   await expect(page.locator("main img")).toHaveCount(0);
 });
 

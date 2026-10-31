@@ -1,7 +1,8 @@
 import { join, resolve } from "node:path";
 import { expect, test as base, type Page } from "@playwright/test";
 
-const mode = process.env.M08_BROWSER_MODE === "service" ? "service" : "fixture";
+const named = process.env.M08_BROWSER_MODE;
+const mode = named === "service" || named === "scripted" ? named : "fixture";
 const out = resolve(process.env.M08_BROWSER_OUT ?? "node_modules/.m08-browser", mode, "screenshots");
 
 /** Fails any test whose page threw, broke the CSP, or logged a React error. */

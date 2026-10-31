@@ -90,6 +90,66 @@ test("journey flow: both events are identified and the evidence opens", async ({
   await shot(page, "journey-repaired");
 });
 
+test("the race reads clearly with every JSON panel collapsed, and the guard blocks it", async ({ page }) => {
+  await go(page, "campaign/fx-journey-race/diff");
+  await eventsCompared(page);
+  const story = page.getByTestId("leak-story");
+  await expect(story).toContainText("participant-c lost sharing at event 18; msg-3 was delivered to them at event 18.");
+  await expect(story).toContainText("allowed at event 17");
+  await expect(page.locator("details[open]")).toHaveCount(0);
+  await shot(page, "race-diff");
+  await view(page, /Approval/);
+  await page.getByRole("button", { name: "Approve this action" }).click();
+  await expect(page.getByTestId("repair-fields")).toContainText("guarded_boundary");
+  await page.goto("/#/campaign/fx-journey-race/evidence?run=repaired");
+  await expect(page.getByTestId("delivery-18")).toContainText("Denied msg-3 to participant-c");
+});
+
+test("no warning about an unspent approval after it was used or rejected", async ({ page }) => {
+  await go(page, "campaign/fx-refund/approval");
+  await page.getByRole("button", { name: "Approve this action" }).click();
+  await expect(page.getByTestId("repair-verdict")).toContainText("Repair verified");
+  await expect(page.getByText("stays unspent")).toHaveCount(0);
+  await expect(page.getByText("This campaign has stopped")).toHaveCount(0);
+  await expect(page.getByTestId("decision-region")).toBeFocused();
+  await shot(page, "after-approve");
+  await go(page, "campaign/fx-journey/approval");
+  await page.getByRole("button", { name: "Reject" }).click();
+  await expect(page.locator(".status-line")).toContainText("repair_rejected");
+  await expect(page.getByText("stays unspent")).toHaveCount(0);
+});
+
+test("a blank approval view recovers when the service returns", async ({ page }) => {
+  await go(page, "campaign/fx-refund");
+  await expect(page.locator(".status-line")).toBeVisible();
+  await page.getByRole("button", { name: "Drop connection" }).click();
+  await expect(page.getByTestId("state-reconnecting").first()).toBeVisible();
+  await view(page, /Approval/);
+  await page.getByRole("button", { name: "Restore connection" }).click();
+  await expect(page.getByTestId("exact-action")).toBeVisible();
+});
+
+test("a repair that missed a fault warns in evidence and capsule", async ({ page }) => {
+  await go(page, "campaign/fx-journey-lost-fault/evidence?run=repaired");
+  await expect(page.getByText("This repair missed a fault")).toBeVisible();
+  await shot(page, "lost-fault-evidence");
+  await view(page, "Capsule");
+  await page.getByLabel("Run").selectOption("repaired");
+  await expect(page.getByText("This repair missed a fault")).toBeVisible();
+});
+
+test("an expired approval doesn't read as waiting", async ({ page }) => {
+  await go(page, "campaign/fx-approval-expired");
+  await expect(page.getByTestId("state-awaiting_approval")).toContainText("Approval expired");
+  await expect(page.getByRole("navigation", { name: "Campaign views" })).toContainText("approval expired");
+});
+
+test("the shipped CSP has no development socket", async ({ page }) => {
+  const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
+  expect(policy).toContain("connect-src 'self'");
+  expect(policy).not.toContain("ws:");
+});
+
 test("coverage_incomplete is never success, in the campaign or the diff", async ({ page }) => {
   await go(page, "campaign/fx-coverage-incomplete");
   await expect(page.locator(".status-line")).toContainText("Budget exhausted");

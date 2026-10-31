@@ -11,6 +11,13 @@ const path = (relative: string) => fileURLToPath(new URL(relative, import.meta.u
  * fixture code is dropped from the bundle.
  */
 export default defineConfig({
+  plugins: [
+    {
+      name: "production-csp",
+      // Only the dev server needs its HMR socket, so a build ships without it.
+      transformIndexHtml: (html, context) => (context.server ? html : html.replace(/ ws:\/\/\S+/g, "").replace(/ ws:\/\/[^;]+/g, "")),
+    },
+  ],
   root: path("./src"),
   publicDir: path("./public"),
   oxc: { jsx: { runtime: "automatic" } },

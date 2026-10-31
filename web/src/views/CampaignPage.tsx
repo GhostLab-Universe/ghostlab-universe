@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { BudgetLimits, BudgetUsage, CampaignView, RepairView } from "../api/api.generated.ts";
 import type { DataSource, Failure, Origin, Result } from "../data/source.ts";
+import { looksExpired } from "../logic/approval.ts";
 import { readCoverage } from "../logic/coverage.ts";
 import { formatCount, formatTimestamp } from "../logic/format.ts";
 import { presentRepair } from "../logic/repair.ts";
@@ -97,7 +98,7 @@ function ExperimentList({ view }: { view: CampaignView }) {
             <p>
               Iteration {experiment.iteration}, adapter <Mono>{experiment.adapter_id}</Mono>
             </p>
-            <p className="muted">Hypothesis (model output, untrusted): {experiment.hypothesis}</p>
+            <p className="muted">Hypothesis (proposal text, untrusted): {experiment.hypothesis}</p>
             {coverage === null ? (
               <p className="muted">Coverage was not recorded for this experiment.</p>
             ) : (
@@ -112,9 +113,14 @@ function ExperimentList({ view }: { view: CampaignView }) {
 }
 
 function AwaitingApproval({ view }: { view: CampaignView }) {
+  const expired = looksExpired(view.approval?.expires_at, Date.now());
   return (
-    <Notice state="awaiting_approval" title="Awaiting approval" live>
-      <p>The campaign is paused until a person decides on the repair.</p>
+    <Notice state="awaiting_approval" title={expired ? "Approval expired" : "Awaiting approval"} live>
+      <p>
+        {expired
+          ? "This approval is past its expiry, so it can no longer be decided."
+          : "The campaign is paused until a person decides on the repair."}
+      </p>
       {view.approval === null ? null : (
         <p>
           <a href={campaignHref(view.record.campaign_id, { view: "approval" })}>Review the approval</a>

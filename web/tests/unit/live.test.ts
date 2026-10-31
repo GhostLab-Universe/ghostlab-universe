@@ -26,6 +26,7 @@ const page = (events: ExperimentEvent[], nextAfter: number): EventPage => ({
   events,
   next_after: nextAfter,
   has_more: false,
+  inference: "fixture",
 });
 
 const snapshot = (state: LiveState, read: number, view: CampaignView) =>

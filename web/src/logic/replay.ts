@@ -11,7 +11,7 @@ export interface ReplayPresentation {
  * `reproduced` says only that the replay matched the recording, so it is never success
  * on its own. `run_status` says what the recording was, and the checks what it found.
  */
-export function presentReplay(result: ReplayResult): ReplayPresentation {
+export function presentReplay(result: ReplayResult, lostFaults: readonly string[] = []): ReplayPresentation {
   const failing = Object.values(result.checks).some((passed) => !passed);
   if (!result.reproduced) {
     return {
@@ -27,6 +27,13 @@ export function presentReplay(result: ReplayResult): ReplayPresentation {
       detail: failing
         ? "The replay matched a run that was cut short. The failure it reached still stands; the rest was not tested."
         : "The replay matched a run that was cut short. Passing checks on it prove nothing.",
+    };
+  }
+  if (lostFaults.length > 0) {
+    return {
+      tone: "warn",
+      headline: "Reproduced, but this repair missed a fault",
+      detail: `The replay matched a run that never met ${lostFaults.join(", ")}. Its passing checks prove nothing about that fault.`,
     };
   }
   if (failing) {

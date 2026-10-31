@@ -18,6 +18,15 @@ import {
   type RefundLedger,
 } from "../logic/evidence.ts";
 import { formatMinor, prettyJson } from "../logic/format.ts";
+import {
+  checkSentence,
+  deliveryAt,
+  deliveryLabel,
+  divergenceCause,
+  leaksIn,
+  leakSentence,
+  type Leak,
+} from "../logic/journeyStory.ts";
 import { campaignHref } from "../logic/routes.ts";
 import { differences } from "../logic/stateDiff.ts";
 import { FailureNotice, JsonBlock, Mono, Notice, Section, Tag } from "../ui/components.tsx";
@@ -92,6 +101,8 @@ export function DiffPanel({
   const baselineLedger = refundLedger(baseline?.result ?? null);
   const forkLedger = refundLedger(fork?.result ?? null);
   const coverage = coverageOf(experiment, baseline, fork);
+  const leaks = leaksIn(fork?.result ?? null, findings);
+  const cause = first === null ? null : divergenceCause(first);
 
   return (
     <>
@@ -108,7 +119,9 @@ export function DiffPanel({
                 <p className="callout-value">
                   <a href={link(first.event_id)}>Event {first.event_id}</a>
                 </p>
-                <p className="muted">The first event where the baseline and fork records differ.</p>
+                <p data-testid="divergence-cause">
+                  {cause ?? "The first event where the baseline and fork records differ."}
+                </p>
               </>
             )}
           </div>
@@ -136,6 +149,14 @@ export function DiffPanel({
           </div>
         </div>
       </Section>
+
+      {leaks.length === 0 ? null : (
+        <Section title="What leaked" origins={runOrigins}>
+          {leaks.map((leak) => (
+            <LeakStory key={leak.eventId} leak={leak} href={link(leak.eventId)} />
+          ))}
+        </Section>
+      )}
 
       <Section title="Violated invariants" origins={origins}>
         {violated.length === 0 ? (
@@ -255,6 +276,42 @@ export function DiffPanel({
   );
 }
 
+function LeakStory({ leak, href }: { leak: Leak; href: string }) {
+  const check = checkSentence(leak);
+  return (
+    <div data-testid="leak-story">
+      <p className="lead">{leakSentence(leak)}</p>
+      {check === null ? null : <p>{check}</p>}
+      <dl className="recorded">
+        <div>
+          <dt>Recipient</dt>
+          <dd>
+            <Mono>{leak.recipient}</Mono>
+          </dd>
+        </div>
+        <div>
+          <dt>Message</dt>
+          <dd>
+            <Mono>{leak.messageId}</Mono>
+          </dd>
+        </div>
+        <div>
+          <dt>Their sharing at delivery</dt>
+          <dd>
+            <Mono>{String(leak.sharing)}</Mono>
+          </dd>
+        </div>
+        <div>
+          <dt>Delivered at</dt>
+          <dd>
+            <a href={href}>Event {leak.eventId}</a>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 function MetricTable({ experiment, currency }: { experiment: ExperimentView; currency: string | null }) {
   const rows = metricRows(experiment.diff);
   if (rows.length === 0) return <Notice state="empty" title="The diff records no metrics" />;
@@ -336,6 +393,7 @@ function outcomeLabel(outcome: WorldOutcomeResult | WorldOutcomeError): string {
 }
 
 function DivergenceColumn({ side, title, event }: { side: string; title: string; event: WorldTraceEvent | null }) {
+  const delivery = deliveryAt(event);
   return (
     <article className="side" data-side={side}>
       <h3>{title}</h3>
@@ -345,6 +403,7 @@ function DivergenceColumn({ side, title, event }: { side: string; title: string;
         <>
           <p>
             <Mono>{event.request.tool}</Mono>
+            {delivery === null ? null : <span className="muted"> {deliveryLabel(delivery)}</span>}
           </p>
           <p>{outcomeLabel(event.outcome)}</p>
           <JsonBlock label={`${title} request and outcome`} value={{ request: event.request, outcome: event.outcome }} />
@@ -402,9 +461,11 @@ export function DifferenceTable({ baseline, fork }: { baseline: WorldTraceEvent 
 function EventCell({ event }: { event: WorldTraceEvent | null }) {
   if (event === null) return <span className="muted">no event</span>;
   const failed = isErrorOutcome(event.outcome);
+  const delivery = deliveryAt(event);
   return (
     <>
       <Mono>{event.request.tool}</Mono>
+      {delivery === null ? null : <span className="muted"> {deliveryLabel(delivery)}</span>}
       {failed ? (
         <>
           {" "}

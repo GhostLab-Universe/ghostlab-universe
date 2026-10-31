@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { CampaignView, Coverage, ExperimentView } from "../api/api.generated.ts";
+import type { CampaignView, Coverage, ExperimentView, RepairView } from "../api/api.generated.ts";
 import type { DataSource, Origin, RunName } from "../data/source.ts";
 import { coverageNote } from "../logic/coverage.ts";
 import { campaignHref, type ViewName } from "../logic/routes.ts";
@@ -58,6 +58,18 @@ export function CoverageNotice({ coverage, violations }: { coverage: Coverage; v
   return (
     <Notice state="incomplete" title={note.headline} live>
       {note.detail}
+    </Notice>
+  );
+}
+
+/** A repaired run can pass every check it met and still have missed a fault. */
+export function LostFaultsNotice({ repair }: { repair: RepairView | null }) {
+  const lost = repair?.lost_faults ?? [];
+  if (lost.length === 0) return null;
+  return (
+    <Notice state="incomplete" title="This repair missed a fault" live>
+      The repaired run never met <Mono>{lost.join(", ")}</Mono>, which the fork met. Its passing checks prove nothing about
+      that fault.
     </Notice>
   );
 }

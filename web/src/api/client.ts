@@ -19,7 +19,7 @@ export interface ClientOptions {
 
 interface CallInput {
   path?: Record<string, string>;
-  query?: Record<string, number>;
+  query?: Record<string, number | string>;
   body?: unknown;
   idempotencyKey?: string;
 }
@@ -116,7 +116,12 @@ export function createApiClient(options: ClientOptions = {}): DataSource {
   return {
     kind: "api",
     getSession: () => json("getSession", {}),
-    createCampaign: (spec, idempotencyKey) => json("createCampaign", { body: spec, idempotencyKey }),
+    createCampaign: (spec, idempotencyKey, scripted_scenario) =>
+      json("createCampaign", {
+        body: spec,
+        idempotencyKey,
+        ...(scripted_scenario === undefined ? {} : { query: { scripted_scenario } }),
+      }),
     getCampaign: (campaign_id) => json("getCampaign", { path: { campaign_id } }),
     listEvents: (campaign_id, after) => json("listCampaignEvents", { path: { campaign_id }, query: { after } }),
     cancelCampaign: (campaign_id) => json("cancelCampaign", { path: { campaign_id } }),

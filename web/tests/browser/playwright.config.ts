@@ -5,6 +5,8 @@
  *   fixture (default)  the --mode fixture build, over labelled test data
  *   service            the API build, proxied to GHOSTLAB_API_ORIGIN. Start
  *                      tests/integration/outcome_server.py first. Inference is scripted.
+ *   scripted           the API build against `python -m ghostlab.api --scripted`, for the
+ *                      demo. Proposals are checked-in replies, never a model.
  *
  * M08_BROWSER_SERVER=dev uses the dev server instead of a production build, to check
  * `npm run dev` under the same CSP.
@@ -15,9 +17,11 @@
 import { join, resolve } from "node:path";
 import { defineConfig } from "@playwright/test";
 
-const mode = process.env.M08_BROWSER_MODE === "service" ? "service" : "fixture";
+const named = process.env.M08_BROWSER_MODE;
+const mode = named === "service" || named === "scripted" ? named : "fixture";
 const out = resolve(process.env.M08_BROWSER_OUT ?? "node_modules/.m08-browser", mode);
-const port = Number(process.env.M08_BROWSER_PORT ?? (mode === "service" ? 5182 : 5181));
+const ports = { fixture: 5181, service: 5182, scripted: 5184 };
+const port = Number(process.env.M08_BROWSER_PORT ?? ports[mode]);
 const vite = "node node_modules/vite/bin/vite.js";
 const dist = join(out, "dist");
 const modeFlag = mode === "fixture" ? "--mode fixture " : "";
@@ -27,9 +31,9 @@ const dev = `${vite} ${modeFlag}--host 127.0.0.1 --port ${port} --strictPort`;
 
 export default defineConfig({
   testDir: ".",
-  testMatch: mode === "service" ? "service.spec.ts" : "interface.spec.ts",
+  testMatch: { fixture: "interface.spec.ts", service: "service.spec.ts", scripted: "scripted.spec.ts" }[mode],
   outputDir: join(out, "results"),
-  workers: mode === "service" ? 2 : 4,
+  workers: mode === "fixture" ? 4 : 2,
   timeout: 60_000,
   expect: { timeout: 10_000 },
   reporter: [["list"], ["json", { outputFile: join(out, "results.json") }]],

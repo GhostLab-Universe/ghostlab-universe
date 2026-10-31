@@ -204,6 +204,7 @@ function campaign(
     errors: [],
     event_count: 0,
     fixture_sha256: bound.action.fixture_sha256 as string,
+    inference: "fixture",
     ...rest,
   };
 }
@@ -215,6 +216,7 @@ function approvalRequest(campaignId: string, bound: RecordedAction, summary: str
     campaign_id: campaignId,
     task_id: `${campaignId}-await-approval`,
     action_digest: bound.action_digest,
+    expires_at: "2099-01-01T00:00:00Z", // the published example's time has passed
     status,
     summary,
   };
@@ -343,7 +345,7 @@ function truncatedWorld(truncation: RecordedTruncation, name: string): World {
   return {
     ...JOURNEY,
     action: recorded.journey_truncated_action,
-    experiment: () => ({
+    experiment: (repaired) => ({
       ...JOURNEY.experiment(null),
       proposal: {
         ...world_experiment_proposal__group_journey_revocation,
@@ -359,6 +361,7 @@ function truncatedWorld(truncation: RecordedTruncation, name: string): World {
       runs: {
         baseline: { run_id: "journey-run-1-baseline", result: truncation.baseline, findings: [], origins: [core(`${name}.baseline`)] },
         fork: { run_id: "journey-run-1", result: truncation.fork, findings: truncation.findings, origins: [core(`${name}.fork`)] },
+        ...(repaired ? { repaired: repairedRun("journey-repair-1", repaired, "journey repair") } : {}),
       },
       origins: [core(name, "Real truncated runs; coverage built as M05's Controller._execute does")],
     }),
@@ -368,6 +371,11 @@ function truncatedWorld(truncation: RecordedTruncation, name: string): World {
 const TRUNCATED_CLEAN = truncatedWorld(recorded.journey_truncated_clean, "journey_truncated_clean");
 const TRUNCATED_VIOLATION = truncatedWorld(recorded.journey_truncated_violation, "journey_truncated_violation");
 const UNFIRED = truncatedWorld(recorded.journey_unfired, "journey_unfired");
+const RACE: World = {
+  ...truncatedWorld(recorded.journey_race, "journey_race"),
+  action: recorded.journey_race_action,
+  repair: recorded.journey_repair_held_by_boundary,
+};
 
 const AUTHORED_STATE = authored("Task list, event list and this campaign state are hand-authored in M05's shape");
 
@@ -428,7 +436,7 @@ function awaitingStage(campaignId: string, world: World): { stage: Stage; reques
         event_count: events.length,
       }),
       events,
-      approval: { request, effective_status: "pending", action: world.action.action, decision: null },
+      approval: { request, effective_status: "pending", action: world.action.action, decision: null, inference: "fixture" },
       experiment,
       origins: originsFor(world, "Id and status replaced for this scenario"),
     },
@@ -456,7 +464,7 @@ function finishedStage(campaignId: string, world: World, request: ApprovalReques
       event_count: events.length,
     }),
     events,
-    approval: { request: consumed, effective_status: "consumed", action: world.action.action, decision: decision(request, "approve", null) },
+    approval: { request: consumed, effective_status: "consumed", action: world.action.action, decision: decision(request, "approve", null), inference: "fixture" },
     experiment,
     origins: [
       ...originsFor(world, "Id and status replaced for this scenario"),
@@ -482,7 +490,7 @@ function rejectedStage(campaignId: string, world: World, request: ApprovalReques
       event_count: events.length,
     }),
     events,
-    approval: { request: { ...request, status: "rejected" }, effective_status: "rejected", action: world.action.action, decision: decision(request, "reject", null) },
+    approval: { request: { ...request, status: "rejected" }, effective_status: "rejected", action: world.action.action, decision: decision(request, "reject", null), inference: "fixture" },
     experiment,
     origins: originsFor(world, "Id and status replaced for this scenario"),
   };
@@ -604,6 +612,7 @@ function settingsBlocked(id: string): Scenario {
         effective_status: "approved",
         action: JOURNEY.action.action,
         decision: decision(request, "approve", null),
+        inference: "fixture",
       },
     },
   };
@@ -682,9 +691,16 @@ function awaiting(id: string, world: World, title: string, shows: string, extra:
 function expired(id: string): Scenario {
   const scenario = awaiting(id, REFUND, "Approval expired", "An approval past expiry: no decision can be made.", {});
   const approval = scenario.stage.approval;
-  return approval === null
-    ? scenario
-    : { ...scenario, stage: { ...scenario.stage, approval: { ...approval, effective_status: "expired" } } };
+  if (approval === null || scenario.stage.view.approval === null) return scenario;
+  const past = approval_request__apply_repair.expires_at;
+  return {
+    ...scenario,
+    stage: {
+      ...scenario.stage,
+      view: { ...scenario.stage.view, approval: { ...scenario.stage.view.approval, expires_at: past } },
+      approval: { ...approval, request: { ...approval.request, expires_at: past }, effective_status: "expired" },
+    },
+  };
 }
 
 function missing(id: string, title: string, shows: string, loadFailure: Failure): Scenario {
@@ -721,6 +737,7 @@ function resumeStalled(id: string): Scenario {
 export const SCENARIOS: readonly Scenario[] = [
   flow("fx-refund", REFUND, "refund_repair", "Refund: timeout after commit", "Full flow: evidence, diff, capsule replay, then approve or reject the repair."),
   flow("fx-journey", JOURNEY, "journey_repair_held_by_adapter", "Group journey: sharing revoked while queued", "Full flow. The first divergence and the violating event are different events."),
+  flow("fx-journey-race", RACE, "journey_repair_held_by_boundary", "Group journey: the revocation race", "A careful adapter leaks: sharing ends after its last check. The guard denies the same delivery."),
   finished("fx-journey-boundary", JOURNEY, recorded.journey_repair_held_by_boundary, "journey_repair_held_by_boundary", "Repair held by the boundary", "A verified repair where the guard denied a delivery at event 18."),
   finished("fx-journey-truncated", JOURNEY, recorded.journey_repair_truncated, "journey_repair_truncated", "Repair incomplete", "budget_exhausted / repair_incomplete: safety held, but the run never finished."),
   finished("fx-journey-idle", JOURNEY, recorded.journey_repair_idle, "journey_repair_idle", "Repair incomplete, nothing attempted", "failed / repair_incomplete: the run finished without booking, so nothing was tested."),

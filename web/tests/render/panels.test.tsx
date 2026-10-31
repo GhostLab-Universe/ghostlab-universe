@@ -33,6 +33,7 @@ function toView(experiment: typeof refund) {
     findings: experiment.findings,
     coverage: experiment.coverage,
     runs: Object.keys(experiment.runs) as ["baseline", "fork"],
+    inference: "fixture" as const,
   };
 }
 
@@ -46,6 +47,7 @@ function runView(experiment: typeof refund, name: "baseline" | "fork"): RunView 
     execution: experiment.execution,
     result: run.result,
     findings: run.findings,
+    inference: "fixture" as const,
   };
 }
 

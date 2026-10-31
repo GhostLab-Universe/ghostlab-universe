@@ -101,7 +101,8 @@ a {
   outline-offset: 2px;
 }
 
-main:focus {
+main:focus,
+[data-testid="decision-region"]:focus {
   outline: none;
 }
 

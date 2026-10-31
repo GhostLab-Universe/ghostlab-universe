@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { SessionInfo, WorldCampaignSpec } from "../api/api.generated.ts";
+import { OPERATIONS } from "../api/operations.generated.ts";
 import type { FixtureHarness } from "../data/fixtureSource.ts";
 import type { DataSource, Failure } from "../data/source.ts";
 import { campaignHref } from "../logic/routes.ts";
@@ -106,6 +107,8 @@ function StartCampaign({ source, session }: { source: DataSource; session: Sessi
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [key] = useState(() => `campaign-${crypto.randomUUID()}`);
+  const scenarios = session.inference === "scripted" ? OPERATIONS.createCampaign.queryValues.scripted_scenario : null;
+  const [scenario, setScenario] = useState("default");
 
   if (worlds.length === 0) {
     return (
@@ -125,7 +128,7 @@ function StartCampaign({ source, session }: { source: DataSource; session: Sessi
       success_criteria: [criterion.trim()],
       budget: LOCAL_DEMO_BUDGET,
     };
-    const result = await source.createCampaign(spec, key);
+    const result = await source.createCampaign(spec, key, scenarios === null ? undefined : scenario);
     setBusy(false);
     if (result.ok) window.location.hash = campaignHref(result.data.record.campaign_id);
     else setFailure(result.failure);
@@ -148,6 +151,18 @@ function StartCampaign({ source, session }: { source: DataSource; session: Sessi
             </option>
           ))}
         </select>
+        {scenarios === null ? null : (
+          <>
+            <label htmlFor="scenario">Scripted scenario (checked-in proposals, not a model)</label>
+            <select id="scenario" value={scenario} onChange={(event) => setScenario(event.currentTarget.value)}>
+              {scenarios.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <label htmlFor="objective">Objective</label>
         <input id="objective" value={objective} required maxLength={2000} onChange={(event) => setObjective(event.currentTarget.value)} />
         <label htmlFor="criterion">Success criterion</label>

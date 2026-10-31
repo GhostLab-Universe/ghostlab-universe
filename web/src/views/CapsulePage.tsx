@@ -5,7 +5,7 @@ import { readCoverage } from "../logic/coverage.ts";
 import { violatingEventIds } from "../logic/evidence.ts";
 import { presentReplay } from "../logic/replay.ts";
 import { Digest, Facts, FailureNotice, Mono, Section, Tag } from "../ui/components.tsx";
-import { CoverageNotice, ExperimentGate, ExperimentPicker, useExperiment } from "./experimentData.tsx";
+import { CoverageNotice, ExperimentGate, ExperimentPicker, LostFaultsNotice, useExperiment } from "./experimentData.tsx";
 
 export function CapsulePage({
   source,
@@ -23,7 +23,7 @@ export function CapsulePage({
         <>
           <ExperimentPicker view={view} current={experiment.experiment_id} target="capsule" />
           <CapsuleCoverage experiment={experiment} />
-          <CapsuleControls source={source} campaignId={view.record.campaign_id} experiment={experiment} origins={origins} />
+          <CapsuleControls source={source} view={view} experiment={experiment} origins={origins} />
         </>
       )}
     </ExperimentGate>
@@ -38,15 +38,16 @@ function CapsuleCoverage({ experiment }: { experiment: ExperimentView }) {
 
 function CapsuleControls({
   source,
-  campaignId,
+  view,
   experiment,
   origins,
 }: {
   source: DataSource;
-  campaignId: string;
+  view: CampaignView;
   experiment: ExperimentView;
   origins: readonly Origin[];
 }) {
+  const campaignId = view.record.campaign_id;
   const runs = experiment.runs as readonly RunName[];
   const [run, setRun] = useState<RunName>(runs.includes("fork") ? "fork" : (runs[0] ?? "fork"));
   const [capsule, setCapsule] = useState<{ run: RunName; info: CapsuleInfo; origins: readonly Origin[] } | null>(null);
@@ -161,13 +162,28 @@ function CapsuleControls({
           <p className="muted">A checksum detects accidental change. It does not prove who made the capsule.</p>
         </Section>
       )}
-      {replayed === null ? null : <ReplayPanel result={replayed.result} origins={replayed.origins} />}
+      {run === "repaired" ? <LostFaultsNotice repair={view.repair} /> : null}
+      {replayed === null ? null : (
+        <ReplayPanel
+          result={replayed.result}
+          origins={replayed.origins}
+          lostFaults={run === "repaired" ? (view.repair?.lost_faults ?? []) : []}
+        />
+      )}
     </>
   );
 }
 
-export function ReplayPanel({ result, origins }: { result: ReplayResult; origins: readonly Origin[] }) {
-  const shown = presentReplay(result);
+export function ReplayPanel({
+  result,
+  origins,
+  lostFaults = [],
+}: {
+  result: ReplayResult;
+  origins: readonly Origin[];
+  lostFaults?: readonly string[];
+}) {
+  const shown = presentReplay(result, lostFaults);
   return (
     <Section title="Replay result" origins={origins}>
       <dl className="recorded" data-testid="replay-fields">

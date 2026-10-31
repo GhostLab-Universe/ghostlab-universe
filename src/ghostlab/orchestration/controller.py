@@ -324,6 +324,10 @@ class CampaignController:
     def _wrap(self, name, node):
         def run(state):
             self.s.on_node(name, state)
+            if name == "execute":
+                self._discard_earlier_runs(state, f"{self._prefix(state)}-execute")
+            elif name == "execute_repair":
+                self._discard_earlier_runs(state, f"{state['campaign_id']}-execute-repair")
             # With no usable world, only a stop can move the campaign, at whichever node.
             if self._unusable(state) and (stop := self._guard(state)) is not None:
                 return stop
@@ -363,7 +367,7 @@ class CampaignController:
     def _unusable(self, state) -> bool:
         try:
             self._fixture(state)
-        except (PolicyDenied, CampaignSettingsChanged):
+        except (PolicyDenied, CampaignSettingsChanged, ValueError, TypeError):
             return True
         return False
 
@@ -565,9 +569,9 @@ class CampaignController:
     def _discard_earlier_runs(self, state, task_id):
         """Re-entry after a crash discards that task's runs, so they stop counting.
 
-        This comes before the node's stop checks, or a campaign stopped on recovery
-        would keep the dead runs' charges. World runs are in-process and spend no
-        money. Model attempts are never voided.
+        This comes before every stop check, in the node wrapper, or a campaign stopped on
+        recovery would keep the dead runs' charges. World runs are in-process and spend
+        no money. Model attempts are never voided.
         """
         self._accountant(state).void_task(task_id, "tool_calls")
 
@@ -763,7 +767,6 @@ class CampaignController:
 
     def _execute(self, state):
         task_id = f"{self._prefix(state)}-execute"
-        self._discard_earlier_runs(state, task_id)
         if (stop := self._guard(state)) is not None:
             return stop
         tasks = board.start(state["tasks"], task_id)
@@ -982,7 +985,6 @@ class CampaignController:
 
     def _execute_repair(self, state):
         repair_id = f"{state['campaign_id']}-execute-repair"
-        self._discard_earlier_runs(state, repair_id)
         if (stop := self._guard(state)) is not None:
             return stop
         tasks = board.start(state["tasks"], repair_id)

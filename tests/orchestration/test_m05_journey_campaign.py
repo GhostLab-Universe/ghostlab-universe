@@ -17,6 +17,7 @@ from ghostlab.contracts.world import (CapsuleV2, WorldCampaignRecord, WorldInvar
                                       WorldMemoryQuery, WorldRunResult)
 from ghostlab.core import Fixture
 from ghostlab.orchestration import worlds as worlds_module
+from ghostlab.orchestration.worlds import canonical
 from ghostlab.orchestration import (DEFAULT_WORLDS, CampaignController,
                                     CampaignSettingsChanged, JourneyDriver,
                                     LiveInferenceAuthorization, LiveInferenceRefused,
@@ -978,6 +979,19 @@ def test_a_withdrawn_world_closes_from_a_node_with_no_stop_check(tmp_path, node,
     assert done["status"] in {"cancelled", "budget_exhausted"} and not done["paused"]
 
 
+def test_a_stop_closes_a_campaign_whose_snapshot_cannot_be_restored(tmp_path):
+    lab = JourneyLab(tmp_path, Script(journey_reply()))
+    with lab.controller() as controller:
+        state = controller.start(CID, journey_spec())
+        broken = {**state["fixture"], "extra": 1}
+        controller.graph.update_state(controller._config(CID), {
+            "fixture": broken, "fixture_sha256": hashlib.sha256(canonical(broken)).hexdigest()})
+    cancel = threading.Event()
+    cancel.set()
+    with lab.controller(cancel=cancel) as controller:
+        assert controller.resume(CID)["status"] == "cancelled"
+
+
 def test_a_withdrawn_world_still_refuses_a_recovery_with_no_stop(tmp_path):
     lab = JourneyLab(tmp_path, Script(journey_reply()), on_node=CrashOnce("verify"))
     with lab.controller() as controller, pytest.raises(RuntimeError):
@@ -1787,21 +1801,25 @@ def test_a_crash_in_an_experiment_run_does_not_use_up_the_budget(tmp_path, monke
 
 
 @pytest.mark.parametrize("stop", ["cancel", "deadline"])
-def test_a_crashed_experiment_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch, stop):
+@pytest.mark.parametrize("worlds", [None, {}])
+def test_a_crashed_experiment_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch, stop,
+                                                                    worlds):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
     die_in_a_run(monkeypatch)
     with lab.controller() as controller, pytest.raises(RuntimeError):
         controller.start(CID, journey_spec())
     monkeypatch.undo()
+    lab.worlds = worlds
     cancel = threading.Event()
     cancel.set() if stop == "cancel" else lab.clock.advance(minutes=30)
     with lab.controller(cancel=cancel) as controller:
         state = controller.recover(CID)
-        assert state["experiments"] == {} and controller.record(CID).usage.tool_calls == 0
+    assert state["experiments"] == {} and tool_calls(lab) == 0
     assert open_reservations(lab) == []
 
 
-def test_a_crashed_repair_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch):
+@pytest.mark.parametrize("worlds", [None, {}])
+def test_a_crashed_repair_stopped_on_recovery_leaves_no_charges(tmp_path, monkeypatch, worlds):
     lab = JourneyLab(tmp_path, Script(journey_reply()))
     with lab.controller() as controller:
         state = controller.start(CID, journey_spec())
@@ -1811,6 +1829,7 @@ def test_a_crashed_repair_stopped_on_recovery_leaves_no_charges(tmp_path, monkey
     with lab.controller() as controller, pytest.raises(RuntimeError):
         controller.resume(CID)
     monkeypatch.undo()
+    lab.worlds = worlds
     lab.clock.advance(minutes=30)
     with lab.controller() as controller:
         done = controller.recover(CID)

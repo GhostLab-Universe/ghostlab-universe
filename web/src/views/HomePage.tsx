@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { SessionInfo, WorldCampaignSpec } from "../api/api.generated.ts";
 import { OPERATIONS } from "../api/operations.generated.ts";
 import type { FixtureHarness } from "../data/fixtureSource.ts";
 import type { DataSource, Failure } from "../data/source.ts";
+import { IdempotencyKeys } from "../logic/approval.ts";
 import { campaignHref } from "../logic/routes.ts";
 import { FailureNotice, Notice, Section } from "../ui/components.tsx";
 
@@ -106,7 +107,7 @@ function StartCampaign({ source, session }: { source: DataSource; session: Sessi
   const [criterion, setCriterion] = useState("");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
-  const [key] = useState(() => `campaign-${crypto.randomUUID()}`);
+  const keys = useRef(new IdempotencyKeys(() => `campaign-${crypto.randomUUID()}`));
   const scenarios = session.inference === "scripted" ? OPERATIONS.createCampaign.queryValues.scripted_scenario : null;
   const [scenario, setScenario] = useState("default");
 
@@ -128,7 +129,8 @@ function StartCampaign({ source, session }: { source: DataSource; session: Sessi
       success_criteria: [criterion.trim()],
       budget: LOCAL_DEMO_BUDGET,
     };
-    const result = await source.createCampaign(spec, key, scenarios === null ? undefined : scenario);
+    const chosen = scenarios === null ? undefined : scenario;
+    const result = await source.createCampaign(spec, keys.current.keyFor({ spec, chosen }), chosen);
     setBusy(false);
     if (result.ok) window.location.hash = campaignHref(result.data.record.campaign_id);
     else setFailure(result.failure);

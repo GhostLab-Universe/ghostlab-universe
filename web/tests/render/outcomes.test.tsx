@@ -160,6 +160,25 @@ test("the diff ignores a repair's findings", () => {
   assert.doesNotMatch(text(loading), /Violation evidence Event 3/);
 });
 
+test("a capsule that did not reproduce says why it has no run_status", () => {
+  const result = { ...recorded.journey_replay, reproduced: false, run_status: null };
+  const markup = text(html(<ReplayPanel result={result} origins={[]} />));
+  assert.match(markup, /run_status not reported: the capsule did not reproduce/);
+  assert.match(markup, /Not reproduced/);
+});
+
+test("unrecorded inference is said plainly in the session and the budget", () => {
+  const unrecorded = { ...session, inference: "unrecorded" as const };
+  assert.match(text(html(<SessionFacts session={unrecorded} />)), /inference unrecorded/);
+  const notice = text(html(<ServiceModeNotice session={unrecorded} />));
+  assert.match(notice, /not recorded/);
+  assert.doesNotMatch(notice, /disabled|scripted test data/);
+  const { view, origins } = scenario("fx-refund").stage;
+  const page = text(html(<CampaignPanel view={{ ...view, inference: "unrecorded" }} origins={origins} source={source} refresh={refresh} />));
+  assert.match(page, /Proposal calls \(source not recorded\)/);
+  assert.doesNotMatch(page, /Model calls|Scripted proposal calls/);
+});
+
 test("a scripted campaign doesn't count model calls", () => {
   assert.match(text(campaignPage("fx-refund")), /Scripted proposal calls/);
   assert.doesNotMatch(text(campaignPage("fx-refund")), /Model calls/);

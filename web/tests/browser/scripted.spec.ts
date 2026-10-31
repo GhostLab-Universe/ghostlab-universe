@@ -29,6 +29,9 @@ test("the demo: a careful agent leaks, the boundary blocks it, replay needs no m
   await expect(page.getByTestId("campaign-inference")).toContainText(NOT_A_MODEL);
   await expect(page.getByTestId("synthetic-label")).toBeVisible();
   await expect(page.locator(".service-mode")).toContainText("not a model");
+  const calls = page.getByRole("row", { name: /Scripted proposal calls/ });
+  await expect(calls).toContainText("1");
+  await expect(page.getByText("Model calls")).toHaveCount(0);
   await shot(page, "demo-1-campaign");
 
   await view(page, "Reality Diff");
@@ -145,9 +148,13 @@ test("rejecting on the same server leaves nothing unspent to warn about", async 
   await expect(page.getByTestId("repair-verdict")).toHaveCount(0);
 });
 
-test("a scenario a world doesn't have is refused with the service's reason", async ({ page }) => {
+test("a scenario a world doesn't have is refused, and a changed choice then starts", async ({ page }) => {
   await start(page, "refund-world/1", "revocation_race").catch(() => undefined);
   await expect(page.getByTestId("state-validation_error")).toContainText("scripted_scenario_unavailable");
+  await page.getByLabel(/Scripted scenario/).selectOption("default");
+  await page.getByRole("button", { name: "Start campaign" }).click();
+  await expect(page).toHaveURL(/#\/campaign\/c-/, POLLED);
+  await paused(page);
 });
 
 test.describe("narrow screen", () => {

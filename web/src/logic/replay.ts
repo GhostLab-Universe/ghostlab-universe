@@ -24,7 +24,7 @@ export function presentReplay(
       detail: "The recorded evidence did not repeat, so this capsule's claims don't hold.",
     };
   }
-  if (result.run_status !== "completed") {
+  if (result.run_status === "budget_exhausted") {
     return {
       tone: "warn",
       headline: "Reproduced, but the recorded run stopped early",

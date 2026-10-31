@@ -5,7 +5,7 @@ import type { DataSource } from "../data/source.ts";
 import type { LiveState } from "../logic/live.ts";
 import { looksExpired } from "../logic/approval.ts";
 import { campaignHref, VIEWS, type Route } from "../logic/routes.ts";
-import { campaignStatus } from "../logic/status.ts";
+import { campaignStatus, inferenceLabel } from "../logic/status.ts";
 import { HomePage } from "../views/HomePage.tsx";
 import { ApprovalPage } from "../views/ApprovalPage.tsx";
 import { CampaignPanel } from "../views/CampaignPage.tsx";
@@ -82,11 +82,14 @@ export function SessionFacts({ session }: { session: SessionInfo | null }) {
 /** What this service can actually do. "fixture" inference is scripted, never a model. */
 export function ServiceModeNotice({ session }: { session: SessionInfo }) {
   if (session.inference === "live") return null;
+  const scripted = session.inference === "fixture" || session.inference === "scripted";
   return (
     <div className="service-mode" role="note">
-      {session.inference === "fixture" || session.inference === "scripted"
+      {scripted
         ? "This service's inference is scripted test data, not a model."
-        : "Inference is disabled on this service, so it cannot start new campaigns."}
+        : session.inference === "disabled"
+          ? "Inference is disabled on this service, so it cannot start new campaigns."
+          : "This service's inference mode is not recorded."}
     </div>
   );
 }
@@ -201,11 +204,6 @@ function CampaignUnavailable({ state, campaignId }: { state: LiveState; campaign
     );
   }
   return state.connection === "reconnecting" ? null : <Loading what="campaign" />;
-}
-
-function inferenceLabel(inference: CampaignView["inference"]): string {
-  if (inference === "fixture" || inference === "scripted") return "Proposals scripted: checked-in replies, not a model";
-  return `inference ${inference}`;
 }
 
 function CampaignHeading({

@@ -5,13 +5,13 @@ import { createFixtureSource } from "../../src/data/fixtureSource.ts";
 import type { Failure } from "../../src/data/source.ts";
 import { recorded } from "../../src/fixtures/recorded.generated.ts";
 import { SCENARIOS } from "../../src/fixtures/scenarios.ts";
-import { buildSubmission } from "../../src/logic/approval.ts";
+import { buildSubmission, IdempotencyKeys } from "../../src/logic/approval.ts";
 import { coverageNote, coverageOf, readCoverage } from "../../src/logic/coverage.ts";
 import { violatingEventIds } from "../../src/logic/evidence.ts";
 import { BLOCKED_HELP, CAMPAIGN_FINISHED, describeFailure, failureState, revokesAccess } from "../../src/logic/failure.ts";
 import { presentReplay } from "../../src/logic/replay.ts";
 import { presentRepair } from "../../src/logic/repair.ts";
-import { campaignStatus, outcomeNotice } from "../../src/logic/status.ts";
+import { campaignStatus, inferenceLabel, outcomeNotice, proposalCallsLabel } from "../../src/logic/status.ts";
 
 const stage = (id: string) => SCENARIOS.find((scenario) => scenario.id === id)!.stage;
 
@@ -101,6 +101,42 @@ test("coverage_incomplete reads as inconclusive, not as a spent budget", () => {
   assert.equal(label.label, "Inconclusive");
   assert.equal(label.tone, "warn");
   assert.equal(campaignStatus("budget_exhausted", "tool_calls").label, "Budget exhausted");
+});
+
+test("unrecorded inference is never shown as scripted or live", () => {
+  assert.equal(inferenceLabel("unrecorded"), "Inference not recorded for this campaign");
+  assert.doesNotMatch(inferenceLabel("unrecorded"), /scripted|live|model/i);
+  assert.match(proposalCallsLabel("unrecorded"), /source not recorded/);
+  assert.doesNotMatch(proposalCallsLabel("unrecorded"), /Model|Scripted/);
+  assert.equal(proposalCallsLabel("scripted"), "Scripted proposal calls");
+  assert.equal(proposalCallsLabel("fixture"), "Scripted proposal calls");
+  assert.equal(proposalCallsLabel("live"), "Model calls");
+});
+
+test("a replay that did not reproduce has no run_status and is still a failure", () => {
+  const shown = presentReplay({ ...recorded.refund_replay, reproduced: false, run_status: null });
+  assert.equal(shown.tone, "fail");
+  assert.equal(shown.headline, "Not reproduced");
+});
+
+test("a campaign key belongs to one exact request", () => {
+  let minted = 0;
+  const keys = new IdempotencyKeys(() => `key-${(minted += 1)}`);
+  const spec = { objective: "a" };
+  assert.equal(keys.keyFor({ spec, chosen: "default" }), "key-1");
+  assert.equal(keys.keyFor({ spec, chosen: "default" }), "key-1", "a retry reuses it");
+  assert.equal(keys.keyFor({ spec, chosen: "revocation_race" }), "key-2", "another scenario is a new action");
+});
+
+test("idempotency_key_reused keeps its reason", () => {
+  const failure: Failure = {
+    kind: "service",
+    status: 409,
+    reason: "idempotency_key_reused",
+    error: { code: "conflict", message: "This Idempotency-Key was used for another scenario", ref: null, retryable: false, side_effect: "none" },
+  };
+  assert.equal(failureState(failure), "conflict");
+  assert.equal(describeFailure(failure).reason, "idempotency_key_reused");
 });
 
 test("other outcomes need no extra notice", () => {

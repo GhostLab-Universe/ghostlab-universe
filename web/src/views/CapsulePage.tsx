@@ -203,7 +203,11 @@ export function ReplayPanel({
             <Mono>run_status</Mono>
           </dt>
           <dd>
-            <Mono>{result.run_status}</Mono>
+            {result.run_status === null ? (
+              <span className="muted">not reported: the capsule did not reproduce</span>
+            ) : (
+              <Mono>{result.run_status}</Mono>
+            )}
           </dd>
         </div>
         <div>

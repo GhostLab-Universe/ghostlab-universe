@@ -27,6 +27,22 @@ export function campaignStatus(status: CampaignStatus, outcome: string | null = 
   return CAMPAIGN[status];
 }
 
+type Inference = CampaignView["inference"];
+
+/** The campaign's own pinned mode, not the reading server's. */
+export function inferenceLabel(inference: Inference): string {
+  if (inference === "fixture" || inference === "scripted") return "Proposals scripted: checked-in replies, not a model";
+  if (inference === "unrecorded") return "Inference not recorded for this campaign";
+  return `inference ${inference}`;
+}
+
+/** Under scripted or fixture inference, model_calls counts checked-in replies. */
+export function proposalCallsLabel(inference: Inference): string {
+  if (inference === "fixture" || inference === "scripted") return "Scripted proposal calls";
+  if (inference === "unrecorded") return "Proposal calls (source not recorded)";
+  return "Model calls";
+}
+
 export interface OutcomeNotice {
   state: "blocked" | "incomplete" | "failed";
   title: string;

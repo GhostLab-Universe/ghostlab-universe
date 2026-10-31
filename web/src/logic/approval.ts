@@ -76,8 +76,9 @@ export function actionFacts(action: ApprovalView["action"]): ActionFacts {
 }
 
 /**
- * Keeps one Idempotency-Key per exact body, so retrying after a lost response can't
- * record a second decision, and changing the decision or reason is a new action.
+ * Keeps one Idempotency-Key per exact request, so a retry after a lost response can't
+ * act twice, and anything changed is a new action. M07 refuses a key reused for another
+ * request with `idempotency_key_reused`.
  */
 export class IdempotencyKeys {
   #keys = new Map<string, string>();
@@ -87,8 +88,8 @@ export class IdempotencyKeys {
     this.#mint = mint;
   }
 
-  keyFor(submission: ApprovalSubmission): string {
-    const body = JSON.stringify(submission);
+  keyFor(request: unknown): string {
+    const body = JSON.stringify(request);
     const existing = this.#keys.get(body);
     if (existing !== undefined) return existing;
     const key = this.#mint();

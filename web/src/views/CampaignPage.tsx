@@ -6,7 +6,7 @@ import { readCoverage } from "../logic/coverage.ts";
 import { formatCount, formatTimestamp } from "../logic/format.ts";
 import { presentRepair } from "../logic/repair.ts";
 import { campaignHref } from "../logic/routes.ts";
-import { outcomeNotice, taskStatus } from "../logic/status.ts";
+import { outcomeNotice, proposalCallsLabel, taskStatus } from "../logic/status.ts";
 import { orderTasks } from "../logic/timeline.ts";
 import { Digest, Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
 import { CoverageLine } from "./experimentData.tsx";
@@ -270,9 +270,8 @@ function BudgetTable({
   usage: BudgetUsage;
   inference: CampaignView["inference"];
 }) {
-  const scripted = inference === "scripted" || inference === "fixture";
   const rows: Array<[string, string, string]> = [
-    [scripted ? "Scripted proposal calls" : "Model calls", formatCount(usage.model_calls), formatCount(limits.max_model_calls)],
+    [proposalCallsLabel(inference), formatCount(usage.model_calls), formatCount(limits.max_model_calls)],
     ["Tool calls", formatCount(usage.tool_calls), formatCount(limits.max_tool_calls)],
     ["Input tokens", formatCount(usage.input_tokens), formatCount(limits.max_input_tokens)],
     ["Output tokens", formatCount(usage.output_tokens), formatCount(limits.max_output_tokens)],

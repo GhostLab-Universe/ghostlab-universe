@@ -418,8 +418,9 @@ test("settings_changed at consumption ends the campaign, approval unspent", asyn
   assert.match(page, /data-testid="state-blocked"/);
   assert.doesNotMatch(page, /data-testid="state-failed"/);
   assert.doesNotMatch(text(page), /Resume campaign/);
-  const resumed = unwrap(await client.resumeCampaign(campaignId));
-  assert.equal(resumed.record.status, "failed", "resume does nothing here, so the UI offers none");
+  const resumed = failureOf(await client.resumeCampaign(campaignId));
+  assert.equal(resumed.status, 409);
+  assert.equal(resumed.reason, "campaign_finished", "a finished campaign can't resume, so the UI offers none");
 });
 
 test("a resume refused by settings_changed is blocked, and restoring them lets it finish", async () => {

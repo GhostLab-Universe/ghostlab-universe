@@ -370,6 +370,10 @@ class CampaignController:
             return "the recorded fixture failed its digest"
         if driver.snapshot(driver.current_fixture(self.s)) != snapshot:
             return "the world fixture changed since this campaign started"
+        fixture = driver.restore(snapshot)
+        if (problem := driver.identity_problem(self.s, fixture, self.session.project_id,
+                                               self.session.principal)) is not None:
+            return problem
         action = (state.get("approval") or {}).get("action") or {}
         if action.get("fixture_sha256") not in (None, state["fixture_sha256"]):
             return "the approved action names a different fixture"
@@ -934,9 +938,10 @@ class CampaignController:
         """Single-use consumption, checkpointed before the repaired run executes.
 
         An approval is spent only on a repair that can start, so the stop conditions,
-        the settings, the mode and the budget are checked first. The store and the
-        checkpoint are separate databases, so a crash can land between them. This
-        campaign's own approval, found consumed for this same action, is that crash.
+        the settings, the world identity, the mode and the budget are checked first.
+        The store and the checkpoint are separate databases, so a crash can land between
+        them. This campaign's own approval, found consumed for this same action, is that
+        crash.
         """
         approval = state["approval"]
         wait_id = f"{state['campaign_id']}-await-approval"

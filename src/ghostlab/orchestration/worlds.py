@@ -99,6 +99,11 @@ class RefundDriver:
         return (f"adapter={proposal['adapter']} "
                 f"timeout_after_commit={proposal['scenario']['timeout_after_commit']}")
 
+    def identity_problem(self, services, fixture: Fixture, project_id: str,
+                         principal: Principal) -> str | None:
+        bound = services.binding.customer_id_for(project_id, principal)
+        return None if bound == fixture.customer_id else "the world identity no longer owns this"
+
     def faults_fired(self, proposal: dict, run: dict) -> set[str]:
         timed_out = any(event["outcome"].get("error") == "PaymentTimeout" for event in run["trace"])
         return {"timeout_after_commit"} if timed_out else set()
@@ -252,6 +257,11 @@ class JourneyDriver:
         faults = sorted(f"{f['fault_id']}@{f['after_event']}"
                         for f in proposal["scenario"]["faults"])
         return f"adapter={proposal['adapter_id']} faults={faults}"
+
+    def identity_problem(self, services, fixture: JourneyFixture, project_id: str,
+                         principal: Principal) -> str | None:
+        bound = services.world_binding.actor_for(project_id, principal, JOURNEY_WORLD)
+        return None if bound == fixture.organizer else "the world identity no longer owns this"
 
     def faults_fired(self, proposal: dict, run: dict) -> set[str]:
         return {fault["fault_id"] for fault in proposal["scenario"]["faults"]

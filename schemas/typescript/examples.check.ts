@@ -5303,18 +5303,18 @@ export const world_pack__service_relay: C.WorldPack = {
     },
     {
       "adapter_id": "relay-lease-checked",
-      "description": "Plans from the lease list, re-reads leases, the promise version and ownership before confirming, and otherwise releases its leases and hands the conversation to the owner",
+      "description": "Plans from the lease list, re-reads leases, the promise version and ownership before confirming, and otherwise releases its leases and hands the conversation to the owner, unless the owner already holds it, when the leases stay for the owner to decide",
       "kind": "repaired"
     }
   ],
   "faults": [
     {
-      "description": "Competing jobs take resources while the availability counters stay stale; the lease list stays true",
+      "description": "Competing jobs try for their resources while the availability counters stay stale; the lease list stays true",
       "fault_id": "stale_availability_competition",
       "fault_pack": "stale_availability",
       "parameters": [
         {
-          "description": "Competing jobs that take a free resource",
+          "description": "How many competitors try, 1 to 8; each wants one fixed resource and gets it only if it is free",
           "name": "competing_jobs",
           "type": "integer"
         }
@@ -5327,7 +5327,7 @@ export const world_pack__service_relay: C.WorldPack = {
       "parameters": []
     },
     {
-      "description": "The owner takes over the first job's conversation once its leases are in place, while the automated confirmation is pending",
+      "description": "The owner takes over the first job's conversation: with no after_event, once its leases are in place and the automated confirmation is pending; with one, from the next event",
       "fault_id": "takeover_with_queued_confirmation",
       "fault_pack": "owner_takeover",
       "parameters": []

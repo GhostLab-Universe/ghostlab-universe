@@ -85,8 +85,14 @@ class JobRegistry:
                 job.cancel.set()
             thread = threading.Thread(target=self._run, args=(key, job, work), daemon=True,
                                       name=f"campaign-{len(self._jobs)}")
+            try:
+                thread.start()
+            except RuntimeError as error:
+                raise ApiError(503, "internal", "Could not start a worker; retry later",
+                               retryable=True) from error
+            # Only now, so a job here always has a worker. It can't end first: _run needs
+            # this lock to leave.
             self._jobs[key], self._threads[key] = job, thread
-            thread.start()
             return job, True
 
     def _run(self, key: str, job: Job, work: Work):

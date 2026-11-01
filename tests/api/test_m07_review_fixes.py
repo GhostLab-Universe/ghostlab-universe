@@ -639,3 +639,62 @@ def test_a_retry_landing_after_the_repair_finished_still_reads_as_resumed(stack)
     assert api.decide(paused).status_code == 200
     api.wait(paused["record"]["campaign_id"], "completed")
     assert plane._resume_for_owner(earlier, PROJECT) == (True, None)
+
+
+# -- third review: a worker that could not start -----------------------------------------------
+
+class NoWorkerOnce:
+    """The next campaign worker fails to start. No other thread is touched."""
+
+    def __init__(self, monkeypatch):
+        self.armed, start = False, threading.Thread.start
+
+        def failing(thread):
+            if self.armed and thread.name.startswith("campaign-"):
+                self.armed = False
+                raise RuntimeError("can't start new thread")
+            start(thread)
+
+        monkeypatch.setattr(threading.Thread, "start", failing)
+        monkeypatch.setattr(jobs_module, "HANDSHAKE_S", 3.0)  # a ghost's wait fails quickly
+
+
+def test_a_create_whose_worker_cannot_start_is_retryable_and_holds_nothing(stack, monkeypatch):
+    fail = NoWorkerOnce(monkeypatch)
+    api = stack(proposal(), proposal(), max_active_campaigns=1)
+    fail.armed = True
+    refused = api.create()
+    assert refused.status_code == 503 and refused.json()["error"]["retryable"] is True
+    assert api.client.app.state.plane.jobs._jobs == {}
+    retry = api.create()  # the slot is free and nothing was stored
+    assert retry.status_code == 202 and "Idempotency-Replayed" not in retry.headers
+    api.wait(retry.json()["record"]["campaign_id"], "awaiting_approval")
+
+
+def test_a_decision_whose_worker_cannot_start_leaves_a_resumable_stall(stack, monkeypatch):
+    fail = NoWorkerOnce(monkeypatch)
+    api = stack(proposal())
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    fail.armed = True
+    decided = api.decide(paused).json()
+    assert decided["resumed"] is False and decided["resume_error"]["error"]["retryable"] is True
+    assert api.view(campaign_id)["job"]["state"] == "stalled"
+    assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 202
+    assert api.wait(campaign_id, "completed")["outcome"] == "repair_verified"
+
+
+def test_shutdown_stops_real_workers_after_one_failed_to_start(monkeypatch):
+    fail, seen = NoWorkerOnce(monkeypatch), threading.Event()
+    registry = jobs_module.JobRegistry(limit=2, on_failure=lambda *_: None)
+    monkeypatch.setattr(jobs_module, "SHUTDOWN_GRACE_S", 0.01)
+    fail.armed = True
+    with pytest.raises(ApiError) as refused:
+        registry.submit("ghost", lambda job: None)
+    assert (refused.value.status, refused.value.retryable) == (503, True)
+    registry.submit("real", lambda job: seen.wait(5))
+    try:
+        registry.shutdown()
+    finally:
+        seen.set()
+    assert registry.stopping.is_set()

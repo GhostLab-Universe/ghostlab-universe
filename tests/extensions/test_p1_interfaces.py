@@ -210,6 +210,15 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaises(UnknownTargetError):
             register.target_factory("stub-world/1", "nope")
 
+    def test_unhashable_ids_raise_unknown_world(self):
+        register = registry()
+        with self.assertRaises(UnknownWorldError):
+            register.environment_factory([])
+        with self.assertRaises(UnknownWorldError):
+            register.target_factory([], "stub-script")
+        with self.assertRaises(UnknownWorldError):
+            register.target_manifest([], "stub-script")
+
     def test_only_checked_in_origins_register(self):
         with self.assertRaises(ValueError):
             AdapterManifest(package="evil", version="1", origin="uploaded")

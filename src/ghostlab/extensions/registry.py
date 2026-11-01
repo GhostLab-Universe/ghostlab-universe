@@ -121,7 +121,11 @@ class AdapterRegistry:
         try:
             return self._targets[(world_version, adapter_id)][0]
         except (KeyError, TypeError):
-            if world_version not in self._environments:
+            try:
+                missing = world_version not in self._environments
+            except TypeError:  # Unhashable ids are unknown worlds, still fail-closed.
+                missing = True
+            if missing:
                 raise UnknownWorldError(f"No adapter package for {world_version!r}") from None
             raise UnknownTargetError(
                 f"No target {adapter_id!r} for {world_version!r}") from None
@@ -138,7 +142,11 @@ class AdapterRegistry:
         try:
             return self._targets[(world_version, adapter_id)][1]
         except (KeyError, TypeError):
-            if world_version not in self._environments:
+            try:
+                missing = world_version not in self._environments
+            except TypeError:  # Unhashable ids are unknown worlds, still fail-closed.
+                missing = True
+            if missing:
                 raise UnknownWorldError(f"No adapter package for {world_version!r}") from None
             raise UnknownTargetError(
                 f"No target {adapter_id!r} for {world_version!r}") from None

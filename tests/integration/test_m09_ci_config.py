@@ -21,6 +21,13 @@ def test_workflow_runs_every_existing_check():
         assert command in WORKFLOW, command
 
 
+def test_the_suite_checks_out_the_history_its_release_tests_read():
+    """Ancestry and restamping tests need real history, and a shallow clone has none."""
+    job = WORKFLOW.split("\n  python:\n")[1].split("\n  demos:\n")[0]
+    assert "uv run --frozen pytest" in job
+    assert re.search(r"actions/checkout@\S+ # \S+\n\s+with:\n\s+fetch-depth: 0\b", job)
+
+
 def test_tool_versions_are_pinned():
     assert 'version: "0.13.6"' in WORKFLOW
     assert "node-version-file: .nvmrc" in WORKFLOW

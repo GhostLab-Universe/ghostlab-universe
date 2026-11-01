@@ -904,6 +904,12 @@ def target_repo(tmp_path_factory):
     REPO["path"] = shared_repo(tmp_path_factory.mktemp("target") / "repo")
 
 
+@pytest.fixture(autouse=True)
+def target_at_the_commit(target_repo):
+    """``release_commit`` moves the ref, so no test depends on the one before it."""
+    git(REPO["path"], "update-ref", TARGET_REF, COMMIT)
+
+
 @pytest.fixture(scope="module")
 def bound(evaluated, tmp_path_factory):
     return bound_copy(evaluated, tmp_path_factory.mktemp("bound"))

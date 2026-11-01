@@ -9,8 +9,9 @@ findings. ``mandatory_participants_feasible`` is restated here from the rule in 
 
 GUARD_DENIALS = {"StaleIntentDenied", "PermissionWithdrawnDenied"}
 FAULT_ERRORS = {"PaymentTimeout"}
-# What each tool may change, restated from M02.md. A tool that isn't listed changes nothing,
-# and neither does a call that was refused. A fault can hide a commit, so it isn't refused.
+# What each tool may change, restated by hand from the worlds' tools, not imported from them.
+# A tool that isn't listed changes nothing, and neither does a call that was refused. A fault
+# can hide a commit, so it isn't refused.
 REFUND_EFFECTS = {"issue_refund": {"ledger", "total_refunded_minor"}}
 JOURNEY_EFFECTS = {"hold_availability": {"holds"},
                    "release_availability": {"holds", "reservations"},

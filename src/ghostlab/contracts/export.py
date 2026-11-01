@@ -108,14 +108,68 @@ def core_examples() -> dict[str, str]:
         "examples/contracts/core/capsule_v2.refund_failure.json":
             dump(world_refund.capsule_v1_to_v2(capsule)),
     })
+    files.update(_capsule_v3_examples(capsule))
     files.update(_journey_examples())
     return files
 
+
+def _capsule_v3_examples(capsule: dict) -> dict[str, str]:
+    """v3 capsules from executed refund evidence: a plain v2 upgrade, a recorded
+    capsule with full P1 provenance, and a fresh-adapter retest (a new experiment,
+    not a replay claim). Nothing here is hand-written evidence."""
+    from ..adapters.refund_env import (ENVIRONMENT_ID, ENVIRONMENT_VERSION, FIXTURE_NAME,
+                                       REFUND_INVARIANTS, RefundEnvironment)
+    from ..adapters.refund_target import VULNERABLE
+    from ..core import ADAPTER_VERSION, Fixture, Scenario, run
+    from . import world_refund
+    from .capsule_v3 import CapsuleV3, capsule_digest, capsule_v2_to_v3, fixture_digest
+    dump = lambda model: _json(model.model_dump(mode="json"))  # noqa: E731
+    core = "examples/contracts/core"
+    v2 = world_refund.capsule_v1_to_v2(capsule)
+
+    def provenance(payload, replay_kind, retest=None):
+        fired = sorted(RefundEnvironment().faults_fired(payload["scenario"],
+                                                        payload["run"]["trace"]))
+        return {
+            "replay_kind": replay_kind, "environment_id": ENVIRONMENT_ID,
+            "environment_version": ENVIRONMENT_VERSION, "fixture_name": FIXTURE_NAME,
+            "fixture_sha256": fixture_digest(payload["fixture"]),
+            # The engine verifier version, pinned by tests/contracts/test_capsule_v3.py
+            # (export stays on the light contracts path; it must not import orchestration).
+            "rule_versions": {name: "refund-verifier-1" for name in REFUND_INVARIANTS},
+            "faults_fired": fired, "config": {}, "external_dependencies": [],
+            "truncated": False, "retest_adapter_id": retest[0] if retest else None,
+            "retest_adapter_version": retest[1] if retest else None,
+        }
+
+    def envelope(payload):
+        return {"payload": payload, "sha256": capsule_digest(payload)}
+
+    v2json = v2.payload.model_dump(mode="json")
+    files = {f"{core}/capsule_v3.refund_failure.json": dump(capsule_v2_to_v3(v2))}
+    recorded = {**v2json, "schema_version": 3, "provenance": provenance(v2json, "recorded")}
+    files[f"{core}/capsule_v3.refund_provenance.json"] = dump(
+        CapsuleV3.model_validate(envelope(recorded)))
+    # Fresh-adapter retest: the vulnerable adapter runs again from the same fixture.
+    fixture = Fixture()
+    scenario = Scenario(timeout_after_commit=True)
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "capsule.json"
+        export_capsule(path, fixture, scenario, run(fixture, scenario, VULNERABLE))
+        retest_v1 = json.loads(path.read_text(encoding="utf-8"))
+    retest_v2 = world_refund.capsule_v1_to_v2(retest_v1).payload.model_dump(mode="json")
+    retest = {**retest_v2, "schema_version": 3,
+              "provenance": provenance(retest_v2, "retest", (VULNERABLE, ADAPTER_VERSION))}
+    files[f"{core}/capsule_v3.refund_retest.json"] = dump(
+        CapsuleV3.model_validate(envelope(retest)))
+    return files
 
 def _journey_examples() -> dict[str, str]:
     """``group-journey/1`` evidence from executing M02's engine: the naive adapter
     delivers a message queued before its recipient's sharing was revoked."""
     from ..worlds import journey_capsule
+    from .capsule_v3 import capsule_v2_to_v3
+    from .world import CapsuleV2
     from ..worlds.journey import JourneyFixture, JourneyScenario, scenario_json
     from ..worlds.journey_run import fault_scenarios, findings, reality_diff, run
     fixture = JourneyFixture()
@@ -133,7 +187,9 @@ def _journey_examples() -> dict[str, str]:
             f"{core}/world_reality_diff.journey_fixture.json":
                 _json(reality_diff(fixture, baseline, faulted)),
             f"{core}/world_invariant_finding.journey_revoked_delivery.json": _json(finding),
-            f"{core}/capsule_v2.journey_fixture.json": _json(capsule)}
+            f"{core}/capsule_v2.journey_fixture.json": _json(capsule),
+            f"{core}/capsule_v3.journey_fixture.json": _json(
+                capsule_v2_to_v3(CapsuleV2.model_validate(capsule)).model_dump(mode="json"))}
 
 
 def example_files(root: Path, generated: dict[str, str]) -> dict[str, str]:

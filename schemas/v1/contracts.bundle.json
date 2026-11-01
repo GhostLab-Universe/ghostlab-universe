@@ -836,6 +836,220 @@
       "title": "CapsulePayloadV2",
       "type": "object"
     },
+    "CapsulePayloadV3": {
+      "additionalProperties": false,
+      "description": "v2 evidence plus optional external-environment provenance.",
+      "properties": {
+        "actor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "fixture": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "recorded_model_outputs": {
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "run": {
+          "$ref": "#/$defs/WorldRunResult"
+        },
+        "scenario": {
+          "$ref": "#/$defs/WorldScenario"
+        },
+        "schema_version": {
+          "const": 3,
+          "type": "integer"
+        },
+        "seed": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "world_version": {
+          "enum": [
+            "refund-world/1",
+            "group-journey/1",
+            "service-relay/1"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "world_version",
+        "fixture",
+        "scenario",
+        "actor_id",
+        "source",
+        "seed",
+        "recorded_model_outputs",
+        "run"
+      ],
+      "title": "CapsulePayloadV3",
+      "type": "object"
+    },
+    "CapsuleProvenance": {
+      "additionalProperties": false,
+      "description": "Optional companion metadata for external environments.\n\nEnvironment, fixture and fault ids use the frozen P1 names; the contract\nchecks their shape, while P5 replay resolves them against the adapter\nregistry (fail closed on unknown ids). ``retest_adapter_*`` may name an\nadapter outside the world pack: a retest can come from an external agent.",
+      "properties": {
+        "config": {
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{1,63}$": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "environment_version": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9._/-]{0,99}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "external_dependencies": {
+          "items": {
+            "$ref": "#/$defs/ExternalDependency"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "faults_fired": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "type": "array"
+        },
+        "fixture_name": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fixture_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "replay_kind": {
+          "default": "recorded",
+          "enum": [
+            "recorded",
+            "retest"
+          ],
+          "type": "string"
+        },
+        "retest_adapter_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retest_adapter_version": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9._/-]{0,99}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rule_versions": {
+          "maxProperties": 16,
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{1,63}$": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "truncated": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "title": "CapsuleProvenance",
+      "type": "object"
+    },
     "CapsuleV1": {
       "additionalProperties": false,
       "description": "On-disk v1 envelope. sha256 is accidental-change detection, not authorship.",
@@ -872,6 +1086,25 @@
         "sha256"
       ],
       "title": "CapsuleV2",
+      "type": "object"
+    },
+    "CapsuleV3": {
+      "additionalProperties": false,
+      "description": "v3 envelope: same checksum rule as v2.\n\nThe checksum detects accidental change; it does not establish authorship.",
+      "properties": {
+        "payload": {
+          "$ref": "#/$defs/CapsulePayloadV3"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "payload",
+        "sha256"
+      ],
+      "title": "CapsuleV3",
       "type": "object"
     },
     "ContextBundle": {
@@ -1328,7 +1561,7 @@
     },
     "ExperimentProposal": {
       "additionalProperties": false,
-      "description": "Explorer structured output. Every field required; no identity or authority.\n\nShaped for Meta strict structured output (object root, all fields required,\nadditionalProperties false). Live acceptance by the model is untested.",
+      "description": "Explorer structured output. Every field required; no identity or authority.\n\nShaped for Meta strict structured output (object root, all fields required,\nadditionalProperties false). Accepted live by Meta 2026-11-01.",
       "properties": {
         "adapter": {
           "enum": [
@@ -1388,6 +1621,46 @@
         "diff"
       ],
       "title": "ExperimentResult",
+      "type": "object"
+    },
+    "ExternalDependency": {
+      "additionalProperties": false,
+      "description": "One resource outside the capsule that the recorded run needed.\n\nNames plus pinned versions/digests only: no URIs, credentials or live\nhandles. A capsule that names any is not reproducible from its own bytes.",
+      "properties": {
+        "digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ExternalDependency",
       "type": "object"
     },
     "FaultInjection": {
@@ -4652,7 +4925,7 @@
       "type": "object"
     }
   },
-  "$id": "urn:ghostlab:ghostlab-contracts/1.1",
+  "$id": "urn:ghostlab:ghostlab-contracts/1.2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "anyOf": [
     {
@@ -4783,6 +5056,9 @@
     },
     {
       "$ref": "#/$defs/CapsuleV2"
+    },
+    {
+      "$ref": "#/$defs/CapsuleV3"
     },
     {
       "$ref": "#/$defs/WorldMemoryRecord"

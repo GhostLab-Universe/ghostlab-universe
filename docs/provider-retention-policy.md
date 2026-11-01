@@ -1,28 +1,30 @@
-# Provider retention policy for the current demo
+# Provider retention policy for this draft API
 
-Decision date: 1 November 2026. Scope: synthetic development/demo content only.
+Scope: local synthetic development/demo only. No real IdP or model account has been qualified.
 
-The application must not send customer records, personal documents, credentials or
-unclassified material through the live provider path. The configured operator records
-an exact provider, endpoint, model, review date and account-control verification before
-the new retention guard allows that path. The decision expires after 30 days. Existing
-live authorization and compatibility checks are still required; this policy grants no
-permission to make paid calls.
+**The API refuses live inference for all session adapters**, even with an operator label,
+retention decision or M05 live authorization. An authorized live configuration returns 403 live_content_not_qualified; an unauthorized
+one retains the existing 403 inference_not_authorized response.
+Fixture and scripted runs remain available. Read/replay/cancel remain available. This is a
+scope reduction from the first draft, whose synthetic label did not inspect actual content.
+A name, phone number or identity number cannot be made safe by labelling it synthetic.
 
-For Baseten Model APIs, the published baseline is its
-[security practices](https://www.baseten.co/security-practices/), which describe zero
-content retention with product/configuration exceptions. Confirm that the account uses
-that product and no optional payload logging or third-party retention before recording
-an account verification. That confirmation has not been performed for this account.
+RetentionDecision only validates review metadata: provider, endpoint, model, reviewer,
+policy URL, aware review date, 30-day expiry and verified account controls. Meta additionally
+requires an explicit continuation_policy (stateful-provider-storage-reviewed or
+stateless-provider-storage-reviewed). This field records the operator's reviewed choice;
+it neither configures the Meta adapter nor certifies provider deletion. Even a valid record
+does not enable RetentionCheckedFactory.complete().
 
-For direct Meta Responses, stored continuation and account retention controls have to
-be reviewed together. The current adapter is not changed here. Do not claim ZDR from a
-request flag alone. Live use remains blocked until the exact account/control decision
-has been recorded. The official references are the
-[Responses schema](https://dev.meta.ai/docs/api-reference/responses/schemas) and
-[ZDR guidance](https://dev.meta.ai/help/policies-and-privacy/zero-data-retention).
+Future live API use requires an independently reviewed outbound-content/provenance boundary
+and exact-model compatibility/paid-call authorization, plus verified provider-account controls.
+The standalone M01 probe is outside this API policy and retains its separate authorization gate.
 
-This policy does not rewrite the existing local retention windows or delete audit
-evidence. Local stores remain private; any export, pruning or deletion follows the
-project's existing M04/M09 procedures. A customer-data policy and deletion commitment
-require a separate review before customer-connected use.
+Published references for that future review:
+- [Baseten security practices](https://www.baseten.co/security-practices/).
+- [Meta Responses schema](https://dev.meta.ai/docs/api-reference/responses/schemas).
+- [Meta retention guidance](https://dev.meta.ai/help/policies-and-privacy/zero-data-retention).
+
+No provider setting is changed here. No local deletion/pruning scheduler is implemented or
+claimed to exist in M09. Local retention, backups, deletion and audit rules remain explicit
+unfinished customer-use requirements; customer-connected use stays disabled.

@@ -6,6 +6,8 @@ hosted deployment or a non-loopback bind, because no production authentication e
 """
 
 import logging
+import dataclasses
+import httpx
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -22,7 +24,7 @@ from .routes import router
 from .sessions import NoSessions, require_local_deployment
 from .introspection import IntrospectionSessions
 from ghostlab.policy.separation import SeparatedApprovalService
-from ghostlab.security.retention import RetentionCheckedFactory
+from ghostlab.security.retention import LiveContentDisabledFactory
 from .tracing import disable_trace_export
 
 API_VERSION = "1.0.0"
@@ -43,9 +45,12 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
         if (isinstance(config.sessions, IntrospectionSessions)
                 and not isinstance(config.services.approvals, SeparatedApprovalService)):
             raise ValueError("external authentication requires independent approval policy")
-        if (isinstance(config.sessions, IntrospectionSessions) and config.services.live is not None
-                and not isinstance(config.services.adapter_factory, RetentionCheckedFactory)):
-            raise ValueError("external authentication with live inference requires retention checks")
+        # Session type/labels cannot unlock live content. Apply at the common API
+        # factory boundary, including wrappers and configs without live authorization.
+        if not config.scripted and type(config.services.runtime.transport) is not httpx.MockTransport:
+            config = dataclasses.replace(config, services=dataclasses.replace(
+                config.services, adapter_factory=LiveContentDisabledFactory(
+                    config.services.adapter_factory)))
         services = config.services
         require_one_root(config.graph_db, config.app_db, services.approval_store.path,
                          services.ledger.path, services.memory_store.path,
@@ -65,6 +70,9 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
                 yield
             finally:
                 plane.jobs.shutdown()
+                close = getattr(config.sessions, "close", None)
+                if close is not None:
+                    close()
 
     app = FastAPI(title="GhostLab Control Plane", version=API_VERSION, description=DESCRIPTION,
                   docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan,
@@ -74,6 +82,7 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
     _attach_log_redaction(redactor)
     install(app, redactor)
     app.add_middleware(RequestGuard, sessions=config.sessions if config else NoSessions(),
-                       redactor=redactor)
+                       redactor=redactor, independent_approvals=(config is not None and
+                           isinstance(config.services.approvals, SeparatedApprovalService)))
     app.include_router(router)
     return app

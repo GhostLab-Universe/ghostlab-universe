@@ -124,6 +124,13 @@ class ControlPlane:
                 call: Callable[[CampaignController], object], *, cancel: bool = False,
                 follow: bool = False, scenario: str | None = None) -> tuple[Job, bool]:
         """``scenario`` is given only by a start, which also pins the campaign's origin."""
+        if (not cancel and not self.config.scripted
+                and type(self.services.runtime.transport) is not httpx.MockTransport):
+            if self.services.live is None:
+                from ghostlab.orchestration.inference import LiveInferenceRefused
+                raise LiveInferenceRefused("Live inference is not authorized")
+            from ghostlab.security.retention import RetentionRefused
+            raise RetentionRefused("Live outbound content is not qualified")
         key = ledger_key(session.project_id, campaign_id)
 
         def work(job: Job):
@@ -213,8 +220,7 @@ class ControlPlane:
         if self.config.scripted:
             return "scripted"
         transport = self.services.runtime.transport
-        return ("fixture" if isinstance(transport, httpx.MockTransport)
-                else "live" if self.services.live is not None else "disabled")
+        return "fixture" if type(transport) is httpx.MockTransport else "disabled"
 
     def _campaign_inference(self, session, state: dict) -> str:
         """As pinned at start. Never the reading server's mode, which proves nothing."""
@@ -654,6 +660,17 @@ class ControlPlane:
         """The action the digest binds, shown only if the digest still proves it."""
         action = ((state or {}).get("approval") or {}).get("action")
         return action if action and action_digest(action) == request.action_digest else None
+
+    def pending_approvals(self, session: ApiSession, *, after: str = "", limit: int = 50):
+        if session.principal.kind != "human" or not self._can_approve(session.principal, session.project_id):
+            raise ApiError(403, "forbidden", "A project reviewer is required",
+                           reason="approver_not_authorized")
+        from ghostlab.storage.interfaces import PendingApprovalStore
+        if not isinstance(self.services.approval_store, PendingApprovalStore):
+            raise ApiError(503, "internal", "Approval queue is not available on this store",
+                           reason="approval_queue_unavailable", retryable=True)
+        requests = self.services.approval_store.list_pending(session.project_id, after=after, limit=limit)
+        return [self.approval(session, item.approval_id) for item in requests]
 
     def approval(self, session: ApiSession, approval_id: str) -> ApprovalView:
         store, project_id = self.services.approval_store, session.project_id

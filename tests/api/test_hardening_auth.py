@@ -34,7 +34,7 @@ def test_verified_tokens_reach_real_api_and_self_approval_is_refused(tmp_path):
         from urllib.parse import parse_qs
         token = parse_qs(request.content.decode())["token"][0]
         return httpx.Response(200, json={"active": token not in revoked, "iss": provider.issuer,
-            "aud": "ghostlab", "scope": "ghostlab", "sub": token, "exp": 2_000_000_000})
+            "token_type": "Bearer", "aud": "ghostlab", "scope": "ghostlab", "sub": token, "exp": 2_000_000_000})
 
     sessions = IntrospectionSessions(provider, {
         "owner-token": ProjectMember(OPERATOR, PROJECT),

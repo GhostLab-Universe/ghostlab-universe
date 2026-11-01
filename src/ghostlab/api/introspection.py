@@ -6,6 +6,7 @@ No token cache: issuer revocation takes effect on the next request.
 """
 
 import json
+import asyncio
 import dataclasses
 import os
 import re
@@ -23,6 +24,7 @@ from ghostlab.contracts import Principal
 from ghostlab.policy import root_scope
 
 from .sessions import ApiSession
+from .errors import ApiError
 
 MAX_RESPONSE_BYTES = 65_536
 _TOKEN = re.compile(r"[A-Za-z0-9._~+/-]+=*", re.ASCII)
@@ -30,10 +32,13 @@ _TOKEN = re.compile(r"[A-Za-z0-9._~+/-]+=*", re.ASCII)
 
 def _https(value: str) -> None:
     try:
+        if type(value) is not str or any(ord(c) < 33 or ord(c) == 127 for c in value):
+            raise ValueError("invalid URL characters")
         url = urlsplit(value)
+        httpx.URL(value)  # HTTPX must accept the same configured URL before any request.
         valid = (url.scheme == "https" and url.hostname and not url.username
                  and not url.password and not url.query and not url.fragment and url.port != 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, httpx.InvalidURL):
         valid = False
     if not valid:
         raise ValueError("identity provider URLs must be explicit HTTPS URLs")
@@ -86,11 +91,13 @@ class IntrospectionSessions:
         self._members = MappingProxyType(dict(members))
         self._clock, self._monotonic = clock, monotonic
         self._slots = threading.BoundedSemaphore(8)
-        self._client = httpx.Client(transport=transport, timeout=5.0, trust_env=False,
-                                    follow_redirects=False)
+        self._transport = transport
+        self._closed = False
+        self._deadline_seconds = 5.0
 
     def close(self):
-        self._client.close()
+        # Clients are request-scoped and closed even on cancellation.
+        self._closed = True
 
     @classmethod
     def from_environment(cls, members, *, environ=None, **options):
@@ -104,32 +111,74 @@ class IntrospectionSessions:
         return cls(config, members, **options)
 
     def authenticate(self, headers: Headers) -> ApiSession | None:
+        """Synchronous protocol compatibility; ASGI uses authenticate_async directly."""
+        return asyncio.run(self.authenticate_async(headers))
+
+    async def authenticate_async(self, headers: Headers) -> ApiSession | None:
         auth = headers.getlist("authorization")
         if len(auth) != 1:
             return None
         scheme, _, token = auth[0].partition(" ")
         if (scheme.lower() != "bearer" or not 1 <= len(token) <= 8192
-                or _TOKEN.fullmatch(token) is None or not self._slots.acquire(blocking=False)):
+                or _TOKEN.fullmatch(token) is None):
             return None
+        if self._closed or not self._slots.acquire(blocking=False):
+            raise self._unavailable("authentication_capacity")
         try:
-            started = self._monotonic()
-            with self._client.stream("POST", self.config.endpoint,
-                                     auth=(self.config.client_id, self.config.client_secret),
-                                     data={"token": token, "token_type_hint": "access_token"},
-                                     headers={"Accept": "application/json"}) as response:
-                if response.status_code != 200:
-                    return None
-                content = bytearray()
-                for chunk in response.iter_bytes(chunk_size=4096):
-                    content.extend(chunk)
-                    if len(content) > MAX_RESPONSE_BYTES or self._monotonic() - started > 5:
-                        return None
-            claims = json.loads(content)
-            return self._session(claims)
-        except (httpx.HTTPError, ValueError, TypeError, UnicodeError):
-            return None  # fail closed; do not log a response that may echo the token
+            # The outer cancellation covers DNS, connect, headers and all body reads.
+            # No blocking IdP operation is placed on the thread pool.
+            async with asyncio.timeout(self._deadline_seconds):
+                async with httpx.AsyncClient(
+                        transport=self._transport, timeout=self._deadline_seconds,
+                        trust_env=False, follow_redirects=False) as client:
+                    async with client.stream("POST", self.config.endpoint,
+                            auth=(self.config.client_id, self.config.client_secret),
+                            data={"token": token, "token_type_hint": "access_token"},
+                            headers={"Accept": "application/json", "Accept-Encoding": "identity"}) as response:
+                        if response.status_code != 200:
+                            raise self._unavailable("authentication_provider")
+                        # Reject compression before HTTPX can invoke a content decoder.
+                        if response.headers.get("content-encoding", "identity").lower() != "identity":
+                            raise self._unavailable("authentication_response")
+                        declared = response.headers.get("content-length")
+                        if declared and (not declared.isascii() or not declared.isdigit()
+                                         or len(declared) > 10 or int(declared) > MAX_RESPONSE_BYTES):
+                            raise self._unavailable("authentication_response")
+                        content = bytearray()
+                        async for chunk in response.aiter_bytes(chunk_size=4096):
+                            if len(content) + len(chunk) > MAX_RESPONSE_BYTES:
+                                raise self._unavailable("authentication_response")
+                            content.extend(chunk)
+                        # Bound JSON nesting independently of Python's recursion limit.
+                        depth, quoted, escaped = 0, False, False
+                        for byte in content:
+                            if quoted:
+                                if escaped:
+                                    escaped = False
+                                elif byte == 92:
+                                    escaped = True
+                                elif byte == 34:
+                                    quoted = False
+                            elif byte == 34:
+                                quoted = True
+                            elif byte in (91, 123):
+                                depth += 1
+                                if depth > 64:
+                                    raise self._unavailable("authentication_response")
+                            elif byte in (93, 125):
+                                depth -= 1
+                        claims = json.loads(content)
+                        return self._session(claims)
+        except (TimeoutError, httpx.HTTPError, httpx.InvalidURL, ValueError, TypeError, UnicodeError,
+                RecursionError) as error:
+            raise self._unavailable("authentication_provider") from error
         finally:
             self._slots.release()
+
+    @staticmethod
+    def _unavailable(reason):
+        return ApiError(503, "internal", "Authentication service unavailable; retry later",
+                        reason=reason, retryable=True, headers={"Retry-After": "1"})
 
     def _session(self, claims) -> ApiSession | None:
         if type(claims) is not dict or claims.get("active") is not True:
@@ -149,7 +198,7 @@ class IntrospectionSessions:
         scope = claims.get("scope")
         if type(scope) is not str or self.config.required_scope not in scope.split():
             return None
-        token_type = claims.get("token_type", "Bearer")
+        token_type = claims.get("token_type")
         if type(token_type) is not str or token_type.lower() != "bearer":
             return None
         subject = claims.get("sub")
@@ -164,16 +213,16 @@ def configure_introspection(config, sessions: IntrospectionSessions, *, approver
     """Install IdP sessions and independent review without weakening local isolation.
 
     This is host configuration, not a public endpoint. Human memberships and world
-    bindings must be configured by the operator. Live inference additionally needs
-    the existing M01/M05 authorization and a matching retention decision.
+    bindings must be configured by the operator. Live inference through this draft
+    API remains disabled; the optional retention record validates metadata only.
     """
     from ghostlab.policy.separation import SeparatedApprovalService
-    from ghostlab.security.retention import RetentionCheckedFactory
+    from ghostlab.security.retention import RetentionCheckedFactory, RetentionRefused
     services = config.services
     factory = services.adapter_factory
     if services.live is not None:
         if retention is None:
-            raise ValueError("live inference needs a retention decision")
+            raise RetentionRefused("live inference needs a retention decision")
 
         factory = RetentionCheckedFactory(factory, retention, data_classification, services.clock)
 

@@ -3218,7 +3218,7 @@
     },
     "securitySchemes": {
       "HTTPBearer": {
-        "description": "Configured bearer tokens. In local_dev mode the session is the single local principal and no token is needed. An explicitly configured external IdP can validate tokens by introspection; the service remains loopback-only until deployment is qualified.",
+        "description": "Configured bearer tokens. In local_dev mode the session is the single local principal and no token is needed. An explicitly configured external IdP can validate tokens by introspection. Neither is production authentication. The external adapter also does not qualify production deployment; the service remains loopback-only.",
         "scheme": "bearer",
         "type": "http"
       }
@@ -3231,6 +3231,152 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/approvals": {
+      "get": {
+        "description": "Project reviewers: pending approvals ordered by id; use the last id as after.",
+        "operationId": "listPendingApprovals",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ApprovalView"
+                  },
+                  "title": "Response Listpendingapprovals",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Pending Approvals",
+        "tags": [
+          "approvals"
+        ]
+      }
+    },
     "/v1/approvals/{approval_id}": {
       "get": {
         "description": "Readable by the campaign's owner and the project's approvers; otherwise 404.",
@@ -3324,6 +3470,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3496,7 +3659,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "Authentication unavailable or server shutting down; retry later"
           }
         },
         "security": [
@@ -3613,6 +3776,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3792,7 +3972,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "Authentication unavailable or server shutting down; retry later"
           }
         },
         "security": [
@@ -3899,6 +4079,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4041,7 +4238,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "Authentication unavailable or server shutting down; retry later"
           }
         },
         "security": [
@@ -4172,6 +4369,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4287,6 +4501,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4453,7 +4684,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "Authentication unavailable or server shutting down; retry later"
           }
         },
         "security": [
@@ -4584,6 +4815,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4700,6 +4948,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4829,6 +5094,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4971,7 +5253,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "Authentication unavailable or server shutting down; retry later"
           }
         },
         "security": [
@@ -5120,7 +5402,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "Authentication unavailable or server shutting down; retry later"
           }
         },
         "security": [
@@ -5227,6 +5509,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5320,6 +5619,23 @@
               }
             },
             "description": "Unexpected failure; detail is not disclosed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication unavailable; retry later",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [

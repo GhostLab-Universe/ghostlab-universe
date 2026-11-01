@@ -10,7 +10,7 @@ locks, engine, world manifests or M09 release switch.
 `SessionAdapter` protocol using [OAuth token introspection (RFC 7662)](https://www.rfc-editor.org/rfc/rfc7662).
 The authorization server validates opaque access tokens. This application requires
 `active: true`, issuer, audience, expiry, subject and the `ghostlab` scope; it also
-checks any `nbf` and `iat`. Those fields are an explicit stricter deployment profile,
+checks any `nbf` and `iat` and requires `token_type: Bearer`. Those fields are an explicit stricter deployment profile,
 not a claim that RFC 7662 requires every field.
 
 The server maps the issuer's subject to a principal and one project. Token/body
@@ -18,7 +18,16 @@ project and role claims do not grant membership. Membership configuration is an
 operator-controlled allowlist; changing it requires replacing/restarting the adapter.
 Revocation at the issuer is checked on every request. Introspection has no cache or
 retries, bounded response size, bounded concurrency, verified HTTPS, no redirects and
-no environment proxy inheritance. Authentication runs outside the ASGI event loop.
+no environment proxy inheritance. The ASGI middleware awaits native async introspection. A cancellation deadline covers
+connect, headers and body reads together; it does not strand a blocking request thread.
+Responses with Content-Encoding other than identity are refused before reading or decoding
+content. Accepted JSON is capped at 64 KiB and 64 nesting levels. Eight IdP operations may
+run concurrently; overload and IdP failures return retryable JSON 503 with Retry-After,
+not invalid-token 401. An inactive token or failed claim check returns 401. Junk bearer
+tokens can occupy the same bounded slots; this is not a rate limiter or a DoS defense.
+The real IdP still needs deployment-level rate limits. Request-scoped HTTP clients close
+on completion/cancellation, and API shutdown closes the session adapter. Wrappers must
+forward authenticate_async and close to retain native async operation and cleanup.
 
 Use an authorization server supporting RFC 7662 and client-secret-basic with this
 profile. A provider that only publishes JWT signing keys needs a different verifier;
@@ -59,7 +68,10 @@ owner accepts this addition.
 different principal ID from the requester. Self-approval leaves the request pending.
 Consumption also rechecks the stored reviewer, so a legacy self-approved request
 cannot bypass the new policy after a configuration change. The IdP configuration helper always installs this service; `create_app` refuses an
-introspection adapter paired with the legacy approval service. The explicitly labelled
+introspection adapter paired with the legacy approval service. The middleware also checks
+the resolved auth_mode, so wrapping that adapter cannot bypass the separate-review rule.
+Project-authorized human reviewers can discover pending requests with GET /v1/approvals
+(limit 1..100, exclusive after cursor); other projects are never listed. The explicitly labelled
 single-user demo retains its existing policy so the deadline demo keeps working.
 
 Distinct IDs must correspond to independently administered human identities. Two
@@ -81,29 +93,38 @@ M07/M09 must test the actual route if document ingestion is later exposed.
 
 ## Provider retention decision
 
-The policy for this build is **synthetic data only**. Customer, personal and unclassified
-content are refused by `RetentionDecision.require`. Each decision names exact provider,
-endpoint and model, a reviewer, a policy source and a timezone-aware review date; it
-expires after 30 days. Account controls must be explicitly verified. This check neither
-authorizes paid calls nor certifies a deployment. In `configure_introspection`, a live
-service additionally needs this decision; the adapter factory checks it against the
-actual provider configuration. Existing M01/M05 live checks still apply.
+**Live inference through this draft API is disabled for every session adapter**, including
+TokenSessions, wrapped introspection, and configurations containing an otherwise valid M05
+live authorization. Start/resume and repair-resume return a typed 403
+live_content_not_qualified before a worker launches when live authorization is configured.
+With no live authorization, the existing inference_not_authorized refusal is preserved. A second factory boundary refuses
+complete() if a call reaches the adapter. Scripted execution and exact httpx.MockTransport
+fixtures remain available. Existing evidence can be read and campaigns can be cancelled;
+an unused approval is not consumed by a refused resume. SessionInfo reports disabled for
+the blocked live configuration. Recorded campaign origins remain historical evidence.
 
-[Baseten's security practices](https://www.baseten.co/security-practices/) state a zero
-content-retention posture for Model APIs, subject to listed configuration and product
-exceptions. Confirm the account/product and avoid optional payload logging before
-setting `account_controls_verified`. This is a published posture, not an account audit.
+This deliberately withdraws the earlier live-enabled scope. A synthetic label is merely
+an operator assertion, not a content classifier or data-loss-prevention control. No claim
+is made that a name, phone, identity number or other personal content can reliably be
+identified from arbitrary text. This branch does not ship a qualified outbound-content
+boundary, so neither a label nor a retention record may release live content. The M01
+standalone probe and other CLI paths are outside this API change and retain their own gates.
+Coordinate this restriction with the live-demo owner before merging.
 
-[Meta's Responses schema](https://dev.meta.ai/docs/api-reference/responses/schemas)
-documents `store` as true by default. [Meta's retention guidance](https://dev.meta.ai/help/policies-and-privacy/zero-data-retention)
-describes ZDR as an account capability. The existing adapter uses stateful continuation;
-we do not change it or promise that `store: false` alone means zero retention. Direct
-Meta live use stays blocked until the actual account controls and continuation choice
-have been reviewed and recorded. No account setting is changed in this work.
+RetentionDecision is now metadata validation only: exact provider/endpoint/model, reviewer,
+policy URL, timezone-aware date, verified account controls, and a 30-day expiry. For Meta,
+continuation_policy must explicitly record stateful-provider-storage-reviewed or
+stateless-provider-storage-reviewed. This records a review choice; it does not change a
+wire setting or prove ZDR. Metadata failures use RetentionRefused (HTTP 403 with a fixed
+reason), never an unmapped ValueError. RetentionCheckedFactory returns an adapter whose
+complete() is disabled even when the metadata passes. Future live support needs reviewed
+request/content provenance enforcement and tests at the actual outbound boundary.
 
-Local memory, checkpoints, artifacts and telemetry retain their existing policies.
-This branch does not claim to schedule deletion or silently delete evidence. Use M09's
-retention/pruning process and agree the demo evidence retention window before live use.
+Local memory/checkpoints/artifacts retain their current behavior. No deletion scheduler,
+pruning procedure or local retention window is implemented by this branch. Before real
+content is accepted, a separate policy must define access, retention, deletion, backups
+and audit evidence and prove its implementation. Do not infer such a procedure from M09
+or from these documentation links.
 
 ## Customer-connected use
 
@@ -119,7 +140,7 @@ Results are recorded in the branch's handoff after tests finish. All token respo
 model outputs and credentials supplied by these tests are synthetic. No real IdP or
 inference provider is contacted and no paid call is made. No real key is needed.
 
-Recorded local results, Windows, Python 3.13.2, existing locked environment:
+Earlier-head results (a77b37a), Windows, Python 3.13.2, existing locked environment:
 
 - Selected API/policy/context/core regression run during development: **521 passed,
   6 subtests passed**. Command: `pytest tests/security_hardening tests/policy tests/api
@@ -149,3 +170,36 @@ to application code. This was not a fresh-clone install, full M09 run or browser
    document ingestion, production deployment or customer-connected use as passed.
 6. Preserve the existing local demo. Hosted access and paid inference remain separately
    gated; the release switch is unchanged.
+
+## Review correction scope (November 2026)
+
+The original review correctly found session-type-dependent retention enforcement, a false
+content-refusal claim, an ineffective wall-clock check, decompression before size checking,
+and missing lifecycle/error handling. The live-enabled claim is withdrawn, not relabelled
+as a passing privacy feature. Regression evidence and final validation are recorded in the
+updated PR description. This is not an IdP deployment, live Meta qualification, production
+authentication certification, or a claim that all externally generated mutants were killed.
+
+Final review-fix validation (Windows, Python 3.13.2, existing locked environment):
+
+- `pytest tests/security_hardening tests/policy tests/api tests/context tests/storage tests/test_core.py -q`:
+  **655 passed, 6 subtests passed**. This includes the API process/loopback tests.
+- New review probes cover compressed 64 MiB expansion rejected before body read,
+  cancellation during headers/body, 12 concurrent tokens (8 accepted operations and
+  4 retryable capacity refusals), real redirect targets, wrong audience forms, missing
+  token_type, nested JSON, URL controls, client-secret redaction, session wrappers,
+  blocked live content, paused approvals, cancellation, and reviewer queue isolation.
+- `python -S -m unittest discover -s tests -p test_core.py -q`: **14 passed**.
+- OpenAPI and shared contract/example checks: no drift. `git diff --check`: clean.
+- This is a selected integration regression suite, not the full project/M09 suite,
+  a fresh-clone install, live provider test, external IdP test or browser-client test.
+  The reviewer's complete set of 19 surviving mutants was not supplied or rerun.
+
+The shared-contract check initially failed because the Windows test environment could
+not write its default temporary directory. It passed after selecting the existing
+workspace test-temporary directory; no application bypass was added.
+
+New optional M04 interface: PendingApprovalStore.list_pending is implemented by SQLite.
+ApprovalStore itself is unchanged so existing stores/fakes remain compatible. The reviewer
+queue returns a typed 503 if an alternate store does not implement that extension.
+M08 must regenerate the client for the new listPendingApprovals endpoint and typed 503s.

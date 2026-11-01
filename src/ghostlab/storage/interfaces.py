@@ -105,3 +105,11 @@ class ApprovalStore(Protocol):
         Raises Conflict if not approved (including already consumed) or if
         ``action_digest`` differs. Exactly one concurrent caller can succeed.
         """
+
+
+@runtime_checkable
+class PendingApprovalStore(Protocol):
+    """Optional bounded reviewer queue; does not expand the baseline ApprovalStore."""
+
+    def list_pending(self, project_id: str, *, after: str = "", limit: int = 50) -> list[ApprovalRequest]:
+        """Project-scoped pending approvals in id order after an exclusive cursor (1..100)."""

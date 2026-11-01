@@ -46,8 +46,10 @@ async def _read_body(scope, receive, limit: int) -> bytes | None:
 
 
 class RequestGuard:
-    def __init__(self, app, sessions: SessionAdapter, redactor: Redactor):
+    def __init__(self, app, sessions: SessionAdapter, redactor: Redactor,
+                 independent_approvals: bool = False):
         self.app, self.sessions, self.redactor = app, sessions, redactor
+        self.independent_approvals = independent_approvals
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "lifespan":
@@ -73,7 +75,23 @@ class RequestGuard:
         if (problem := request_problem(scope.get("client"), headers)) is not None:
             await refuse(ApiError(403, "forbidden", problem, reason="not_loopback"))
             return
-        session = await run_in_threadpool(self.sessions.authenticate, headers)
+        try:
+            if hasattr(self.sessions, "authenticate_async"):
+                session = await self.sessions.authenticate_async(headers)
+            else:
+                session = await run_in_threadpool(self.sessions.authenticate, headers)
+        except ApiError as error:
+            await refuse(error)
+            return
+        except Exception:
+            await refuse(ApiError(503, "internal", "Authentication service unavailable",
+                                  reason="authentication_provider", retryable=True))
+            return
+        if (session is not None and session.auth_mode == "oidc_introspection"
+                and not self.independent_approvals):
+            await refuse(ApiError(403, "forbidden", "Independent approval policy required",
+                                  reason="approver_not_authorized"))
+            return
         if session is None:
             await refuse(ApiError(401, "unauthenticated", "A valid session is required",
                                   headers={"WWW-Authenticate": "Bearer"}))

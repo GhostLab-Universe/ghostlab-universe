@@ -28,6 +28,7 @@ ENDPOINTS = {
     ("post", "/v1/capsules/import"),
     ("post", "/v1/capsules/{capsule_id}/replay"),
     ("get", "/v1/artifacts/{artifact_id}"),
+    ("get", "/v1/approvals"),
     ("get", "/v1/approvals/{approval_id}"),
     ("post", "/v1/approvals/{approval_id}/decision"),
 }

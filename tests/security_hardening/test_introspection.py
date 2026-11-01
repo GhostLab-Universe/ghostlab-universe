@@ -7,6 +7,7 @@ from starlette.datastructures import Headers
 from ghostlab.api.introspection import (IntrospectionConfig, IntrospectionSessions,
                                          ProjectMember)
 from ghostlab.contracts import Principal
+from ghostlab.api.errors import ApiError
 
 NOW = 1_800_000_000
 CONFIG = IntrospectionConfig("https://identity.example/realm", "https://identity.example/check",
@@ -94,7 +95,9 @@ def test_revocation_is_not_hidden_by_a_cache():
 def test_error_responses_fail_closed_without_retry(status):
     auth, calls = adapter(status=status)
     try:
-        assert auth.authenticate(headers()) is None and len(calls) == 1
+        with pytest.raises(ApiError) as error:
+            auth.authenticate(headers())
+        assert error.value.status == 503 and len(calls) == 1
     finally:
         auth.close()
 
@@ -102,7 +105,9 @@ def test_error_responses_fail_closed_without_retry(status):
 def test_oversized_response_is_refused():
     auth, _ = adapter({**CLAIMS, "extra": "x" * 70_000})
     try:
-        assert auth.authenticate(headers()) is None
+        with pytest.raises(ApiError) as error:
+            auth.authenticate(headers())
+        assert error.value.status == 503
     finally:
         auth.close()
 
@@ -124,6 +129,8 @@ def test_provider_timeout_does_not_authenticate_or_retry():
 
     auth = IntrospectionSessions(CONFIG, {"user-1": OWNER}, transport=httpx.MockTransport(timeout))
     try:
-        assert auth.authenticate(headers()) is None and len(calls) == 1
+        with pytest.raises(ApiError) as error:
+            auth.authenticate(headers())
+        assert error.value.status == 503 and len(calls) == 1
     finally:
         auth.close()

@@ -30,6 +30,8 @@ class SeparatedApprovalService(ApprovalService):
                 decision = self._store.get_decision(project_id, approval_id)
             except NotFound as error:
                 raise ApprovalDenied("not_approved", "independent review evidence is missing") from error
+            if decision is None:
+                raise ApprovalDenied("not_approved", "independent review evidence is missing")
             if (decision.approver.kind != "human"
                     or decision.approver.principal_id == request.scope.principal.principal_id
                     or not self._approvers.may_approve(decision.approver, project_id)):

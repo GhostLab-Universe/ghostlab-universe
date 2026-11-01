@@ -5,6 +5,11 @@ from datetime import datetime, timedelta
 from collections.abc import Callable
 
 
+class RetentionRefused(ValueError):
+    """Typed policy refusal, never a content-classification guarantee."""
+
+
+
 @dataclass(frozen=True)
 class RetentionDecision:
     provider: str
@@ -15,22 +20,26 @@ class RetentionDecision:
     provider_policy_url: str
     account_controls_verified: bool = False
     synthetic_only: bool = True
+    continuation_policy: str = "unreviewed"
 
     def require(self, *, provider: str, endpoint: str, model: str,
                 data_classification: str, now: datetime) -> None:
         if (self.provider, self.endpoint, self.model) != (provider, endpoint, model):
-            raise ValueError("retention decision does not match this provider configuration")
+            raise RetentionRefused("retention decision does not match this provider configuration")
         if self.reviewed_at.tzinfo is None or now.tzinfo is None:
-            raise ValueError("retention timestamps must have timezones")
+            raise RetentionRefused("retention timestamps must have timezones")
         age = now - self.reviewed_at
         if not timedelta(0) <= age <= timedelta(days=30):
-            raise ValueError("retention decision is stale or from the future")
+            raise RetentionRefused("retention decision is stale or from the future")
         if not self.reviewer_id or not self.provider_policy_url.startswith("https://"):
-            raise ValueError("retention review evidence is missing")
+            raise RetentionRefused("retention review evidence is missing")
         if self.account_controls_verified is not True:
-            raise ValueError("provider account controls have not been verified")
+            raise RetentionRefused("provider account controls have not been verified")
+        if provider == "meta_responses" and self.continuation_policy not in {
+                "stateful-provider-storage-reviewed", "stateless-provider-storage-reviewed"}:
+            raise RetentionRefused("Meta continuation and storage choice is not recorded")
         if self.synthetic_only is not True or data_classification != "synthetic":
-            raise ValueError("customer, personal and unclassified content remain disabled")
+            raise RetentionRefused("operator classification is not permitted by this metadata decision")
 
 
 @dataclass(frozen=True)
@@ -46,4 +55,25 @@ class RetentionCheckedFactory:
         self.decision.require(provider=config.provider, endpoint=config.base_url,
                               model=config.model, data_classification=self.data_classification,
                               now=self.clock())
-        return adapter
+        return LiveContentDisabledAdapter(adapter)
+
+
+@dataclass(frozen=True)
+class LiveContentDisabledAdapter:
+    """Metadata can be inspected, but this draft cannot release live request content."""
+    adapter: object
+
+    @property
+    def config(self):
+        return self.adapter.config
+
+    def complete(self, *args, **kwargs):
+        raise RetentionRefused("Live content boundary is not qualified; inference is disabled")
+
+
+@dataclass(frozen=True)
+class LiveContentDisabledFactory:
+    factory: Callable
+
+    def __call__(self, runtime):
+        return LiveContentDisabledAdapter(self.factory(runtime))

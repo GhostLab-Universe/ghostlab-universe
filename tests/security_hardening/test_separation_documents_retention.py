@@ -127,7 +127,10 @@ def test_factory_checks_actual_provider_settings_before_exposing_adapter():
     config = SimpleNamespace(provider=decision.provider, base_url=decision.endpoint, model=decision.model)
     adapter = SimpleNamespace(config=config)
     factory = RetentionCheckedFactory(lambda runtime: adapter, decision, "synthetic", lambda: NOW)
-    assert factory(None) is adapter
+    checked = factory(None)
+    assert checked.config is config
+    with pytest.raises(ValueError, match="content boundary"):
+        checked.complete(None, None)
     config.model = "substituted-model"
     with pytest.raises(ValueError, match="does not match"):
         factory(None)

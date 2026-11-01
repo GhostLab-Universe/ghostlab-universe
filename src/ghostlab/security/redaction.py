@@ -24,6 +24,11 @@ _PATTERNS = (
 )
 
 
+# Public detection form of the secret-shaped family: the outbound guard refuses
+# bodies these match, so the guard and the redactor can never drift apart.
+SECRET_TEXT_PATTERNS = _PATTERNS
+
+
 class Redactor:
     def __init__(self, literals: Iterable[str] = ()):
         # Longest first so overlapping secrets are fully removed.

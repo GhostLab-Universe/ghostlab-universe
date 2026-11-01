@@ -14,18 +14,24 @@ Every outbound attempt, retries included, first asks ``Runtime.attempt_gate``
 are streamed with an incremental byte cap (success and error responses alike)
 and the request's absolute deadline is checked while reading, not only between
 attempts.
+
+Anything but an ``httpx.MockTransport`` may leave the process, so it first
+passes the ``Runtime.outbound`` policy: retention posture, serialized-body
+size and content, and one concurrency slot held for the whole call.
 """
 
 import json
 import random
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 
 import httpx
 
 from ghostlab.contracts import ErrorInfo
 
-from .base import ProviderConfig, redact
+from .base import ProviderConfig, ProviderRequestError, redact
+from .outbound import RETENTION_NOT_AUTHORIZED, OutboundPolicy, OutboundRefused
 
 RETRYABLE_STATUS = {429: "rate_limited", 500: "provider_transient", 502: "provider_transient",
                     503: "provider_transient"}
@@ -58,6 +64,8 @@ class Runtime:
     jitter: object = random.random
     # Called before every outbound HTTP attempt; returning False stops before sending.
     attempt_gate: object = None
+    # Required when the transport may leave the process (anything but MockTransport).
+    outbound: OutboundPolicy | None = None
 
 
 class _ReadAborted(Exception):
@@ -131,85 +139,101 @@ def post_json(config: ProviderConfig, path: str, payload: dict, *, timeout_ms: i
               cancel, runtime: Runtime) -> CallOutcome:
     secret = config.credential.reveal()
     url = config.base_url.rstrip("/") + path
+    try:
+        # Serialized once: the size bound and the content check measure these
+        # exact bytes, and the transport sends them unchanged.
+        wire = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    except (ValueError, TypeError, RecursionError) as error:
+        raise ProviderRequestError("Request cannot be serialized faithfully") from error
     headers = {"Authorization": f"Bearer {secret}", "Content-Type": "application/json"}
     outcome = CallOutcome()
+    leaves_process = not isinstance(runtime.transport, httpx.MockTransport)
+    outbound = runtime.outbound
+    if leaves_process:
+        # Anything but a MockTransport may reach the network: the outbound
+        # policy decides before the first byte, whatever session sits above.
+        if outbound is None:
+            raise OutboundRefused(RETENTION_NOT_AUTHORIZED)
+        outbound.check(wire, secret=secret)
     deadline = runtime.monotonic() + timeout_ms / 1000
     policy = config.retry
+    scope = outbound.slot() if leaves_process else nullcontext()
 
-    for number in range(1, policy.max_attempts + 1):
-        if cancel is not None and cancel.is_set():
-            outcome.error = make_error("cancelled", "Cancelled before the request was sent")
-            return outcome
-        remaining = deadline - runtime.monotonic()
-        if remaining <= 0:
-            outcome.error = make_error("deadline_exceeded", "Deadline reached before sending")
-            return outcome
-        if runtime.attempt_gate is not None and not runtime.attempt_gate():
-            outcome.error = make_error("budget_exhausted",
-                                       "HTTP attempt cap reached; the request was not sent")
-            return outcome
-        started = runtime.monotonic()
-        status = None
-        try:
-            with httpx.Client(transport=runtime.transport, timeout=httpx.Timeout(remaining),
-                              follow_redirects=False) as client:
-                with client.stream("POST", url, json=payload, headers=headers) as response:
-                    status = response.status_code
-                    delay = (_retry_after(response, policy.retry_after_max_s)
-                             if status in RETRYABLE_STATUS else None)
-                    content = _read_bounded(
-                        response, MAX_RESPONSE_BYTES if status == 200 else MAX_ERROR_BODY_BYTES,
-                        truncate=status != 200, deadline=deadline, runtime=runtime)
-        except _ReadAborted as abort:
-            outcome.attempts.append(Attempt(status, abort.code, _ms(runtime, started)))
-            outcome.error = make_error(abort.code, str(abort))
-            return outcome
-        except httpx.TimeoutException:
-            outcome.attempts.append(Attempt(None, "deadline_exceeded", _ms(runtime, started)))
-            outcome.error = make_error("deadline_exceeded", f"No reply within {timeout_ms} ms")
-            return outcome
-        except httpx.TransportError as error:
-            code, message, delay = "provider_transient", type(error).__name__, None
-            outcome.attempts.append(Attempt(None, code, _ms(runtime, started)))
-        else:
-            duration = _ms(runtime, started)
-            if status == 200:
-                outcome.attempts.append(Attempt(status, None, duration))
-                try:
-                    body = json.loads(content)
-                except (ValueError, UnicodeDecodeError):
-                    outcome.error = make_error("provider_invalid_output", "Response is not JSON")
-                    return outcome
-                if not isinstance(body, dict):
-                    outcome.error = make_error("provider_invalid_output", "Response not an object")
-                    return outcome
-                outcome.body = body
+    with scope:
+        for number in range(1, policy.max_attempts + 1):
+            if cancel is not None and cancel.is_set():
+                outcome.error = make_error("cancelled", "Cancelled before the request was sent")
                 return outcome
-            message = _provider_message(status, content)
-            if status in RETRYABLE_STATUS:
-                code = RETRYABLE_STATUS[status]
-                outcome.attempts.append(Attempt(status, code, duration))
+            remaining = deadline - runtime.monotonic()
+            if remaining <= 0:
+                outcome.error = make_error("deadline_exceeded", "Deadline reached before sending")
+                return outcome
+            if runtime.attempt_gate is not None and not runtime.attempt_gate():
+                outcome.error = make_error("budget_exhausted",
+                                           "HTTP attempt cap reached; the request was not sent")
+                return outcome
+            started = runtime.monotonic()
+            status = None
+            try:
+                with httpx.Client(transport=runtime.transport, timeout=httpx.Timeout(remaining),
+                                  follow_redirects=False) as client:
+                    with client.stream("POST", url, content=wire, headers=headers) as response:
+                        status = response.status_code
+                        delay = (_retry_after(response, policy.retry_after_max_s)
+                                 if status in RETRYABLE_STATUS else None)
+                        content = _read_bounded(
+                            response, MAX_RESPONSE_BYTES if status == 200 else MAX_ERROR_BODY_BYTES,
+                            truncate=status != 200, deadline=deadline, runtime=runtime)
+            except _ReadAborted as abort:
+                outcome.attempts.append(Attempt(status, abort.code, _ms(runtime, started)))
+                outcome.error = make_error(abort.code, str(abort))
+                return outcome
+            except httpx.TimeoutException:
+                outcome.attempts.append(Attempt(None, "deadline_exceeded", _ms(runtime, started)))
+                outcome.error = make_error("deadline_exceeded", f"No reply within {timeout_ms} ms")
+                return outcome
+            except httpx.TransportError as error:
+                code, message, delay = "provider_transient", type(error).__name__, None
+                outcome.attempts.append(Attempt(None, code, _ms(runtime, started)))
             else:
-                code = FINAL_STATUS.get(status, "provider_permanent")
-                outcome.attempts.append(Attempt(status, code, duration))
-                outcome.error = make_error(code, message, secrets=(secret,))
-                return outcome
+                duration = _ms(runtime, started)
+                if status == 200:
+                    outcome.attempts.append(Attempt(status, None, duration))
+                    try:
+                        body = json.loads(content)
+                    except (ValueError, UnicodeDecodeError):
+                        outcome.error = make_error("provider_invalid_output", "Response is not JSON")
+                        return outcome
+                    if not isinstance(body, dict):
+                        outcome.error = make_error("provider_invalid_output", "Response not an object")
+                        return outcome
+                    outcome.body = body
+                    return outcome
+                message = _provider_message(status, content)
+                if status in RETRYABLE_STATUS:
+                    code = RETRYABLE_STATUS[status]
+                    outcome.attempts.append(Attempt(status, code, duration))
+                else:
+                    code = FINAL_STATUS.get(status, "provider_permanent")
+                    outcome.attempts.append(Attempt(status, code, duration))
+                    outcome.error = make_error(code, message, secrets=(secret,))
+                    return outcome
 
-        # Transient failure: back off and retry if attempts and deadline allow.
-        error = make_error(code, message, retryable=True, secrets=(secret,))
-        if number == policy.max_attempts:
-            outcome.error = error
-            return outcome
-        if delay is None:
-            delay = min(policy.backoff_max_s,
-                        policy.backoff_base_s * 2 ** (number - 1)) + runtime.jitter()
-        if runtime.monotonic() + delay >= deadline:
-            outcome.error = error
-            return outcome
-        if not _wait(delay, cancel, runtime):
-            outcome.error = make_error("cancelled", "Cancelled during retry backoff")
-            return outcome
-    raise AssertionError("unreachable")
+            # Transient failure: back off and retry if attempts and deadline allow.
+            error = make_error(code, message, retryable=True, secrets=(secret,))
+            if number == policy.max_attempts:
+                outcome.error = error
+                return outcome
+            if delay is None:
+                delay = min(policy.backoff_max_s,
+                            policy.backoff_base_s * 2 ** (number - 1)) + runtime.jitter()
+            if runtime.monotonic() + delay >= deadline:
+                outcome.error = error
+                return outcome
+            if not _wait(delay, cancel, runtime):
+                outcome.error = make_error("cancelled", "Cancelled during retry backoff")
+                return outcome
+        raise AssertionError("unreachable")
 
 
 def _ms(runtime: Runtime, started: float) -> int:

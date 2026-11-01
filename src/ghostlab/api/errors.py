@@ -16,7 +16,7 @@ from ghostlab.contracts import ErrorInfo
 from ghostlab.orchestration import CampaignSettingsChanged
 from ghostlab.orchestration.inference import LiveInferenceRefused
 from ghostlab.policy import ApprovalDenied, PolicyDenied
-from ghostlab.providers import ProviderConfigError
+from ghostlab.providers import OutboundRefused, ProviderConfigError, ProviderRequestError
 from ghostlab.security.redaction import Redactor
 from ghostlab.storage.artifacts import ArtifactTooLarge
 from ghostlab.storage.interfaces import Conflict, NotFound, StorageError
@@ -40,6 +40,19 @@ class ApiError(Exception):
 def not_found() -> ApiError:
     """The same for a missing id and another project's: nothing is disclosed."""
     return ApiError(404, "not_found", "Not found")
+
+
+_OUTBOUND = {
+    # reason: (status, code, retryable, fixed message). Nothing here echoes input.
+    "retention_not_authorized": (
+        403, "forbidden", False, "This server is not authorized to retain prompts at the provider"),
+    "prohibited_content": (
+        403, "forbidden", False, "The outbound request was refused; nothing was sent"),
+    "payload_too_large": (
+        413, "validation_failed", False, "The outbound request exceeds the size bound; nothing was sent"),
+    "concurrency_exhausted": (
+        429, "rate_limited", True, "All live inference slots are busy; retry later"),
+}
 
 
 _APPROVAL_DENIALS = {
@@ -69,6 +82,12 @@ def _translate(error: Exception) -> ApiError | None:
     if isinstance(error, (LiveInferenceRefused, ProviderConfigError)):
         return ApiError(403, "forbidden", "Inference is not authorized on this server",
                         reason="inference_not_authorized")
+    if isinstance(error, OutboundRefused):
+        status, code, retryable, message = _OUTBOUND[error.reason]
+        return ApiError(status, code, message, reason=error.reason, retryable=retryable)
+    if isinstance(error, ProviderRequestError):
+        return ApiError(422, "validation_failed", "The model request was malformed; nothing was sent",
+                        reason="malformed_model_request")
     if isinstance(error, NotFound):
         return not_found()
     if isinstance(error, ArtifactTooLarge):
@@ -127,6 +146,6 @@ def install(app: FastAPI, redactor: Redactor) -> None:
     app.add_exception_handler(RequestValidationError, invalid)
     app.add_exception_handler(HTTPException, http_error)
     for kind in (ApiError, PolicyDenied, ApprovalDenied, CampaignSettingsChanged,
-                 LiveInferenceRefused, ProviderConfigError, NotFound, ArtifactTooLarge, Conflict,
-                 StorageError):
+                 LiveInferenceRefused, ProviderConfigError, OutboundRefused, ProviderRequestError,
+                 NotFound, ArtifactTooLarge, Conflict, StorageError):
         app.add_exception_handler(kind, handle)

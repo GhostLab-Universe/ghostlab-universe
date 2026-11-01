@@ -6,7 +6,8 @@ error-handling docs (cited in docs/modules/M01.md): flat function tools,
 ``call_id`` (1-64 chars) with ``previous_response_id``, instructions resent
 every turn, usage ``input_tokens``/``output_tokens``. The Responses
 ``text.format`` json_schema field layout (name/schema/strict) is not spelled
-out on the structured-output page and is marked unverified until probed.
+out on the structured-output page; the name/schema/strict layout was verified
+live 2026-11-01 (see docs/modules/M01.md).
 """
 
 from ghostlab.contracts import ContextBundle, ModelReply, ModelRequest
@@ -39,6 +40,9 @@ class MetaResponsesAdapter:
         payload = {"model": self.config.model,
                    "instructions": render.render_instructions(bundle),
                    "max_output_tokens": request.max_output_tokens}
+        if self.runtime.outbound is not None:
+            # The deployment's explicit retention decision, declared on the wire.
+            payload["store"] = self.runtime.outbound.allow_server_retention
         if request.tool_results:
             if state is None:
                 raise ProviderRequestError("Tool results need the continuation that issued them")

@@ -105,6 +105,10 @@ def check(report: dict, expected: dict) -> list[str]:
     failures = validate_report(report)
     if failures:
         return failures
+    if not report["cases"]:
+        failures.append("no case was scored")  # nothing can't pass
+    if not expected:
+        failures.append("there are no reviewed expectations")
     cases = {case["case_id"]: case for case in report["cases"]}
     passed = sum(case["status"] == "passed" for case in report["cases"])
     if (report["aggregate"].get("cases") or {}) != {"total": len(report["cases"]),

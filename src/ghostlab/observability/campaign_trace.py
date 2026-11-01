@@ -35,6 +35,14 @@ def _derived_span_id(trace_id: str, label: str) -> str:
     return hashlib.sha256(f"{trace_id}\x1f{label}".encode()).hexdigest()[:16]
 
 
+def event_record_name(kind: str) -> str:
+    return _EVENT_NAMES.get(kind, "campaign.status")
+
+
+def error_record_name(code: str) -> str:
+    return _ERROR_NAMES.get(code, "campaign.error")
+
+
 def _approval_ref(event: Mapping) -> str | None:
     return next((ref["id"] for ref in event.get("refs", ()) if ref.get("kind") == "approval"),
                 None)
@@ -70,8 +78,8 @@ def emit_campaign_trace(telemetry: Telemetry, state: Mapping, *,
         return _derived_span_id(trace_id, f"{label}:{index}")
 
     for index, event in enumerate(events, 1):
-        name = _EVENT_NAMES.get(event["kind"], "campaign.status")
-        telemetry.event(name, context.with_task(event.get("task_id")), at=event["occurred_at"],
+        telemetry.event(event_record_name(event["kind"]), context.with_task(event.get("task_id")),
+                        at=event["occurred_at"],
                         span_id=span_id("event", index), approval_id=_approval_ref(event),
                         attributes={"sequence": event["sequence"],
                                     "run_id": event.get("run_id")})
@@ -80,7 +88,7 @@ def emit_campaign_trace(telemetry: Telemetry, state: Mapping, *,
                         at=ended, span_id=span_id("task", index), outcome=task["status"],
                         attempt=task["attempt"])
     for index, error in enumerate(errors, 1):
-        telemetry.event(_ERROR_NAMES.get(error["code"], "campaign.error"), context, at=ended,
+        telemetry.event(error_record_name(error["code"]), context, at=ended,
                         span_id=span_id("error", index), error_code=error["code"],
                         attributes={"side_effect": error.get("side_effect")})
     for index, attempt in enumerate(attempts, 1):

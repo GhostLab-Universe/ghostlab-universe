@@ -15,11 +15,12 @@ from evals.cases import CASES
 from evals.evidence import canonical_sha256, scan_stores
 from evals.harness import FIXTURE_LABEL, SECRET, SYNTHETIC_SECRET
 from evals.identity import code_sha256_at, evidence_sha256
+from evals.oracles import journey_oracle
 from evals.release import (NO_VERIFIABLE_ORIGIN, REQUIRED_PROBES, SECURITY_GATES, build_record,
                            target_problems)
 from evals.run import DEFAULT_EXPECTED, main as run_main
 from evals.run import run_all
-from evals.score import RUN_IDENTITY, score_directory
+from evals.score import RUN_IDENTITY, _trace_problems, score_directory
 from ghostlab.budgets import BudgetAccountant
 from ghostlab.observability import read_records
 from ghostlab.core import run_agent
@@ -445,6 +446,168 @@ def test_a_resealed_inconsistent_run_blocks(evaluated, tmp_path, name, change, e
     assert any(f"flow.refund: failed expectation {expectation}" in item for item in failures(out))
 
 
+STATUS_EVENT, DENIED_EVENT = 3, 18  # in the two runs the forgeries below edit
+
+
+def _from_event(body, event_id):
+    """The states a forger edits, from one event to the end, so the edit looks consistent."""
+    return [event["state"] for event in body["trace"][event_id - 1:]] + [body["final_state"]]
+
+
+def _one_state(body, event_id):
+    return [body["trace"][event_id - 1]["state"]]
+
+
+def _set_amount(state):
+    state["ledger"][0]["amount_minor"] = 1
+
+
+def _drop_row(state):
+    state["ledger"].pop()
+    state["total_refunded_minor"] = 0
+
+
+def _deliver_msg_3(state):
+    state["messages"]["msg-3"].update(status="delivered", delivered_at=DENIED_EVENT)
+
+
+def _rewrite_delivery(state):
+    state["delivery_log"][0]["recipient_id"] = "someone-else"
+
+
+def forge_run(out, case_id, event_id, states, edit):
+    def forge(data):
+        run = data["campaigns"]["main"]["runs"]["repaired"]
+        for state in states(run["body"], event_id):
+            edit(state)
+        _reseal(run)
+
+    edit_evidence(out, case_id, forge)
+
+
+@pytest.mark.parametrize("states", [_one_state, _from_event])
+@pytest.mark.parametrize("case_id, event_id, edit", [
+    ("flow.refund", STATUS_EVENT, _set_amount), ("flow.refund", STATUS_EVENT, _drop_row),
+    ("flow.journey_check_to_delivery_race", DENIED_EVENT, _deliver_msg_3),
+    ("flow.journey_check_to_delivery_race", DENIED_EVENT, _rewrite_delivery)])
+def test_an_event_that_changes_nothing_cant_have_changed_anything(evaluated, tmp_path, case_id,
+                                                                  event_id, edit, states):
+    out = copy_of(evaluated, tmp_path)
+    forge_run(out, case_id, event_id, states, edit)
+    assert any(f"{case_id}: failed expectation stored_runs_are_internally_consistent" in item
+               for item in failures(out))
+
+
+def test_a_tool_cant_change_more_than_its_own_fields(evaluated, tmp_path):
+    """A call that worked, so only the check on what each tool may touch can say so."""
+    out = copy_of(evaluated, tmp_path)
+    case_id = "flow.journey_check_to_delivery_race"
+    event_id = next(event["event_id"] for event in _denied_run(out)["trace"]
+                    if event["request"]["tool"] == "queue_message")
+
+    def move_the_outbound_leg(state):
+        state["calendar"]["traveller-a"][0]["window"] = [0, 1]
+
+    forge_run(out, case_id, event_id, _from_event, move_the_outbound_leg)
+    oracle = journey_oracle(_denied_run(out))
+    assert oracle["mutations_outside_tool_effects"] == [event_id]
+    assert oracle["mutated_on_denial"] == []
+    assert any(f"{case_id}: failed expectation stored_runs_are_internally_consistent" in item
+               for item in failures(out))
+
+
+def _denied_run(out):
+    data = json.loads((out / "evidence" / "flow.journey_check_to_delivery_race.json")
+                      .read_text("utf-8"))
+    return data["campaigns"]["main"]["runs"]["repaired"]["body"]
+
+
+def test_only_a_state_change_at_a_denial_counts_as_mutated_on_denial(evaluated, tmp_path):
+    """The denial itself is the problem here, and the check for it must be what says so."""
+    out = copy_of(evaluated, tmp_path)
+    assert journey_oracle(_denied_run(out))["mutated_on_denial"] == []
+    forge_run(out, "flow.journey_check_to_delivery_race", DENIED_EVENT, _from_event,
+              _deliver_msg_3)
+    oracle = journey_oracle(_denied_run(out))
+    assert oracle["mutated_on_denial"] == [DENIED_EVENT]
+    assert oracle["mutations_outside_tool_effects"] == []
+
+
+def test_a_revocation_may_show_on_a_read_but_only_as_a_new_row(evaluated, tmp_path):
+    """The one change a read or a denial can show: the world applies it before the tool."""
+    out = copy_of(evaluated, tmp_path)
+    body = _denied_run(out)
+    assert any(not row["sharing"] for row in body["final_state"]["permission_timeline"])
+    assert journey_oracle(body)["mutations_outside_tool_effects"] == []
+    assert journey_oracle(body)["mutated_on_denial"] == []
+
+    def rewrite_history(state):
+        state["permission_timeline"][0]["sharing"] = False
+
+    forge_run(out, "flow.journey_check_to_delivery_race", DENIED_EVENT, _from_event,
+              rewrite_history)
+    assert journey_oracle(_denied_run(out))["mutated_on_denial"] == [DENIED_EVENT]
+
+
+def _claim_one_refund(data):
+    campaign = data["campaigns"]["main"]
+    fork(data)["body"]["final_state"]["total_refunded_minor"] = 250000
+    _reseal(fork(data))
+    for diff in campaign["diffs"].values():
+        diff["faulted_refunded_minor"] = 250000
+
+
+def test_refund_totals_come_from_the_ledger(evaluated, tmp_path):
+    """Probe: the fork's total and the diff say 250000, and the ledger still says 500000."""
+    out = copy_of(evaluated, tmp_path)
+    edit_evidence(out, "flow.refund", _claim_one_refund)
+    found = failures(out)
+    assert any("flow.refund: failed expectation reality_diff_matches_the_stored_runs" in item
+               for item in found)
+    assert any("flow.refund: failed expectation stored_runs_are_internally_consistent" in item
+               for item in found)
+
+
+def test_a_total_forged_in_every_state_still_disagrees_with_the_ledger(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+
+    def forge(data):
+        run = fork(data)
+        for event in run["body"]["trace"]:
+            event["state"]["total_refunded_minor"] = min(
+                event["state"]["total_refunded_minor"], 250000)
+        run["body"]["final_state"]["total_refunded_minor"] = 250000
+        _reseal(run)
+
+    edit_evidence(out, "flow.refund", forge)
+    assert any("flow.refund: failed expectation stored_runs_are_internally_consistent" in item
+               for item in failures(out))
+
+
+def test_a_wrong_first_divergence_blocks(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+
+    def move_it(data):
+        for diff in data["campaigns"]["main"]["diffs"].values():
+            diff["first_divergence_event"] += 1
+
+    edit_evidence(out, "flow.refund", move_it)
+    assert any("flow.refund: failed expectation reality_diff_matches_the_stored_runs" in item
+               for item in failures(out))
+
+
+def test_events_out_of_sequence_block(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+
+    def renumber(data):
+        events = data["campaigns"]["main"]["events"]
+        events[0]["sequence"], events[1]["sequence"] = 2, 1
+
+    edit_evidence(out, "flow.refund", renumber)
+    assert any("flow.refund: failed expectation approval_events_match_the_decisions" in item
+               for item in failures(out))
+
+
 def test_dropping_the_decision_event_blocks_promotion(tmp_path, monkeypatch):
     real = CampaignController._event
 
@@ -526,6 +689,91 @@ def test_a_trace_reduced_to_its_root_span_blocks(evaluated, tmp_path):
              if json.loads(line)["name"] == "campaign.run"]
     path.write_text("\n".join(roots) + "\n", "utf-8")
     assert any("flow.refund: failed expectation trace_valid_and_complete" in item
+               for item in failures(out))
+
+
+def rewrite_trace(out, change, name="flow.refund.main.jsonl"):
+    path = out / "telemetry" / name
+    records = [json.loads(line) for line in path.read_text("utf-8").splitlines()]
+    change(records)
+    path.write_text("".join(json.dumps(record) + "\n" for record in records), "utf-8")
+
+
+def trace_problems(out):
+    evidence = json.loads((out / "evidence" / "flow.refund.json").read_text("utf-8"))
+    return _trace_problems(out / "telemetry", "flow.refund", evidence)["problems"]
+
+
+def _root(records):
+    return next(r for r in records if r["name"] == "campaign.run")
+
+
+def _named(records, name):
+    return next(r for r in records if r["name"] == name)
+
+
+def _first(records):
+    return next(r for r in records if r["name"] != "campaign.run")
+
+
+def _task(records):
+    return next(r for r in records if r["name"] == "task.status" and r["outcome"])
+
+
+@pytest.mark.parametrize("change", [
+    pytest.param(lambda rs: _first(rs).update(name="campaign.status"
+                                              if _first(rs)["name"] != "campaign.status"
+                                              else "retry"), id="event_renamed"),
+    pytest.param(lambda rs: _task(rs).update(name="retry"), id="task_renamed"),
+    pytest.param(lambda rs: _task(rs).update(task_id=None), id="task_blanked"),
+    pytest.param(lambda rs: _task(rs).update(outcome=None), id="outcome_blanked"),
+    pytest.param(lambda rs: _task(rs).update(role=None), id="role_blanked"),
+    pytest.param(lambda rs: _task(rs).update(attempt=None), id="attempt_blanked"),
+    pytest.param(lambda rs: _first(rs).update(attributes={}), id="attributes_blanked"),
+    pytest.param(lambda rs: _named(rs, "model.attempt").update(attributes={}), id="status_blanked"),
+    pytest.param(lambda rs: _named(rs, "model.attempt").update(outcome="error"), id="attempt_lied"),
+    pytest.param(lambda rs: _first(rs).update(campaign_id="other"), id="other_campaign"),
+    pytest.param(lambda rs: _first(rs).update(project_id=None), id="no_project"),
+    pytest.param(lambda rs: _root(rs).update(outcome="failed"), id="root_outcome"),
+    pytest.param(lambda rs: _root(rs).update(attributes={}), id="root_attributes"),
+    pytest.param(lambda rs: _root(rs).update(approval_status=None), id="root_approval")])
+def test_a_trace_with_the_right_count_and_the_wrong_content_blocks(evaluated, tmp_path, change):
+    out = copy_of(evaluated, tmp_path)
+    assert trace_problems(out) == []
+    rewrite_trace(out, change)
+    assert trace_problems(out) != []
+    assert any("flow.refund: failed expectation trace_valid_and_complete" in item
+               for item in failures(out))
+
+
+def test_a_trace_with_no_root_span_blocks(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+    rewrite_trace(out, lambda rs: _root(rs).update(parent_span_id="0" * 16))
+    assert any("root span missing" in item for item in trace_problems(out))
+
+
+def test_a_trace_with_two_root_spans_blocks(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+    rewrite_trace(out, lambda rs: rs.append(dict(_root(rs))))
+    assert any("root span missing" in item for item in trace_problems(out))
+
+
+def test_a_root_span_from_another_trace_blocks(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+    rewrite_trace(out, lambda rs: _root(rs).update(trace_id="f" * 32))
+    assert any("root span missing or from another trace" in item for item in trace_problems(out))
+
+
+def test_a_record_from_another_trace_blocks(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+    rewrite_trace(out, lambda rs: _first(rs).update(trace_id="f" * 32))
+    assert any("records from another trace" in item for item in trace_problems(out))
+
+
+def test_a_secret_in_a_rotated_telemetry_file_blocks(evaluated, tmp_path):
+    out = copy_of(evaluated, tmp_path)
+    (out / "telemetry" / "flow.journey.main.jsonl.1").write_text(f"{SECRET}\n", "utf-8")
+    assert any("flow.journey: failed expectation no_secret_in_telemetry" in item
                for item in failures(out))
 
 
@@ -691,6 +939,14 @@ def test_the_gate_reads_more_than_failed_expectations(evaluated, change, message
     report = json.loads(json.dumps(score_directory(evaluated[0])))
     change(report)
     assert any(message in item for item in gate.check(report, EXPECTED))
+
+
+def test_nothing_scored_is_not_a_pass(evaluated):
+    report = {**score_directory(evaluated[0]), "cases": []}
+    report["aggregate"] = {**report["aggregate"], "cases": {"total": 0, "passed": 0}}
+    assert "no case was scored" in gate.check(report, EXPECTED)
+    assert "no case was scored" in gate.check(report, {})
+    assert "there are no reviewed expectations" in gate.check(report, {})
 
 
 def test_a_commit_that_doesnt_exist_is_refused(bound):

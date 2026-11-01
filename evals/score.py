@@ -11,15 +11,17 @@ its own label because it's the time of this machine running fixtures.
 import json
 import platform
 import sys
+from collections import Counter
 from pathlib import Path
 
 from ghostlab.observability import find_secrets, read_records
+from ghostlab.observability.campaign_trace import ROOT_SPAN, error_record_name, event_record_name
 
 from .cases import CASES
 from .evidence import canonical_sha256
 from .harness import FIXTURE_LABEL, REFUND, SECRETS
 from .oracles import (expected_citations, expected_verdicts, fault_evidence, journey_oracle,
-                      refund_oracle, tool_counts)
+                      ledger_total, refund_oracle, tool_counts)
 
 SCHEMA = "ghostlab-evaluation/1"
 RUN_IDENTITY = "run.json"  # the commit the evidence came from, written by evals.run
@@ -108,8 +110,8 @@ def _diffs_match(campaign: dict) -> bool:
         if diff["first_divergence_event"] != _first_difference(baseline, fork):
             return False
         if campaign["world"] == REFUND and (
-                diff["baseline_refunded_minor"] != baseline["final_state"]["total_refunded_minor"]
-                or diff["faulted_refunded_minor"] != fork["final_state"]["total_refunded_minor"]):
+                diff["baseline_refunded_minor"] != ledger_total(baseline["final_state"])
+                or diff["faulted_refunded_minor"] != ledger_total(fork["final_state"])):
             return False
     return True
 
@@ -133,7 +135,11 @@ def _runs_are_consistent(campaign: dict, oracles: dict) -> bool:
             return False
         if oracle.get("wrong_customer_or_order") or oracle.get("mutations_outside_issue_refund"):
             return False
+        if oracle.get("totals_that_disagree_with_the_ledger"):
+            return False
         if oracle.get("mutated_on_denial"):
+            return False
+        if oracle.get("mutations_outside_tool_effects"):
             return False
     return True
 
@@ -167,9 +173,45 @@ def _coverage_matches(campaign: dict) -> bool:
     return True
 
 
+def _says(record: dict) -> str:
+    """What a record states, leaving out the ids and times the evidence doesn't hold."""
+    return json.dumps({key: record[key] for key in (
+        "kind", "name", "campaign_id", "task_id", "role", "world_version", "outcome",
+        "error_code", "attempt", "approval_status", "attributes")}, sort_keys=True)
+
+
+def _wanted_records(campaign: dict, attempts: list[dict]) -> Counter:
+    """Every record a campaign's trace must hold, restated from its evidence."""
+    def record(name, *, kind="event", task=None, role="supervisor", outcome=None, error=None,
+               attempt=None, approval=None, attributes=None):
+        return _says({"kind": kind, "name": name, "campaign_id": campaign["campaign_id"],
+                      "task_id": task, "role": role, "world_version": campaign["world"],
+                      "outcome": outcome, "error_code": error, "attempt": attempt,
+                      "approval_status": approval, "attributes": attributes or {}})
+
+    wanted = [record(event_record_name(event["kind"]), task=event["task_id"], attributes={
+        "sequence": event["sequence"], "run_id": event["run_id"]}) for event in campaign["events"]]
+    wanted += [record("task.status", task=task["task_id"], role=task["role"],
+                      outcome=task["status"], attempt=task["attempt"])
+               for task in campaign["tasks"]]
+    wanted += [record(error_record_name(error["code"]), error=error["code"],
+                      attributes={"side_effect": error["side_effect"]})
+               for error in campaign["errors"]]
+    wanted += [record("model.attempt", attempt=index, outcome=item["outcome"], attributes={
+        "http_status": item["http_status"], "transport": "mock"})
+        for index, item in enumerate(attempts, 1)]
+    wanted.append(record(
+        ROOT_SPAN, kind="span", outcome=campaign["outcome"] or campaign["status"],
+        approval=(campaign["approval"] or {}).get("status"),
+        attributes={"iteration": campaign["iteration"], "event_count": len(campaign["events"]),
+                    "finding_count": len(campaign["findings"]),
+                    "transport": "mock" if attempts else None}))
+    return Counter(wanted)
+
+
 def _trace_problems(telemetry_dir: Path, case_id: str, evidence: dict) -> dict:
     files = {name: telemetry_dir / f"{case_id}.{name}.jsonl" for name in evidence["campaigns"]}
-    records, problems, leaks = 0, [], []
+    records, problems = 0, []
     for name, path in files.items():
         if not path.exists():
             problems.append(f"{name}: no trace")
@@ -177,17 +219,20 @@ def _trace_problems(telemetry_dir: Path, case_id: str, evidence: dict) -> dict:
         stored, found = read_records(path)
         records += len(stored)
         campaign = evidence["campaigns"][name]
-        wanted = (len(campaign["events"]) + len(campaign["tasks"]) + len(campaign["errors"])
-                  + len(evidence["http_attempts"][name]) + 1)  # the root span
-        if len(stored) != wanted:
-            problems.append(f"{name}: {len(stored)} records, the campaign needs {wanted}")
+        wanted = _wanted_records(campaign, evidence["http_attempts"][name])
+        if len(stored) != wanted.total():
+            problems.append(f"{name}: {len(stored)} records, the campaign needs {wanted.total()}")
+        if (wrong := (wanted - Counter(_says(r) for r in stored)).total()):
+            problems.append(f"{name}: {wrong} records don't say what the campaign recorded")
+        problems.extend(f"{name}: no project on a record" for r in stored if not r["project_id"])
         problems.extend(f"{name}: {item}" for item in found)
-        roots = [r for r in stored if r["name"] == "campaign.run" and r["parent_span_id"] is None]
+        roots = [r for r in stored if r["name"] == ROOT_SPAN and r["parent_span_id"] is None]
         if len(roots) != 1 or roots[0]["trace_id"] != campaign["trace_id"]:
             problems.append(f"{name}: root span missing or from another trace")
         if {r["trace_id"] for r in stored} != {campaign["trace_id"]}:
             problems.append(f"{name}: records from another trace")
-        leaks.extend(find_secrets(path.read_text("utf-8"), SECRETS))
+    leaks = [label for path in telemetry_dir.glob(f"{case_id}.*")  # rotated backups too
+             for label in find_secrets(path.read_bytes().decode("utf-8", "replace"), SECRETS)]
     return {"records": records, "problems": problems, "leaks": sorted(set(leaks))}
 
 

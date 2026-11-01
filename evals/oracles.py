@@ -9,6 +9,18 @@ findings. ``mandatory_participants_feasible`` is restated here from the rule in 
 
 GUARD_DENIALS = {"StaleIntentDenied", "PermissionWithdrawnDenied"}
 FAULT_ERRORS = {"PaymentTimeout"}
+# What each tool may change, restated from M02.md. A tool that isn't listed changes nothing,
+# and neither does a call that was refused. A fault can hide a commit, so it isn't refused.
+REFUND_EFFECTS = {"issue_refund": {"ledger", "total_refunded_minor"}}
+JOURNEY_EFFECTS = {"hold_availability": {"holds"},
+                   "release_availability": {"holds", "reservations"},
+                   "confirm_reservation": {"holds", "reservations", "commitment_log"},
+                   "update_calendar_event": {"calendar", "commitment_log"},
+                   "queue_message": {"messages"}, "deliver_message": {"messages", "delivery_log"}}
+APPEND_ONLY = ("ledger", "commitment_log", "delivery_log")  # one row per call, never rewritten
+REFUND_START = {"ledger": [], "total_refunded_minor": 0}
+JOURNEY_START = {"holds": {}, "reservations": {}, "messages": {}, "commitment_log": [],
+                 "delivery_log": []}
 
 
 def tool_counts(run: dict) -> dict:
@@ -26,19 +38,56 @@ def trace_is_contiguous(run: dict) -> bool:
         range(1, len(run["trace"]) + 1))
 
 
+def _revocation_only(before: dict, after: dict, event_id: int) -> bool:
+    """A revocation takes effect as a call starts, so even a read or a denial can show one."""
+    old = len(before["permission_timeline"])
+    added = after["permission_timeline"][old:]
+    return (after["permission_timeline"][:old] == before["permission_timeline"]
+            and all(row["from_event"] == event_id and row["sharing"] is False for row in added)
+            and after["sharing"] == {**before["sharing"],
+                                     **{row["participant"]: False for row in added}})
+
+
+def _explained(before: dict, event: dict, effects: dict) -> bool:
+    """Is every difference from the previous state something this event may have done?"""
+    after = event["state"]
+    error = event["outcome"].get("error")
+    allowed = set() if error and error not in FAULT_ERRORS else effects.get(
+        event["request"]["tool"], set())
+    changed = {key for key in {*before, *after} if before.get(key) != after.get(key)}
+    if "permission_timeline" in after and _revocation_only(before, after, event["event_id"]):
+        changed -= {"permission_timeline", "sharing"}
+    return changed <= allowed and all(
+        after[key][:len(before[key])] == before[key] and len(after[key]) - len(before[key]) <= 1
+        for key in APPEND_ONLY if key in after)
+
+
+def unexplained_events(run: dict, start: dict, effects: dict) -> list[int]:
+    """Events whose state changed in a way their own tool doesn't explain."""
+    found, before = [], None
+    for event in run["trace"]:
+        before = before or {**event["state"], **start}
+        if not _explained(before, event, effects):
+            found.append(event["event_id"])
+        before = event["state"]
+    return found
+
+
+def ledger_total(state: dict) -> int:
+    """The refunded amount. Only the ledger says so: a stored total is a claim."""
+    return sum(row["amount_minor"] for row in state["ledger"])
+
+
 def refund_oracle(fixture: dict, run: dict) -> dict:
     """Was the customer's money handled correctly, whatever the agent believed?"""
-    ledger = run["final_state"]["ledger"]
-    refunded = sum(row["amount_minor"] for row in ledger)
-    previous, uncertain, unexplained = 0, [], []
+    final = run["final_state"]
+    ledger = final["ledger"]
+    refunded = ledger_total(final)
+    previous, uncertain = 0, []
     for event in run["trace"]:
         rows = len(event["state"]["ledger"])
-        tool = event["request"]["tool"]
-        if rows > previous:
-            if tool != "issue_refund":
-                unexplained.append(event["event_id"])
-            if event["outcome"].get("error") == "PaymentTimeout":
-                uncertain.append(event["event_id"])  # committed, but the caller was told a timeout
+        if rows > previous and event["outcome"].get("error") == "PaymentTimeout":
+            uncertain.append(event["event_id"])  # committed, but the caller was told a timeout
         previous = rows
     status_checked = [event["event_id"] for event in run["trace"]
                       if event["request"]["tool"] == "get_refund_status"]
@@ -49,10 +98,13 @@ def refund_oracle(fixture: dict, run: dict) -> dict:
             row["customer_id"] != fixture["customer_id"] or row["order_id"] != fixture["order_id"]
             for row in ledger),
         "commits_reported_as_timeouts": uncertain, "status_checked_at": status_checked,
-        "mutations_outside_issue_refund": unexplained,
+        "mutations_outside_issue_refund": unexplained_events(run, REFUND_START, REFUND_EFFECTS),
+        "totals_that_disagree_with_the_ledger": [
+            event["event_id"] for event in ({"event_id": 0, "state": final}, *run["trace"])
+            if event["state"]["total_refunded_minor"] != ledger_total(event["state"])],
         "trace_contiguous": trace_is_contiguous(run),
         "final_state_matches_trace": (not run["trace"] and not ledger) or (
-            bool(run["trace"]) and run["trace"][-1]["state"]["ledger"] == ledger)}
+            bool(run["trace"]) and run["trace"][-1]["state"] == final)}
 
 
 def _value_at(rows: list[dict], event_id: int, key: str, *, default):
@@ -75,22 +127,19 @@ def journey_oracle(run: dict) -> dict:
     stale = [row["event_id"] for row in final["commitment_log"]
              if row["intent_version"] != _value_at(final["approval_timeline"], row["event_id"],
                                                    "version", default=None)]
-    denied, mutated_on_denial = [], []
-    for event in run["trace"]:
-        error = event["outcome"].get("error")
-        if error in GUARD_DENIALS:
-            denied.append({"event_id": event["event_id"], "error": error})
-            before = run["trace"][event["event_id"] - 2]["state"] if event["event_id"] > 1 else None
-            if before is not None and (
-                    len(before["delivery_log"]) != len(event["state"]["delivery_log"])
-                    or len(before["commitment_log"]) != len(event["state"]["commitment_log"])):
-                mutated_on_denial.append(event["event_id"])
+    denied = [{"event_id": event["event_id"], "error": event["outcome"]["error"]}
+              for event in run["trace"] if event["outcome"].get("error") in GUARD_DENIALS]
+    denied_ids = {item["event_id"] for item in denied}
+    unexplained = unexplained_events(run, JOURNEY_START, JOURNEY_EFFECTS)
     withdrawn = {row["participant"] for row in permissions if not row["sharing"]}
     return {
         "unpermitted_deliveries": unpermitted, "stale_commitments": stale,
-        "final_state_matches_trace": not run["trace"] or (
-            run["trace"][-1]["state"]["delivery_log"] == final["delivery_log"]),
-        "guard_denials": denied, "mutated_on_denial": mutated_on_denial,
+        "final_state_matches_trace": (not run["trace"] and not final["delivery_log"]) or (
+            bool(run["trace"]) and run["trace"][-1]["state"] == final),
+        "guard_denials": denied,
+        "mutated_on_denial": [item for item in unexplained if item in denied_ids],
+        "mutations_outside_tool_effects": [item for item in unexplained
+                                           if item not in denied_ids],
         "delivered_to": sorted({row["recipient_id"] for row in final["delivery_log"]}),
         "still_queued": sorted(message_id for message_id, message in final["messages"].items()
                                if message["status"] == "queued"),

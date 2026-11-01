@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Prototype page: inline styles/scripts only, and the browser may call nowhere. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Prototype: refund demo experience — GhostLab Universe</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23232a35'/%3E%3Cpath d='M4 11V5l4 3 4-3v6' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3C/svg%3E" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --paper: #ffffff;
+        --panel: #f3f4f1;
+        --ink: #1c2026;
+        --muted: #586070;
+        --line: #d5d7d2;
+        --accent: #1f5fbf;
+        --baseline: #1d6f7a;
+        --fork: #b4521a;
+        --ok: #17693d;
+        --ok-soft: #e4f3ea;
+        --fail: #b3261e;
+        --fail-soft: #fbe6e4;
+        --warn-soft: #fbf0d6;
+        --proto-bar: #232a35;
+        --proto-ink: #ffffff;
+        --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #14171c;
+          --panel: #1c2027;
+          --ink: #e8e9e6;
+          --muted: #a3aab6;
+          --line: #333a44;
+          --accent: #84b1f3;
+          --baseline: #6cc4cf;
+          --fork: #f0a06a;
+          --ok: #79d6a0;
+          --ok-soft: #17301f;
+          --fail: #f5a59f;
+          --fail-soft: #3c1d1b;
+          --warn-soft: #362b12;
+          --proto-bar: #e8e9e6;
+          --proto-ink: #14171c;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 16px/1.55 var(--sans);
+      }
+      .skip {
+        position: absolute;
+        left: 0.75rem;
+        top: -3rem;
+        background: var(--ink);
+        color: var(--paper);
+        padding: 0.4rem 0.8rem;
+      }
+      .skip:focus { top: 0.75rem; }
+      .proto-banner {
+        background: var(--proto-bar);
+        color: var(--proto-ink);
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+      }
+      .proto-banner strong { letter-spacing: 0.04em; }
+      .wrap { max-width: 76ch; margin: 0 auto; padding: 0 1rem 3rem; }
+      .masthead { padding: 1.5rem 0 0.5rem; border-bottom: 1px solid var(--line); }
+      .masthead p.brand { margin: 0 0 0.25rem; color: var(--muted); font-size: 0.95rem; }
+      h1 { font-size: clamp(1.4rem, 1.1rem + 1.4vw, 1.9rem); line-height: 1.25; margin: 0 0 0.75rem; }
+      h2 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+      h2:focus, h1:focus { outline: none; }
+      h3 { font-size: 1rem; margin: 1.5rem 0 0.4rem; }
+      .incident-facts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15ch, 1fr));
+        gap: 0.5rem 1.5rem;
+        margin: 0 0 0.5rem;
+        padding: 0.9rem 1rem;
+        background: var(--panel);
+        border: 1px solid var(--line);
+      }
+      .incident-facts div { font-size: 0.92rem; }
+      .incident-facts dt { color: var(--muted); font-size: 0.8rem; margin: 0; }
+      .incident-facts dd { margin: 0; font-weight: 600; }
+      .mono { font-family: var(--mono); font-size: 0.88em; }
+      .muted { color: var(--muted); }
+      .amount { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.92em; }
+      .tag {
+        display: inline-block;
+        padding: 0.05rem 0.5rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .tag[data-tone="fail"] { color: var(--fail); border-color: currentColor; background: var(--fail-soft); }
+      .tag[data-tone="ok"] { color: var(--ok); border-color: currentColor; background: var(--ok-soft); }
+      .tag[data-tone="baseline"] { color: var(--baseline); border-color: currentColor; }
+      .tag[data-tone="fork"] { color: var(--fork); border-color: currentColor; }
+      .steps { padding: 0.75rem 0; border-bottom: 1px solid var(--line); }
+      .steps ol { list-style: none; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin: 0; padding: 0; }
+      .steps a { color: var(--ink); text-decoration: none; padding: 0.15rem 0; border-bottom: 2px solid transparent; }
+      .steps a .n {
+        display: inline-block; min-width: 1.5em; text-align: center;
+        border: 1px solid var(--line); border-radius: 4px;
+        font-size: 0.8rem; margin-right: 0.35rem; padding: 0 0.2rem;
+      }
+      .steps a[aria-current="step"] { font-weight: 700; border-bottom-color: var(--accent); }
+      .steps a[aria-current="step"] .n { background: var(--accent); border-color: var(--accent); color: #fff; }
+      @media (prefers-color-scheme: dark) {
+        .steps a[aria-current="step"] .n { color: #14171c; }
+      }
+      section.beat { padding-top: 1.25rem; }
+      section.beat[hidden] { display: none; }
+      .lede { font-size: 1.05rem; max-width: 62ch; }
+      table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; font-size: 0.95rem; }
+      th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+      tr.total td { font-weight: 700; border-bottom: none; }
+      ol.timeline { list-style: none; margin: 1rem 0; padding: 0; counter-reset: beat; }
+      ol.timeline li {
+        counter-increment: beat;
+        position: relative;
+        padding: 0 0 1rem 2.6rem;
+        border-left: 2px solid var(--line);
+        margin-left: 0.7rem;
+      }
+      ol.timeline li:last-child { padding-bottom: 0; }
+      ol.timeline li::before {
+        content: counter(beat);
+        position: absolute; left: -0.85rem; top: 0;
+        width: 1.5rem; height: 1.5rem; line-height: 1.5rem; text-align: center;
+        background: var(--paper); border: 1px solid var(--line); border-radius: 50%;
+        font-size: 0.8rem; font-weight: 700;
+      }
+      ol.timeline li.bad::before { border-color: var(--fail); color: var(--fail); }
+      ol.timeline li.good::before { border-color: var(--ok); color: var(--ok); }
+      ol.timeline p { margin: 0.1rem 0; }
+      .verdict {
+        border: 1px solid var(--line);
+        background: var(--fail-soft);
+        padding: 0.8rem 1rem;
+        margin: 1rem 0;
+        font-size: 1.02rem;
+      }
+      .verdict strong { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 0.2rem; }
+      .callout { border: 1px solid var(--line); padding: 0.8rem 1rem; margin: 0.75rem 0; }
+      .callout h3 { margin-top: 0; }
+      .next-link { display: inline-block; margin-top: 1rem; font-weight: 600; }
+      a { color: var(--accent); }
+      .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0; }
+      button {
+        font: inherit; font-size: 0.92rem;
+        padding: 0.4rem 0.9rem;
+        background: var(--paper); color: var(--ink);
+        border: 1px solid var(--line); border-radius: 4px;
+        cursor: pointer;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      @media (prefers-color-scheme: dark) {
+        button.primary { color: #14171c; }
+      }
+      button[disabled] { cursor: not-allowed; opacity: 0.55; }
+      button[aria-pressed="true"] { border-color: var(--accent); border-width: 2px; padding: calc(0.4rem - 1px) calc(0.9rem - 1px); }
+      .pager {
+        display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+        border-top: 1px solid var(--line); margin-top: 2rem; padding-top: 1rem;
+      }
+      .pager .pos { color: var(--muted); font-size: 0.9rem; }
+      pre.transcript {
+        font-family: var(--mono); font-size: 0.85rem;
+        background: var(--panel); border: 1px solid var(--line);
+        padding: 0.8rem 1rem; overflow-x: auto;
+      }
+      ul.check { list-style: none; margin: 0.5rem 0; padding: 0; }
+      ul.check li { padding: 0.25rem 0 0.25rem 1.6rem; position: relative; }
+      ul.check li::before { content: "—"; position: absolute; left: 0; color: var(--muted); }
+      .origin { font-size: 0.85rem; color: var(--muted); border-top: 1px dashed var(--line); margin-top: 1.5rem; padding-top: 0.5rem; }
+      footer.doc { margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: 0.75rem; font-size: 0.88rem; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="proto-banner" role="note">
+      <strong>PROTOTYPE SHELL.</strong> Design proposal only: static fixture
+      content, nothing here calls a service. The existing console is unchanged
+      at <span class="mono">/</span>.
+    </div>
+    <div class="wrap">
+      <header class="masthead">
+        <p class="brand">GhostLab Universe — demo experience proposal</p>
+        <h1>The double refund, start to finish</h1>
+        <dl class="incident-facts">
+          <div><dt>Order (synthetic)</dt><dd class="mono">ord_demo_001 · INR 2,500</dd></div>
+          <div><dt>Baseline refund</dt><dd class="amount">250000 paise</dd></div>
+          <div><dt>Fork refund</dt><dd class="amount">500000 paise</dd></div>
+          <div><dt>Repaired refund</dt><dd class="amount">250000 paise</dd></div>
+          <div><dt>Verdict</dt><dd><span class="tag" data-tone="fail">duplicate refund</span></dd></div>
+          <div><dt>World</dt><dd class="mono">refund-world/1</dd></div>
+        </dl>
+        <p class="muted">Test data. Synthetic world: no real people or money. Inference: fixture (scripted, not a model).</p>
+      </header>
+      <nav class="steps" aria-label="Demo beats">
+        <ol>
+          <li><a href="#incident" data-screen="incident"><span class="n">1</span>Incident</a></li>
+          <li><a href="#divergence" data-screen="divergence"><span class="n">2</span>Divergence</a></li>
+          <li><a href="#evidence" data-screen="evidence"><span class="n">3</span>Evidence</a></li>
+          <li><a href="#decision" data-screen="decision"><span class="n">4</span>Decision</a></li>
+          <li><a href="#proof" data-screen="proof"><span class="n">5</span>Proof</a></li>
+        </ol>
+      </nav>
+      <main id="main">        <section class="beat" id="screen-incident" aria-labelledby="h-incident">
+          <h2 id="h-incident" tabindex="-1">1. What happened</h2>
+          <p class="lede">One synthetic order for INR 2,500. The refund commits,
+          the confirmation is lost to a timeout, and the vulnerable adapter
+          retries without an idempotency key — refunding twice. The verifier
+          catches it; the repaired adapter refunds once.</p>
+          <ol class="timeline">
+            <li><p><strong>Order placed.</strong> <span class="mono">get_order</span> returns
+              <span class="mono">ord_demo_001</span>: 250000 paise, owner verified.</p></li>
+            <li><p><strong>Refund committed.</strong> <span class="mono">issue_refund</span>
+              attempt 1 commits 250000 paise in the world.</p></li>
+            <li class="bad"><p><strong>Confirmation lost.</strong> The agent receives a
+              timeout even though the refund committed. The world and the agent
+              now disagree.</p></li>
+            <li class="bad"><p><strong>Naive retry.</strong> The vulnerable adapter retries
+              <span class="mono">issue_refund</span> with no idempotency key. A second
+              250000 paise commits. Total: <span class="amount">500000 paise</span>.</p></li>
+            <li class="bad"><p><strong>Detected.</strong> The verifier flags
+              <span class="mono">no_duplicate_full_refund</span> and
+              <span class="mono">total_refund_within_payment</span> against the fork trace.</p></li>
+            <li class="good"><p><strong>Repaired.</strong> The repaired adapter retries with
+              idempotency key <span class="mono">refund-ord_demo_001-1</span>. Total:
+              <span class="amount">250000 paise</span> — exactly once.</p></li>
+          </ol>
+          <h3>Ledger totals</h3>
+          <table>
+            <thead><tr><th scope="col">Run</th><th scope="col">Refunded</th><th scope="col">Result</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><span class="tag" data-tone="baseline">baseline</span></th>
+                <td class="amount">250000 paise (INR 2,500.00)</td><td>correct</td></tr>
+              <tr><th scope="row"><span class="tag" data-tone="fork">fork</span></th>
+                <td class="amount">500000 paise (INR 5,000.00)</td><td>double refund</td></tr>
+              <tr><th scope="row"><span class="tag" data-tone="ok">repaired</span></th>
+                <td class="amount">250000 paise (INR 2,500.00)</td><td>correct</td></tr>
+            </tbody>
+          </table>
+          <div class="verdict" data-testid="verdict-sentence">
+            <strong>Verdict</strong>
+            The retry double-refunded 500000 paise; the verifier caught it at
+            event 2. The idempotent repair refunds 250000 paise exactly once.
+          </div>
+          <a class="next-link" href="#divergence">Show me where they separate →</a>
+          <p class="origin">Origin: static fixture in this page (prototype only). Nothing here came from a running service.</p>
+        </section>
+
+        <section class="beat" id="screen-divergence" aria-labelledby="h-divergence" hidden>
+          <h2 id="h-divergence" tabindex="-1">2. Where they separate</h2>
+          <p class="lede">Baseline and fork agree until the lost timeout. The
+          first divergence is event 2: committed in the world, reported as a
+          timeout to the agent. Everything after follows from that disagreement.</p>
+          <div class="callout" data-testid="first-divergence">
+            <h3>First divergence — event 2</h3>
+            <p><span class="mono">issue_refund</span> attempt 1, 250000 paise:
+            <strong>committed</strong> in the world, <strong>timeout</strong> as
+            observed by the agent.</p>
+            <p class="muted">Cause in one line: timeout after commit, plus a retry
+            without an idempotency key.</p>
+          </div>
+          <h3>What the divergence cost</h3>
+          <table>
+            <thead><tr><th scope="col">Run</th><th scope="col">Refunded</th><th scope="col">Delta vs baseline</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><span class="tag" data-tone="baseline">baseline</span></th>
+                <td class="amount">250000 paise</td><td class="amount">—</td></tr>
+              <tr><th scope="row"><span class="tag" data-tone="fork">fork</span></th>
+                <td class="amount">500000 paise</td><td class="amount">+250000 paise</td></tr>
+            </tbody>
+          </table>
+          <p>Violated invariants: <span class="mono">no_duplicate_full_refund</span>
+          (events 2, 3), <span class="mono">total_refund_within_payment</span>
+          (event 4).</p>
+          <a class="next-link" href="#evidence">Show me the trace →</a>
+          <p class="origin">Origin: static fixture in this page (prototype only). Nothing here came from a running service.</p>
+        </section>        <section class="beat" id="screen-evidence" aria-labelledby="h-evidence" hidden>
+          <h2 id="h-evidence" tabindex="-1">3. Prove it</h2>
+          <p class="lede">The fork trace, event by event. This screen is
+          read-only: it can inform the decision, never change state.</p>
+          <div class="toolbar" role="group" aria-label="Trace filter">
+            <button type="button" id="filter-all" aria-pressed="true">Show all events</button>
+            <button type="button" id="filter-violations" aria-pressed="false">Violations only</button>
+          </div>
+          <table id="trace">
+            <thead><tr><th scope="col">Event</th><th scope="col">Tool</th><th scope="col">Result</th><th scope="col">Finding</th></tr></thead>
+            <tbody>
+              <tr data-clean="true">
+                <th scope="row" class="amount">1</th>
+                <td><span class="mono">get_order(ord_demo_001)</span></td>
+                <td>Order found: 250000 paise, owner verified.</td>
+                <td class="muted">—</td>
+              </tr>
+              <tr>
+                <th scope="row" class="amount">2</th>
+                <td><span class="mono">issue_refund</span> attempt 1 · <span class="amount">250000</span></td>
+                <td>Committed in the world; agent observed a timeout.</td>
+                <td><span class="tag" data-tone="fail">first divergence</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="amount">3</th>
+                <td><span class="mono">issue_refund</span> retry, no key · <span class="amount">250000</span></td>
+                <td>Committed again. Running total: <span class="amount">500000 paise</span>.</td>
+                <td><span class="tag" data-tone="fail">no_duplicate_full_refund</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="amount">4</th>
+                <td><span class="mono">get_refund_status(ord_demo_001)</span></td>
+                <td>Total refunded: <span class="amount">500000 paise</span>.</td>
+                <td><span class="tag" data-tone="fail">total_refund_within_payment</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <h3>Divergence and findings</h3>
+          <ul class="check">
+            <li><span class="mono">first_divergence</span> (diff field) — event 2: world committed, agent saw timeout.</li>
+            <li><span class="mono">no_duplicate_full_refund</span> — events 2, 3: two commits for one request.</li>
+            <li><span class="mono">total_refund_within_payment</span> — event 4: 500000 paise refunded against a 250000 order.</li>
+          </ul>
+          <a class="next-link" href="#decision">Decide the repair →</a>
+          <p class="origin">Origin: static fixture in this page (prototype only). Nothing here came from a running service.</p>
+        </section>
+
+        <section class="beat" id="screen-decision" aria-labelledby="h-decision" hidden>
+          <h2 id="h-decision" tabindex="-1">4. Decide the repair</h2>
+          <p class="lede">The repair under review: retry with idempotency key
+          <span class="mono">refund-ord_demo_001-1</span>, so a lost timeout can
+          never commit twice. Review the consequence before deciding.</p>
+          <h3>Consequence preview</h3>
+          <table>
+            <thead><tr><th scope="col">If you…</th><th scope="col">Ledger becomes</th><th scope="col">Meaning</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Approve the repair</th>
+                <td class="amount">250000 paise</td><td>retry deduplicated; exactly once</td></tr>
+              <tr><th scope="row">Reject (keep fork)</th>
+                <td class="amount">500000 paise</td><td>double refund stands; invariants still violated</td></tr>
+            </tbody>
+          </table>
+          <h3>Standing facts</h3>
+          <ul class="check">
+            <li>Scope: this synthetic campaign only; no real money or customers.</li>
+            <li>Requested by: the experiment controller, after a failed finding.</li>
+            <li>Approve triggers: repaired run + re-verification (in the console).</li>
+            <li>Reject preserves: the fork evidence; nothing is deleted either way.</li>
+          </ul>
+          <div class="toolbar">
+            <button type="button" class="primary" disabled title="Prototype: decisions stay in the console">Approve repair</button>
+            <button type="button" disabled title="Prototype: decisions stay in the console">Reject</button>
+          </div>
+          <p class="muted">Decision controls are disabled in the prototype: real
+          approvals — idempotency keys included — stay in the console. Review the
+          <a href="#divergence">divergence</a> or the <a href="#evidence">trace</a>
+          first if anything is unclear.</p>
+          <a class="next-link" href="#proof">Can I reproduce this? →</a>
+          <p class="origin">Origin: static fixture in this page (prototype only). Nothing here came from a running service.</p>
+        </section>
+
+        <section class="beat" id="screen-proof" aria-labelledby="h-proof" hidden>
+          <h2 id="h-proof" tabindex="-1">5. Run it again</h2>
+          <p class="lede">The Failure Capsule holds everything needed to
+          reproduce the verdict: same fixture, same fault schedule, same
+          recorded actions — and no model call.</p>
+          <h3>Capsule contents</h3>
+          <ul class="check">
+            <li>Pinned fixture: synthetic order <span class="mono">ord_demo_001</span>, 250000 paise.</li>
+            <li>Fault schedule: timeout after commit on <span class="mono">issue_refund</span> attempt 1.</li>
+            <li>Recorded actions and ordering: events 1–4 with tool arguments and results.</li>
+            <li>Expected checks: <span class="mono">no_duplicate_full_refund</span>,
+              <span class="mono">total_refund_within_payment</span>, first divergence at event 2.</li>
+          </ul>
+          <div class="toolbar">
+            <button type="button" class="primary" id="replay-btn">Replay the fork run</button>
+            <button type="button" id="download-btn">Download capsule JSON</button>
+          </div>
+          <div id="replay-out" hidden>
+            <h3>Replay transcript <span class="tag" data-tone="ok">match</span></h3>
+            <pre class="transcript" data-testid="replay-transcript">event 1  get_order           -&gt; 250000 paise, owner ok
+event 2  issue_refund #1     -&gt; committed; timeout observed (first divergence)
+event 3  issue_refund retry  -&gt; committed; total 500000 paise (no_duplicate_full_refund)
+event 4  get_refund_status   -&gt; total 500000 paise (total_refund_within_payment)
+
+replayed ledger: 500000 paise — equals recorded ledger. 0 model calls.</pre>
+            <p class="muted">Simulated in-page for the prototype; the console replays against a reset world.</p>
+          </div>
+          <p class="origin">Origin: static fixture in this page (prototype only). Nothing here came from a running service.</p>
+        </section>
+      </main>
+      <nav class="pager" aria-label="Beat navigation">
+        <button type="button" id="prev-btn">← Previous</button>
+        <span class="pos" id="pos" aria-live="polite">Beat 1 of 5</span>
+        <button type="button" id="next-btn">Next →</button>
+      </nav>
+      <footer class="doc">
+        Prototype shell for <span class="mono">docs/ui-rethink.md</span>. Fixture
+        content shaped like the refund proof; not a live result. The production
+        console at <span class="mono">/</span> is unchanged.
+      </footer>
+    </div>    <script>
+      (function () {
+        "use strict";
+        var SCREENS = ["incident", "divergence", "evidence", "decision", "proof"];
+        var TITLES = {
+          incident: "1. What happened",
+          divergence: "2. Where they separate",
+          evidence: "3. Prove it",
+          decision: "4. Decide the repair",
+          proof: "5. Run it again"
+        };
+        var pos = document.getElementById("pos");
+        var prevBtn = document.getElementById("prev-btn");
+        var nextBtn = document.getElementById("next-btn");
+
+        function currentName() {
+          var h = window.location.hash.replace(/^#/, "");
+          return SCREENS.indexOf(h) === -1 ? "incident" : h;
+        }
+
+        function show(name, focus) {
+          SCREENS.forEach(function (key) {
+            var section = document.getElementById("screen-" + key);
+            if (section) section.hidden = key !== name;
+          });
+          var links = document.querySelectorAll(".steps a");
+          links.forEach(function (a) {
+            if (a.getAttribute("data-screen") === name) a.setAttribute("aria-current", "step");
+            else a.removeAttribute("aria-current");
+          });
+          var index = SCREENS.indexOf(name);
+          pos.textContent = "Beat " + (index + 1) + " of " + SCREENS.length;
+          prevBtn.disabled = index === 0;
+          nextBtn.disabled = index === SCREENS.length - 1;
+          document.title = "Prototype (" + (index + 1) + "/5): " + TITLES[name] + " — GhostLab Universe";
+          if (focus) {
+            var heading = document.querySelector("#screen-" + name + " h2");
+            if (heading) heading.focus();
+          }
+        }
+
+        function go(delta) {
+          var index = SCREENS.indexOf(currentName());
+          var next = SCREENS[index + delta];
+          if (next) window.location.hash = "#" + next;
+        }
+
+        prevBtn.addEventListener("click", function () { go(-1); });
+        nextBtn.addEventListener("click", function () { go(1); });
+        window.addEventListener("hashchange", function () { show(currentName(), true); });
+
+        var filterAll = document.getElementById("filter-all");
+        var filterViol = document.getElementById("filter-violations");
+        function setFilter(violationsOnly) {
+          filterAll.setAttribute("aria-pressed", violationsOnly ? "false" : "true");
+          filterViol.setAttribute("aria-pressed", violationsOnly ? "true" : "false");
+          document.querySelectorAll("#trace tbody tr").forEach(function (row) {
+            row.hidden = violationsOnly && row.getAttribute("data-clean") === "true";
+          });
+        }
+        filterAll.addEventListener("click", function () { setFilter(false); });
+        filterViol.addEventListener("click", function () { setFilter(true); });
+
+        var replayBtn = document.getElementById("replay-btn");
+        var replayOut = document.getElementById("replay-out");
+        replayBtn.addEventListener("click", function () {
+          replayOut.hidden = false;
+          replayBtn.disabled = true;
+          replayBtn.textContent = "Replayed (simulated)";
+        });
+
+        document.getElementById("download-btn").addEventListener("click", function () {
+          var capsule = {
+            prototype: true,
+            world_version: "refund-world/1",
+            order_id: "ord_demo_001",
+            amount_paise: 250000,
+            fault: "timeout after commit on issue_refund attempt 1",
+            ledgers_paise: { baseline: 250000, fork: 500000, repaired: 250000 },
+            first_divergence_event: 2,
+            findings: ["no_duplicate_full_refund", "total_refund_within_payment"],
+            model_calls: 0
+          };
+          var blob = new Blob([JSON.stringify(capsule, null, 2) + "\n"], { type: "application/json" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = "demo-capsule.json";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+        });
+
+        show(currentName(), false);
+      })();
+    </script>
+  </body>
+</html>

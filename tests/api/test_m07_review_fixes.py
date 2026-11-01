@@ -917,7 +917,7 @@ class HeldCheckpoint:
     """Hold the next checkpoint: a step's writes are stored and its successor isn't.
 
     LangGraph leaves a task with stored writes out of ``next``, so for this moment a live
-    campaign reads as having no next node.
+    campaign has no next node, though it is still open.
     """
 
     def __init__(self, api, monkeypatch):
@@ -941,7 +941,7 @@ class HeldCheckpoint:
         assert self.reached.wait(30)
         session = ApiSession(OPERATOR, PROJECT, "configured_tokens").trusted
         state = self.plane._controller(session).state(paused["record"]["campaign_id"])
-        assert (state["status"], state["paused"]) == ("awaiting_approval", False)
+        assert (state["status"], state["paused"]) == ("awaiting_approval", True)
 
 
 def test_a_retry_inside_a_step_reads_as_resumed(stack, monkeypatch):
@@ -978,3 +978,79 @@ def test_a_resume_inside_a_step_is_not_told_the_campaign_finished(stack, monkeyp
     assert resumed.status_code == 202, resumed.text
     held.release.set()
     assert api.wait(campaign_id, "completed")["outcome"] == "repair_verified"
+
+
+class FailedCheckpoint:
+    """A step runs, then its checkpoint write fails once: a kill, or a locked database."""
+
+    def __init__(self, node):
+        self.node, self.armed = node, False
+
+    def __call__(self, name, state):
+        if name == self.node:
+            self.armed = True
+
+    def install(self, api, monkeypatch):
+        saver = api.client.app.state.plane.saver
+        put = saver.put
+
+        def failing(*args, **options):
+            if self.armed:
+                self.armed = False
+                raise RuntimeError("database is locked")
+            return put(*args, **options)
+
+        monkeypatch.setattr(saver, "put", failing)
+
+
+def idle(api, campaign_id):
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        view = api.view(campaign_id)
+        if view["job"]["state"] != "active":
+            return view
+        time.sleep(0.02)
+    raise AssertionError("the worker never finished")
+
+
+def campaign_state(api, campaign_id):
+    plane = api.client.app.state.plane
+    return plane._controller(ApiSession(OPERATOR, PROJECT, "configured_tokens").trusted).state(
+        campaign_id)
+
+
+def test_a_failed_checkpoint_after_consuming_still_runs_the_approved_repair(stack, monkeypatch):
+    failed = FailedCheckpoint("consume")
+    api = stack(proposal(), lab_options={"on_node": failed})
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    failed.install(api, monkeypatch)
+    api.decide(paused)
+    view = idle(api, campaign_id)
+    assert view["job"]["state"] == "stalled" and view["job"]["error"]
+    assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 202
+    assert api.wait(campaign_id, "completed")["outcome"] == "repair_verified"
+    assert not campaign_state(api, campaign_id)["paused"]
+
+
+def test_a_failed_checkpoint_after_the_repair_still_writes_its_memory(stack, monkeypatch):
+    clean = stack(proposal())
+    clean_paused = clean.paused()
+    clean.decide(clean_paused)
+    clean_id = clean_paused["record"]["campaign_id"]
+    clean.wait(clean_id, "completed")
+    expected = len(campaign_state(clean, clean_id)["memory_ids"])
+    assert expected
+
+    failed = FailedCheckpoint("execute_repair")
+    api = stack(proposal(), lab_options={"on_node": failed})
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    failed.install(api, monkeypatch)
+    api.decide(paused)
+    assert idle(api, campaign_id)["job"]["state"] == "stalled"
+    assert len(campaign_state(api, campaign_id)["memory_ids"]) < expected
+    assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 202
+    idle(api, campaign_id)
+    state = campaign_state(api, campaign_id)
+    assert not state["paused"] and len(state["memory_ids"]) == expected

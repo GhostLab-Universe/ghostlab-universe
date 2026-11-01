@@ -217,7 +217,7 @@ class CampaignController:
         """Re-check a paused campaign. The resume payload grants nothing."""
         self._check_owner(campaign_id)
         if not self.graph.get_state(self._config(campaign_id)).next:
-            return self._snapshot(campaign_id)  # finished: nothing to resume
+            return self.recover(campaign_id)  # no interrupt: finished, or a step to carry on
         self._check_entry(self._snapshot(campaign_id))
         return self._invoke(Command(resume="check"), campaign_id)
 
@@ -227,7 +227,7 @@ class CampaignController:
         Completed nodes are not re-run; the interrupted node runs again.
         """
         self._check_owner(campaign_id)
-        if not self.graph.get_state(self._config(campaign_id)).next:
+        if not self.graph.get_state(self._config(campaign_id)).tasks:
             return self._snapshot(campaign_id)  # finished: nothing to recover
         self._check_entry(self._snapshot(campaign_id))
         return self._invoke(None, campaign_id)
@@ -238,7 +238,9 @@ class CampaignController:
 
     def _snapshot(self, campaign_id: str) -> dict:
         snapshot = self.graph.get_state(self._config(campaign_id))
-        return {**snapshot.values, "paused": bool(snapshot.next)}
+        # Not ``next``: it leaves out a step whose writes are stored and whose checkpoint
+        # isn't, so a campaign with work left would read as finished.
+        return {**snapshot.values, "paused": bool(snapshot.tasks)}
 
     def record(self, campaign_id: str) -> CampaignRecord:
         state = self.state(campaign_id)

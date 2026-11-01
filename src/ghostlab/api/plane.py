@@ -411,11 +411,7 @@ class ControlPlane:
 
     @staticmethod
     def _ended(state: dict) -> bool:
-        """Nothing is left to run. ``paused`` alone can't say so.
-
-        While a step's writes wait for their checkpoint, LangGraph reports no next node, so
-        a live campaign briefly reads as unpaused. Only the status marks a real end.
-        """
+        """Nothing is left to run: a verdict, and no step of the graph still open."""
         return state["status"] in VERDICTS and not state["paused"]
 
     @staticmethod

@@ -217,7 +217,9 @@ class CampaignController:
         """Re-check a paused campaign. The resume payload grants nothing."""
         self._check_owner(campaign_id)
         if not self.graph.get_state(self._config(campaign_id)).next:
-            return self.recover(campaign_id)  # no interrupt: finished, or a step to carry on
+            self.recover(campaign_id)  # no interrupt yet, but an open step can end at one
+            if not self.graph.get_state(self._config(campaign_id)).next:
+                return self._snapshot(campaign_id)  # finished: nothing to resume
         self._check_entry(self._snapshot(campaign_id))
         return self._invoke(Command(resume="check"), campaign_id)
 

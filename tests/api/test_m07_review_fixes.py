@@ -1054,3 +1054,26 @@ def test_a_failed_checkpoint_after_the_repair_still_writes_its_memory(stack, mon
     idle(api, campaign_id)
     state = campaign_state(api, campaign_id)
     assert not state["paused"] and len(state["memory_ids"]) == expected
+
+
+@pytest.mark.parametrize("decision", ["approve", "reject"])
+def test_a_failed_checkpoint_before_the_pause_still_answers_the_decision(stack, monkeypatch,
+                                                                         decision):
+    failed = FailedCheckpoint("request_repair")
+    api = stack(proposal(), lab_options={"on_node": failed})
+    failed.install(api, monkeypatch)
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    assert api.decide(paused, decision=decision).json()["resumed"] is True
+    expected = "repair_verified" if decision == "approve" else "repair_rejected"
+    assert api.wait(campaign_id, "completed")["outcome"] == expected
+
+
+def test_a_failed_checkpoint_before_the_pause_cancels_first_time(stack, monkeypatch):
+    failed = FailedCheckpoint("request_repair")
+    api = stack(proposal(), lab_options={"on_node": failed})
+    failed.install(api, monkeypatch)
+    campaign_id = api.paused()["record"]["campaign_id"]
+    cancelled = api.post(f"/v1/campaigns/{campaign_id}/cancel")
+    assert cancelled.status_code == 202, cancelled.text
+    assert api.wait(campaign_id, "cancelled")["outcome"] == "cancelled_by_request"

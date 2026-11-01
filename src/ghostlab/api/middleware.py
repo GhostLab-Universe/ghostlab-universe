@@ -10,6 +10,7 @@ import logging
 
 from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers
+from starlette.concurrency import run_in_threadpool
 
 from ghostlab.capsule import MAX_CAPSULE_BYTES
 from ghostlab.contracts import ErrorInfo
@@ -72,7 +73,7 @@ class RequestGuard:
         if (problem := request_problem(scope.get("client"), headers)) is not None:
             await refuse(ApiError(403, "forbidden", problem, reason="not_loopback"))
             return
-        session = self.sessions.authenticate(headers)
+        session = await run_in_threadpool(self.sessions.authenticate, headers)
         if session is None:
             await refuse(ApiError(401, "unauthenticated", "A valid session is required",
                                   headers={"WWW-Authenticate": "Bearer"}))

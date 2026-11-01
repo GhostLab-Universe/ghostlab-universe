@@ -52,7 +52,8 @@ REPLAYED = {"headers": {"Idempotency-Replayed": {
 
 bearer = HTTPBearer(auto_error=False, description=(
     "Configured bearer tokens. In local_dev mode the session is the single local principal "
-    "and no token is needed. Neither is production authentication."))
+    "and no token is needed. An explicitly configured external IdP can validate tokens "
+    "by introspection; the service remains loopback-only until deployment is qualified."))
 router = APIRouter(prefix="/v1", responses=COMMON_ERRORS, dependencies=[Security(bearer)])
 
 

@@ -20,6 +20,9 @@ from .plane import ApiConfig, ControlPlane
 from .rootlock import RootLock, require_one_root
 from .routes import router
 from .sessions import NoSessions, require_local_deployment
+from .introspection import IntrospectionSessions
+from ghostlab.policy.separation import SeparatedApprovalService
+from ghostlab.security.retention import RetentionCheckedFactory
 from .tracing import disable_trace_export
 
 API_VERSION = "1.0.0"
@@ -37,6 +40,12 @@ def _attach_log_redaction(redactor: Redactor) -> None:
 def create_app(config: ApiConfig | None = None) -> FastAPI:
     if config is not None:
         require_local_deployment(config.bind_host, config.environ)
+        if (isinstance(config.sessions, IntrospectionSessions)
+                and not isinstance(config.services.approvals, SeparatedApprovalService)):
+            raise ValueError("external authentication requires independent approval policy")
+        if (isinstance(config.sessions, IntrospectionSessions) and config.services.live is not None
+                and not isinstance(config.services.adapter_factory, RetentionCheckedFactory)):
+            raise ValueError("external authentication with live inference requires retention checks")
         services = config.services
         require_one_root(config.graph_db, config.app_db, services.approval_store.path,
                          services.ledger.path, services.memory_store.path,

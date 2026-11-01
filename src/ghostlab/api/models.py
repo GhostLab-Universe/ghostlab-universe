@@ -23,7 +23,7 @@ from ghostlab.contracts.world import (WorldCampaignRecord, WorldExperimentPropos
 from ghostlab.contracts.world_packs import PackVersion
 
 RunName = Literal["baseline", "fork", "repaired"]
-AuthMode = Literal["local_dev", "configured_tokens"]
+AuthMode = Literal["local_dev", "configured_tokens", "oidc_introspection"]
 # "scripted" and "fixture" are checked-in replies, never a model; "disabled" reaches nothing.
 # A campaign's mode is pinned at start. "unrecorded" means one has no pin to read.
 InferenceMode = Literal["disabled", "fixture", "scripted", "live", "unrecorded"]

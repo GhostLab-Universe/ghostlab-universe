@@ -6,7 +6,7 @@ import { readCoverage } from "../logic/coverage.ts";
 import { BLOCKED_ENDED_HELP, CAMPAIGN_FINISHED, describeFailure, failureState } from "../logic/failure.ts";
 import { formatTimestamp, prettyJson } from "../logic/format.ts";
 import { isTerminal } from "../logic/status.ts";
-import { Digest, Facts, FailureNotice, Loading, Mono, Notice, RefLabel, Section, Tag } from "../ui/components.tsx";
+import { Digest, Facts, FailureNotice, Loading, Mono, Notice, Section, Tag } from "../ui/components.tsx";
 import { useResource } from "../ui/hooks.ts";
 import { RepairResult } from "./CampaignPage.tsx";
 import { CoverageNotice } from "./experimentData.tsx";
@@ -26,6 +26,7 @@ export function ApprovalPage({
   const { resource, reload } = useResource(approvalId, view.event_count, () => source.getApproval(approvalId ?? ""));
   const keys = useRef(new IdempotencyKeys());
   const [busy, setBusy] = useState(false);
+  const [resumeLost, setResumeLost] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [result, setResult] = useState<DecisionResult | null>(null);
   const decisionRegion = useRef<HTMLDivElement | null>(null);
@@ -53,6 +54,7 @@ export function ApprovalPage({
   async function decide(approval: ApprovalView, decision: Decision, reason: string) {
     setBusy(true);
     setFailure(null);
+    setResumeLost(false);
     setResult(null);
     const submission = buildSubmission(approval, decision, reason);
     const outcome = await source.decideApproval(submission, keys.current.keyFor(submission));
@@ -69,9 +71,13 @@ export function ApprovalPage({
   async function resume() {
     setBusy(true);
     setFailure(null);
+    setResumeLost(false);
     const outcome = await source.resumeCampaign(view.record.campaign_id);
     if (outcome.ok) setResult(null);
-    else setFailure(outcome.failure);
+    else {
+      setFailure(outcome.failure);
+      setResumeLost(outcome.failure.kind === "transport");
+    }
     await refresh();
     reload();
     setBusy(false);
@@ -88,12 +94,13 @@ export function ApprovalPage({
           session={session}
           busy={busy}
           failure={failure}
-          result={result}
+          result={currentResult(result, resumeLost, stopped, resource.data.effective_status)}
           origins={resource.origins}
           unspent={unspent}
           blocked={blocked}
           stoppedText={stoppedNote(resource.data.effective_status, stopped, view.repair !== null)}
           onDecide={(choice, reason) => void decide(resource.data, choice, reason)}
+          resumeLost={resumeLost && !stopped}
           onResume={() => void resume()}
         />
       </div>
@@ -107,6 +114,16 @@ export function ApprovalPage({
       )}
     </>
   );
+}
+
+/** A refused decide stops being the news once a resume whose response was lost landed. */
+export function currentResult(
+  result: DecisionResult | null,
+  resumeLost: boolean,
+  stopped: boolean,
+  status: ApprovalView["effective_status"],
+): DecisionResult | null {
+  return resumeLost && (stopped || status === "consumed") ? null : result;
 }
 
 export function ApprovalDetail({ approval, origins }: { approval: ApprovalView; origins: readonly Origin[] }) {
@@ -138,7 +155,23 @@ export function ApprovalDetail({ approval, origins }: { approval: ApprovalView; 
               term: "Fixture digest",
               detail: facts.fixtureSha256 === null ? <span className="muted">not in the action</span> : <Digest value={facts.fixtureSha256} />,
             },
-            { term: "Evidence", detail: <RefLabel value={request.payload} /> },
+            {
+              term: "Evidence",
+              detail: (
+                <span>
+                  <Mono>{request.payload.id}</Mono> <span className="muted">({request.payload.kind})</span>
+                </span>
+              ),
+            },
+            {
+              term: "Evidence digest",
+              detail:
+                approval.payload_artifact_sha256 === null ? (
+                  <span data-testid="evidence-unreadable">No stored evidence. Do not approve what you cannot read.</span>
+                ) : (
+                  <Digest value={approval.payload_artifact_sha256} />
+                ),
+            },
           ]}
         />
         <h3>Action the digest binds</h3>
@@ -189,6 +222,7 @@ export function DecisionPanel({
   stoppedText = null,
   onDecide,
   onResume,
+  resumeLost = false,
 }: {
   approval: ApprovalView;
   session: SessionInfo | null;
@@ -201,6 +235,7 @@ export function DecisionPanel({
   stoppedText?: string | null;
   onDecide: (decision: Decision, reason: string) => void;
   onResume: () => void;
+  resumeLost?: boolean;
 }) {
   const [reason, setReason] = useState("");
   const gate = decisionGate(approval, session);
@@ -260,10 +295,13 @@ export function DecisionPanel({
         </form>
       ) : null}
       {/* A second refusal of the same resume would only repeat the notice below. A lost
-          response is moot once the service's own record shows the decision. */}
+          decide response is moot once the service's own record shows the decision; a lost
+          resume is not, until the campaign shows that it landed. */}
       {failure === null ||
       (refused && failureState(failure) === "blocked") ||
-      (failure.kind === "transport" && approval.decision !== null) ? null : (
+      (failure.kind === "transport" &&
+        approval.decision !== null &&
+        !(resumeLost && approval.effective_status !== "consumed")) ? null : (
         <FailureNotice failure={failure} />
       )}
       {refused ? (

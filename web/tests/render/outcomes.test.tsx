@@ -10,7 +10,7 @@ import { SCENARIOS, type ExperimentFixture } from "../../src/fixtures/scenarios.
 import { stoppedNote } from "../../src/logic/approval.ts";
 import { ServiceModeNotice, SessionFacts } from "../../src/ui/App.tsx";
 import { FailureNotice, RecordedErrors } from "../../src/ui/components.tsx";
-import { DecisionPanel } from "../../src/views/ApprovalPage.tsx";
+import { ApprovalDetail, DecisionPanel, currentResult } from "../../src/views/ApprovalPage.tsx";
 import { CampaignPanel, RepairResult } from "../../src/views/CampaignPage.tsx";
 import { ReplayPanel } from "../../src/views/CapsulePage.tsx";
 import { DiffPanel } from "../../src/views/DiffPage.tsx";
@@ -449,4 +449,57 @@ test("scripted inference behind the service is called out", () => {
   assert.match(text(html(<ServiceModeNotice session={session} />)), /scripted test data, not a model/);
   assert.match(text(html(<ServiceModeNotice session={{ ...session, inference: "disabled" }} />)), /cannot start new campaigns/);
   assert.equal(html(<ServiceModeNotice session={{ ...session, inference: "live" }} />), "");
+});
+
+test("the evidence row shows the artifact's digest, not the action's, and flags none", () => {
+  const approval = scenario("fx-refund").approved!.approval!;
+  const digest = "a".repeat(64);
+  const stored = text(html(<ApprovalDetail approval={{ ...approval, payload_artifact_sha256: digest }} origins={[]} />));
+  assert.match(stored, new RegExp(`Evidence digest ${digest}`));
+  const missing = html(<ApprovalDetail approval={approval} origins={[]} />);
+  assert.match(missing, /data-testid="evidence-unreadable"/);
+  assert.doesNotMatch(text(missing), new RegExp(`\(${approval.request.payload.kind}\) \S*${approval.request.payload.sha256?.slice(0, 8)}`));
+});
+
+test("a lost resume stays visible, though the decision is on record", () => {
+  const transport: Failure = { kind: "transport", message: "Failed to fetch" };
+  const consumed = scenario("fx-refund").approved!.approval!;
+  const decided = (resumeLost: boolean) =>
+    html(
+      <DecisionPanel
+        approval={{ ...consumed, effective_status: "approved" }}
+        session={null}
+        busy={false}
+        failure={transport}
+        result={null}
+        origins={[]}
+        onDecide={() => undefined}
+        onResume={() => undefined}
+        resumeLost={resumeLost}
+      />,
+    );
+  assert.match(decided(true), /state-reconnecting/);
+  assert.doesNotMatch(decided(false), /state-reconnecting/);
+  const landed = html(
+    <DecisionPanel
+      approval={consumed}
+      session={null}
+      busy={false}
+      failure={transport}
+      result={null}
+      origins={[]}
+      onDecide={() => undefined}
+      onResume={() => undefined}
+      resumeLost
+    />,
+  );
+  assert.doesNotMatch(landed, /state-reconnecting/);
+});
+
+test("a refused decide stands until a lost resume is shown to have landed", () => {
+  const refused = { resumed: false } as Parameters<typeof currentResult>[0];
+  assert.equal(currentResult(refused, false, true, "consumed"), refused);
+  assert.equal(currentResult(refused, true, false, "approved"), refused);
+  assert.equal(currentResult(refused, true, false, "consumed"), null);
+  assert.equal(currentResult(refused, true, true, "approved"), null);
 });

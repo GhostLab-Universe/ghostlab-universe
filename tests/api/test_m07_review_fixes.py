@@ -844,3 +844,28 @@ def test_an_approval_with_no_stored_payload_reports_no_artifact_digest(stack, mo
     monkeypatch.setattr(plane, "_evidence", missing)
     approval = api.get(f"/v1/approvals/{paused['approval']['approval_id']}").json()
     assert approval["payload_artifact_sha256"] is None
+
+
+@pytest.mark.parametrize("path", ["/v1/campaigns", "/v1/capsules/import",
+                                  "/v1/approvals/approval-1/decision"])
+def test_a_body_too_deep_to_parse_is_a_declared_400(stack, path):
+    api = stack()
+    response = api.post(path, key="key-1", content=b"[" * 60_000,
+                        headers={"Content-Type": "application/json"})
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "validation_failed"
+    assert response.json()["reason"] == "unparsable_body"
+    assert "400" in create_app().openapi()["paths"][
+        path.replace("approval-1", "{approval_id}")]["post"]["responses"]
+
+
+def test_replay_reads_no_pinned_fixture_so_it_has_no_settings_conflict(stack):
+    api = stack(proposal())
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    url = f"/v1/campaigns/{campaign_id}/experiments/{paused['experiments'][0]['experiment_id']}"
+    capsule_id = api.post(f"{url}/capsules/fork").json()["artifact"]["id"]
+    checkpoint(api, campaign_id, fixture=None)
+    assert api.post(f"{url}/capsules/fork").json()["reason"] == "settings_changed"
+    assert api.post(f"{url}/capsules/fork/replay").status_code == 200
+    assert api.post(f"/v1/capsules/{capsule_id}/replay").status_code == 200

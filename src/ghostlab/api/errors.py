@@ -118,6 +118,9 @@ def install(app: FastAPI, redactor: Redactor) -> None:
     async def http_error(request: Request, error: HTTPException):
         if error.status_code == 404:
             return respond(not_found(), redactor)
+        if error.status_code == 400:  # FastAPI's answer to a body it couldn't read as JSON
+            return respond(ApiError(400, "validation_failed", "Request body could not be parsed",
+                                    reason="unparsable_body"), redactor)
         code = "validation_failed" if error.status_code < 500 else "internal"
         return respond(ApiError(error.status_code, code, "Request not accepted"), redactor)
 

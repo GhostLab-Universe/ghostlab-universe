@@ -3406,6 +3406,16 @@
               }
             }
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Body could not be parsed, for example JSON nested too deeply; nothing was changed"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3701,6 +3711,16 @@
                 }
               }
             }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Body could not be parsed, for example JSON nested too deeply; nothing was changed"
           },
           "401": {
             "content": {
@@ -5029,6 +5049,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Body could not be parsed, for example JSON nested too deeply; nothing was changed"
           },
           "401": {
             "content": {

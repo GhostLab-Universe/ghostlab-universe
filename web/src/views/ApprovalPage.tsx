@@ -94,7 +94,7 @@ export function ApprovalPage({
           session={session}
           busy={busy}
           failure={failure}
-          result={result}
+          result={currentResult(result, resumeLost, stopped, resource.data.effective_status)}
           origins={resource.origins}
           unspent={unspent}
           blocked={blocked}
@@ -114,6 +114,16 @@ export function ApprovalPage({
       )}
     </>
   );
+}
+
+/** A refused decide stops being the news once a resume whose response was lost landed. */
+export function currentResult(
+  result: DecisionResult | null,
+  resumeLost: boolean,
+  stopped: boolean,
+  status: ApprovalView["effective_status"],
+): DecisionResult | null {
+  return resumeLost && (stopped || status === "consumed") ? null : result;
 }
 
 export function ApprovalDetail({ approval, origins }: { approval: ApprovalView; origins: readonly Origin[] }) {

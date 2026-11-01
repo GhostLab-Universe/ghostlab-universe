@@ -10,7 +10,7 @@ import { SCENARIOS, type ExperimentFixture } from "../../src/fixtures/scenarios.
 import { stoppedNote } from "../../src/logic/approval.ts";
 import { ServiceModeNotice, SessionFacts } from "../../src/ui/App.tsx";
 import { FailureNotice, RecordedErrors } from "../../src/ui/components.tsx";
-import { ApprovalDetail, DecisionPanel } from "../../src/views/ApprovalPage.tsx";
+import { ApprovalDetail, DecisionPanel, currentResult } from "../../src/views/ApprovalPage.tsx";
 import { CampaignPanel, RepairResult } from "../../src/views/CampaignPage.tsx";
 import { ReplayPanel } from "../../src/views/CapsulePage.tsx";
 import { DiffPanel } from "../../src/views/DiffPage.tsx";
@@ -494,4 +494,12 @@ test("a lost resume stays visible, though the decision is on record", () => {
     />,
   );
   assert.doesNotMatch(landed, /state-reconnecting/);
+});
+
+test("a refused decide stands until a lost resume is shown to have landed", () => {
+  const refused = { resumed: false } as Parameters<typeof currentResult>[0];
+  assert.equal(currentResult(refused, false, true, "consumed"), refused);
+  assert.equal(currentResult(refused, true, false, "approved"), refused);
+  assert.equal(currentResult(refused, true, false, "consumed"), null);
+  assert.equal(currentResult(refused, true, true, "approved"), null);
 });

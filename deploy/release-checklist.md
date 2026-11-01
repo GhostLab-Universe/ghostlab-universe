@@ -16,7 +16,9 @@ Targets are in [release-targets.json](release-targets.json).
 
 All of these must hold. Any failure blocks promotion.
 
-1. [ ] The candidate is a reviewed merge head, recorded as a full commit id.
+1. [ ] The candidate is a reviewed merge head on the target branch, recorded as a full
+   commit id. Run `git fetch origin` first: `evals.release` checks it against the
+   remote-tracking ref and refuses a commit that ref doesn't contain, or a missing ref.
 2. [ ] All jobs in `.github/workflows/ci.yml` passed for that commit, including
    `promotion-gate`. This needs a repository admin to make `promotion-gate` a required
    status check; until then the block is procedural.
@@ -35,12 +37,18 @@ All of these must hold. Any failure blocks promotion.
 5. [ ] `python -m evals.release --evidence <dir> --commit <sha>` exits 0, and the record
    is attached to the release notes. Produce the evidence from a clean checkout of `<sha>`:
    evidence from another commit, other code, or a tree with local changes blocks. The
-   expectations and lock digests come from `<sha>` itself.
+   expectations, lock digests, compatibility report and security gate evidence come from
+   `<sha>` itself, so a file that is only in the working tree counts for nothing. Check
+   `target_ref` in the record names the ref you meant. Nothing in the record is signed:
+   `origin_verified` and `live_evidence.proven` are always false, and installed packages
+   aren't checked against the lock.
 6. [ ] The recovery drill passed on this candidate ([recovery-drill.md](recovery-drill.md)).
    The automated case `ops.recovery_drill` is part of step 4.
 7. [ ] The stores were backed up before upgrading (the drill's backup step).
-8. [ ] The rollback target is still correct. A release that adds a migration needs a
-   backup taken before it, because migrations are forward-only.
+8. [ ] The rollback target is still correct. `evals.release` refuses a rollback commit that
+   doesn't exist or isn't an ancestor of the candidate, but only a human can say it's the
+   right one. A release that adds a migration needs a backup taken before it, because
+   migrations are forward-only.
 9. [ ] No skipped test in `tests/integration/test_m09_full_application.py` is claimed as
    passing. They're M07/M08 placeholders.
 10. [ ] Provider-held data: Meta `store` defaults to `true` and continuation relies on it
@@ -57,9 +65,12 @@ else the record says, and for now it's false for every target. Each requirement 
 met by typing files, so it stays false until evidence of verifiable origin exists. The
 requirements are listed in `customer_connected_blockers`: a `customer_connected` target, an
 authenticated runtime, evidence for every security gate, a documented provider, endpoint and
-model, and a compatibility report that passes the controller's own check and shows timeout,
-cancel, rate-limit and budget handling were probed. `customer_connected_blockers` lists what's missing, and none of this changes
-offline promotion.
+model, and a committed compatibility report that passes the controller's own check and shows
+timeout, cancel, rate-limit and budget handling were probed. Every evidence file must be in
+the candidate commit, and the record holds its digest. `live_evidence.shape_checks_passed`
+says only that a committed file has the right shape; `live_evidence.proven` stays false.
+`customer_connected_blockers` lists what's missing, and none of this changes offline
+promotion.
 
 ## After promotion
 

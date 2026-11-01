@@ -1,7 +1,7 @@
 /**
  * Browser tests of the API build through the same-origin proxy, against M07's real code
  * in tests/integration/outcome_server.py. Service-backed, with scripted inference: not a
- * live result, and not integrated, because M07 is unmerged.
+ * live result.
  */
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";

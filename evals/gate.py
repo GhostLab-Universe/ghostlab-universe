@@ -21,7 +21,7 @@ from .score import RUN_IDENTITY, SCHEMA, score_directory
 REPORT_FILE = "report.json"
 REQUIRED_FIELDS = ("schema", "inference", "live_provider_contacted", "fixture_label",
                    "environment", "aggregate", "cases", "deferred", "commit", "dirty",
-                   "code_sha256")
+                   "code_sha256", "origin_verified")
 CASE_FIELDS = ("case_id", "category", "world", "status", "failed_expectations", "expectations",
                "metrics", "telemetry_records", "local_wall_ms", "fingerprint")
 
@@ -38,6 +38,8 @@ def validate_report(report: dict) -> list[str]:
         problems.append("this suite runs on mocked inference only")
     if report["fixture_label"] != FIXTURE_LABEL:
         problems.append("the fixture label isn't this suite's label")
+    if report["origin_verified"] is not False:
+        problems.append("nothing here can verify a report's origin")
     for case in report["cases"]:
         problems.extend(f"case missing {name}" for name in CASE_FIELDS if name not in case)
     return problems
@@ -63,8 +65,10 @@ def verified_report(directory: Path) -> tuple[dict, str | None, list[str]]:
     report = score_directory(directory)
     identity = Path(directory) / RUN_IDENTITY
     recorded = json.loads(identity.read_text("utf-8")) if identity.exists() else {}
-    sealed = recorded.get("evidence_sha256") == evidence_sha256(directory)
+    sealed = recorded.get("evidence_sha256") == evidence_sha256(directory, recorded)
     seal = [] if sealed else [f"{RUN_IDENTITY} doesn't match the evidence files"]
+    if recorded and recorded.get("origin_verified") is not False:
+        seal.append(f"{RUN_IDENTITY} claims a verified origin, which nothing here can give")
     path = Path(directory) / REPORT_FILE
     if not path.exists():
         return report, None, [*seal, f"no {REPORT_FILE} in the evidence directory"]

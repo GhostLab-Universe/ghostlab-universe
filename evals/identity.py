@@ -1,15 +1,18 @@
 """What evidence claims about its origin, and how much of that can be checked.
 
 ``run.json`` records the commit, the location of the imported package, a digest of the
-code that actually ran, and a digest of the evidence files. A release recomputes the code
-digest from the candidate commit's git objects, so code on another path can't report a
-clean commit, and the scorer recomputes the evidence digest.
+code that actually ran, and a seal: one digest over the evidence files and those fields. A
+release recomputes the code digest from the candidate commit's git objects, so code on
+another path can't report a clean commit, and the gate recomputes the seal, so editing a
+file or a field of ``run.json`` is caught.
 
-This makes accidental and casual substitution visible. It is not proof of origin: someone
-who can edit every file can also recompute these digests. Nothing here is signed.
+The seal is an accident check, not an attestation. Nothing here is signed, so anyone who
+can write these files can run the same function and write a matching seal. That is why
+every record says ``origin_verified: false``.
 """
 
 import hashlib
+import json
 import subprocess
 from functools import lru_cache
 from pathlib import Path
@@ -20,6 +23,8 @@ ROOT = Path(__file__).resolve().parent.parent
 # Everything that decides behaviour: path in the repository, and the suffix that counts.
 CODE = (("src/ghostlab", ".py"), ("evals", ".py"), ("skills", ".json"), ("prompts", ".md"),
         ("migrations", ".sql"))
+# What the seal covers in run.json, beside the files. Its own digest can't cover itself.
+SEALED_FIELDS = ("commit", "dirty", "package_path", "code_sha256", "origin_verified")
 
 
 def _digest(files: dict[str, bytes]) -> str:
@@ -88,9 +93,10 @@ def commit_exists(repo: Path, commit: str) -> bool:
     return _git(repo, "cat-file", "-e", f"{commit}^{{commit}}") is not None
 
 
-def evidence_sha256(directory: Path) -> str:
-    """A digest of the evidence and telemetry files, exactly as stored."""
-    files = {}
+def evidence_sha256(directory: Path, identity: dict) -> str:
+    """The seal: the evidence and telemetry files as stored, and who ``run.json`` says ran."""
+    files = {"run.json": json.dumps({name: identity.get(name) for name in SEALED_FIELDS},
+                                    sort_keys=True).encode()}
     for part in ("evidence", "telemetry"):
         for path in (Path(directory) / part).rglob("*"):
             if path.is_file():
@@ -105,4 +111,4 @@ def run_identity() -> dict:
     return {"commit": head.decode().strip() if head else None,
             "dirty": status is None or status.strip() != b"",
             "package_path": str(Path(ghostlab.__file__).resolve().parent),
-            "code_sha256": code_sha256()}
+            "code_sha256": code_sha256(), "origin_verified": False}

@@ -66,9 +66,9 @@ def main(argv=None) -> int:
         args.expected.write_text(json.dumps(expected_from(score_directory(args.out)), indent=1,
                                             sort_keys=True) + "\n", "utf-8")
     ended = run_identity()
-    identity = {**began, "evidence_sha256": evidence_sha256(args.out),
-                # A run that rewrote its own expectations can't be released.
-                "dirty": began["dirty"] or ended != began or args.write_expected}
+    # A run that rewrote its own expectations can't be released.
+    identity = {**began, "dirty": began["dirty"] or ended != began or args.write_expected}
+    identity["evidence_sha256"] = evidence_sha256(args.out, identity)
     (args.out / RUN_IDENTITY).write_text(json.dumps(identity), "utf-8")
     report = score_directory(args.out)
     (args.out / REPORT_FILE).write_text(json.dumps(report, indent=1, sort_keys=True), "utf-8")

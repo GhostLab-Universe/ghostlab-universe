@@ -372,6 +372,7 @@ def score_directory(directory: Path) -> dict:
     return {"schema": SCHEMA, "inference": "mocked", "live_provider_contacted": False,
             "commit": bound.get("commit"), "dirty": bound.get("dirty"),
             "package_path": bound.get("package_path"), "code_sha256": bound.get("code_sha256"),
+            "origin_verified": False,  # nothing is signed; see evals/identity.py
             "fixture_label": FIXTURE_LABEL,
             "environment": {"python": platform.python_version(), "platform": sys.platform},
             "aggregate": summary, "cases": results, "deferred": DEFERRED}

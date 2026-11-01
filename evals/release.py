@@ -217,6 +217,7 @@ def build_record(*, evidence: Path, commit: str, repo: Path, targets: dict | Non
                        "commit": report.get("commit"),
                        "package_path": report.get("package_path"),
                        "code_sha256": report.get("code_sha256"),
+                       "origin_verified": False,  # nothing is signed
                        "expected_sha256": _sha256(expected_bytes),
                        "cases": (report.get("aggregate") or {}).get("cases"),
                        "report_sha256": report_sha256},

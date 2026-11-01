@@ -51,10 +51,10 @@ def edit_evidence(out, case_id, change):
 
 def seal(out, *, commit=COMMIT, dirty=False, code=None):
     """Write run.json and report.json the way evals.run does."""
-    (out / RUN_IDENTITY).write_text(json.dumps({
-        "commit": commit, "dirty": dirty, "package_path": "src/ghostlab",
-        "code_sha256": code or code_sha256_at(ROOT, COMMIT),
-        "evidence_sha256": evidence_sha256(out)}), "utf-8")
+    identity = {"commit": commit, "dirty": dirty, "package_path": "src/ghostlab",
+                "code_sha256": code or code_sha256_at(ROOT, COMMIT), "origin_verified": False}
+    identity["evidence_sha256"] = evidence_sha256(out, identity)
+    (out / RUN_IDENTITY).write_text(json.dumps(identity), "utf-8")
     (out / gate.REPORT_FILE).write_text(json.dumps(score_directory(out)), "utf-8")
     return out
 
@@ -767,9 +767,10 @@ def test_mutant_code_on_the_path_cant_claim_the_clean_commit(tmp_path):
     report = json.loads((out / gate.REPORT_FILE).read_text("utf-8"))
     assert report["package_path"].startswith(str(mutant.resolve()))
     assert report["code_sha256"] != code_sha256_at(ROOT, COMMIT)
-    identity = json.loads((out / RUN_IDENTITY).read_text("utf-8"))
-    (out / RUN_IDENTITY).write_text(json.dumps({**identity, "commit": COMMIT, "dirty": False}),
-                                    "utf-8")
+    identity = {**json.loads((out / RUN_IDENTITY).read_text("utf-8")), "commit": COMMIT,
+                "dirty": False}
+    identity["evidence_sha256"] = evidence_sha256(out, identity)  # a careful forger reseals
+    (out / RUN_IDENTITY).write_text(json.dumps(identity), "utf-8")
     (out / gate.REPORT_FILE).write_text(json.dumps(score_directory(out)), "utf-8")
     assert "the code that ran isn't the candidate's code" in release(out)["blockers"]
 
@@ -791,6 +792,48 @@ def test_evidence_edited_after_the_run_breaks_the_seal(bound, tmp_path):
     edit_evidence(out, "flow.refund", lambda d: d["observations"].update(edited=True))
     assert "run.json doesn't match the evidence files" in release(out)["blockers"]
     assert gate.main([str(out), "--expected", str(DEFAULT_EXPECTED)]) == 1
+
+
+def rebind_by_text_edit(out, **changes):
+    """Probe: sed run.json and refresh the report, recomputing no digest."""
+    identity = {**json.loads((out / RUN_IDENTITY).read_text("utf-8")), **changes}
+    (out / RUN_IDENTITY).write_text(json.dumps(identity), "utf-8")
+    (out / gate.REPORT_FILE).write_text(json.dumps(score_directory(out)), "utf-8")
+
+
+@pytest.mark.parametrize("before, edit", [
+    ({"commit": "2" * 40}, {"commit": COMMIT}), ({"dirty": True}, {"dirty": False}),
+    ({"code": "0" * 64}, {"code_sha256": "1" * 64})])
+def test_rebinding_evidence_by_a_text_edit_breaks_the_seal(evaluated, tmp_path, before, edit):
+    out = bound_copy(evaluated, tmp_path, **before)
+    rebind_by_text_edit(out, **edit)
+    assert "run.json doesn't match the evidence files" in release(out)["blockers"]
+    assert gate.main([str(out), "--expected", str(DEFAULT_EXPECTED)]) == 1
+
+
+def test_a_run_seals_itself_and_says_its_origin_is_unverified(tmp_path, monkeypatch):
+    monkeypatch.setattr("evals.run.run_all", lambda out, only=None: [])
+    run_main(["--out", str(tmp_path / "out"), "--expected", str(tmp_path / "none.json")])
+    identity = json.loads((tmp_path / "out" / RUN_IDENTITY).read_text("utf-8"))
+    assert identity["origin_verified"] is False
+    assert identity["evidence_sha256"] == evidence_sha256(tmp_path / "out", identity)
+    assert score_directory(tmp_path / "out")["origin_verified"] is False
+    assert not any("run.json" in item for item in gate.verified_report(tmp_path / "out")[2])
+
+
+def test_a_verified_origin_can_only_be_claimed_by_forging_it(evaluated, tmp_path):
+    out = bound_copy(evaluated, tmp_path)
+    identity = {**json.loads((out / RUN_IDENTITY).read_text("utf-8")), "origin_verified": True}
+    identity["evidence_sha256"] = evidence_sha256(out, identity)
+    (out / RUN_IDENTITY).write_text(json.dumps(identity), "utf-8")
+    assert "run.json claims a verified origin, which nothing here can give" in (
+        release(out)["blockers"])
+    claimed = {**score_directory(out), "origin_verified": True}
+    assert any("origin" in item for item in gate.check(claimed, EXPECTED))
+
+
+def test_the_record_says_the_origin_is_unverified(bound):
+    assert release(bound)["evaluation"]["origin_verified"] is False
 
 
 def test_evidence_from_a_dirty_tree_is_refused(evaluated, tmp_path):

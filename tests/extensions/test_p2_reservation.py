@@ -36,11 +36,15 @@ FIXTURE = "half_full"
 CLEAN_SCENARIO = {"timeout_after_commit": False, "stale_snapshot": False,
                   "skip_capacity_check": False, "max_tool_calls": 20}
 
-# Where the outside-the-tree service may live. The differential test skips
-# when none exists (e.g. CI); it never vendors or executes from here.
+# Where the outside-the-tree service may live. Layouts differ (worktrees nest
+# one level deeper than a direct checkout), so probe the env override and both
+# conventional spots; the test skips when none exists (e.g. CI, Temp
+# checkouts). It never vendors or executes from here.
 EXTERNAL_SERVICE_CANDIDATES = tuple(p for p in (
     Path(os.environ["GHOSTLAB_EXT_EXAMPLE"]) / "reservation_service.py"
     if os.environ.get("GHOSTLAB_EXT_EXAMPLE") else None,
+    Path(__file__).resolve().parents[3] / "ghostlab-ext-example"
+    / "reservation_service.py",
     Path(__file__).resolve().parents[4] / "ghostlab-ext-example"
     / "reservation_service.py",
 ) if p is not None)

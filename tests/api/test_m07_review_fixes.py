@@ -19,7 +19,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from starlette.testclient import TestClient
 
-from conftest import LOOPBACK, Api, build_app, build_lab
+from tests.api.conftest import LOOPBACK, Api, build_app, build_lab
 from ghostlab.api import jobs as jobs_module
 from ghostlab.api.local import local_config
 from ghostlab.api.rootlock import LOCK_NAME, RootLock, RootLocked, SplitStorage

@@ -7,7 +7,7 @@ stores and capsules are the real code.
 import json
 import threading
 
-from conftest import spec_json
+from tests.api.conftest import spec_json
 from m05_harness import PROJECT, meta_reply, proposal
 from m05_journey_harness import journey_reply
 

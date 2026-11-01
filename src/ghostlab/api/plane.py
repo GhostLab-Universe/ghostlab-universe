@@ -419,9 +419,10 @@ class ControlPlane:
         """Run the graph on: past an approval pause, or from a crash's last checkpoint."""
         def call(controller: CampaignController):
             state = controller.state(campaign_id)
-            if state["paused"]:
-                paused = state["status"] == "awaiting_approval"
-                return (controller.resume if paused else controller.recover)(campaign_id)
+            if state["paused"] and state["status"] != "awaiting_approval":
+                state = controller.recover(campaign_id)  # it can stop at the approval pause
+            if state["paused"] and state["status"] == "awaiting_approval":
+                return controller.resume(campaign_id)
             return state
 
         return call

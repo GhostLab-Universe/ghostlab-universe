@@ -1077,3 +1077,25 @@ def test_a_failed_checkpoint_before_the_pause_cancels_first_time(stack, monkeypa
     cancelled = api.post(f"/v1/campaigns/{campaign_id}/cancel")
     assert cancelled.status_code == 202, cancelled.text
     assert api.wait(campaign_id, "cancelled")["outcome"] == "cancelled_by_request"
+
+
+@pytest.mark.parametrize("decision", ["approve", "reject"])
+def test_a_crash_after_requesting_approval_still_answers_the_decision(stack, monkeypatch, decision):
+    api = stack(proposal())
+    service = api.client.app.state.plane.services.approvals
+    request, stored = service.request, []
+
+    def crashing(*args, **options):
+        stored.append(request(*args, **options))
+        monkeypatch.setattr(service, "request", request)
+        raise RuntimeError("process killed")
+
+    monkeypatch.setattr(service, "request", crashing)
+    created = api.create("refund-world/1")
+    campaign_id = created.json()["record"]["campaign_id"]
+    assert idle(api, campaign_id)["job"]["state"] == "stalled"
+    view = {"approval": {"approval_id": stored[0].approval_id,
+                         "action_digest": stored[0].action_digest}}
+    assert api.decide(view, decision=decision).json()["resumed"] is True
+    expected = "repair_verified" if decision == "approve" else "repair_rejected"
+    assert api.wait(campaign_id, "completed")["outcome"] == expected

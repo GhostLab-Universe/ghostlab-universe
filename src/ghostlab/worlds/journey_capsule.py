@@ -4,7 +4,8 @@ The envelope is ``{payload, sha256}`` with the same checksum algorithm as v1
 (``ghostlab.capsule``) and the ``capsule_v2`` contract. The payload records the
 fixture (including whether the guarded boundary was on), the principal, the
 scenario and the run. Replay re-executes recorded tool requests in a fresh
-world; it never imports adapter code and never calls a model.
+world, then runs the named checked-in adapter to check them. A capsule supplies no code,
+and no model is called.
 """
 
 import hashlib
@@ -15,7 +16,7 @@ from pathlib import Path
 from ghostlab.execution.journey_guard import make_world
 
 from .journey import WORLD_VERSION, JourneyFixture, JourneyScenario, ToolError
-from .journey_run import ADAPTER_VERSION, ADAPTERS
+from .journey_run import ADAPTER_VERSION, ADAPTERS, run
 from .journey_verify import INVARIANTS, metrics, verify
 
 SCHEMA_VERSION = 2
@@ -129,10 +130,26 @@ def _check_run(recorded, actor_id, scenario):
     return trace
 
 
-def replay(path: Path) -> dict:
-    """Re-execute recorded tool requests; never import adapter code or call a model.
+def _check_adapter(fixture, scenario, actor_id, recorded):
+    """A recording that replays must also be what its named checked-in adapter does.
 
-    A matching checksum is accidental-change detection, not proof of authorship.
+    Whether a run finished rests on a call past the cap that was never made, so the
+    recorded requests can't show it: a truncated run relabelled ``completed`` with a fresh
+    checksum replays cleanly. Running the adapter settles the status and the trace.
+    """
+    try:
+        produced = run(fixture, scenario, recorded["adapter_id"], actor_id=actor_id)
+    except ToolError as error:
+        raise ValueError("Recorded run is not what its adapter produces") from error
+    if (produced["status"], produced["trace"]) != (recorded["status"], recorded["trace"]):
+        raise ValueError("Recorded run is not what its adapter produces")
+
+
+def replay(path: Path) -> dict:
+    """Re-execute recorded tool requests, then run the named checked-in adapter to check them.
+
+    A capsule is data: it names an adapter from the checked-in set and supplies no code. No
+    model is called. A matching checksum is accidental-change detection, not proof of authorship.
     A replay mismatch means the capsule's claimed evidence was not reproduced.
     """
     payload = load_capsule(path)
@@ -157,5 +174,7 @@ def replay(path: Path) -> dict:
     checks = verify(fixture, state)
     matches = {"trace": world.trace == trace, "final_state": state == recorded["final_state"],
                "checks": checks == recorded["checks"]}
+    if all(matches.values()):
+        _check_adapter(fixture, scenario, actor_id, recorded)
     return {"reproduced": all(matches.values()), "matches": matches, "checks": checks,
             "metrics": metrics(fixture, state), "guarded": fixture.guarded, "model_calls": 0}

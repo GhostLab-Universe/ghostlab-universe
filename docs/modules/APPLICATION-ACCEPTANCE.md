@@ -1,9 +1,8 @@
 # Application acceptance candidate
 
-Separate branch codex/application-acceptance. The candidate combines integration 96cac2f
-(merged M07 b2c4390), pending M08 d8b98ca and pending M09 755feff. No parent branch or
-integration ref is changed. Merge/review those parents before promoting this follow-up.
-Claude is still handling their review fixes; refresh this candidate onto the accepted heads.
+Separate branch codex/application-acceptance. The candidate combines integration d1fe76f
+(merged M07 b2c4390 and M08 a3e7b1a) with pending M09 291a0cc. No parent branch or
+integration ref is changed. Review and merge M09 #18 before promoting this follow-up.
 
 The six skipped full-application placeholders are replaced by actual checks:
 - Python API acceptance: refund flow; journey default and delivery race; token-derived
@@ -36,9 +35,13 @@ runs these checks and retains browser results. The promotion job depends on it. 
 workflow file is tested locally but the new job has not yet run on GitHub.
 
 Recorded local evidence, Windows/Python 3.13.2/pinned portable Node 24.22.1:
-- Six API/contract acceptance cases and six CI configuration checks: 12 passed.
+- Combined API, full-application acceptance and CI configuration checks: 292 passed.
 - Real installed Chrome on the production build: 3 passed (refund, journey race, canary).
-- Frontend application/test TypeScript checks: pass.
+- A prior full Python suite run produced 2183 passes and two failures caused by ambiguous
+  global conftest imports. Test helpers now use package-qualified imports; both failing
+  cases passed in both collection orders, and the affected combined suite above passes.
+  The entire Python suite has not been rerun after that fix.
+- Frontend application/test TypeScript checks and generated API drift check: pass.
 - Model inference: scripted only for application acceptance.
 - Separately, one authorized direct Meta connectivity call returned HTTP 200/incomplete;
   docs/evidence/meta-connectivity-2026-11-01.json records its bounded result. It does not
@@ -47,4 +50,4 @@ Recorded local evidence, Windows/Python 3.13.2/pinned portable Node 24.22.1:
 Not covered: real browser sign-in, independent reviewer browser login, provider-retention
 qualification, live-model application behavior, Service Relay, imported external documents,
 unknown agent code, or hosted deployment. Pending security/minimizer drafts are not merged
-into this candidate. The current UI's separate M08 review findings remain its owner's work.
+into this candidate. GitHub CI and a Linux browser run remain unverified locally.

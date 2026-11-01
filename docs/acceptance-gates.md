@@ -1,9 +1,8 @@
 # Mandatory acceptance gates
 
-Updated 1 November 2026. M07 is merged at integration `96cac2f`. Application
-acceptance was exercised on an isolated candidate combining that integration with
-M08 `d8b98ca` and M09 `755feff`; those parent PRs are still under their owners' review.
-This candidate does not merge or replace their branches. A candidate test result is not
+Updated 1 November 2026. M07 and M08 are merged at integration `d1fe76f`.
+Application acceptance combines that integration with pending M09 `291a0cc`.
+This candidate does not merge or replace the M09 branch. A candidate test result is not
 an accepted release. See [application acceptance](modules/APPLICATION-ACCEPTANCE.md).
 
 These five gates come from GhostLab's existing plan. Each one is tracked

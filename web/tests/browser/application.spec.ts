@@ -35,6 +35,9 @@ for (const world of ["refund-world/1", "group-journey/1"]) {
       await expect(page.getByText("Total refunded 500000 minor units")).toBeVisible();
     }
     await nav.getByRole("link", { name: /Approval/ }).click();
+    const approval = await (await request.get(`/v1/approvals/${view.approval.approval_id}`)).json();
+    expect(approval.payload_artifact_sha256).toMatch(/^[a-f0-9]{64}$/);
+    await expect(page.locator("[title]").filter({ hasText: approval.payload_artifact_sha256 })).toBeVisible();
     await page.getByRole("button", { name: "Approve this action" }).click();
     await expect(page.getByTestId("repair-verdict")).toContainText("Repair verified");
     const completed = await (await request.get(`/v1/campaigns/${campaign}`)).json();

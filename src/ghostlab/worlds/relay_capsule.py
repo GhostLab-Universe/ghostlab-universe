@@ -86,8 +86,10 @@ def replay(path: Path) -> dict:
 
     A matching checksum is accidental-change detection, not proof of authorship.
     A replay mismatch means the capsule's claimed evidence was not reproduced. ``status``
-    isn't reproduced: only the adapter knows whether it wanted another call, and replay
-    never runs one, so a trace that used the whole budget can claim either status.
+    isn't re-derived: only the adapter knows whether it wanted another call, and replay
+    never runs one, so a trace that used the whole budget can claim either status. The
+    recorded status is surfaced unchanged, so a budget-exhausted capsule still replays
+    ``reproduced`` with its checks, and nothing about it reads as a completed run.
     """
     payload = load_capsule(path)
     _check_metadata(payload)
@@ -111,4 +113,5 @@ def replay(path: Path) -> dict:
                "final_state": capsule_digest(state) == capsule_digest(recorded["final_state"]),
                "checks": checks == recorded["checks"]}
     return {"reproduced": all(matches.values()), "matches": matches, "checks": checks,
-            "metrics": metrics(fixture, state), "guarded": fixture.guarded, "model_calls": 0}
+            "metrics": metrics(fixture, state), "guarded": fixture.guarded, "model_calls": 0,
+            "status": recorded["status"]}

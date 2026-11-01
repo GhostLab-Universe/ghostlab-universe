@@ -423,12 +423,42 @@ def test_the_lab_world_permits_the_same_mistakes():
         "no_automation_after_takeover": True}
 
 
+def test_releasing_everything_then_confirming_is_flagged_unless_guarded():
+    lab = make_world(FIXTURE, CLEAN)
+    first = reserve(lab, "job-1", PART, "k1")
+    second = reserve(lab, "job-1", TECH_A, "k2")
+    lab.call("release_resource", {"lease_id": first["lease_id"]})
+    lab.call("release_resource", {"lease_id": second["lease_id"]})
+    assert confirm(lab)["status"] == "confirmed"  # the lab world lets the mistake through
+    assert verify(FIXTURE, lab.snapshot())["confirmations_backed_by_reservations"] is False
+    guarded = make_world(GUARDED, CLEAN)
+    reserve(guarded, "job-1", PART, "k1")
+    reserve(guarded, "job-1", TECH_A, "k2")
+    guarded.call("release_resource", {"lease_id": "lease-1"})
+    guarded.call("release_resource", {"lease_id": "lease-2"})
+    with pytest.raises(UnbackedConfirmationDenied):
+        confirm(guarded)
+
+
 def test_a_retry_of_a_recorded_key_is_not_a_capacity_problem_when_guarded():
     world = make_world(GUARDED, scenario((LOST, None, {})))
     with pytest.raises(ReservationAckLost):
         reserve(world, "job-1", PART, "k")
     assert reserve(world, "job-1", PART, "k")["replayed"] is True  # the part is "full": of ours
     assert len(world.state["leases"]) == 1
+
+
+@pytest.mark.parametrize("guarded", [False, True])
+def test_a_retry_after_expiry_returns_the_expired_lease_idempotently(guarded):
+    fixture = replace(FIXTURE, lease_ttl_events=3, guarded=guarded)
+    world = make_world(fixture, CLEAN)
+    first = reserve(world, "job-1", PART, "k")
+    inspect(world, "job-2")
+    inspect(world, "job-2")  # the lease lapses on this event
+    assert reserve(world, "job-1", PART, "k") == {
+        **first, "status": "expired", "replayed": True}  # nothing new is granted
+    assert len(world.state["leases"]) == 1
+    assert inspect(world)["leases"] == []  # the expired lease holds no capacity
 
 
 # --- host checks are always on ---------------------------------------------------------
@@ -1207,6 +1237,18 @@ def test_altered_evidence_with_a_fresh_checksum_is_not_reproduced(exported, muta
     assert relay_capsule.replay(exported)["reproduced"] is False
 
 
+@pytest.mark.parametrize("mutate", [
+    # an attacker-minted tool or mistyped argument clears the host check at replay
+    lambda p: p["run"]["trace"][1]["request"].update(tool="delete_everything"),
+    lambda p: p["run"]["trace"][1]["request"]["arguments"].update(
+        resource_id=["tech-a-0900"]),
+    lambda p: p["run"]["trace"][1]["request"]["arguments"].update(request_key="k" * 101),
+])
+def test_attacker_minted_calls_do_not_reproduce(exported, mutate):
+    rewrite(exported, mutate)
+    assert relay_capsule.replay(exported)["reproduced"] is False
+
+
 # Metadata replay cannot reproduce, held to the capsule_v2 contract's bounds; the
 # contracts suite checks that the contract rejects each of these too.
 METADATA_MUTATIONS = [
@@ -1301,6 +1343,20 @@ def test_a_budget_exhausted_capsule_replays(tmp_path):
     relay_capsule.export_capsule(path, FIXTURE, data, recorded)
     assert recorded["status"] == "budget_exhausted"
     assert relay_capsule.replay(path)["reproduced"]
+
+
+def test_replay_surfaces_the_recorded_status(result, tmp_path):
+    recorded = result["baseline"][LOCAL]
+    path = tmp_path / "status.json"
+    relay_capsule.export_capsule(path, FIXTURE, scenario_json(), recorded)
+    assert recorded["status"] == "completed"
+    assert relay_capsule.replay(path)["status"] == "completed"
+    data = scenario_json(max_tool_calls=5)
+    exhausted = run(FIXTURE, RelayScenario.from_json(data), LOCAL)
+    relay_capsule.export_capsule(path, FIXTURE, data, exhausted)
+    replayed = relay_capsule.replay(path)
+    assert exhausted["status"] == "budget_exhausted"
+    assert replayed["reproduced"] and replayed["status"] == "budget_exhausted"
 
 
 def test_a_stale_checksum_is_rejected(exported):

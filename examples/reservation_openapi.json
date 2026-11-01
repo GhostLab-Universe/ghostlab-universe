@@ -1,0 +1,129 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Reservation world (offline tool-import sample)",
+    "version": "reservation-world/1",
+    "description": "Developer-provided description of the reservation tools for the P2 OpenAPI importer. HTTP mapping is descriptive only: there is no live server, and behavior, fixtures, faults and invariants stay developer-provided in the reviewed adapter package."
+  },
+  "paths": {
+    "/availability": {
+      "get": {
+        "operationId": "check_availability",
+        "summary": "Read a live capacity snapshot (used, available, revision)",
+        "responses": {
+          "200": {
+            "description": "Capacity snapshot"
+          }
+        }
+      }
+    },
+    "/reservations": {
+      "post": {
+        "operationId": "reserve",
+        "summary": "Commit one reservation for a holder, within capacity",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reservation outcome"
+          }
+        }
+      }
+    },
+    "/reservations/cancel": {
+      "post": {
+        "operationId": "cancel",
+        "summary": "Cancel an active reservation, freeing its seats",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cancellation outcome"
+          }
+        }
+      }
+    },
+    "/reservations/status": {
+      "post": {
+        "operationId": "get_status",
+        "summary": "Look up one reservation record by id",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reservation record"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Holder": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "ReservationId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "ReserveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["holder", "seats"],
+        "properties": {
+          "holder": {
+            "$ref": "#/components/schemas/Holder"
+          },
+          "seats": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "CancelRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reservation_id"],
+        "properties": {
+          "reservation_id": {
+            "$ref": "#/components/schemas/ReservationId"
+          }
+        }
+      },
+      "GetStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reservation_id"],
+        "properties": {
+          "reservation_id": {
+            "$ref": "#/components/schemas/ReservationId"
+          }
+        }
+      }
+    }
+  }
+}

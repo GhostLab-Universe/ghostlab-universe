@@ -436,7 +436,7 @@ function awaitingStage(campaignId: string, world: World): { stage: Stage; reques
         event_count: events.length,
       }),
       events,
-      approval: { request, effective_status: "pending", action: world.action.action, decision: null, inference: "fixture" },
+      approval: { request, effective_status: "pending", payload_artifact_sha256: null, action: world.action.action, decision: null, inference: "fixture" },
       experiment,
       origins: originsFor(world, "Id and status replaced for this scenario"),
     },
@@ -464,7 +464,7 @@ function finishedStage(campaignId: string, world: World, request: ApprovalReques
       event_count: events.length,
     }),
     events,
-    approval: { request: consumed, effective_status: "consumed", action: world.action.action, decision: decision(request, "approve", null), inference: "fixture" },
+    approval: { request: consumed, effective_status: "consumed", payload_artifact_sha256: null, action: world.action.action, decision: decision(request, "approve", null), inference: "fixture" },
     experiment,
     origins: [
       ...originsFor(world, "Id and status replaced for this scenario"),
@@ -490,7 +490,7 @@ function rejectedStage(campaignId: string, world: World, request: ApprovalReques
       event_count: events.length,
     }),
     events,
-    approval: { request: { ...request, status: "rejected" }, effective_status: "rejected", action: world.action.action, decision: decision(request, "reject", null), inference: "fixture" },
+    approval: { request: { ...request, status: "rejected" }, effective_status: "rejected", payload_artifact_sha256: null, action: world.action.action, decision: decision(request, "reject", null), inference: "fixture" },
     experiment,
     origins: originsFor(world, "Id and status replaced for this scenario"),
   };
@@ -610,6 +610,7 @@ function settingsBlocked(id: string): Scenario {
       approval: {
         request: approved,
         effective_status: "approved",
+        payload_artifact_sha256: null,
         action: JOURNEY.action.action,
         decision: decision(request, "approve", null),
         inference: "fixture",

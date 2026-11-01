@@ -1,0 +1,38 @@
+{
+  "schema": "ghostlab-release-targets/1",
+  "release_target": {
+    "kind": "local_single_user",
+    "branch": "architecture-and-refund-core",
+    "commit": null,
+    "commit_note": "The reviewed merge head, supplied as --commit when the record is built. There is no hosted deployment.",
+    "services": ["ghostlab CLI demos", "campaign controller as a library"],
+    "not_included": ["API (M07)", "interface (M08)", "hosted Postgres", "service-relay/1"]
+  },
+  "rollback_target": {
+    "branch": "architecture-and-refund-core",
+    "commit": "24942bd4ca988e822a7d2f847863761a3bb35d92",
+    "why_this_commit": "The last integrated head recorded as validated before the world-aware stack (#14-#17). Move it forward once a later head has passed this checklist.",
+    "store_action": "Restore the pre-upgrade store backup. Migration 0003 is forward-only and this commit's code refuses a newer database, so code rollback alone doesn't work.",
+    "evidence_action": "Keep all capsules and evaluation evidence. Capsules replay offline and are never rewritten."
+  },
+  "statuses": {
+    "runtime": {
+      "status": "local_development_only",
+      "note": "Single local coordinator on SQLite. No authenticated service exists."
+    },
+    "dependency": {
+      "status": "locked",
+      "python": "3.13.18",
+      "uv": "0.13.6",
+      "node": "24.22.1",
+      "note": "Lock digests are computed from the files when a record is built."
+    },
+    "live_capability": {
+      "status": "not_started",
+      "provider": null,
+      "model": null,
+      "compatibility_report": null,
+      "note": "No authorization, key, model or spending cap has been provided. Mocked evaluations never change this."
+    }
+  }
+}

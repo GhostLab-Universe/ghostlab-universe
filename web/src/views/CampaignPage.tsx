@@ -5,8 +5,9 @@ import { looksExpired } from "../logic/approval.ts";
 import { readCoverage } from "../logic/coverage.ts";
 import { formatCount, formatTimestamp } from "../logic/format.ts";
 import { presentRepair } from "../logic/repair.ts";
+import { summarizeProgress, type ProgressLive } from "../logic/progress.ts";
 import { campaignHref } from "../logic/routes.ts";
-import { outcomeNotice, proposalCallsLabel, taskStatus } from "../logic/status.ts";
+import { campaignStatus, outcomeNotice, proposalCallsLabel, taskStatus } from "../logic/status.ts";
 import { orderTasks } from "../logic/timeline.ts";
 import { BusyNote, Digest, Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
 import { CoverageLine } from "./experimentData.tsx";
@@ -16,14 +17,18 @@ export function CampaignPanel({
   origins,
   source,
   refresh,
+  live,
 }: {
   view: CampaignView;
   origins: readonly Origin[];
   source: DataSource;
   refresh: () => Promise<void>;
+  /** Live refresh state. Without it the panel assumes every reported event is shown. */
+  live?: ProgressLive;
 }) {
   const { record } = view;
   const notice = outcomeNotice(view.outcome);
+  const progressLive: ProgressLive = live ?? { connection: "live", cursor: view.event_count };
   return (
     <>
       {record.status === "awaiting_approval" ? <AwaitingApproval view={view} /> : null}
@@ -39,6 +44,7 @@ export function CampaignPanel({
       ) : record.status === "failed" ? (
         <Notice state="failed" title="Campaign failed" />
       ) : null}
+      <ProgressPanel view={view} origins={origins} live={progressLive} />
       {view.errors.length > 0 ? (
         <Section title="Recorded errors" origins={origins}>
           <RecordedErrors errors={view.errors} />
@@ -84,6 +90,67 @@ export function CampaignPanel({
         <TaskTimeline view={view} />
       </Section>
     </>
+  );
+}
+
+/** Live progress as recorded: status, task counts, events shown and refresh state. */
+export function ProgressPanel({
+  view,
+  origins,
+  live,
+}: {
+  view: CampaignView;
+  origins: readonly Origin[];
+  live: ProgressLive;
+}) {
+  const progress = summarizeProgress(view, live);
+  const status = campaignStatus(view.record.status, view.outcome);
+  const { tasks } = progress;
+  const parts: string[] = [];
+  if (tasks.succeeded > 0) parts.push(`${tasks.succeeded} succeeded`);
+  if (tasks.active > 0) parts.push(`${tasks.active} in progress`);
+  if (tasks.waiting > 0) parts.push(`${tasks.waiting} waiting`);
+  if (tasks.failed > 0) parts.push(`${tasks.failed} failed`);
+  if (tasks.stopped > 0) parts.push(`${tasks.stopped} stopped`);
+  const segments: Array<{ seg: string; count: number }> = [
+    { seg: "done", count: tasks.succeeded },
+    { seg: "active", count: tasks.active },
+    { seg: "waiting", count: tasks.waiting },
+    { seg: "failed", count: tasks.failed },
+    { seg: "stopped", count: tasks.stopped },
+  ];
+  return (
+    <Section title="Progress" origins={origins}>
+      <div data-testid="campaign-progress">
+        <p className="status-line">
+          <Tag tone={status.tone}>{status.label}</Tag>
+          <span>
+            {progress.experiments === 0 ? "No experiments yet" : `${progress.experiments} experiment${progress.experiments === 1 ? "" : "s"}`}
+          </span>
+          <span>
+            Events {progress.eventsSeen} of {progress.eventsTotal} shown
+          </span>
+          <span className="muted">Worker {view.job.state}</span>
+        </p>
+        {tasks.total === 0 ? (
+          <p className="muted">No tasks recorded yet.</p>
+        ) : (
+          <>
+            <div className="progress-bar" aria-hidden="true">
+              {segments
+                .filter((item) => item.count > 0)
+                .map((item) => (
+                  <span key={item.seg} data-seg={item.seg} style={{ width: `${(item.count / tasks.total) * 100}%` }} />
+                ))}
+            </div>
+            <p>
+              {tasks.total} task{tasks.total === 1 ? "" : "s"}: {parts.join(", ")}
+            </p>
+          </>
+        )}
+        <p className="muted">{progress.note}</p>
+      </div>
+    </Section>
   );
 }
 

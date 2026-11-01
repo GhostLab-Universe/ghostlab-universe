@@ -287,7 +287,15 @@ function RouteBody({
   const common = { source, view, experimentId };
   switch (route.view) {
     case "overview":
-      return <CampaignPanel view={view} origins={state.origins} source={source} refresh={refresh} />;
+      return (
+        <CampaignPanel
+          view={view}
+          origins={state.origins}
+          source={source}
+          refresh={refresh}
+          live={{ connection: state.connection, cursor: state.cursor }}
+        />
+      );
     case "evidence":
       return <EvidencePage {...common} route={route} events={state.events} eventOrigins={state.origins} />;
     case "diff":

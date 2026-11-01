@@ -4,7 +4,8 @@ The envelope is ``{payload, sha256}`` with the same checksum algorithm as v1
 (``ghostlab.capsule``) and the ``capsule_v2`` contract. The payload records the
 fixture (including whether the guarded boundary was on), the principal, the
 scenario and the run. Replay re-executes recorded tool requests in a fresh
-world; it never imports adapter code and never calls a model.
+world, then runs the named checked-in adapter to check them. A capsule supplies no code,
+and no model is called.
 """
 
 import hashlib
@@ -145,9 +146,10 @@ def _check_adapter(fixture, scenario, actor_id, recorded):
 
 
 def replay(path: Path) -> dict:
-    """Re-execute recorded tool requests; never import adapter code or call a model.
+    """Re-execute recorded tool requests, then run the named checked-in adapter to check them.
 
-    A matching checksum is accidental-change detection, not proof of authorship.
+    A capsule is data: it names an adapter from the checked-in set and supplies no code. No
+    model is called. A matching checksum is accidental-change detection, not proof of authorship.
     A replay mismatch means the capsule's claimed evidence was not reproduced.
     """
     payload = load_capsule(path)

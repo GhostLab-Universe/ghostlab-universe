@@ -10,6 +10,8 @@ Live mode needs, together: --live, an exact --model, a --max-calls cap (1-10),
 retries included, because each attempt may be billed; the report shows model
 calls and HTTP attempts separately. Each call is capped at 2048 output tokens; --max-calls still bounds total spend.
 Tool results sent back are labeled synthetic fixtures; no tool is dispatched.
+Live runs carry an explicit outbound policy: only synthetic fixtures are sent,
+and running --live is the operator's decision to allow retaining them.
 The report is redacted and written under artifacts/local/ (git-ignored).
 """
 
@@ -27,8 +29,8 @@ sys.path.insert(0, str(ROOT / "src"))
 import httpx  # noqa: E402
 
 from ghostlab.contracts import ContextBundle, ModelRequest, ToolDefinition  # noqa: E402
-from ghostlab.providers import (PROVIDER_INTERFACE_VERSION, ProviderConfig,  # noqa: E402
-                                ProviderConfigError, Runtime, adapter_for, redact)
+from ghostlab.providers import (PROVIDER_INTERFACE_VERSION, OutboundPolicy, ProviderConfig,  # noqa: E402
+                                ProviderConfigError, Runtime, adapter_for, redact)  # noqa: E402
 from ghostlab.providers.base import ENV  # noqa: E402
 
 DEFAULT_REPORT = ROOT / "artifacts" / "local" / "compatibility-report.json"
@@ -80,7 +82,11 @@ class AttemptCap:
 
 def run_live(config, runtime, max_calls):
     cap = AttemptCap(max_calls)
-    adapter = adapter_for(config, dataclasses.replace(runtime, attempt_gate=cap))
+    # The probe's only content is labeled synthetic fixtures; retaining exactly
+    # that content server-side is the operator's explicit decision in --live.
+    runtime = dataclasses.replace(
+        runtime, attempt_gate=cap, outbound=OutboundPolicy(allow_server_retention=True))
+    adapter = adapter_for(config, runtime)
     status_tool = ToolDefinition.model_validate({
         **_example("tool_definition.issue_refund"), "name": "get_refund_status",
         "description": "Look up a synthetic refund by idempotency key",
@@ -194,7 +200,9 @@ def main(argv=None, runtime=None) -> int:
         checks, calls, attempts = run_live(config, runtime or Runtime(), args.max_calls)
         report.update(mode="live", live=runtime is None, model=args.model,
                       endpoint=config.base_url, max_calls=args.max_calls, calls_made=calls,
-                      http_attempts=attempts, checks=checks)
+                      http_attempts=attempts, checks=checks,
+                      outbound={"server_retention": "allowed",
+                                "content": "synthetic-fixtures-only"})
     text = redact(json.dumps(report, indent=2, sort_keys=True), *secrets)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(text + "\n", encoding="utf-8")

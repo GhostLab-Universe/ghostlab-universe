@@ -10,6 +10,7 @@ from .base import (PROVIDER_INTERFACE_VERSION, CancelHook, Credential, ProviderA
 from .baseten_chat import BasetenChatAdapter
 from .http import Attempt, Runtime
 from .meta_responses import MetaResponsesAdapter
+from .outbound import OutboundPolicy, OutboundRefused
 
 ADAPTERS = {"meta_responses": MetaResponsesAdapter,
             "baseten_chat_completions": BasetenChatAdapter}
@@ -21,6 +22,7 @@ def adapter_for(config: ProviderConfig, runtime: Runtime | None = None) -> Provi
 
 
 __all__ = ["ADAPTERS", "PROVIDER_INTERFACE_VERSION", "Attempt", "BasetenChatAdapter",
-           "CancelHook", "Credential", "MetaResponsesAdapter", "ProviderAdapter",
+           "CancelHook", "Credential", "MetaResponsesAdapter", "OutboundPolicy",
+           "OutboundRefused", "ProviderAdapter",
            "ProviderConfig", "ProviderConfigError", "ProviderRequestError", "RetryPolicy",
            "Runtime", "adapter_for", "redact"]

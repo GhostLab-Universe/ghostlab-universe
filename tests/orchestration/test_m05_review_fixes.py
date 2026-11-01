@@ -7,7 +7,7 @@ import pytest
 
 from ghostlab.orchestration import (REQUIRED_COMPATIBILITY_CHECKS, LiveInferenceAuthorization,
                                     LiveInferenceRefused, ledger_key)
-from ghostlab.providers import Credential, ProviderConfig, RetryPolicy
+from ghostlab.providers import Credential, OutboundPolicy, ProviderConfig, RetryPolicy
 
 from m05_harness import BUSY, MODEL, PROJECT, Lab, Script, proposal, spec
 
@@ -87,6 +87,9 @@ def test_authorized_recovery_uses_the_smaller_live_cap(tmp_path, monkeypatch):
                                        base_url="https://api.meta.ai/v1",
                                        credential=Credential.from_env("MODEL_API_KEY"),
                                        retry=RetryPolicy(max_attempts=3))
+    # An authorized live run carries an explicit outbound posture; the simulated
+    # deployment refuses server-side retention.
+    authorized.runtime.outbound = OutboundPolicy(allow_server_retention=False)
     with authorized.controller() as controller:
         state = controller.recover(CID)
     assert len(script.requests) == 2  # min(campaign 10, live cap 2); nothing past the cap

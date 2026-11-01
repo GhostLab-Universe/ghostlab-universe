@@ -6,15 +6,18 @@ a sanitized M01 compatibility report from an authorized live run.
 
 A record is built from an evidence directory and a candidate commit. The evidence is
 rescored, the stored report must say the same, and it must come from that commit on a clean
-tree, running that commit's code. The expectations, targets and lock digests are read from
-the commit's own objects, never the working tree. See ``evals/identity.py`` for what this
-does and doesn't prove.
+tree, running that commit's code. The candidate must be on its target branch, and the
+rollback commit must be an ancestor of it. The expectations, targets, lock digests,
+compatibility report and security gate evidence are read from the commit's own objects,
+never the working tree. See ``evals/identity.py`` for what this does and doesn't prove.
 
 ``promotable`` is about offline promotion only. **``customer_connected_use_allowed`` is
 false, unconditionally.** Every input to that decision is a file someone can type, and
 nothing yet shows where a report or a security review came from. The requirements stay
 in ``customer_connected_blockers`` so the gap is visible, but meeting them all doesn't turn
 it on. Enabling it needs evidence of verifiable origin, which is a change to this file.
+For the same reason ``live_evidence.proven`` is always false, and
+``live_evidence.shape_checks_passed`` says only that a committed file has the right shape.
 
 Today's probe wouldn't qualify anyway: ``scripts/probe_provider.py`` lists timeout, cancel
 and rate-limit handling under ``not_probed``, reports no budget probe and writes no
@@ -28,6 +31,7 @@ import hashlib
 import json
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 from ghostlab.observability import find_secrets
@@ -38,11 +42,13 @@ from ghostlab.providers import Credential, ProviderConfig
 from ghostlab.providers.base import ENV, ProviderConfigError
 
 from .gate import check, verified_report
-from .identity import code_sha256_at, commit_exists, file_at
+from .identity import code_sha256_at, commit_exists, file_at, is_ancestor, ref_commit
 
 SCHEMA = "ghostlab-release/1"
 TARGETS_SCHEMA = "ghostlab-release-targets/1"
-_COMMIT = re.compile(r"^[0-9a-f]{40}$")
+_COMMIT = re.compile(r"^[0-9a-f]{40}\Z")
+# Whole path segments only. A newline would start a second request to ``git cat-file``.
+_PLAIN_PATH = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._-]*(?:/[A-Za-z0-9_][A-Za-z0-9._-]*)*")
 LIVE_STATUSES = ("not_started", "authorized", "passed", "failed")
 LOCAL_TARGET, CUSTOMER_TARGET = "local_single_user", "customer_connected"
 CUSTOMER_RUNTIME = "authenticated_service"
@@ -58,6 +64,8 @@ EXPECTED_FILE, TARGETS_FILE = "evals/expected.json", "deploy/release-targets.jso
 REQUIRED_PROBES = ("timeout", "cancel", "rate_limit", "budgets")
 NO_VERIFIABLE_ORIGIN = ("no evidence of verifiable origin exists: reports and security reviews "
                         "are files anyone can type, so this stays false until that changes")
+PACKAGES_NOT_BOUND = ("the lock digests say what the commit pins, not what was installed: nothing "
+                      "checks the environment the evidence ran in against them")
 
 
 def _sha256(data: bytes | None) -> str | None:
@@ -84,20 +92,25 @@ def target_problems(targets: dict) -> list[str]:
     return problems
 
 
-def _evidence_file(root: Path, value) -> Path | None:
-    """A readable file inside the release root, or None. A bare string is not evidence."""
-    if not isinstance(value, str) or not value.strip():
+def _committed(candidate: tuple[Path, str], value) -> bytes | None:
+    """A non-empty file as the candidate commit holds it, or None. A bare string isn't evidence.
+
+    The working tree is never read: a file that was only typed there, gitignored or not,
+    isn't part of what is being released.
+    """
+    if not isinstance(value, str) or not _PLAIN_PATH.fullmatch(value):
         return None
-    base = root.resolve()
-    path = (base / value).resolve()
-    if not path.is_relative_to(base) or not path.is_file() or path.stat().st_size == 0:
-        return None
-    return path
+    return (file_at(*candidate, value) or None) if _COMMIT.match(str(candidate[1])) else None
 
 
-def _report_problems(path: Path) -> list[str]:
+def _blob_sha256(data: bytes | None) -> str | None:
+    """The digest of a committed file's exact bytes, with no line-ending normalization."""
+    return None if data is None else hashlib.sha256(data).hexdigest()
+
+
+def _report_problems(data: bytes) -> list[str]:
     """What the controller's check doesn't ask: real calls, and the limits AGENTS.md needs."""
-    text = path.read_text("utf-8")
+    text = data.decode("utf-8")
     report = json.loads(text)
     problems = []
     if report.get("report_version") != REPORT_VERSION:
@@ -122,8 +135,11 @@ def _report_problems(path: Path) -> list[str]:
     return [f"compatibility report refused: {problem}" for problem in problems]
 
 
-def live_evidence_problems(live: dict, root: Path) -> list[str]:
-    """Why the live claim isn't proven. Uses the controller's own check of the report."""
+def live_evidence_problems(live: dict, candidate: tuple[Path, str]) -> list[str]:
+    """Why the live claim fails its shape checks. Uses the controller's own check of the report.
+
+    No problems doesn't make the claim proven: that needs an origin nothing here can verify.
+    """
     if live.get("status") != "passed":
         return ["live compatibility hasn't passed"]
     try:
@@ -136,24 +152,28 @@ def live_evidence_problems(live: dict, root: Path) -> list[str]:
         return ["the live claim names an undocumented endpoint"]
     if config.model not in DOCUMENTED_MODELS[config.provider]:
         return ["the live claim names an undocumented model"]
-    path = _evidence_file(root, live.get("compatibility_report"))
-    if path is None:
-        return ["the compatibility report isn't a readable file inside the release root"]
-    authorization = LiveInferenceAuthorization(
-        model=live["model"], max_model_calls=live.get("max_model_calls"),
-        compatibility_report=path, confirm_paid_calls=live.get("confirm_paid_calls") is True)
-    try:
-        # A release ships every runnable world, so the report must cover each one's schema.
-        for schema in sorted({driver.output_schema for driver in DEFAULT_WORLDS.values()}):
-            authorization.check(config, ceiling_for("supervisor"), schema)
-    except LiveInferenceRefused as error:
-        return [f"compatibility report refused: {error}"]
-    except (TypeError, ValueError):  # for example, no spending cap
-        return ["compatibility report refused: malformed report or spending cap"]
-    return _report_problems(path)
+    data = _committed(candidate, live.get("compatibility_report"))
+    if data is None:
+        return ["the compatibility report isn't a non-empty file in the candidate commit"]
+    with tempfile.TemporaryDirectory() as folder:  # the controller's check reads a path
+        path = Path(folder) / "compatibility-report.json"
+        path.write_bytes(data)
+        authorization = LiveInferenceAuthorization(
+            model=live["model"], max_model_calls=live.get("max_model_calls"),
+            compatibility_report=path, confirm_paid_calls=live.get("confirm_paid_calls") is True)
+        try:
+            # A release ships every runnable world, so the report must cover each one's schema.
+            for schema in sorted({driver.output_schema for driver in DEFAULT_WORLDS.values()}):
+                authorization.check(config, ceiling_for("supervisor"), schema)
+        except LiveInferenceRefused as error:
+            return [f"compatibility report refused: {error}"]
+        except (TypeError, ValueError):  # for example, no spending cap
+            return ["compatibility report refused: malformed report or spending cap"]
+    return _report_problems(data)
 
 
-def customer_connected_blockers(targets: dict, root: Path) -> list[str]:
+def customer_connected_blockers(targets: dict, candidate: tuple[Path, str],
+                                live_problems: list[str]) -> list[str]:
     """Everything standing between this record and customer-connected use."""
     statuses = targets.get("statuses") or {}
     blockers = [NO_VERIFIABLE_ORIGIN]
@@ -164,10 +184,42 @@ def customer_connected_blockers(targets: dict, root: Path) -> list[str]:
     gates = targets.get("security_gates") or {}
     for gate in SECURITY_GATES:
         entry = gates.get(gate) or {}
-        if entry.get("status") != "passed" or _evidence_file(root, entry.get("evidence")) is None:
+        if entry.get("status") != "passed" or _committed(candidate, entry.get("evidence")) is None:
             blockers.append(f"security gate {gate} has no passing evidence")
-    blockers.extend(live_evidence_problems(statuses.get("live_capability") or {}, root))
-    return blockers
+    return [*blockers, *live_problems]
+
+
+def _target_ref(targets: dict, commit: str, repo: Path) -> dict:
+    """The ref a candidate must be on. It's local state: fetch first, and it proves no origin."""
+    branch = (targets.get("release_target") or {}).get("branch")
+    if not isinstance(branch, str) or not _PLAIN_PATH.fullmatch(branch):
+        return {"ref": None, "commit": None, "contains_candidate": False}
+    ref = f"refs/remotes/origin/{branch}"
+    head = ref_commit(repo, ref)
+    return {"ref": ref, "commit": head, "contains_candidate": head is not None and bool(
+        _COMMIT.match(str(commit))) and is_ancestor(repo, commit, head)}
+
+
+def _target_problems(target: dict) -> list[str]:
+    if target["ref"] is None:
+        return ["the release target names no branch"]
+    if target["commit"] is None:
+        return [f"{target['ref']} doesn't exist here, so the candidate can't be tied to its target"]
+    if not target["contains_candidate"]:
+        return [f"the candidate isn't on its target: {target['ref']} at {target['commit']} "
+                "doesn't contain it"]
+    return []
+
+
+def _rollback_problems(targets: dict, commit: str, repo: Path) -> list[str]:
+    rollback = (targets.get("rollback_target") or {}).get("commit")
+    if not _COMMIT.match(str(rollback)) or not _COMMIT.match(str(commit)):
+        return []  # ``target_problems`` and ``_commit_problems`` say so
+    if not commit_exists(repo, rollback):
+        return ["the rollback commit doesn't exist in this repository"]
+    if not is_ancestor(repo, rollback, commit):
+        return ["the rollback commit isn't an ancestor of the candidate"]
+    return []
 
 
 def _commit_problems(report: dict, commit: str, repo: Path) -> list[str]:
@@ -191,27 +243,29 @@ def _json_at(repo: Path, commit: str, path: str) -> tuple[dict, bytes | None]:
         return {}, data
 
 
-def build_record(*, evidence: Path, commit: str, repo: Path, targets: dict | None = None,
-                 root: Path | None = None) -> dict:
-    """``targets`` and ``root`` exist for tests of the customer rules. The CLI has neither."""
-    root = root or repo
+def build_record(*, evidence: Path, commit: str, repo: Path,
+                 targets: dict | None = None) -> dict:
+    """``targets`` exists for tests. The CLI reads them from the candidate commit."""
     report, report_sha256, stored_problems = verified_report(evidence)
     expected, expected_bytes = _json_at(repo, commit, EXPECTED_FILE)
     if targets is None:
         targets = _json_at(repo, commit, TARGETS_FILE)[0]
+    target_ref = _target_ref(targets, commit, repo)
     blockers = [*stored_problems, *check(report, expected), *target_problems(targets),
-                *_commit_problems(report, commit, repo)]
+                *_commit_problems(report, commit, repo), *_target_problems(target_ref),
+                *_rollback_problems(targets, commit, repo)]
     if expected_bytes is None:
         blockers.append(f"the candidate has no {EXPECTED_FILE}")
     if commit == (targets.get("rollback_target") or {}).get("commit"):
         blockers.append("the candidate equals its own rollback target")
     statuses = targets.get("statuses") or {}
     live = statuses.get("live_capability") or {}
-    live_problems = live_evidence_problems(live, root)
-    customer_blockers = customer_connected_blockers(targets, root)
+    candidate = (repo, commit)
+    live_problems = live_evidence_problems(live, candidate)
+    gates = targets.get("security_gates") or {}
     return {
         "schema": SCHEMA, "candidate_commit": commit,
-        "release_target": targets.get("release_target"),
+        "release_target": targets.get("release_target"), "target_ref": target_ref,
         "rollback_target": targets.get("rollback_target"),
         "evaluation": {"schema": report.get("schema"), "inference": report.get("inference"),
                        "commit": report.get("commit"),
@@ -225,12 +279,22 @@ def build_record(*, evidence: Path, commit: str, repo: Path, targets: dict | Non
         "dependency": {**(statuses.get("dependency") or {}),
                        "uv_lock_sha256": _sha256(file_at(repo, commit, "uv.lock")),
                        "web_lock_sha256": _sha256(file_at(repo, commit,
-                                                          "web/package-lock.json"))},
-        "live_capability": live,  # as claimed; ``live_evidence`` says if it was proven
-        "live_evidence": {"validated": not live_problems, "problems": live_problems},
+                                                          "web/package-lock.json")),
+                       "installed_packages_verified": False,
+                       "installed_packages_note": PACKAGES_NOT_BOUND},
+        "live_capability": live,  # as claimed; ``live_evidence`` shows what was checked
+        "live_evidence": {
+            "shape_checks_passed": not live_problems, "problems": live_problems,
+            "compatibility_report_sha256": _blob_sha256(
+                _committed(candidate, live.get("compatibility_report"))),
+            "proven": False, "why_not_proven": NO_VERIFIABLE_ORIGIN},  # see the module docstring
+        "security_gate_evidence_sha256": {
+            gate: _blob_sha256(_committed(candidate, (gates.get(gate) or {}).get("evidence")))
+            for gate in SECURITY_GATES},
         "customer_connected_use_allowed": False,  # see the module docstring
         "customer_connected_why_not": NO_VERIFIABLE_ORIGIN,
-        "customer_connected_blockers": customer_blockers,
+        "customer_connected_blockers": customer_connected_blockers(targets, candidate,
+                                                                   live_problems),
         "blockers": blockers, "promotable": not blockers}
 
 

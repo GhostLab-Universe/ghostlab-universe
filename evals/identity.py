@@ -93,6 +93,17 @@ def commit_exists(repo: Path, commit: str) -> bool:
     return _git(repo, "cat-file", "-e", f"{commit}^{{commit}}") is not None
 
 
+def ref_commit(repo: Path, ref: str) -> str | None:
+    """Where a ref points in this repository, or None if it doesn't exist here."""
+    found = _git(repo, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
+    return found.decode().strip() if found else None
+
+
+def is_ancestor(repo: Path, ancestor: str, commit: str) -> bool:
+    """A commit counts as its own ancestor. False if either one is missing."""
+    return _git(repo, "merge-base", "--is-ancestor", ancestor, commit) is not None
+
+
 def evidence_sha256(directory: Path, identity: dict) -> str:
     """The seal: the evidence and telemetry files as stored, and who ``run.json`` says ran."""
     files = {"run.json": json.dumps({name: identity.get(name) for name in SEALED_FIELDS},

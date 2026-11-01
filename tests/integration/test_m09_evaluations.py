@@ -16,8 +16,10 @@ from evals.evidence import canonical_sha256, scan_stores
 from evals.harness import FIXTURE_LABEL, SECRET, SYNTHETIC_SECRET
 from evals.identity import code_sha256_at, evidence_sha256
 from evals.oracles import journey_oracle
-from evals.release import (NO_VERIFIABLE_ORIGIN, REQUIRED_PROBES, SECURITY_GATES, build_record,
-                           target_problems)
+from evals.release import (NO_VERIFIABLE_ORIGIN, REQUIRED_PROBES, SECURITY_GATES, TARGETS_FILE,
+                           build_record, target_problems)
+from evals.release import _committed
+from evals.release import main as release_main
 from evals.run import DEFAULT_EXPECTED, main as run_main
 from evals.run import run_all
 from evals.score import RUN_IDENTITY, _trace_problems, score_directory
@@ -863,18 +865,79 @@ def test_expectations_cant_be_written_from_part_of_the_suite(tmp_path):
 
 # --- release evidence ----------------------------------------------------------------------
 
+TARGET_REF = f"refs/remotes/origin/{TARGETS['release_target']['branch']}"
+REPO = {}  # the shared checkout, set once per module
+
+
+def git(repo, *args, env=None, data=None):
+    return subprocess.run(["git", "-C", str(repo), *args], input=data, capture_output=True,
+                          check=True, env=env).stdout.decode().strip()
+
+
+def shared_repo(path, target=COMMIT):
+    """An empty checkout that shares ROOT's objects, so its refs and tree are a test's own."""
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+    objects = git(ROOT, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    alternates = path / ".git" / "objects" / "info" / "alternates"
+    alternates.write_bytes(f"{objects}/objects\n".encode())  # no CRLF: git reads the raw line
+    if target:
+        git(path, "update-ref", TARGET_REF, target)
+    return path
+
+
+def commit_on(repo, files):
+    """A real commit: COMMIT's tree plus ``files``, so code and expectations don't move."""
+    env = {**os.environ, "GIT_INDEX_FILE": str(repo / ".git" / "candidate-index"),
+           "GIT_AUTHOR_NAME": "m09", "GIT_AUTHOR_EMAIL": "m09@example.invalid",
+           "GIT_COMMITTER_NAME": "m09", "GIT_COMMITTER_EMAIL": "m09@example.invalid"}
+    git(repo, "read-tree", COMMIT, env=env)
+    for name, data in files.items():
+        blob = git(repo, "hash-object", "-w", "--stdin", env=env, data=data)
+        git(repo, "update-index", "--add", "--cacheinfo", f"100644,{blob},{name}", env=env)
+    tree = git(repo, "write-tree", env=env)
+    return git(repo, "commit-tree", tree, "-p", COMMIT, "-m", "candidate", env=env)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def target_repo(tmp_path_factory):
+    """Whatever branch this suite runs on, the target ref holds what these tests release."""
+    REPO["path"] = shared_repo(tmp_path_factory.mktemp("target") / "repo")
+
+
 @pytest.fixture(scope="module")
 def bound(evaluated, tmp_path_factory):
     return bound_copy(evaluated, tmp_path_factory.mktemp("bound"))
 
 
 def release(evidence, **changes):
-    return build_record(**{"evidence": evidence, "commit": COMMIT, "repo": ROOT, **changes})
+    return build_record(**{"evidence": evidence, "commit": COMMIT, "repo": REPO["path"],
+                           **changes})
+
+
+def rebound(evidence, tmp_path, commit):
+    """The same evidence as ``evals.run`` would leave it on ``commit``. Only that moves."""
+    out = tmp_path / "rebound"
+    shutil.copytree(evidence, out)
+    identity = {**json.loads((out / RUN_IDENTITY).read_text("utf-8")), "commit": commit}
+    identity["evidence_sha256"] = evidence_sha256(out, identity)
+    (out / RUN_IDENTITY).write_text(json.dumps(identity), "utf-8")
+    report = {**json.loads((out / gate.REPORT_FILE).read_text("utf-8")), "commit": commit}
+    (out / gate.REPORT_FILE).write_text(json.dumps(report), "utf-8")
+    return out
+
+
+def release_commit(evidence, tmp_path, files):
+    """Commit ``files`` on the target branch, and release that commit."""
+    commit = commit_on(REPO["path"], files)
+    git(REPO["path"], "update-ref", TARGET_REF, commit)
+    return release(rebound(evidence, tmp_path, commit), commit=commit)
 
 
 def test_a_clean_report_is_promotable_and_statuses_stay_separate(bound):
     record = release(bound)
     assert record["promotable"] and record["blockers"] == []
+    assert record["target_ref"] == {"ref": TARGET_REF, "commit": COMMIT,
+                                    "contains_candidate": True}
     assert record["runtime"]["status"] != record["live_capability"]["status"]
     assert record["live_capability"]["status"] == "not_started"
     assert record["customer_connected_use_allowed"] is False
@@ -980,14 +1043,7 @@ def test_a_tree_that_changes_during_the_run_is_dirty(tmp_path, monkeypatch):
 
 def test_the_release_ignores_a_working_tree_that_blesses_a_regression(bound, tmp_path):
     """Probe: regress, rewrite expected.json locally, release. The commit's own file decides."""
-    clone = tmp_path / "clone"
-    subprocess.run(["git", "init", "-q", str(clone)], check=True)
-    objects = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--path-format=absolute",
-                              "--git-common-dir"], capture_output=True, text=True,
-                             check=True).stdout.strip()
-    # A checkout that shares ROOT's objects and holds anything in its working tree.
-    alternates = clone / ".git" / "objects" / "info" / "alternates"
-    alternates.write_bytes(f"{objects}/objects\n".encode())  # no CRLF: git reads the raw line
+    clone = shared_repo(tmp_path / "clone")  # its working tree can hold anything
     (clone / "evals").mkdir()
     out = tmp_path / "regressed"
     shutil.copytree(bound, out)
@@ -1036,8 +1092,7 @@ def test_restamping_evidence_onto_a_commit_with_other_code_is_refused(evaluated,
                              capture_output=True, text=True, check=True).stdout.split()
     other = next((sha for sha in history
                   if code_sha256_at(ROOT, sha) != code_sha256_at(ROOT, COMMIT)), None)
-    if other is None:
-        pytest.skip("no other code in this checkout's history")
+    assert other, "the checkout has no history: see fetch-depth in ci.yml"
     out = bound_copy(evaluated, tmp_path, commit=other)
     assert "the code that ran isn't the candidate's code" in release(out, commit=other)["blockers"]
 
@@ -1105,10 +1160,53 @@ def test_targets_must_be_explicit(change, message):
     assert any(message in item for item in target_problems({**TARGETS, **change}))
 
 
+def test_a_candidate_off_its_target_branch_is_refused(bound, tmp_path):
+    """Probe: everything else holds, and the commit was never merged."""
+    behind = TARGETS["rollback_target"]["commit"]
+    record = release(bound, repo=shared_repo(tmp_path / "repo", target=behind))
+    assert record["promotable"] is False
+    assert record["target_ref"] == {"ref": TARGET_REF, "commit": behind,
+                                    "contains_candidate": False}
+    assert record["blockers"] == [
+        f"the candidate isn't on its target: {TARGET_REF} at {behind} doesn't contain it"]
+
+
+def test_a_missing_target_ref_is_refused(bound, tmp_path):
+    record = release(bound, repo=shared_repo(tmp_path / "repo", target=None))
+    assert record["target_ref"] == {"ref": TARGET_REF, "commit": None, "contains_candidate": False}
+    assert record["blockers"] == [
+        f"{TARGET_REF} doesn't exist here, so the candidate can't be tied to its target"]
+
+
+@pytest.mark.parametrize("branch", [None, "", "../../heads/main", "-x", "a b", "main\n", 7])
+def test_a_target_with_no_plain_branch_is_refused(bound, branch):
+    release_target = {**TARGETS["release_target"], "branch": branch}
+    record = release(bound, targets={**TARGETS, "release_target": release_target})
+    assert record["target_ref"]["ref"] is None
+    assert "the release target names no branch" in record["blockers"]
+
+
+def test_the_cli_prints_the_ref_it_used(bound, capsys):
+    assert release_main(["--evidence", str(bound), "--commit", COMMIT,
+                         "--repo", str(REPO["path"])]) == 0
+    assert json.loads(capsys.readouterr().out)["target_ref"]["ref"] == TARGET_REF
+
+
+@pytest.mark.parametrize("rollback, message", [
+    ("1" * 40, "the rollback commit doesn't exist in this repository"),
+    (None, "the rollback commit isn't an ancestor of the candidate")])
+def test_a_rollback_target_must_be_behind_the_candidate(bound, rollback, message):
+    rollback = rollback or commit_on(REPO["path"], {"later.txt": b"ahead of the candidate"})
+    target = {**TARGETS["rollback_target"], "commit": rollback}
+    record = release(bound, targets={**TARGETS, "rollback_target": target})
+    assert record["promotable"] is False and record["blockers"] == [message]
+
+
 def test_a_live_claim_without_a_report_proves_nothing_and_leaves_promotion_alone(bound):
     statuses = {**TARGETS["statuses"], "live_capability": {"status": "passed"}}
     record = release(bound, targets={**TARGETS, "statuses": statuses})
-    assert record["live_evidence"]["validated"] is False
+    assert record["live_evidence"]["shape_checks_passed"] is False
+    assert record["live_evidence"]["proven"] is False
     assert record["customer_connected_use_allowed"] is False
     assert record["promotable"] is True
 
@@ -1160,10 +1258,7 @@ def future_report(tmp_path) -> dict:
 
 
 def customer_target(root, report) -> dict:
-    """A fully evidenced future target."""
-    (root / "web").mkdir(exist_ok=True)
-    (root / "uv.lock").write_text("lock", "utf-8")
-    (root / "web" / "package-lock.json").write_text("{}", "utf-8")
+    """A fully evidenced future target. ``root`` holds what ``release_with`` commits."""
     evidence = root / "evidence"
     evidence.mkdir(exist_ok=True)
     gates = {}
@@ -1172,7 +1267,7 @@ def customer_target(root, report) -> dict:
         gates[gate_name] = {"status": "passed", "evidence": f"evidence/{gate_name}.md"}
     (evidence / "report.json").write_text(json.dumps(report), "utf-8")
     return {**json.loads(json.dumps(TARGETS)), "security_gates": gates,
-            "release_target": {"kind": "customer_connected"},
+            "release_target": {**TARGETS["release_target"], "kind": "customer_connected"},
             "statuses": {**TARGETS["statuses"],
                          "runtime": {"status": "authenticated_service"},
                          "live_capability": {
@@ -1186,14 +1281,22 @@ def rewrite_report(root, **changes):
     path.write_text(json.dumps({**json.loads(path.read_text("utf-8")), **changes}), "utf-8")
 
 
+def release_with(evidence, tmp_path, root, targets):
+    """Commit ``targets`` and everything under ``root``, and release that commit."""
+    files = {path.relative_to(root).as_posix(): path.read_bytes()
+             for path in root.rglob("*") if path.is_file()}
+    return release_commit(evidence, tmp_path,
+                          {**files, TARGETS_FILE: json.dumps(targets).encode()})
+
+
 def test_no_report_todays_probe_can_write_allows_customer_use(bound, tmp_path):
     """Unreachable today, and that's correct: the probe doesn't test the required limits."""
     (tmp_path / "root").mkdir()
     root = tmp_path / "root"
-    targets = customer_target(root, probe_report(tmp_path))
-    record = release(bound, targets=targets, root=root)
+    record = release_with(bound, tmp_path, root, customer_target(root, probe_report(tmp_path)))
     assert record["customer_connected_use_allowed"] is False
-    assert record["live_evidence"]["validated"] is False
+    assert record["live_evidence"]["shape_checks_passed"] is False
+    assert record["live_evidence"]["proven"] is False
     assert record["promotable"] is True
 
 
@@ -1207,13 +1310,94 @@ def test_customer_use_stays_false_with_every_requirement_met(bound, tmp_path):
     """Probe: all of this can be typed by hand, so meeting it proves nothing yet."""
     report = future_report(tmp_path)
     (tmp_path / "root").mkdir()
-    record = release(bound, targets=customer_target(tmp_path / "root", report),
-                     root=tmp_path / "root")
+    root = tmp_path / "root"
+    record = release_with(bound, tmp_path, root, customer_target(root, report))
     assert record["customer_connected_use_allowed"] is False
     assert record["customer_connected_why_not"] == NO_VERIFIABLE_ORIGIN
     assert record["customer_connected_blockers"] == [NO_VERIFIABLE_ORIGIN]
-    assert record["live_evidence"] == {"validated": True, "problems": []}
+    assert record["live_evidence"]["shape_checks_passed"] is True
+    assert record["live_evidence"]["problems"] == []
+    assert record["live_evidence"]["proven"] is False
+    assert record["live_evidence"]["why_not_proven"] == NO_VERIFIABLE_ORIGIN
     assert record["promotable"] is True
+
+
+def typed_report_targets(root, report):
+    """A target claiming ``passed``, whose report path git ignores (artifacts/local/)."""
+    targets = customer_target(root, report)
+    targets["statuses"]["live_capability"]["compatibility_report"] = "artifacts/local/report.json"
+    for gate_name in SECURITY_GATES:
+        targets["security_gates"][gate_name]["evidence"] = f"artifacts/local/{gate_name}.md"
+    return targets
+
+
+def test_a_hand_typed_uncommitted_report_shows_nothing(bound, tmp_path):
+    """The reviewer's reproduction: the commit claims it, the file exists only on disk."""
+    (tmp_path / "root").mkdir()
+    report = future_report(tmp_path)
+    targets = typed_report_targets(tmp_path / "root", report)
+    typed = REPO["path"] / "artifacts" / "local"
+    typed.mkdir(parents=True, exist_ok=True)
+    (typed / "report.json").write_text(json.dumps(report), "utf-8")
+    for gate_name in SECURITY_GATES:
+        (typed / f"{gate_name}.md").write_text("reviewed", "utf-8")
+    record = release_commit(bound, tmp_path, {TARGETS_FILE: json.dumps(targets).encode()})
+    assert record["live_evidence"]["shape_checks_passed"] is False
+    assert record["live_evidence"]["problems"] == [
+        "the compatibility report isn't a non-empty file in the candidate commit"]
+    assert record["live_evidence"]["compatibility_report_sha256"] is None
+    assert record["live_evidence"]["proven"] is False
+    assert set(record["security_gate_evidence_sha256"].values()) == {None}
+    assert len(record["customer_connected_blockers"]) == 1 + len(SECURITY_GATES) + 1
+    assert record["promotable"] is True
+
+
+def test_committed_evidence_is_what_counts_and_its_digest_is_recorded(bound, tmp_path):
+    """The working tree holds something else, which changes nothing in the record."""
+    (tmp_path / "root").mkdir()
+    root = tmp_path / "root"
+    report = future_report(tmp_path)
+    targets = customer_target(root, report)
+    committed = (root / "evidence" / "report.json").read_bytes()
+    gate_file = (root / "evidence" / f"{SECURITY_GATES[0]}.md").read_bytes()
+    tree = REPO["path"] / "evidence"
+    tree.mkdir(exist_ok=True)
+    (tree / "report.json").write_text("not the committed report", "utf-8")
+    record = release_with(bound, tmp_path, root, targets)
+    assert record["live_evidence"]["shape_checks_passed"] is True
+    assert record["live_evidence"]["compatibility_report_sha256"] == hashlib.sha256(
+        committed).hexdigest()
+    assert record["security_gate_evidence_sha256"][SECURITY_GATES[0]] == hashlib.sha256(
+        gate_file).hexdigest()
+    assert record["live_evidence"]["proven"] is False
+
+
+def test_a_good_report_on_disk_cant_rescue_a_bad_one_in_the_commit(bound, tmp_path):
+    (tmp_path / "root").mkdir()
+    root = tmp_path / "root"
+    report = future_report(tmp_path)
+    targets = customer_target(root, report)
+    tree = REPO["path"] / "evidence"
+    tree.mkdir(exist_ok=True)
+    (tree / "report.json").write_text(json.dumps(report), "utf-8")
+    rewrite_report(root, calls_made=0)
+    record = release_with(bound, tmp_path, root, targets)
+    assert record["live_evidence"]["shape_checks_passed"] is False
+    assert "compatibility report refused: calls_made shows no real call" in (
+        record["live_evidence"]["problems"])
+
+
+@pytest.mark.parametrize("path", [
+    "../outside.json", "/etc/passwd", "C:/report.json", "evidence\\report.json", "./report.json",
+    "evidence/../report.json", ".hidden/report.json", "report.json\nHEAD:uv.lock", " report.json",
+    "report.json\n", 7, None])
+def test_only_a_plain_path_in_the_commit_is_read(path):
+    assert _committed((REPO["path"], COMMIT), path) is None
+
+
+def test_a_plain_path_reads_the_committed_bytes():
+    assert _committed((REPO["path"], COMMIT), "uv.lock").startswith(b"version")
+    assert _committed((REPO["path"], "not a commit"), "uv.lock") is None
 
 
 def test_the_reviewers_reproduction_stays_false(bound):
@@ -1223,7 +1407,7 @@ def test_the_reviewers_reproduction_stays_false(bound):
         "compatibility_report": "does/not/exist.json"}}
     record = release(bound, targets={**TARGETS, "statuses": statuses})
     assert record["customer_connected_use_allowed"] is False
-    assert record["live_evidence"]["validated"] is False
+    assert record["live_evidence"]["shape_checks_passed"] is False
     assert record["promotable"] is True  # offline promotion isn't this decision
 
 
@@ -1232,9 +1416,9 @@ def test_a_local_target_stays_false_even_with_perfect_evidence(bound, tmp_path):
     (tmp_path / "root").mkdir()
     root = tmp_path / "root"
     targets = customer_target(root, report)
-    targets["release_target"] = {"kind": "local_single_user"}
-    record = release(bound, targets=targets, root=root)
-    assert record["live_evidence"]["validated"] is True
+    targets["release_target"]["kind"] = "local_single_user"
+    record = release_with(bound, tmp_path, root, targets)
+    assert record["live_evidence"]["shape_checks_passed"] is True
     assert record["customer_connected_use_allowed"] is False
     assert record["customer_connected_blockers"] == [NO_VERIFIABLE_ORIGIN,
                                                      "this release target is local-only"]
@@ -1342,7 +1526,7 @@ def test_any_missing_requirement_blocks_customer_use_and_nothing_else(bound, tmp
     (tmp_path / "outside.json").write_text(json.dumps(report), "utf-8")
     targets = customer_target(root, report)
     MUTATIONS[name](targets, root)
-    record = release(bound, targets=targets, root=root)
+    record = release_with(bound, tmp_path, root, targets)
     assert record["customer_connected_use_allowed"] is False
     assert record["customer_connected_blockers"] != [NO_VERIFIABLE_ORIGIN]  # it was noticed
     assert record["promotable"] is True, record["blockers"]
@@ -1352,7 +1536,7 @@ def test_a_failed_offline_gate_also_blocks_customer_use(bound, tmp_path):
     out = forged(bound, tmp_path, lambda r: r.update(live_provider_contacted=True))
     (tmp_path / "root").mkdir()
     root = tmp_path / "root"
-    record = release(out, targets=customer_target(root, future_report(tmp_path)), root=root)
+    record = release_with(out, tmp_path, root, customer_target(root, future_report(tmp_path)))
     assert record["promotable"] is False
     assert record["customer_connected_use_allowed"] is False
 

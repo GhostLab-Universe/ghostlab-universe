@@ -14,7 +14,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from starlette.testclient import TestClient
 
-from conftest import LOOPBACK, build_app, build_lab, spec_json
+from conftest import LOOPBACK, Api, build_app, build_lab, spec_json
 from ghostlab.api import create_app
 from ghostlab.api.middleware import MAX_BODY_BYTES, _read_body
 from ghostlab.api.openapi import OPENAPI_PATH
@@ -428,8 +428,6 @@ def local_dev_stack(tmp_path, *replies, local_dev_mode=True):
 
 
 def test_a_full_local_dev_flow_is_labelled_as_not_production(tmp_path):
-    from conftest import Api
-
     lab, app = local_dev_stack(tmp_path, journey_reply())
     with TestClient(app, **LOOPBACK) as client:
         api = Api(client, lab)
@@ -447,8 +445,6 @@ def test_a_full_local_dev_flow_is_labelled_as_not_production(tmp_path):
 
 
 def test_local_dev_principals_cannot_approve_outside_local_dev_mode(tmp_path):
-    from conftest import Api
-
     lab, app = local_dev_stack(tmp_path, proposal(), local_dev_mode=False)
     with TestClient(app, **LOOPBACK) as client:
         api = Api(client, lab)

@@ -114,7 +114,9 @@ function StartCampaign({ source, session }: { source: DataSource; session: Sessi
   if (worlds.length === 0) {
     return (
       <Section title="Start a campaign">
-        <Notice state="empty" title="No runnable worlds on this service" />
+        <Notice state="empty" title="No runnable worlds on this service">
+          The service lists no worlds this session can start.
+        </Notice>
       </Section>
     );
   }
@@ -146,7 +148,7 @@ function StartCampaign({ source, session }: { source: DataSource; session: Sessi
         }}
       >
         <label htmlFor="world">World</label>
-        <select id="world" value={world} onChange={(event) => setWorld(event.currentTarget.value as typeof world)}>
+        <select id="world" value={world} disabled={busy} onChange={(event) => setWorld(event.currentTarget.value as typeof world)}>
           {worlds.map((item) => (
             <option key={item} value={item}>
               {item}
@@ -156,7 +158,7 @@ function StartCampaign({ source, session }: { source: DataSource; session: Sessi
         {scenarios === null ? null : (
           <>
             <label htmlFor="scenario">Scripted scenario (checked-in proposals, not a model)</label>
-            <select id="scenario" value={scenario} onChange={(event) => setScenario(event.currentTarget.value)}>
+            <select id="scenario" value={scenario} disabled={busy} onChange={(event) => setScenario(event.currentTarget.value)}>
               {scenarios.map((item) => (
                 <option key={item} value={item}>
                   {item}
@@ -166,9 +168,9 @@ function StartCampaign({ source, session }: { source: DataSource; session: Sessi
           </>
         )}
         <label htmlFor="objective">Objective</label>
-        <input id="objective" value={objective} required maxLength={2000} onChange={(event) => setObjective(event.currentTarget.value)} />
+        <input id="objective" value={objective} required maxLength={2000} disabled={busy} onChange={(event) => setObjective(event.currentTarget.value)} />
         <label htmlFor="criterion">Success criterion</label>
-        <input id="criterion" value={criterion} required maxLength={2000} onChange={(event) => setCriterion(event.currentTarget.value)} />
+        <input id="criterion" value={criterion} required maxLength={2000} disabled={busy} onChange={(event) => setCriterion(event.currentTarget.value)} />
         <button type="submit" disabled={busy}>
           {busy ? "Starting" : "Start campaign"}
         </button>

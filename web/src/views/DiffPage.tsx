@@ -228,7 +228,7 @@ export function DiffPanel({
 
       <Section title="Every event, side by side" origins={runOrigins}>
         {runsMissing ? (
-          <Notice state="loading" title="Waiting for both recorded runs" />
+          <Notice state="loading" title="Waiting for both recorded runs" live />
         ) : (
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Baseline and fork events">
             <table className="aligned">

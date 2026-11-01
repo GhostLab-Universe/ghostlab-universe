@@ -208,6 +208,14 @@ export function RecordedErrors({ errors }: { errors: readonly ErrorInfo[] }) {
   );
 }
 
+export function BusyNote({ children }: { children: ReactNode }) {
+  return (
+    <p className="busy-note" role="status">
+      {children}
+    </p>
+  );
+}
+
 export function Loading({ what }: { what: string }) {
   return <Notice state="loading" title={`Loading ${what}`} live />;
 }

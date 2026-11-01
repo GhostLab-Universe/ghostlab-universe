@@ -8,7 +8,7 @@ import { presentRepair } from "../logic/repair.ts";
 import { campaignHref } from "../logic/routes.ts";
 import { outcomeNotice, proposalCallsLabel, taskStatus } from "../logic/status.ts";
 import { orderTasks } from "../logic/timeline.ts";
-import { Digest, Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
+import { BusyNote, Digest, Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
 import { CoverageLine } from "./experimentData.tsx";
 
 export function CampaignPanel({
@@ -88,7 +88,13 @@ export function CampaignPanel({
 }
 
 function ExperimentList({ view }: { view: CampaignView }) {
-  if (view.experiments.length === 0) return <Notice state="empty" title="No experiments yet" />;
+  if (view.experiments.length === 0) {
+    return (
+      <Notice state="empty" title="No experiments yet">
+        Experiments appear here once the campaign runs.
+      </Notice>
+    );
+  }
   return (
     <ul className="findings">
       {view.experiments.map((experiment) => {
@@ -131,20 +137,21 @@ function AwaitingApproval({ view }: { view: CampaignView }) {
 }
 
 function JobControls({ view, source, refresh }: { view: CampaignView; source: DataSource; refresh: () => Promise<void> }) {
-  const [busy, setBusy] = useState(false);
+  const [jobAction, setJobAction] = useState<"cancel" | "resume" | null>(null);
+  const busy = jobAction !== null;
   const [failure, setFailure] = useState<Failure | null>(null);
   const { status } = view.record;
   const paused = status === "awaiting_approval";
   const canCancel = (status === "running" || status === "queued" || paused) && !view.job.cancel_requested;
   const stalled = view.job.state === "stalled";
 
-  async function act(run: () => Promise<Result<CampaignView>>) {
-    setBusy(true);
+  async function act(name: "cancel" | "resume", run: () => Promise<Result<CampaignView>>) {
+    setJobAction(name);
     setFailure(null);
     const result = await run();
     if (!result.ok) setFailure(result.failure);
     await refresh();
-    setBusy(false);
+    setJobAction(null);
   }
 
   if (!canCancel && !stalled && !view.job.cancel_requested && failure === null) return null;
@@ -163,16 +170,21 @@ function JobControls({ view, source, refresh }: { view: CampaignView; source: Da
       ) : null}
       <div className="actions">
         {canCancel ? (
-          <button type="button" disabled={busy} onClick={() => void act(() => source.cancelCampaign(id))}>
+          <button type="button" disabled={busy} onClick={() => void act("cancel", () => source.cancelCampaign(id))}>
             Cancel campaign
           </button>
         ) : null}
         {stalled ? (
-          <button type="button" disabled={busy} onClick={() => void act(() => source.resumeCampaign(id))}>
+          <button type="button" disabled={busy} onClick={() => void act("resume", () => source.resumeCampaign(id))}>
             Resume campaign
           </button>
         ) : null}
       </div>
+      {jobAction === "cancel" ? (
+        <BusyNote>Cancelling the campaign…</BusyNote>
+      ) : jobAction === "resume" ? (
+        <BusyNote>Resuming the campaign…</BusyNote>
+      ) : null}
       {failure === null ? null : <FailureNotice failure={failure} />}
     </Section>
   );
@@ -315,7 +327,13 @@ function BudgetTable({
 
 function TaskTimeline({ view }: { view: CampaignView }) {
   const ordered = orderTasks(view.tasks);
-  if (ordered.length === 0) return <Notice state="empty" title="No tasks yet" />;
+  if (ordered.length === 0) {
+    return (
+      <Notice state="empty" title="No tasks yet">
+        The service has not recorded any tasks for this campaign yet.
+      </Notice>
+    );
+  }
   const position = new Map(ordered.map((item, index) => [item.task.task_id, index + 1]));
   return (
     <ol className="timeline">

@@ -232,6 +232,13 @@ test("controls appear only for a pending approval", () => {
   assert.match(text(panel(consumed)), /Approver \(from the session\) local-dev-user/);
 });
 
+test("an action in progress says what is happening, and an idle panel says nothing", () => {
+  const pending = scenario("fx-refund").stage.approval!;
+  assert.match(text(panel(pending, { busy: true, busyAction: "decide" })), /Recording your decision/);
+  assert.match(text(panel(pending, { busy: true, busyAction: "resume" })), /Resuming the campaign/);
+  assert.doesNotMatch(panel(pending), /Recording your decision|Resuming the campaign/);
+});
+
 test("a session without approval rights sees why, and the form never sends a role", () => {
   const pending = scenario("fx-refund").stage.approval!;
   const markup = panel(pending, { session: { ...session, can_approve: false } });

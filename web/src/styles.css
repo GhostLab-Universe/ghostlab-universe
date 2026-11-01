@@ -123,6 +123,11 @@ pre {
   color: var(--muted);
 }
 
+.busy-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .skip {
   position: absolute;
   left: 8px;

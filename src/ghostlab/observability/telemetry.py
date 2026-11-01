@@ -3,9 +3,10 @@
 Everything is injectable (sink, clock, timer, id generator, redactor), so a test can pin
 a trace exactly and a component can default to ``NULL_TELEMETRY`` without new wiring.
 
-Telemetry never changes a business result. A failing sink, or a record that can't be
-sanitized, is counted and dropped; nothing raises into the caller, and a bad record is
-never written unredacted. Pass ``strict=True`` in tests so instrumentation bugs surface.
+Telemetry never changes a business result. A failing sink, clock, timer or id generator,
+or a record that can't be sanitized, is counted and dropped; nothing raises into the
+caller, and a bad record is never written unredacted. Pass ``strict=True`` in tests so
+instrumentation bugs surface, though never in place of a business exception.
 """
 
 import secrets
@@ -15,7 +16,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from typing import Any
 
-from .redact import Sanitizer, TextRedactor
+from .redact import Sanitizer, TextRedactor, check_attribute_names
 from .schema import (APPROVAL_STATUSES, MAX_COUNT, NAME_PATTERN, SCHEMA, SPAN_ID_PATTERN, TIMESTAMP_PATTERN,
                      TelemetryRecord, TraceContext, Usage, Versions)
 from .sinks import NullSink, TelemetrySink
@@ -60,18 +61,30 @@ class _SpanScope:
 
     def __exit__(self, kind, error, traceback):
         span, telemetry = self.span, self.telemetry
-        if kind is not None:
-            # The class name only: exception messages can hold request data.
-            span.outcome = span.outcome or "error"
-            span.attributes.setdefault("error_class", kind.__name__)
-        latency = max(0, round((telemetry.monotonic() - self.started) * 1000))
-        telemetry._write("span", self.name, span.context.span_id, self.parent_id, span.context,
-                         started_at=self.started_at, latency_ms=latency, outcome=span.outcome,
-                         error_code=span.error_code, usage=span.usage, attempt=span.attempt,
-                         retries=span.retries, cancelled=span.cancelled,
-                         validation_failures=span.validation_failures,
-                         approval_id=span.approval_id, approval_status=span.approval_status,
-                         attributes=span.attributes)
+        if self.started is None:  # it never started, which is already counted
+            return False
+        try:
+            if kind is not None:
+                # The class name only: exception messages can hold request data.
+                span.outcome = span.outcome or "error"
+                span.attributes.setdefault("error_class", kind.__name__)
+            latency = max(0, round((telemetry.monotonic() - self.started) * 1000))
+        except Exception:
+            telemetry.rejected += 1
+            if telemetry.strict and kind is None:
+                raise
+            return False
+        try:
+            telemetry._write("span", self.name, span.context.span_id, self.parent_id, span.context,
+                             started_at=self.started_at, latency_ms=latency, outcome=span.outcome,
+                             error_code=span.error_code, usage=span.usage, attempt=span.attempt,
+                             retries=span.retries, cancelled=span.cancelled,
+                             validation_failures=span.validation_failures,
+                             approval_id=span.approval_id, approval_status=span.approval_status,
+                             attributes=span.attributes)
+        except Exception:  # strict only, and it never replaces the caller's own exception
+            if kind is None:
+                raise
         return False
 
 
@@ -84,7 +97,7 @@ class Telemetry:
                  extra_attributes: Iterable[str] = (), strict: bool = False):
         self.sink = sink or NullSink()
         self.clock, self.monotonic, self.new_span_id = clock, monotonic, new_span_id
-        self._redactor, self._extra = redactor, tuple(extra_attributes)
+        self._redactor, self._extra = redactor, tuple(check_attribute_names(extra_attributes))
         self._sanitizer: Sanitizer | None = None
         self.strict = strict
         self.written = self.rejected = self.sink_failures = 0
@@ -103,12 +116,13 @@ class Telemetry:
               retries: int | None = None, cancelled: bool | None = None,
               validation_failures: int | None = None, approval_id: str | None = None,
               approval_status: str | None = None, attributes: Mapping | None = None,
-              at: str | None = None) -> None:
+              at: str | None = None, span_id: str | None = None) -> None:
         """Write one point-in-time record under the context's current span.
 
-        ``at`` overrides the clock, for a record rebuilt later from stored evidence.
+        ``at`` and ``span_id`` override the clock and the id generator, for a record rebuilt
+        later from stored evidence.
         """
-        self._write("event", name, None, context.span_id, context, started_at=None, at=at,
+        self._write("event", name, span_id, context.span_id, context, started_at=None, at=at,
                     latency_ms=latency_ms, outcome=outcome, error_code=error_code,
                     usage=usage or Usage(), attempt=attempt, retries=retries, cancelled=cancelled,
                     validation_failures=validation_failures, approval_id=approval_id,
@@ -116,11 +130,16 @@ class Telemetry:
 
     def span(self, name: str, context: TraceContext, **versions) -> _SpanScope:
         """A timed scope: ``with telemetry.span("model.call", ctx, role="explorer") as s:``."""
-        span_id = self.new_span_id()
-        child = replace(context, span_id=span_id,
-                        versions=replace(context.versions, **versions))
-        return _SpanScope(self, name, Span(child), context.span_id, _timestamp(self.clock()),
-                          self.monotonic())
+        try:
+            child = replace(context, span_id=self.new_span_id(),
+                            versions=replace(context.versions, **versions))
+            return _SpanScope(self, name, Span(child), context.span_id, _timestamp(self.clock()),
+                              self.monotonic())
+        except Exception:
+            self.rejected += 1
+            if self.strict:
+                raise
+            return _SpanScope(self, name, Span(context), None, None, None)  # records nothing
 
     def finished_span(self, name: str, context: TraceContext, *, span_id: str, started_at: str,
                       ended_at: str, latency_ms: int | None = None, outcome: str | None = None,
@@ -167,7 +186,9 @@ class Telemetry:
                 latency_ms, outcome, error_code, usage: Usage, attempt, retries, cancelled,
                 validation_failures, approval_id, approval_status,
                 attributes: Mapping[str, Any] | None, at: str | None) -> TelemetryRecord:
-        if not isinstance(name, str) or not NAME_PATTERN.match(name):
+        clean = self.sanitizer
+        # A name has no marker to fall back to: a valid one that isn't clean is refused.
+        if not isinstance(name, str) or not NAME_PATTERN.match(name) or clean.text(name) != name:
             raise ValueError("telemetry name must be a dotted lowercase identifier")
         for moment in (at, started_at):
             if moment is not None and not TIMESTAMP_PATTERN.match(moment):
@@ -183,7 +204,6 @@ class Telemetry:
                 raise ValueError("counts must be non-negative integers or None")
         if cancelled is not None and type(cancelled) is not bool:
             raise ValueError("cancelled must be a boolean or None")
-        clean = self.sanitizer
         kept, dropped = clean.attribute_map(attributes)
         versions: Versions = context.versions
         return TelemetryRecord(

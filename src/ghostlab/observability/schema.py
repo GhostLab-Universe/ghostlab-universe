@@ -28,12 +28,13 @@ EVENT_NAMES = (
 )
 APPROVAL_STATUSES = ("pending", "approved", "rejected", "expired", "consumed", "denied")
 
-NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$")
-TRACE_ID_PATTERN = re.compile(r"^[0-9a-f]{32}$")
-SPAN_ID_PATTERN = re.compile(r"^[0-9a-f]{16}$")
+# ``\Z``, not ``$``, which also matches just before a trailing newline.
+NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*\Z")
+TRACE_ID_PATTERN = re.compile(r"^[0-9a-f]{32}\Z")
+SPAN_ID_PATTERN = re.compile(r"^[0-9a-f]{16}\Z")
 TIMESTAMP_PATTERN = re.compile(
-    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z$")
-CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z\Z")
+CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}\Z")
 MAX_COUNT = 10**15
 
 
@@ -63,7 +64,8 @@ class Usage:
         _known_count(self.cost_minor, "cost_minor")
         if (self.cost_minor is None) != (self.cost_currency is None):
             raise ValueError("cost_minor and cost_currency are set together")
-        if self.cost_currency is not None and not CURRENCY_PATTERN.match(self.cost_currency):
+        if self.cost_currency is not None and not (
+                isinstance(self.cost_currency, str) and CURRENCY_PATTERN.match(self.cost_currency)):
             raise ValueError("cost_currency must be a three-letter code")
 
     @classmethod

@@ -113,7 +113,30 @@ def test_unknown_usage_stays_unknown_in_the_trace(tmp_path):
     assert "gen_ai.usage" not in json.dumps(to_otlp([span]))
 
 
-def test_a_rebuilt_trace_has_stable_ids(tmp_path):
+def test_a_rebuilt_trace_is_the_same_trace(tmp_path):
     stack = Stack(tmp_path / "store", Transport(reply(refund_proposal())))
-    state = start(stack, REFUND)
-    assert traced(stack, state, tmp_path / "a")[0] == traced(stack, state, tmp_path / "b")[0]
+    state = approve_and_resume(stack, start(stack, REFUND))
+    first, second = (traced(stack, state, tmp_path / name)[1].records for name in "ab")
+    assert len(first) > 10 and first == second
+    assert len({record.span_id for record in first}) == len(first)
+
+
+def rebuilt_retries(attempts):
+    sink = InMemorySink()
+    emit_campaign_trace(Telemetry(sink, strict=True, redactor=Redactor()), {
+        "trace_id": "0" * 32, "started_at": "2026-10-30T12:00:00Z", "status": "completed"},
+        attempts=attempts)
+    (span,) = by_name(sink, "campaign.run")
+    return span.retries
+
+
+OK, BUSY, LOST = ({"http_status": 200, "outcome": "ok"}, {"http_status": 429, "outcome": "error"},
+                  {"http_status": None, "outcome": "transport_raised"})
+
+
+def test_only_an_attempt_after_a_failure_is_a_retry():
+    assert rebuilt_retries([]) is None
+    assert rebuilt_retries([OK]) == 0
+    assert rebuilt_retries([OK, OK]) == 0  # two calls, each of which worked
+    assert rebuilt_retries([BUSY, OK]) == 1
+    assert rebuilt_retries([BUSY, LOST, OK, OK, BUSY]) == 2

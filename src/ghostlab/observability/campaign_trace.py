@@ -10,6 +10,8 @@ purpose: they can quote model output, and telemetry has no free text.
 Times are what the state recorded. Tasks, errors and HTTP attempts have no timestamp of
 their own, so they carry the campaign's last recorded time and their ``latency_ms`` is
 unknown. Real per-call timing needs M05 and M01 to write spans as they run.
+
+Every id is derived, so rebuilding a campaign's trace gives the same records.
 """
 
 import hashlib
@@ -64,22 +66,26 @@ def emit_campaign_trace(telemetry: Telemetry, state: Mapping, *,
     ended = events[-1]["occurred_at"] if events else started
     errors = list(state.get("errors", ()))
 
-    for event in events:
+    def span_id(label: str, index: int) -> str:
+        return _derived_span_id(trace_id, f"{label}:{index}")
+
+    for index, event in enumerate(events, 1):
         name = _EVENT_NAMES.get(event["kind"], "campaign.status")
         telemetry.event(name, context.with_task(event.get("task_id")), at=event["occurred_at"],
-                        approval_id=_approval_ref(event),
+                        span_id=span_id("event", index), approval_id=_approval_ref(event),
                         attributes={"sequence": event["sequence"],
                                     "run_id": event.get("run_id")})
-    for task in state.get("tasks", ()):
+    for index, task in enumerate(state.get("tasks", ()), 1):
         telemetry.event("task.status", context.with_task(task["task_id"], role=task["role"]),
-                        at=ended, outcome=task["status"], attempt=task["attempt"])
-    for error in errors:
+                        at=ended, span_id=span_id("task", index), outcome=task["status"],
+                        attempt=task["attempt"])
+    for index, error in enumerate(errors, 1):
         telemetry.event(_ERROR_NAMES.get(error["code"], "campaign.error"), context, at=ended,
-                        error_code=error["code"],
+                        span_id=span_id("error", index), error_code=error["code"],
                         attributes={"side_effect": error.get("side_effect")})
     for index, attempt in enumerate(attempts, 1):
-        telemetry.event("model.attempt", context, at=ended, attempt=index,
-                        outcome=attempt.get("outcome"),
+        telemetry.event("model.attempt", context, at=ended, span_id=span_id("attempt", index),
+                        attempt=index, outcome=attempt.get("outcome"),
                         attributes={"http_status": attempt.get("http_status"),
                                     "transport": attempt.get("transport")})
 
@@ -89,7 +95,8 @@ def emit_campaign_trace(telemetry: Telemetry, state: Mapping, *,
     telemetry.finished_span(
         ROOT_SPAN, root, span_id=root_id, started_at=started, ended_at=ended,
         outcome=state.get("outcome") or state.get("status"), usage=usage,
-        retries=max(0, len(attempts) - 1) if attempts else None,
+        # An attempt after a failed one. Two calls that both worked are not a retry.
+        retries=sum(item.get("outcome") != "ok" for item in attempts[:-1]) if attempts else None,
         cancelled=state.get("status") == "cancelled",
         validation_failures=sum(error["code"] in _VALIDATION_CODES for error in errors),
         approval_id=approval.get("approval_id"), approval_status=approval_status,

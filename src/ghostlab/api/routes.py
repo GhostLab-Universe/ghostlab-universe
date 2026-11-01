@@ -1,8 +1,8 @@
 """HTTP routes (``ghostlab-api/1``): thin adapters over ``ControlPlane``.
 
 No route takes a project, principal, role or scope. The session comes from the
-authentication middleware, which runs before routing, so a route can't be left
-unauthenticated by forgetting a dependency.
+request guard, which runs before routing, so a route can't be left without one by
+forgetting a dependency.
 """
 
 from typing import Annotated
@@ -46,7 +46,13 @@ WRITE_ERRORS = {
     409: {"model": ErrorResponse, "description": "Conflicts with the current state"},
     429: {"model": ErrorResponse, "description": "Too many campaigns running; retry later",
           "headers": {"Retry-After": STRING_HEADER}},
-    503: {"model": ErrorResponse, "description": "Authentication unavailable or server shutting down; retry later"},
+    503: {"model": ErrorResponse, "description": "Authentication unavailable, server shutting "
+                                                 "down or unable to start a worker; retry later"},
+}
+BODY_ERRORS = {
+    400: {"model": ErrorResponse, "description": "Body could not be parsed, for example JSON "
+                                                 "nested too deeply; nothing was changed"},
+
 }
 REPLAYED = {"headers": {"Idempotency-Replayed": {
     "description": "Present and true when this request's identity was already used",
@@ -79,7 +85,7 @@ def get_session(control: Plane, who: Session):
 
 @router.post("/campaigns", response_model=CampaignView, status_code=202,
              operation_id="createCampaign", tags=["campaigns"],
-             responses={**WRITE_ERRORS, 202: REPLAYED})
+             responses={**BODY_ERRORS, **WRITE_ERRORS, 202: REPLAYED})
 def create_campaign(spec: WorldCampaignSpec, key: IdempotencyKey, response: Response,
                     control: Plane, who: Session,
                     scripted_scenario: Annotated[ScriptedScenario, Query(
@@ -186,7 +192,8 @@ def replay_campaign_capsule(campaign_id: CampaignId, experiment_id: ExperimentId
 
 
 @router.post("/capsules/import", response_model=CapsuleImport, status_code=201,
-             operation_id="importCapsule", tags=["capsules"], responses=WRITE_ERRORS)
+             operation_id="importCapsule", tags=["capsules"],
+             responses={**BODY_ERRORS, **WRITE_ERRORS})
 def import_capsule(capsule: CapsuleV1 | CapsuleV2, control: Plane, who: Session):
     """Validate a capsule, replay it, and store it in the session's project.
 
@@ -234,7 +241,7 @@ def get_approval(approval_id: ApprovalId, control: Plane, who: Session):
 
 @router.post("/approvals/{approval_id}/decision", response_model=DecisionResult,
              operation_id="decideApproval", tags=["approvals"],
-             responses={**WRITE_ERRORS, 200: REPLAYED})
+             responses={**BODY_ERRORS, **WRITE_ERRORS, 200: REPLAYED})
 def decide_approval(approval_id: ApprovalId, submission: ApprovalSubmission,
                     key: IdempotencyKey, response: Response, control: Plane, who: Session):
     """Approve or reject through M06. The approver is the session, never the body.

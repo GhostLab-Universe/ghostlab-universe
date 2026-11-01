@@ -17,6 +17,7 @@ import tempfile
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
 
 import httpx
@@ -34,7 +35,8 @@ from ghostlab.contracts.world import (CapsuleV2, WorldCampaignRecord, WorldCampa
 from ghostlab.contracts.world_packs import PACKS
 from ghostlab.contracts.world_refund import (REFUND, capsule_v2_to_v1, diff_to_world,
                                              finding_to_world, proposal_to_world, run_to_world)
-from ghostlab.orchestration import CampaignController, Services, TrustedSession
+from ghostlab.orchestration import (CampaignController, CampaignSettingsChanged, Services,
+                                    TrustedSession)
 from ghostlab.orchestration.controller import CampaignExists, ledger_key
 from ghostlab.policy import (ApprovalDenied, ApproverAuthority, PolicyDenied, action_digest,
                              authorize_capability, authorize_world, root_scope)
@@ -55,6 +57,7 @@ from .sessions import ApiSession
 CANCEL_WAIT_S = 10.0  # how long a cancel waits to learn whether it ended a stopped campaign
 MAX_LISTED_ERRORS = 256
 MAX_TEXT = 2_000  # the contracts' Text limit; a redaction marker can lengthen a short match
+VERDICTS = {"completed", "failed", "cancelled", "budget_exhausted"}  # only M05's _stop sets these
 
 
 @dataclass(frozen=True)
@@ -95,6 +98,22 @@ def _keys(value) -> Iterator[str]:
             pending.extend(item)
 
 
+class PinningController(CampaignController):
+    """``start`` with one step between its gates and its first checkpoint.
+
+    A refused start stores nothing, so it leaves no pin; a failed pin leaves no campaign;
+    and nothing can read a campaign before its pin. M05 has no hook here (M07.md, requests).
+    """
+
+    def __init__(self, *args, pin: Callable[[], None], **options):
+        super().__init__(*args, **options)
+        self._pin = pin
+
+    def _invoke(self, payload, campaign_id):
+        self._pin()
+        return super()._invoke(payload, campaign_id)
+
+
 class ControlPlane:
     def __init__(self, config: ApiConfig, saver):
         self.config, self.services, self.saver = config, config.services, saver
@@ -107,10 +126,12 @@ class ControlPlane:
     # -- plumbing ---------------------------------------------------------------------
 
     def _controller(self, session: TrustedSession, *, services: Services | None = None,
-                    cancel=None) -> CampaignController:
-        return CampaignController(session, services or self.services, saver=self.saver,
-                                  max_iterations=self.config.max_iterations,
-                                  approval_ttl=self.config.approval_ttl, cancel=cancel)
+                    cancel=None, pin: Callable[[], None] | None = None) -> CampaignController:
+        options = {"saver": self.saver, "max_iterations": self.config.max_iterations,
+                   "approval_ttl": self.config.approval_ttl, "cancel": cancel}
+        if pin is not None:
+            return PinningController(session, services or self.services, pin=pin, **options)
+        return CampaignController(session, services or self.services, **options)
 
     def _record_failure(self, key: str, error: BaseException, cancelling: bool):
         _, body, _ = describe(error if isinstance(error, Exception) else RuntimeError(),
@@ -138,13 +159,13 @@ class ControlPlane:
             hook = self.services.on_node
             replies = None
             if self.config.scripted:
-                origin = self._origin(session, campaign_id) or {}
-                replies = ScriptedProposals(
-                    scenario or origin.get("scripted_scenario") or DEFAULT_SCENARIO)
+                pinned = (self._origin(session, campaign_id) or {}).get("scripted_scenario")
+                # A stop serves no proposal, so it needs no scenario. Anything else would guess.
+                if scenario is None and pinned is None and not job.cancel.is_set():
+                    raise CampaignSettingsChanged("this campaign has no recorded scenario")
+                replies = ScriptedProposals(scenario or pinned or DEFAULT_SCENARIO)
 
             def on_node(name, state):
-                if scenario is not None and not job.entered:
-                    self._pin_origin(session, campaign_id, scenario)
                 job.entered = True  # the checkpoint exists: this campaign can be read
                 job.settled.set()
                 if self.jobs.stopping.is_set():
@@ -156,7 +177,9 @@ class ControlPlane:
             services = dataclasses.replace(
                 self.services, on_node=on_node,
                 runtime=scripted_runtime(replies) if replies else self.services.runtime)
-            call(self._controller(session, services=services, cancel=job.cancel))
+            pin = None if scenario is None else partial(self._pin_origin, session, campaign_id,
+                                                        scenario)
+            call(self._controller(session, services=services, cancel=job.cancel, pin=pin))
 
         return self.jobs.submit(key, work, cancel=cancel, follow=follow)
 
@@ -172,7 +195,10 @@ class ControlPlane:
             view.put(json.dumps(origin, sort_keys=True).encode(), name=f"{campaign_id}-origin",
                      media_type="application/json", provenance=provenance, created_at=stamp)
         except Conflict:
-            pass  # a restart of this same start; the first pin stands
+            # An earlier start stored this and no checkpoint. A pin never changes, so this
+            # one can only be that same start.
+            if self._origin(session, campaign_id) != origin:
+                raise self._key_reused() from None
 
     def _origin(self, session, campaign_id: str) -> dict | None:
         key = ledger_key(session.project_id, campaign_id)
@@ -278,10 +304,15 @@ class ControlPlane:
             replayed = not started
         state = self._controller(trusted).state(campaign_id)
         pinned = (self._origin(trusted, campaign_id) or {}).get("scripted_scenario")
-        if state["spec"] != spec.model_dump(mode="json") or pinned not in (None, scenario):
-            raise ApiError(409, "conflict", "This Idempotency-Key was used for a different spec",
-                           reason="idempotency_key_reused")
+        if (state["spec"] != spec.model_dump(mode="json")
+                or (pinned or DEFAULT_SCENARIO) != scenario):
+            raise self._key_reused()
         return self.campaign_view(session, campaign_id), replayed
+
+    @staticmethod
+    def _key_reused() -> ApiError:
+        return ApiError(409, "conflict", "This Idempotency-Key was used for a different spec",
+                        reason="idempotency_key_reused")
 
     def _existing(self, trusted: TrustedSession, campaign_id: str) -> dict | None:
         try:
@@ -385,13 +416,19 @@ class ControlPlane:
                          has_more=len(pending) > limit)
 
     @staticmethod
+    def _ended(state: dict) -> bool:
+        """Nothing is left to run: a verdict, and no step of the graph still open."""
+        return state["status"] in VERDICTS and not state["paused"]
+
+    @staticmethod
     def _proceed(campaign_id: str) -> Callable[[CampaignController], object]:
         """Run the graph on: past an approval pause, or from a crash's last checkpoint."""
         def call(controller: CampaignController):
             state = controller.state(campaign_id)
-            if state["paused"]:
-                paused = state["status"] == "awaiting_approval"
-                return (controller.resume if paused else controller.recover)(campaign_id)
+            if state["paused"] and state["status"] != "awaiting_approval":
+                state = controller.recover(campaign_id)  # it can stop at the approval pause
+            if state["paused"] and state["status"] == "awaiting_approval":
+                return controller.resume(campaign_id)
             return state
 
         return call
@@ -409,7 +446,7 @@ class ControlPlane:
         trusted = session.trusted
         controller = self._controller(trusted)
         state = controller.state(campaign_id)
-        if not state["paused"]:
+        if state["status"] in VERDICTS:  # even with its memory step left: nothing to stop
             if state["status"] != "cancelled":
                 raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
                                reason="campaign_finished")
@@ -428,7 +465,7 @@ class ControlPlane:
     def resume(self, session: ApiSession, campaign_id: str) -> CampaignView:
         trusted = session.trusted
         state = self._controller(trusted).state(campaign_id)
-        if not state["paused"]:
+        if self._ended(state):
             raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
                            reason="campaign_finished")
         # Following a running worker matters only at a pause; see JobRegistry.submit.
@@ -686,7 +723,15 @@ class ControlPlane:
                             inference=self._campaign_inference(session, state) if state else None,
                             effective_status="expired" if expired else request.status,
                             action=self._approval_action(request, state),
+                            payload_artifact_sha256=self._artifact_digest(session,
+                                                                          request.payload.id),
                             decision=store.get_decision(project_id, approval_id))
+
+    def _artifact_digest(self, session: ApiSession, artifact_id: str) -> str | None:
+        try:
+            return self._evidence(session).ref(artifact_id).sha256
+        except (PolicyDenied, NotFound):
+            return None
 
     def _resume_for_owner(self, request: ApprovalRequest,
                           project_id: str) -> tuple[bool, ErrorResponse | None]:
@@ -698,8 +743,10 @@ class ControlPlane:
         owner = TrustedSession(request.scope.principal, project_id)
         try:
             state = self._controller(owner).state(request.campaign_id)
-            if not state["paused"]:
-                if request.status == "consumed" or state["outcome"] == "repair_rejected":
+            if self._ended(state):
+                # Read again: a retry's copy can predate the worker that just used the approval.
+                stored = self.services.approval_store.get(project_id, request.approval_id)
+                if stored.status == "consumed" or state["outcome"] == "repair_rejected":
                     return True, None  # a retry: this decision is what moved the campaign
                 raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
                                reason="campaign_finished")  # stopped before this decision
@@ -729,11 +776,12 @@ class ControlPlane:
             if denied.code == "expired":  # the campaign can now end instead of staying paused
                 self._resume_for_owner(store.get(project_id, approval_id), project_id)
                 raise
-            if denied.code != "not_pending":
+            if denied.code not in {"not_pending", "conflict"}:  # conflict: lost a race
                 raise
             decision = store.get_decision(project_id, approval_id)
             if decision is None or decision.decision_id != decision_id:
-                raise
+                # Seen a moment later, the same race is not_pending: clients get one answer.
+                raise ApprovalDenied("not_pending", "approval is no longer pending") from denied
             self._require_same_decision(decision, submission)
             replayed = True
         request = store.get(project_id, approval_id)

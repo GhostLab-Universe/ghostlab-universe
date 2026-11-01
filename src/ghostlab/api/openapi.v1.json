@@ -272,7 +272,7 @@
       },
       "ApprovalView": {
         "additionalProperties": false,
-        "description": "``action`` is the exact payload the digest binds, recomputed before it is shown.",
+        "description": "``action`` is the exact payload the digest binds, recomputed before it is shown.\n\n``request.payload.sha256`` is the digest of that action, not of the artifact the ref\nnames. ``payload_artifact_sha256`` covers the artifact: its download's bytes and ETag.",
         "properties": {
           "action": {
             "anyOf": [
@@ -327,6 +327,18 @@
             ],
             "title": "Inference"
           },
+          "payload_artifact_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload Artifact Sha256"
+          },
           "request": {
             "$ref": "#/components/schemas/ApprovalRequest"
           }
@@ -336,6 +348,7 @@
           "inference",
           "effective_status",
           "action",
+          "payload_artifact_sha256",
           "decision"
         ],
         "title": "ApprovalView",
@@ -2273,7 +2286,7 @@
       },
       "SessionInfo": {
         "additionalProperties": false,
-        "description": "What the authenticated session resolved to. Nothing here is client-selected.",
+        "description": "What the session resolved to. Nothing here is client-selected.",
         "properties": {
           "auth_mode": {
             "enum": [
@@ -3225,7 +3238,7 @@
     }
   },
   "info": {
-    "description": "Authenticated control plane for GhostLab Universe experiments. Worlds are synthetic. Project and principal come from the session, never a request. Events are application events, not model-token streaming.",
+    "description": "Local control plane for GhostLab Universe experiments. No production authentication exists: a local_dev session takes no credential. Worlds are synthetic. Project and principal come from the session, never a request. Events are application events, not model-token streaming.",
     "title": "GhostLab Control Plane",
     "version": "1.0.0"
   },
@@ -3557,6 +3570,16 @@
               }
             }
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Body could not be parsed, for example JSON nested too deeply; nothing was changed"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3659,7 +3682,7 @@
                 }
               }
             },
-            "description": "Authentication unavailable or server shutting down; retry later"
+            "description": "Authentication unavailable, server shutting down or unable to start a worker; retry later"
           }
         },
         "security": [
@@ -3870,6 +3893,16 @@
               }
             }
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Body could not be parsed, for example JSON nested too deeply; nothing was changed"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -3972,7 +4005,7 @@
                 }
               }
             },
-            "description": "Authentication unavailable or server shutting down; retry later"
+            "description": "Authentication unavailable, server shutting down or unable to start a worker; retry later"
           }
         },
         "security": [
@@ -4238,7 +4271,7 @@
                 }
               }
             },
-            "description": "Authentication unavailable or server shutting down; retry later"
+            "description": "Authentication unavailable, server shutting down or unable to start a worker; retry later"
           }
         },
         "security": [
@@ -4684,7 +4717,7 @@
                 }
               }
             },
-            "description": "Authentication unavailable or server shutting down; retry later"
+            "description": "Authentication unavailable, server shutting down or unable to start a worker; retry later"
           }
         },
         "security": [
@@ -5253,7 +5286,7 @@
                 }
               }
             },
-            "description": "Authentication unavailable or server shutting down; retry later"
+            "description": "Authentication unavailable, server shutting down or unable to start a worker; retry later"
           }
         },
         "security": [
@@ -5299,6 +5332,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Body could not be parsed, for example JSON nested too deeply; nothing was changed"
           },
           "401": {
             "content": {
@@ -5402,7 +5445,7 @@
                 }
               }
             },
-            "description": "Authentication unavailable or server shutting down; retry later"
+            "description": "Authentication unavailable, server shutting down or unable to start a worker; retry later"
           }
         },
         "security": [

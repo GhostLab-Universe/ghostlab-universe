@@ -682,7 +682,9 @@ class ControlPlane:
         try:
             state = self._controller(owner).state(request.campaign_id)
             if not state["paused"]:
-                if request.status == "consumed" or state["outcome"] == "repair_rejected":
+                # Read again: a retry's copy can predate the worker that just used the approval.
+                stored = self.services.approval_store.get(project_id, request.approval_id)
+                if stored.status == "consumed" or state["outcome"] == "repair_rejected":
                     return True, None  # a retry: this decision is what moved the campaign
                 raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
                                reason="campaign_finished")  # stopped before this decision
@@ -712,11 +714,12 @@ class ControlPlane:
             if denied.code == "expired":  # the campaign can now end instead of staying paused
                 self._resume_for_owner(store.get(project_id, approval_id), project_id)
                 raise
-            if denied.code != "not_pending":
+            if denied.code not in {"not_pending", "conflict"}:  # conflict: lost a race
                 raise
             decision = store.get_decision(project_id, approval_id)
             if decision is None or decision.decision_id != decision_id:
-                raise
+                # Seen a moment later, the same race is not_pending: clients get one answer.
+                raise ApprovalDenied("not_pending", "approval is no longer pending") from denied
             self._require_same_decision(decision, submission)
             replayed = True
         request = store.get(project_id, approval_id)

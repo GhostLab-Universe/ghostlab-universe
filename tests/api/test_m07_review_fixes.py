@@ -5,10 +5,13 @@ Inference is a labeled fixture (httpx.MockTransport). Everything else is the rea
 
 import copy
 import dataclasses
+import hashlib
 import json
 import threading
+import time
 import types
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -24,10 +27,13 @@ from ghostlab.api.sessions import LocalDevSessions
 from ghostlab.api.tracing import disable_trace_export, drop_provider_keys
 from ghostlab.api.sessions import ApiSession
 from ghostlab.api import create_app
-from ghostlab.api.plane import ApiConfig
+from ghostlab.api.errors import ApiError
+from ghostlab.api.plane import ApiConfig, request_digest
 from ghostlab.contracts.world_refund import capsule_digest
 from ghostlab.policy import ProjectApproverAllowlist
 from ghostlab.providers import ProviderConfigError
+from ghostlab.storage.artifacts import FileArtifactStore
+from ghostlab.storage.interfaces import NotFound, StorageError
 from ghostlab.worlds.journey import JourneyFixture
 from ghostlab.worlds.journey_capsule import capsule_digest as journey_digest
 from m05_harness import OPERATOR, PROJECT, SECRET, Script, proposal
@@ -442,10 +448,10 @@ def test_a_secret_in_a_journey_state_key_is_refused(stack):
     assert response.json()["reason"] == "secret_shaped_text"
 
 
-def scripted_app(tmp_path, *, on_node=None):
+def scripted_app(tmp_path, *, on_node=None, scripted=True):
     environ = {"GHOSTLAB_AUTH_MODE": "local_dev"}
     sessions = LocalDevSessions.from_environment("127.0.0.1", environ=environ)
-    config = local_config(tmp_path / "root", sessions, bind_host="127.0.0.1", scripted=True,
+    config = local_config(tmp_path / "root", sessions, bind_host="127.0.0.1", scripted=scripted,
                           environ=environ)
     if on_node is not None:
         config = dataclasses.replace(
@@ -566,3 +572,70 @@ def test_a_scripted_server_holds_no_provider_key(tmp_path, monkeypatch, scripted
     args = ["--root", str(tmp_path / "root"), "--port", "1", *(["--scripted"] if scripted else [])]
     assert entry.main(args) == 0
     assert seen["keys"] == held
+
+
+# -- third review: a decision raced by its own retries -----------------------------------------
+
+def record_together(api, monkeypatch, parties):
+    """Hold every decision until all have passed M06's pending check, so the race is real."""
+    store = api.client.app.state.plane.services.approvals._store
+    barrier, record = threading.Barrier(parties, timeout=20), store.record_decision
+
+    def together(*args, **options):
+        barrier.wait()
+        return record(*args, **options)
+
+    monkeypatch.setattr(store, "record_decision", together)
+
+
+def test_concurrent_retries_of_one_decision_all_get_it(stack, monkeypatch):
+    api = stack(proposal())
+    paused = api.paused()
+    record_together(api, monkeypatch, 6)
+    with ThreadPoolExecutor(6) as pool:
+        responses = list(pool.map(lambda _: api.decide(paused), range(6)))
+    assert [response.status_code for response in responses] == [200] * 6, responses[0].text
+    assert len({response.json()["decision"]["decision_id"] for response in responses}) == 1
+    assert sum("Idempotency-Replayed" in response.headers for response in responses) == 5
+    assert all(response.json()["resumed"] for response in responses)
+    view = api.wait(paused["record"]["campaign_id"], "completed")
+    assert view["outcome"] == "repair_verified"
+    approval = api.get(f"/v1/approvals/{paused['approval']['approval_id']}").json()
+    assert approval["request"]["status"] == "consumed"
+
+
+def test_a_decision_losing_a_race_to_another_reads_as_not_pending(stack, monkeypatch):
+    api = stack(proposal())
+    paused = api.paused()
+    record_together(api, monkeypatch, 2)
+    with ThreadPoolExecutor(2) as pool:
+        responses = list(pool.map(lambda pair: api.decide(paused, pair[0], key=pair[1]),
+                                  [("approve", "yes"), ("reject", "no")]))
+    loser = next(response for response in responses if response.status_code != 200)
+    assert sorted(response.status_code for response in responses) == [200, 409]
+    assert loser.json()["error"]["code"] == "approval_invalid"
+    assert loser.json()["reason"] == "not_pending"
+
+
+def test_a_key_raced_with_another_decision_is_refused_as_reused(stack, monkeypatch):
+    api = stack(proposal())
+    paused = api.paused()
+    record_together(api, monkeypatch, 2)
+    with ThreadPoolExecutor(2) as pool:
+        responses = list(pool.map(lambda decision: api.decide(paused, decision, key="same"),
+                                  ["approve", "reject"]))
+    loser = next(response for response in responses if response.status_code != 200)
+    assert sorted(response.status_code for response in responses) == [200, 409]
+    assert (loser.json()["error"]["code"], loser.json()["reason"]) == (
+        "conflict", "idempotency_key_reused")
+
+
+def test_a_retry_landing_after_the_repair_finished_still_reads_as_resumed(stack):
+    api = stack(proposal())
+    paused = api.paused()
+    plane = api.client.app.state.plane
+    # What a retry read before the worker consumed the approval and ran the repair.
+    earlier = plane.services.approval_store.get(PROJECT, paused["approval"]["approval_id"])
+    assert api.decide(paused).status_code == 200
+    api.wait(paused["record"]["campaign_id"], "completed")
+    assert plane._resume_for_owner(earlier, PROJECT) == (True, None)

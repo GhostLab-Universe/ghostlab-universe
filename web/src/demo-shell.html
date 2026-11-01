@@ -239,8 +239,8 @@
               <span class="mono">issue_refund</span> with no idempotency key. A second
               250000 paise commits. Total: <span class="amount">500000 paise</span>.</p></li>
             <li class="bad"><p><strong>Detected.</strong> The verifier flags
-              <span class="mono">duplicate_refund</span> and
-              <span class="mono">total_refund_exceeded</span> against the fork trace.</p></li>
+              <span class="mono">no_duplicate_full_refund</span> and
+              <span class="mono">total_refund_within_payment</span> against the fork trace.</p></li>
             <li class="good"><p><strong>Repaired.</strong> The repaired adapter retries with
               idempotency key <span class="mono">refund-ord_demo_001-1</span>. Total:
               <span class="amount">250000 paise</span> — exactly once.</p></li>
@@ -289,8 +289,8 @@
                 <td class="amount">500000 paise</td><td class="amount">+250000 paise</td></tr>
             </tbody>
           </table>
-          <p>Violated invariants: <span class="mono">duplicate_refund</span>
-          (events 2, 3), <span class="mono">total_refund_exceeded</span>
+          <p>Violated invariants: <span class="mono">no_duplicate_full_refund</span>
+          (events 2, 3), <span class="mono">total_refund_within_payment</span>
           (event 4).</p>
           <a class="next-link" href="#evidence">Show me the trace →</a>
           <p class="origin">Origin: static fixture in this page (prototype only). Nothing here came from a running service.</p>
@@ -321,21 +321,21 @@
                 <th scope="row" class="amount">3</th>
                 <td><span class="mono">issue_refund</span> retry, no key · <span class="amount">250000</span></td>
                 <td>Committed again. Running total: <span class="amount">500000 paise</span>.</td>
-                <td><span class="tag" data-tone="fail">duplicate_refund</span></td>
+                <td><span class="tag" data-tone="fail">no_duplicate_full_refund</span></td>
               </tr>
               <tr>
                 <th scope="row" class="amount">4</th>
                 <td><span class="mono">get_refund_status(ord_demo_001)</span></td>
                 <td>Total refunded: <span class="amount">500000 paise</span>.</td>
-                <td><span class="tag" data-tone="fail">total_refund_exceeded</span></td>
+                <td><span class="tag" data-tone="fail">total_refund_within_payment</span></td>
               </tr>
             </tbody>
           </table>
-          <h3>Findings</h3>
+          <h3>Divergence and findings</h3>
           <ul class="check">
-            <li><span class="mono">first_divergence</span> — event 2: world committed, agent saw timeout.</li>
-            <li><span class="mono">duplicate_refund</span> — events 2, 3: two commits for one request.</li>
-            <li><span class="mono">total_refund_exceeded</span> — event 4: 500000 paise refunded against a 250000 order.</li>
+            <li><span class="mono">first_divergence</span> (diff field) — event 2: world committed, agent saw timeout.</li>
+            <li><span class="mono">no_duplicate_full_refund</span> — events 2, 3: two commits for one request.</li>
+            <li><span class="mono">total_refund_within_payment</span> — event 4: 500000 paise refunded against a 250000 order.</li>
           </ul>
           <a class="next-link" href="#decision">Decide the repair →</a>
           <p class="origin">Origin: static fixture in this page (prototype only). Nothing here came from a running service.</p>
@@ -385,8 +385,8 @@
             <li>Pinned fixture: synthetic order <span class="mono">ord_demo_001</span>, 250000 paise.</li>
             <li>Fault schedule: timeout after commit on <span class="mono">issue_refund</span> attempt 1.</li>
             <li>Recorded actions and ordering: events 1–4 with tool arguments and results.</li>
-            <li>Expected checks: <span class="mono">duplicate_refund</span>,
-              <span class="mono">total_refund_exceeded</span>, first divergence at event 2.</li>
+            <li>Expected checks: <span class="mono">no_duplicate_full_refund</span>,
+              <span class="mono">total_refund_within_payment</span>, first divergence at event 2.</li>
           </ul>
           <div class="toolbar">
             <button type="button" class="primary" id="replay-btn">Replay the fork run</button>
@@ -396,8 +396,8 @@
             <h3>Replay transcript <span class="tag" data-tone="ok">match</span></h3>
             <pre class="transcript" data-testid="replay-transcript">event 1  get_order           -&gt; 250000 paise, owner ok
 event 2  issue_refund #1     -&gt; committed; timeout observed (first divergence)
-event 3  issue_refund retry  -&gt; committed; total 500000 paise (duplicate_refund)
-event 4  get_refund_status   -&gt; total 500000 paise (total_refund_exceeded)
+event 3  issue_refund retry  -&gt; committed; total 500000 paise (no_duplicate_full_refund)
+event 4  get_refund_status   -&gt; total 500000 paise (total_refund_within_payment)
 
 replayed ledger: 500000 paise — equals recorded ledger. 0 model calls.</pre>
             <p class="muted">Simulated in-page for the prototype; the console replays against a reset world.</p>
@@ -495,7 +495,7 @@ replayed ledger: 500000 paise — equals recorded ledger. 0 model calls.</pre>
             fault: "timeout after commit on issue_refund attempt 1",
             ledgers_paise: { baseline: 250000, fork: 500000, repaired: 250000 },
             first_divergence_event: 2,
-            findings: ["first_divergence", "duplicate_refund", "total_refund_exceeded"],
+            findings: ["no_duplicate_full_refund", "total_refund_within_payment"],
             model_calls: 0
           };
           var blob = new Blob([JSON.stringify(capsule, null, 2) + "\n"], { type: "application/json" });

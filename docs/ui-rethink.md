@@ -127,7 +127,7 @@ events 2–3). This beat owns the *meaning* of event 2; the console splits it
 across two pages today.
 
 **S3 — Evidence ("Prove it").** The fork trace as a table (event, tool, key
-arguments, result, finding flags) plus the finding list with invariant names
+arguments, result, finding flags) plus the divergence-and-findings list (real invariant names
 and violated event ids, plus the origin line. A filter toggles all events vs
 violations only. Read-only: no act buttons, so the viewer learns this screen
 can only inform, never change state.

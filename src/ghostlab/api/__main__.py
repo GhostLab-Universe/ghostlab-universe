@@ -19,6 +19,7 @@ from pydantic import TypeAdapter, ValidationError
 from ghostlab.contracts.primitives import Identifier
 from ghostlab.orchestration import ledger_key
 from ghostlab.security.local_dev import LocalDevRefused
+from ghostlab.storage.database import StoragePaths
 
 from .app import create_app
 from .local import local_config
@@ -26,17 +27,26 @@ from .rootlock import RootLock, RootLocked
 from .sessions import DEFAULT_PROJECT, LocalDevSessions
 from .tracing import drop_provider_keys
 
+DEFAULT_DATABASE = Path("artifacts/local/ghostlab.sqlite")
+
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
-    parser.add_argument("--root", type=Path, default=Path(os.environ.get(
-        "GHOSTLAB_SQLITE_PATH", "artifacts/local/ghostlab.sqlite")).parent)
+    parser.add_argument("--root", type=Path, help="default: GHOSTLAB_SQLITE_PATH's directory")
     parser.add_argument("--project", default=DEFAULT_PROJECT)
     parser.add_argument("--scripted", action="store_true",
                         help="serve checked-in proposals: no model, no network, no key")
     args = parser.parse_args(argv)
+    if args.root is None:
+        database = Path(os.environ.get("GHOSTLAB_SQLITE_PATH", DEFAULT_DATABASE))
+        # Every reader of a root expects this name, so any other would split the root in two.
+        if database.name != StoragePaths(database.parent).app_db.name:
+            print(f"Refused: GHOSTLAB_SQLITE_PATH must name {DEFAULT_DATABASE.name}; use its "
+                  "directory to choose where the server keeps its files", file=sys.stderr)
+            return 2
+        args.root = database.parent
     if args.scripted:
         drop_provider_keys()
     try:

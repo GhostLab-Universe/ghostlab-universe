@@ -91,9 +91,10 @@ def _check_adapter(fixture, scenario, actor_id, recorded):
 
 
 def replay(path: Path):
-    """Re-execute recorded tool requests; never import code or call a model.
+    """Re-execute recorded tool requests, then run the named checked-in adapter to check them.
 
-    A matching checksum is accidental-change detection, not proof of authorship.
+    A capsule is data: it names an adapter from the checked-in set and supplies no code. No
+    model is called. A matching checksum is accidental-change detection, not proof of authorship.
     A replay mismatch means the capsule's claimed evidence was not reproduced.
     """
     payload = load_capsule(path)

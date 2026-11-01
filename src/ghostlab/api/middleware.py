@@ -1,9 +1,9 @@
 """The request boundary, ahead of routing: every path, including unknown ones.
 
-Order: non-production boundary, authentication, body size. A request that fails any of
-them never reaches a route, and no route has to remember to ask. There are no
-unauthenticated routes. Starlette has no body limit of its own, so this one reads at
-most ``limit`` bytes before anything parses them.
+Order: non-production boundary, session, body size. A request that fails any of them
+never reaches a route, and no route has to remember to ask. Every route needs a session,
+though a ``local_dev`` one takes no credential. Starlette has no body limit of its own, so
+this one reads at most ``limit`` bytes before anything parses them.
 """
 
 import logging

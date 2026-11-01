@@ -23,7 +23,8 @@ from .sessions import NoSessions, require_local_deployment
 from .tracing import disable_trace_export
 
 API_VERSION = "1.0.0"
-DESCRIPTION = ("Authenticated control plane for GhostLab Universe experiments. Worlds are "
+DESCRIPTION = ("Local control plane for GhostLab Universe experiments. No production "
+               "authentication exists: a local_dev session takes no credential. Worlds are "
                "synthetic. Project and principal come from the session, never a request. "
                "Events are application events, not model-token streaming.")
 

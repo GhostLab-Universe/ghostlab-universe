@@ -433,7 +433,8 @@ class ControlPlane:
         trusted = session.trusted
         controller = self._controller(trusted)
         state = controller.state(campaign_id)
-        if not state["paused"]:
+        # A verdict with its memory step left is finished: there is nothing to stop.
+        if not state["paused"] or state.get("finished_at"):
             if state["status"] != "cancelled":
                 raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
                                reason="campaign_finished")

@@ -800,3 +800,21 @@ def test_a_scripted_server_will_not_guess_the_scenario_of_a_campaign_with_no_pin
         cancelled = scripted.api.post(f"/v1/campaigns/{campaign_id}/cancel", who=None)
         assert cancelled.status_code == 202  # stopping needs no scenario: it serves no proposal
         assert scripted.api.wait(campaign_id, "cancelled", who=None)["experiments"] == []
+
+
+# -- third review: smaller findings ------------------------------------------------------------
+
+def test_cancel_leaves_a_finished_campaign_to_its_last_step(stack):
+    api = stack(proposal(), lab_options={"on_node": CrashOnce("remember_repair")})
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    assert api.decide(paused).json()["resumed"] is True
+    view = api.wait(campaign_id, "completed")
+    assert view["job"]["state"] == "stalled" and view["outcome"] == "repair_verified"
+    cancelled = api.post(f"/v1/campaigns/{campaign_id}/cancel")
+    assert cancelled.status_code == 409 and cancelled.json()["reason"] == "campaign_finished"
+    after = api.view(campaign_id)
+    assert (after["record"]["status"], after["outcome"]) == ("completed", "repair_verified")
+    assert after["job"]["state"] == "stalled"  # the cancel ran nothing
+    assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 202
+    assert api.wait(campaign_id, "completed")["job"]["state"] == "idle"

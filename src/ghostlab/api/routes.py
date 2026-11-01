@@ -1,8 +1,8 @@
 """HTTP routes (``ghostlab-api/1``): thin adapters over ``ControlPlane``.
 
 No route takes a project, principal, role or scope. The session comes from the
-authentication middleware, which runs before routing, so a route can't be left
-unauthenticated by forgetting a dependency.
+request guard, which runs before routing, so a route can't be left without one by
+forgetting a dependency.
 """
 
 from typing import Annotated

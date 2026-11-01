@@ -869,3 +869,10 @@ def test_replay_reads_no_pinned_fixture_so_it_has_no_settings_conflict(stack):
     assert api.post(f"{url}/capsules/fork").json()["reason"] == "settings_changed"
     assert api.post(f"{url}/capsules/fork/replay").status_code == 200
     assert api.post(f"/v1/capsules/{capsule_id}/replay").status_code == 200
+
+
+def test_nothing_in_the_published_contract_claims_authentication():
+    document = create_app().openapi()
+    assert "authenticated" not in document["info"]["description"].lower()
+    assert "authenticated" not in document["components"]["schemas"]["SessionInfo"][
+        "description"].lower()

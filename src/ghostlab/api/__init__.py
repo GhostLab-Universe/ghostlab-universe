@@ -1,4 +1,4 @@
-"""M07 authenticated control plane (``ghostlab-api/1``). Requires the ``service`` extra."""
+"""M07 control plane (``ghostlab-api/1``). Requires the ``service`` extra."""
 
 from .tracing import disable_trace_export
 

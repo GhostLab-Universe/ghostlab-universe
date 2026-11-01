@@ -39,7 +39,7 @@ class ErrorResponse(StrictModel):
 
 
 class SessionInfo(StrictModel):
-    """What the authenticated session resolved to. Nothing here is client-selected."""
+    """What the session resolved to. Nothing here is client-selected."""
 
     schema_version: SchemaVersion
     principal: Principal

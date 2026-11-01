@@ -3,16 +3,16 @@
     python -m evals.run --out <dir>                  run and gate; exit 1 blocks promotion
     python -m evals.run --out <dir> --write-expected  rewrite expected.json for review
 
-Must run with ``LANGSMITH_TRACING=false``. Inference is mocked throughout.
+Inference is mocked throughout, and trace export is forced off (see ``evals/__init__.py``).
 """
 
 import argparse
 import json
-import os
 import shutil
 import sys
 from pathlib import Path
 
+from . import disable_trace_export
 from .cases import CASES, Recorder
 from .gate import REPORT_FILE, check, expected_from
 from .identity import evidence_sha256, run_identity
@@ -54,7 +54,7 @@ def main(argv=None) -> int:
     parser.add_argument("--write-expected", action="store_true")
     parser.add_argument("--only", help="Run matching cases; the gate then reports the rest")
     args = parser.parse_args(argv)
-    os.environ.setdefault("LANGSMITH_TRACING", "false")
+    disable_trace_export()
     if args.write_expected and args.only:
         parser.error("--write-expected needs the whole suite, not --only")
     if args.out.exists() and any(args.out.iterdir()):

@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-from evals import gate
+from evals import disable_trace_export, gate
 from evals.cases import CASES
 from evals.evidence import canonical_sha256, scan_stores
 from evals.harness import FIXTURE_LABEL, SECRET, SYNTHETIC_SECRET
@@ -548,6 +548,56 @@ def test_a_used_out_directory_is_refused(tmp_path, capsys):
     with pytest.raises(SystemExit) as stopped:
         run_main(["--out", str(tmp_path), "--only", "flow.refund"])
     assert stopped.value.code == 2 and "already used" in capsys.readouterr().err
+
+
+TRACING_ON = {"LANGSMITH_TRACING": "true", "LANGSMITH_TRACING_V2": "true",
+              "LANGCHAIN_TRACING": "true", "LANGCHAIN_TRACING_V2": "true",
+              "LANGSMITH_API_KEY": "fixture-not-a-key", "LANGCHAIN_API_KEY": "fixture-not-a-key",
+              "LANGSMITH_ENDPOINT": "http://127.0.0.1:9"}
+WATCH_LANGSMITH = """
+import json, os, sys
+import evals.run
+import langsmith.client, langsmith.run_trees, langsmith.utils
+calls = []
+langsmith.run_trees.RunTree.post = lambda self, *a, **k: calls.append("post")
+langsmith.run_trees.RunTree.patch = lambda self, *a, **k: calls.append("patch")
+real = langsmith.client.Client.__init__
+def counted(self, *a, **k):
+    calls.append("client")
+    real(self, *a, **k)
+langsmith.client.Client.__init__ = counted
+code = evals.run.main(["--out", sys.argv[1], "--only", "flow.refund",
+                       "--expected", sys.argv[2]])
+print(json.dumps({"code": code, "calls": calls, "enabled": langsmith.utils.tracing_is_enabled(),
+                  "keys": [name for name in os.environ if name.endswith("_API_KEY")
+                           and name.split("_")[0] in ("LANGSMITH", "LANGCHAIN")]}))
+"""
+
+
+def test_a_run_never_traces_whatever_the_environment_says(tmp_path):
+    """Forced off before any import can read it, with the key gone from the process."""
+    done = subprocess.run(
+        [sys.executable, "-c", WATCH_LANGSMITH, str(tmp_path / "out"),
+         str(tmp_path / "none.json")], cwd=ROOT, capture_output=True, text=True, timeout=300,
+        env={**os.environ, **TRACING_ON, "PYTHONPATH": f"{ROOT / 'src'}{os.pathsep}{ROOT}"},
+        check=False)
+    assert done.stdout.strip(), done.stderr[-2000:]
+    seen = json.loads(done.stdout.strip().splitlines()[-1])
+    assert (seen["calls"], seen["enabled"], seen["keys"]) == ([], False, [])
+    report = json.loads((tmp_path / "out" / gate.REPORT_FILE).read_text("utf-8"))
+    assert report["live_provider_contacted"] is False
+
+
+def test_turning_tracing_off_also_clears_what_langsmith_cached(monkeypatch):
+    utils = pytest.importorskip("langsmith.utils")
+    for name, value in TRACING_ON.items():
+        monkeypatch.setenv(name, value)
+    utils.get_env_var.cache_clear()
+    assert utils.get_env_var("TRACING") == "true"
+    disable_trace_export()
+    assert utils.get_env_var("TRACING") == "false"
+    assert "LANGSMITH_API_KEY" not in os.environ and "LANGCHAIN_API_KEY" not in os.environ
+    utils.get_env_var.cache_clear()
 
 
 def test_only_with_no_match_blocks(tmp_path, capsys):

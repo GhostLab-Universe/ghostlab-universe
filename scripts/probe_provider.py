@@ -8,7 +8,7 @@ Live mode needs, together: --live, an exact --model, a --max-calls cap (1-10),
 --confirm-paid-calls, and the provider key in its environment variable
 (MODEL_API_KEY or BASETEN_API_KEY). --max-calls caps every outbound HTTP attempt,
 retries included, because each attempt may be billed; the report shows model
-calls and HTTP attempts separately. Each call is capped at 512 output tokens.
+calls and HTTP attempts separately. Each call is capped at 2048 output tokens; --max-calls still bounds total spend.
 Tool results sent back are labeled synthetic fixtures; no tool is dispatched.
 The report is redacted and written under artifacts/local/ (git-ignored).
 """
@@ -57,7 +57,7 @@ def _request(config, request_id, *, tools=(), schema=None, continuation=None, re
     data = _example("model_request.explorer")
     data.update(request_id=request_id, provider=config.provider, model=config.model,
                 tools=list(tools), output_schema=schema, continuation=continuation,
-                tool_results=list(results), max_output_tokens=512, timeout_ms=60_000)
+                tool_results=list(results), max_output_tokens=2048, timeout_ms=60_000)
     return ModelRequest.model_validate(data)
 
 

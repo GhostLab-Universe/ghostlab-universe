@@ -102,7 +102,7 @@ class ExperimentProposal(StrictModel):
     """Explorer structured output. Every field required; no identity or authority.
 
     Shaped for Meta strict structured output (object root, all fields required,
-    additionalProperties false). Live acceptance by the model is untested.
+    additionalProperties false). Accepted live by Meta 2026-11-01.
     """
 
     schema_version: SchemaVersion

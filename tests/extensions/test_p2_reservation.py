@@ -4,9 +4,15 @@ Standard library only (unittest style). The reservation service was developed
 externally and vendored byte-identical; every test here drives it through the
 frozen ``ghostlab-extensions/1`` interfaces plus the generic runner. Direct
 service access appears only where a test asserts adapter/service agreement.
+
+Re-vendor procedure (review-time check): copy reservation_service.py at a
+reviewed ghostlab-ext-example commit, then update VENDOR_SHA256 and
+SERVICE_PROVENANCE together. The differential test below fails while the
+external file differs from the pin.
 """
 
 import hashlib
+import os
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -29,6 +35,15 @@ from ghostlab.extensions.target import TargetTask
 FIXTURE = "half_full"
 CLEAN_SCENARIO = {"timeout_after_commit": False, "stale_snapshot": False,
                   "skip_capacity_check": False, "max_tool_calls": 20}
+
+# Where the outside-the-tree service may live. The differential test skips
+# when none exists (e.g. CI); it never vendors or executes from here.
+EXTERNAL_SERVICE_CANDIDATES = tuple(p for p in (
+    Path(os.environ["GHOSTLAB_EXT_EXAMPLE"]) / "reservation_service.py"
+    if os.environ.get("GHOSTLAB_EXT_EXAMPLE") else None,
+    Path(__file__).resolve().parents[4] / "ghostlab-ext-example"
+    / "reservation_service.py",
+) if p is not None)
 
 
 def fresh(fixture=FIXTURE, scenario=None, actor="qual-probe"):
@@ -130,6 +145,16 @@ class ProvenanceTests(unittest.TestCase):
 
     def test_provenance_names_the_reviewed_revision(self):
         self.assertIn("79684eb", SERVICE_PROVENANCE)
+
+    def test_vendored_service_matches_external_revision(self):
+        present = [p for p in EXTERNAL_SERVICE_CANDIDATES if p.is_file()]
+        if not present:
+            self.skipTest("external ghostlab-ext-example repo absent")
+        digest = hashlib.sha256(present[0].read_bytes()).hexdigest().upper()
+        self.assertEqual(
+            digest, VENDOR_SHA256,
+            "external reservation_service.py drifted from the pin; re-vendor"
+            " a reviewed commit (see module docstring)")
 
     def test_declared_tools_match_the_service_allowlist(self):
         self.assertEqual(set(RESERVATION_TOOL_SCHEMAS), set(vendored.ALLOWED_TOOLS))

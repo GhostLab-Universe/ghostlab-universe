@@ -18,7 +18,7 @@ def main(argv=None):
     try:
         report = minimize_capsule(args.capsule, args.out, invariant=args.invariant,
                                   max_runs=args.max_runs, deadline_ms=args.deadline_ms)
-    except (ValueError, TypeError, KeyError, OSError):
+    except (ValueError, TypeError, KeyError, OSError, RecursionError):
         parser.exit(2, "Input was refused or output could not be written; no model was called.\n")
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0 if report["capsule_reproduced"] else 1

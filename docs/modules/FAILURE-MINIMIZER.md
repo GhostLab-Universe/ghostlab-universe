@@ -1,6 +1,6 @@
 # Offline failure minimizer
 
-Experimental, additive diagnostic feature. Based on integration `a3e8188`.
+Experimental, additive diagnostic feature. Updated onto integration `96cac2f`.
 No API, UI, contracts, provider, world or controller files are changed.
 
 ## Why it exists
@@ -23,9 +23,15 @@ Its evidence must replay, and a fresh run of the checked-in adapter must exactly
 match the recorded run before search starts. Recorded actions alone are not proof
 that a named adapter produced them.
 
-For disclosure failures, every originally unpermitted recipient must remain a
-witness. A failure affecting someone else is not accepted as the same reproducer.
-Other invariants are matched by name within the pinned world/fixture.
+Failure identity uses a conservative domain witness, not just an invariant name:
+- Disclosure preserves every original recipient, message id, template and permission failure.
+- Unapproved commitments preserve the offending commitment, approved version and booking.
+- Feasibility preserves typed problem keys (late, double, overlap, etc.) plus booking/calendar
+  context. A double booking cannot become a late single booking and count as the same failure.
+- Refund preserves ledger identities and amounts.
+Event positions may change. Extra pinned context can prevent a reduction; this is an
+intentional conservative limit. It is not proof that all possible causal context was captured.
+The experimental report and regression data formats are now version 2.
 
 Supported inputs: refund v1 capsules and journey v2 capsules, using registered
 deterministic adapters. Refund v2 wrappers and service-relay are not supported in
@@ -39,11 +45,12 @@ From a checkout containing this branch, with `src` on Python's module search pat
 python -m ghostlab.diagnostics path/to/failure.json --invariant delivered_messages_permitted --out artifacts/local/reduced-case
 ```
 
-`--out` must be a new directory. There is no overwrite or cleanup command. For a
+`--out` is atomically claimed as a new directory; a competing creator is refused. There is no overwrite or cleanup command. For a
 refund capsule choose, for example, `--invariant total_refund_within_payment`.
 
 Defaults: `--max-runs 16`, `--deadline-ms 5000`. Run limits include source replay,
-fresh-adapter validation and the exported capsule's confirmation replay. Clock
+fresh-adapter validation and the exported capsule's confirmation replay. Each replay
+reserves two executions because the merged replay also runs its checked-in adapter. Clock
 limits are checked between bounded deterministic executions; this is not process
 isolation or a hard runtime kill. An individual run can finish after that deadline.
 
@@ -54,7 +61,7 @@ modules. It reads no provider credential and sends no model request.
 
 - `original-capsule.json`: exact source bytes.
 - `report.json`: all attempted subsets, their outcomes, limits and minimality claim.
-- `minimal-capsule.json`: written when a candidate is exported for confirmation.
+- `minimal-capsule.json`: published only after confirmation in temporary storage.
 - `regression-case.json`: only written after the capsule reproduces. This is JSON
   data for review, not generated executable code or an automatically installed CI test.
 
@@ -69,7 +76,7 @@ new canonical M00 contracts or inputs accepted by the controller/API.
 | `already_minimal` | The original fault count was minimal among these subsets |
 | `baseline_failure` | The selected failure happens with no injected faults; do not blame the injection |
 | `smallest_found` | The candidate reproduces, but an inconclusive smaller trial prevents a minimum claim |
-| `run_budget_exhausted` / `deadline_exceeded` | Search/confirmation is incomplete; no confirmed regression case is emitted |
+| `run_budget_exhausted` / `deadline_exceeded` | Search/confirmation is incomplete; selected_faults stays null and no capsule/regression is published. candidate_faults is explicitly unconfirmed |
 
 A negative truncated run is `inconclusive`, never evidence that a subset is safe.
 A positive observed violation remains evidence even if that run later hit its cap.
@@ -91,20 +98,21 @@ paths, expose output paths to clients or silently attach a reduction to a findin
 
 Validation results and the example output are recorded after the final test run.
 
-## Recorded validation
+## Review correction
 
-Windows, Python 3.13.2, existing environment:
+The first draft reduced the privacy example from three faults to one but changed the
+message from itinerary-v1 to itinerary-v2. That did not preserve the demonstrated failure.
+The stricter witness retains stale memory plus revocation and removes only the delayed
+update: three faults become two. The source and reduced witnesses must match exactly.
+The report distinguishes unconfirmed candidate_faults from confirmed selected_faults.
+Output directory creation is atomic, existing files use exclusive writes, and deeply nested
+input produces sanitized CLI exit 2 rather than a traceback. Incomplete search remains exit 1.
 
-- `pytest tests/diagnostics tests/simulation tests/test_core.py`: **270 passed,
-  6 subtests passed**. Includes original preservation, checksums, source-adapter
-  mismatch, same-recipient matching, budget/deadline stops, baseline failure,
-  truncated negative trials, no-overwrite behaviour and both supported worlds.
-- The actual CLI ran with `python -S`, with no site packages available.
-- The three-fault journey example reduced to `sharing_revoked_while_queued` alone,
-  preserving `participant-c` as the witness, in **7 counted local executions**
-  including input validation and final replay. Both irrelevant faults were removed.
-- The reduced capsule reproduced and the command reported **0 model calls**.
+Final validation results are recorded in the PR description. No complete external mutation
+corpus was available, so no claim is made that every reviewer mutant has been killed.
 
-Output for the handoff is outside the checkout at
-`outputs/failure-minimizer-demo-2026-11-01/reduced/` in the Codex workspace.
-Those example files are generated evidence, not a claimed live-model experiment.
+Final local validation after merging M07 integration 96cac2f: 275 passed and 6 subtests
+across diagnostics/simulation/core. The actual python -S command reduced the source from
+three faults to two, with identical itinerary-v1 disclosure witness, in 11 counted world
+executions (each successful replay counts two passes). The 14 bare core tests also pass.
+The generated reviewed report is outside Git at outputs/failure-minimizer-reviewed-2026-11-01.

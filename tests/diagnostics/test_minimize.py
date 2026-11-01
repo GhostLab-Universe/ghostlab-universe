@@ -28,7 +28,7 @@ def original(tmp_path):
     return path
 
 
-def test_three_faults_reduce_to_one_same_recipient_failure(original, tmp_path, monkeypatch):
+def test_three_faults_reduce_to_two_with_same_recipient_and_message(original, tmp_path, monkeypatch):
     def no_network(*args, **kwargs):
         raise AssertionError("network was contacted")
     monkeypatch.setattr(socket.socket, "connect", no_network)
@@ -36,7 +36,7 @@ def test_three_faults_reduce_to_one_same_recipient_failure(original, tmp_path, m
     out = tmp_path / "reduced"
     report = minimize_capsule(original, out, invariant=PRIVACY)
     assert report["status"] == "reduced" and report["cardinality_minimal"]
-    assert report["selected_faults"] == ["sharing_revoked_while_queued"]
+    assert report["selected_faults"] == ["stale_preference_memory", "sharing_revoked_while_queued"]
     assert report["recipient_witnesses"] == ["participant-c"]
     assert report["model_calls"] == 0 and report["capsule_reproduced"]
     assert report["runs_used"] <= report["max_runs"]
@@ -67,7 +67,9 @@ def test_budget_exhaustion_never_claims_a_minimum(original, tmp_path, max_runs):
     out = tmp_path / "bounded"
     report = minimize_capsule(original, out, invariant=PRIVACY, max_runs=max_runs)
     assert report["status"] == "run_budget_exhausted"
-    assert report["runs_used"] == max_runs
+    assert report["runs_used"] <= max_runs
+    if max_runs == 1:
+        assert report["runs_used"] == 0  # two-pass replay cannot start with one slot
     assert not report["cardinality_minimal"] and not report["capsule_reproduced"]
     assert not (out / "regression-case.json").exists()
 
@@ -115,8 +117,9 @@ def test_replayable_actions_cannot_impersonate_an_adapter(original, tmp_path):
     p["run"]["adapter_id"] = "journey-version-checked"
     body["sha256"] = journey_capsule.capsule_digest(p)
     original.write_text(json.dumps(body))
-    assert journey_capsule.replay(original)["reproduced"]
-    with pytest.raises(ValueError, match="checked-in adapter"):
+    with pytest.raises(ValueError, match="adapter produces"):
+        journey_capsule.replay(original)
+    with pytest.raises(ValueError, match="adapter produces"):
         minimize_capsule(original, tmp_path / "bad", invariant=PRIVACY)
 
 
@@ -165,4 +168,74 @@ def test_invalid_run_budgets_are_refused(value):
 def test_cli_reports_real_reduction(original, tmp_path, capsys):
     assert main([str(original), "--invariant", PRIVACY, "--out", str(tmp_path / "cli")]) == 0
     report = json.loads(capsys.readouterr().out)
-    assert report["selected_faults"] == ["sharing_revoked_while_queued"]
+    assert report["selected_faults"] == ["stale_preference_memory", "sharing_revoked_while_queued"]
+
+
+def test_disclosing_a_different_template_is_not_the_same_failure(original):
+    from ghostlab.diagnostics.minimize import load_problem, failure_witness
+    problem = load_problem(original)
+    expected = failure_witness(problem, problem.original_run, PRIVACY)
+    changed = problem.run(["sharing_revoked_while_queued"])
+    assert changed["checks"][PRIVACY] is False
+    assert classify(changed, PRIVACY, {"participant-c"}, problem=problem,
+                    expected_witness=expected) == "not_reproduced"
+    assert expected[0]["message"]["template_id"] == "itinerary-v1"
+    assert failure_witness(problem, changed, PRIVACY)[0]["message"]["template_id"] == "itinerary-v2"
+
+
+def test_double_booking_cannot_reduce_to_a_late_booking(tmp_path):
+    from ghostlab.diagnostics.minimize import load_problem, failure_witness
+    fixture = replace(JourneyFixture(), intents=((1, 1200), (2, 1140), (3, 1080)), current_version=3)
+    data = scenario_json([
+        ("stale_preference_memory", None, {"preference_version": 2}),
+        ("delayed_itinerary_update", None, {"delay_events": 2}),
+        ("sharing_revoked_while_queued", None, {"recipient_id": "participant-c"})])
+    recorded = run(fixture, JourneyScenario.from_json(data), "journey-naive")
+    source = tmp_path / "double.json"
+    journey_capsule.export_capsule(source, fixture, data, recorded)
+    problem = load_problem(source)
+    invariant = "mandatory_participants_feasible"
+    witness = failure_witness(problem, recorded, invariant)
+    assert any(key[0] == "double" for key in witness["problem_keys"])
+    late = problem.run(["stale_preference_memory"])
+    assert late["checks"][invariant] is False
+    assert not any(key[0] == "double" for key in failure_witness(problem, late, invariant)["problem_keys"])
+    assert classify(late, invariant, set(), problem=problem, expected_witness=witness) == "not_reproduced"
+    report = minimize_capsule(source, tmp_path / "same-double", invariant=invariant)
+    assert report["selected_faults"] == ["stale_preference_memory", "delayed_itinerary_update"]
+    assert report["failure_witness"] == witness
+
+
+def test_budget_stop_exposes_only_an_unconfirmed_candidate(original, tmp_path):
+    out = tmp_path / "unconfirmed"
+    report = minimize_capsule(original, out, invariant=PRIVACY, max_runs=9)
+    assert report["candidate_faults"] == ["stale_preference_memory", "sharing_revoked_while_queued"]
+    assert report["selected_faults"] is None and report["removed_faults"] == []
+    assert not report["capsule_reproduced"]
+    assert not (out / "minimal-capsule.json").exists()
+    assert not (out / "regression-case.json").exists()
+
+
+def test_output_claim_is_atomic_and_competing_directory_is_preserved(original, tmp_path, monkeypatch):
+    out = tmp_path / "race"
+    mkdir = type(out).mkdir
+    def competing(self, *args, **kwargs):
+        if self == out:
+            mkdir(out)
+            (out / "report.json").write_text("competitor")
+        return mkdir(self, *args, **kwargs)
+    monkeypatch.setattr(type(out), "mkdir", competing)
+    with pytest.raises(ValueError, match="already exist"):
+        minimize_capsule(original, out, invariant=PRIVACY)
+    assert (out / "report.json").read_text() == "competitor"
+    assert list(out.iterdir()) == [out / "report.json"]
+
+
+def test_cli_deep_json_is_a_sanitized_input_error(tmp_path, capsys):
+    source = tmp_path / "deep.json"
+    source.write_bytes(b"[" * 5000 + b"0" + b"]" * 5000)
+    with pytest.raises(SystemExit) as error:
+        main([str(source), "--invariant", PRIVACY, "--out", str(tmp_path / "out")])
+    assert error.value.code == 2
+    output = capsys.readouterr()
+    assert "Traceback" not in output.err and not output.out

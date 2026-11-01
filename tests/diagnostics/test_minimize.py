@@ -123,6 +123,20 @@ def test_replayable_actions_cannot_impersonate_an_adapter(original, tmp_path):
         minimize_capsule(original, tmp_path / "bad", invariant=PRIVACY)
 
 
+def test_refused_run_releases_the_claimed_output_directory(original, tmp_path):
+    body = json.loads(original.read_text())
+    p = body["payload"]
+    p["run"]["adapter_id"] = "journey-version-checked"
+    body["sha256"] = journey_capsule.capsule_digest(p)
+    original.write_text(json.dumps(body))
+    out = tmp_path / "refused"
+    with pytest.raises(ValueError, match="adapter produces"):
+        minimize_capsule(original, out, invariant=PRIVACY)
+    assert not out.exists()
+    with pytest.raises(ValueError, match="adapter produces"):
+        minimize_capsule(original, out, invariant=PRIVACY)
+
+
 def test_existing_output_is_never_overwritten(original, tmp_path):
     out = tmp_path / "existing"
     out.mkdir()

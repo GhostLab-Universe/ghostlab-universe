@@ -271,6 +271,14 @@ def _minimize_snapshot(source: Path, out: Path, *, invariant: str, max_runs,
                               else "reduced" if smaller else "already_minimal"))
     except SearchLimit as limit:
         report["status"] = str(limit)
+    except ValueError:
+        # Refusals happen before anything is published: release the claimed
+        # directory while still empty so a retry reports the real cause.
+        try:
+            out.rmdir()
+        except OSError:
+            pass
+        raise
     selected = best_faults if report["capsule_reproduced"] else None
     report.update(runs_used=budget.used, selected_faults=selected, candidate_faults=best_faults,
                   removed_faults=[f for f in problem.faults if selected is not None and f not in selected])

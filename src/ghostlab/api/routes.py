@@ -38,18 +38,21 @@ COMMON_ERRORS = {
     404: {"model": ErrorResponse, "description": "Absent, or owned by another project"},
     413: {"model": ErrorResponse, "description": "Request body too large"},
     422: {"model": ErrorResponse, "description": "Invalid request; nothing was changed"},
+    503: {"model": ErrorResponse, "description": "Authentication unavailable; retry later",
+          "headers": {"Retry-After": STRING_HEADER}},
     500: {"model": ErrorResponse, "description": "Unexpected failure; detail is not disclosed"},
 }
 WRITE_ERRORS = {
     409: {"model": ErrorResponse, "description": "Conflicts with the current state"},
     429: {"model": ErrorResponse, "description": "Too many campaigns running; retry later",
           "headers": {"Retry-After": STRING_HEADER}},
-    503: {"model": ErrorResponse, "description": "The server is shutting down or could not "
-                                                 "start a worker; retry later"},
+    503: {"model": ErrorResponse, "description": "Authentication unavailable, server shutting "
+                                                 "down or unable to start a worker; retry later"},
 }
 BODY_ERRORS = {
     400: {"model": ErrorResponse, "description": "Body could not be parsed, for example JSON "
                                                  "nested too deeply; nothing was changed"},
+
 }
 REPLAYED = {"headers": {"Idempotency-Replayed": {
     "description": "Present and true when this request's identity was already used",
@@ -57,7 +60,9 @@ REPLAYED = {"headers": {"Idempotency-Replayed": {
 
 bearer = HTTPBearer(auto_error=False, description=(
     "Configured bearer tokens. In local_dev mode the session is the single local principal "
-    "and no token is needed. Neither is production authentication."))
+    "and no token is needed. An explicitly configured external IdP can validate tokens "
+    "by introspection. Neither is production authentication. The external adapter also "
+    "does not qualify production deployment; the service remains loopback-only."))
 router = APIRouter(prefix="/v1", responses=COMMON_ERRORS, dependencies=[Security(bearer)])
 
 
@@ -216,6 +221,15 @@ def replay_capsule(capsule_id: ArtifactId, control: Plane, who: Session):
 def download_artifact(artifact_id: ArtifactId, control: Plane, who: Session):
     """Download an artifact owned by the session's project."""
     return control.artifact_response(who, artifact_id)
+
+
+@router.get("/approvals", response_model=list[ApprovalView], operation_id="listPendingApprovals",
+            tags=["approvals"])
+def list_pending_approvals(control: Plane, who: Session,
+                           after: Annotated[Identifier | None, Query()] = None,
+                           limit: Annotated[int, Query(ge=1, le=100)] = 50):
+    """Project reviewers: pending approvals ordered by id; use the last id as after."""
+    return control.pending_approvals(who, after=after or "", limit=limit)
 
 
 @router.get("/approvals/{approval_id}", response_model=ApprovalView, operation_id="getApproval",

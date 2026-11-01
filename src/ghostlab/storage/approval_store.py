@@ -28,6 +28,17 @@ class SqliteApprovalStore:
         with db.read(self.path) as conn:
             return self._load(conn, project_id, approval_id)
 
+    def list_pending(self, project_id: str, *, after: str = "", limit: int = 50):
+        """Bounded keyset page; authorization belongs to the API/policy layer."""
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise ValueError("approval page limit must be 1..100")
+        with db.read(self.path) as conn:
+            rows = conn.execute(
+                "SELECT body FROM approvals WHERE project_id = ? AND status = 'pending' "
+                "AND approval_id > ? ORDER BY approval_id LIMIT ?",
+                (project_id, after, limit)).fetchall()
+        return [db.load(ApprovalRequest, row[0]) for row in rows]
+
     def get_decision(self, project_id: str, approval_id: str) -> ApprovalDecision | None:
         with db.read(self.path) as conn:
             row = self._row(conn, project_id, approval_id)

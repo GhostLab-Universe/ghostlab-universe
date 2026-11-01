@@ -18,6 +18,7 @@ from ghostlab.orchestration.inference import LiveInferenceRefused
 from ghostlab.policy import ApprovalDenied, PolicyDenied
 from ghostlab.providers import ProviderConfigError
 from ghostlab.security.redaction import Redactor
+from ghostlab.security.retention import RetentionRefused
 from ghostlab.storage.artifacts import ArtifactTooLarge
 from ghostlab.storage.interfaces import Conflict, NotFound, StorageError
 
@@ -66,6 +67,9 @@ def _translate(error: Exception) -> ApiError | None:
         return ApiError(status, code, str(error), reason=error.code)
     if isinstance(error, CampaignSettingsChanged):
         return ApiError(409, "conflict", str(error), reason="settings_changed")
+    if isinstance(error, RetentionRefused):
+        return ApiError(403, "forbidden", "Live inference is disabled: outbound content is not qualified",
+                        reason="live_content_not_qualified")
     if isinstance(error, (LiveInferenceRefused, ProviderConfigError)):
         return ApiError(403, "forbidden", "Inference is not authorized on this server",
                         reason="inference_not_authorized")
@@ -128,5 +132,5 @@ def install(app: FastAPI, redactor: Redactor) -> None:
     app.add_exception_handler(HTTPException, http_error)
     for kind in (ApiError, PolicyDenied, ApprovalDenied, CampaignSettingsChanged,
                  LiveInferenceRefused, ProviderConfigError, NotFound, ArtifactTooLarge, Conflict,
-                 StorageError):
+                 StorageError, RetentionRefused):
         app.add_exception_handler(kind, handle)

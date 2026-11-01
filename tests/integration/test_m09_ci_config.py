@@ -6,7 +6,7 @@ says, not that GitHub accepts or runs it.
 
 import re
 
-from conftest import ROOT
+from tests.integration.conftest import ROOT
 
 WORKFLOW = (ROOT / ".github" / "workflows" / "ci.yml").read_text("utf-8")
 

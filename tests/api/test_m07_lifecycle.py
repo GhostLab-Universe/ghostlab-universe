@@ -14,7 +14,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from starlette.testclient import TestClient
 
-from conftest import LOOPBACK, Api, build_app, build_lab, spec_json
+from tests.api.conftest import LOOPBACK, Api, build_app, build_lab, spec_json
 from ghostlab.api.jobs import JobRegistry
 from ghostlab.worlds.journey import JourneyFixture
 from m05_harness import Script, proposal

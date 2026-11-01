@@ -31,7 +31,7 @@ from ghostlab.orchestration import (REQUIRED_COMPATIBILITY_CHECKS, CampaignContr
 from ghostlab.orchestration import worlds
 from ghostlab.policy import LAB
 
-from conftest import ROOT
+from tests.integration.conftest import ROOT
 
 EXPECTED = json.loads(DEFAULT_EXPECTED.read_text("utf-8"))
 TARGETS = json.loads((ROOT / "deploy" / "release-targets.json").read_text("utf-8"))

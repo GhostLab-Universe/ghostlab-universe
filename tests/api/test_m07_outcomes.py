@@ -8,7 +8,7 @@ import sqlite3
 
 import pytest
 
-from conftest import spec_json
+from tests.api.conftest import spec_json
 from ghostlab.api.jobs import Job
 from ghostlab.api.rootlock import LOCK_NAME
 from ghostlab.api.sessions import ApiSession, TokenSessions

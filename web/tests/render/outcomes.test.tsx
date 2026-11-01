@@ -463,10 +463,11 @@ test("the evidence row shows the artifact's digest, not the action's, and flags 
 
 test("a lost resume stays visible, though the decision is on record", () => {
   const transport: Failure = { kind: "transport", message: "Failed to fetch" };
+  const consumed = scenario("fx-refund").approved!.approval!;
   const decided = (resumeLost: boolean) =>
     html(
       <DecisionPanel
-        approval={scenario("fx-refund").approved!.approval!}
+        approval={{ ...consumed, effective_status: "approved" }}
         session={null}
         busy={false}
         failure={transport}
@@ -479,4 +480,18 @@ test("a lost resume stays visible, though the decision is on record", () => {
     );
   assert.match(decided(true), /state-reconnecting/);
   assert.doesNotMatch(decided(false), /state-reconnecting/);
+  const landed = html(
+    <DecisionPanel
+      approval={consumed}
+      session={null}
+      busy={false}
+      failure={transport}
+      result={null}
+      origins={[]}
+      onDecide={() => undefined}
+      onResume={() => undefined}
+      resumeLost
+    />,
+  );
+  assert.doesNotMatch(landed, /state-reconnecting/);
 });

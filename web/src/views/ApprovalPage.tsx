@@ -100,7 +100,7 @@ export function ApprovalPage({
           blocked={blocked}
           stoppedText={stoppedNote(resource.data.effective_status, stopped, view.repair !== null)}
           onDecide={(choice, reason) => void decide(resource.data, choice, reason)}
-          resumeLost={resumeLost}
+          resumeLost={resumeLost && !stopped}
           onResume={() => void resume()}
         />
       </div>
@@ -286,10 +286,12 @@ export function DecisionPanel({
       ) : null}
       {/* A second refusal of the same resume would only repeat the notice below. A lost
           decide response is moot once the service's own record shows the decision; a lost
-          resume is not, because that record can't say whether anything moved. */}
+          resume is not, until the campaign shows that it landed. */}
       {failure === null ||
       (refused && failureState(failure) === "blocked") ||
-      (failure.kind === "transport" && approval.decision !== null && !resumeLost) ? null : (
+      (failure.kind === "transport" &&
+        approval.decision !== null &&
+        !(resumeLost && approval.effective_status !== "consumed")) ? null : (
         <FailureNotice failure={failure} />
       )}
       {refused ? (

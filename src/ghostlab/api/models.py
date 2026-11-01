@@ -214,12 +214,17 @@ class CapsuleImport(StrictModel):
 
 
 class ApprovalView(StrictModel):
-    """``action`` is the exact payload the digest binds, recomputed before it is shown."""
+    """``action`` is the exact payload the digest binds, recomputed before it is shown.
+
+    ``request.payload.sha256`` is the digest of that action, not of the artifact the ref
+    names. ``payload_artifact_sha256`` covers the artifact: its download's bytes and ETag.
+    """
 
     request: ApprovalRequest
     inference: InferenceMode | None  # null if the campaign can't be read
     effective_status: ApprovalStatus  # "expired" once past expiry, even before it is marked
     action: dict[str, JsonValue] | None
+    payload_artifact_sha256: Sha256Hex | None  # null if the artifact can't be read
     decision: ApprovalDecision | None
 
 

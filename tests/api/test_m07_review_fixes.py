@@ -818,3 +818,29 @@ def test_cancel_leaves_a_finished_campaign_to_its_last_step(stack):
     assert after["job"]["state"] == "stalled"  # the cancel ran nothing
     assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 202
     assert api.wait(campaign_id, "completed")["job"]["state"] == "idle"
+
+
+def test_each_approval_digest_covers_what_it_says(stack):
+    api = stack(proposal())
+    paused = api.paused()
+    approval = api.get(f"/v1/approvals/{paused['approval']['approval_id']}", who="reviewer").json()
+    payload = approval["request"]["payload"]
+    assert payload["sha256"] == approval["request"]["action_digest"]
+    download = api.get(f"/v1/artifacts/{payload['id']}", who="reviewer")
+    digest = hashlib.sha256(download.content).hexdigest()
+    assert approval["payload_artifact_sha256"] == digest
+    assert download.headers["ETag"] == f'"{digest}"'
+    assert digest != payload["sha256"]
+
+
+def test_an_approval_with_no_stored_payload_reports_no_artifact_digest(stack, monkeypatch):
+    api = stack(proposal())
+    paused = api.paused()
+    plane = api.client.app.state.plane
+
+    def missing(session):
+        raise NotFound("gone")
+
+    monkeypatch.setattr(plane, "_evidence", missing)
+    approval = api.get(f"/v1/approvals/{paused['approval']['approval_id']}").json()
+    assert approval["payload_artifact_sha256"] is None

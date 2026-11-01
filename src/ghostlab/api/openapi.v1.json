@@ -272,7 +272,7 @@
       },
       "ApprovalView": {
         "additionalProperties": false,
-        "description": "``action`` is the exact payload the digest binds, recomputed before it is shown.",
+        "description": "``action`` is the exact payload the digest binds, recomputed before it is shown.\n\n``request.payload.sha256`` is the digest of that action, not of the artifact the ref\nnames. ``payload_artifact_sha256`` covers the artifact: its download's bytes and ETag.",
         "properties": {
           "action": {
             "anyOf": [
@@ -327,6 +327,18 @@
             ],
             "title": "Inference"
           },
+          "payload_artifact_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload Artifact Sha256"
+          },
           "request": {
             "$ref": "#/components/schemas/ApprovalRequest"
           }
@@ -336,6 +348,7 @@
           "inference",
           "effective_status",
           "action",
+          "payload_artifact_sha256",
           "decision"
         ],
         "title": "ApprovalView",

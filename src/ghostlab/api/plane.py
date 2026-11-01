@@ -700,7 +700,15 @@ class ControlPlane:
                             inference=self._campaign_inference(session, state) if state else None,
                             effective_status="expired" if expired else request.status,
                             action=self._approval_action(request, state),
+                            payload_artifact_sha256=self._artifact_digest(session,
+                                                                          request.payload.id),
                             decision=store.get_decision(project_id, approval_id))
+
+    def _artifact_digest(self, session: ApiSession, artifact_id: str) -> str | None:
+        try:
+            return self._evidence(session).ref(artifact_id).sha256
+        except (PolicyDenied, NotFound):
+            return None
 
     def _resume_for_owner(self, request: ApprovalRequest,
                           project_id: str) -> tuple[bool, ErrorResponse | None]:

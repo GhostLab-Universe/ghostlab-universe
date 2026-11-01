@@ -57,6 +57,7 @@ from .sessions import ApiSession
 CANCEL_WAIT_S = 10.0  # how long a cancel waits to learn whether it ended a stopped campaign
 MAX_LISTED_ERRORS = 256
 MAX_TEXT = 2_000  # the contracts' Text limit; a redaction marker can lengthen a short match
+VERDICTS = {"completed", "failed", "cancelled", "budget_exhausted"}  # only M05's _stop sets these
 
 
 @dataclass(frozen=True)
@@ -409,6 +410,15 @@ class ControlPlane:
                          has_more=len(pending) > limit)
 
     @staticmethod
+    def _ended(state: dict) -> bool:
+        """Nothing is left to run. ``paused`` alone can't say so.
+
+        While a step's writes wait for their checkpoint, LangGraph reports no next node, so
+        a live campaign briefly reads as unpaused. Only the status marks a real end.
+        """
+        return state["status"] in VERDICTS and not state["paused"]
+
+    @staticmethod
     def _proceed(campaign_id: str) -> Callable[[CampaignController], object]:
         """Run the graph on: past an approval pause, or from a crash's last checkpoint."""
         def call(controller: CampaignController):
@@ -433,8 +443,7 @@ class ControlPlane:
         trusted = session.trusted
         controller = self._controller(trusted)
         state = controller.state(campaign_id)
-        # A verdict with its memory step left is finished: there is nothing to stop.
-        if not state["paused"] or state.get("finished_at"):
+        if state["status"] in VERDICTS:  # even with its memory step left: nothing to stop
             if state["status"] != "cancelled":
                 raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
                                reason="campaign_finished")
@@ -453,7 +462,7 @@ class ControlPlane:
     def resume(self, session: ApiSession, campaign_id: str) -> CampaignView:
         trusted = session.trusted
         state = self._controller(trusted).state(campaign_id)
-        if not state["paused"]:
+        if self._ended(state):
             raise ApiError(409, "conflict", f"Campaign is already {state['status']}",
                            reason="campaign_finished")
         # Following a running worker matters only at a pause; see JobRegistry.submit.
@@ -720,7 +729,7 @@ class ControlPlane:
         owner = TrustedSession(request.scope.principal, project_id)
         try:
             state = self._controller(owner).state(request.campaign_id)
-            if not state["paused"]:
+            if self._ended(state):
                 # Read again: a retry's copy can predate the worker that just used the approval.
                 stored = self.services.approval_store.get(project_id, request.approval_id)
                 if stored.status == "consumed" or state["outcome"] == "repair_rejected":

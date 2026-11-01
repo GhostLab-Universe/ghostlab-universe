@@ -909,3 +909,72 @@ def test_a_database_name_this_server_would_not_use_is_refused(tmp_path, monkeypa
     monkeypatch.setenv("GHOSTLAB_SQLITE_PATH", str(tmp_path / "a" / "elsewhere.sqlite"))
     assert entry.main(["--port", "1", "--root", str(tmp_path / "b")]) == 0
     assert len(served) == 2
+
+
+# -- third review: a step's stored writes don't finish a campaign ------------------------------
+
+class HeldCheckpoint:
+    """Hold the next checkpoint: a step's writes are stored and its successor isn't.
+
+    LangGraph leaves a task with stored writes out of ``next``, so for this moment a live
+    campaign reads as having no next node.
+    """
+
+    def __init__(self, api, monkeypatch):
+        self.plane = api.client.app.state.plane
+        self.armed, self.reached, self.release = False, threading.Event(), threading.Event()
+        put = self.plane.saver.put
+
+        def held(*args, **options):
+            if self.armed:
+                self.armed = False
+                self.reached.set()
+                assert self.release.wait(30)
+            return put(*args, **options)
+
+        monkeypatch.setattr(self.plane.saver, "put", held)
+
+    def after_decision(self, api, paused):
+        """Decide, and stop inside the window with the campaign still awaiting approval."""
+        self.armed = True
+        assert api.decide(paused).json()["resumed"] is True
+        assert self.reached.wait(30)
+        session = ApiSession(OPERATOR, PROJECT, "configured_tokens").trusted
+        state = self.plane._controller(session).state(paused["record"]["campaign_id"])
+        assert (state["status"], state["paused"]) == ("awaiting_approval", False)
+
+
+def test_a_retry_inside_a_step_reads_as_resumed(stack, monkeypatch):
+    api = stack(proposal())
+    paused = api.paused()
+    held = HeldCheckpoint(api, monkeypatch)
+    held.after_decision(api, paused)
+    retry = api.decide(paused).json()
+    assert retry["resumed"] is True and retry["resume_error"] is None
+    held.release.set()
+    assert api.wait(paused["record"]["campaign_id"], "completed")["outcome"] == "repair_verified"
+
+
+def test_a_cancel_inside_a_step_reaches_the_worker(stack, monkeypatch):
+    api = stack(proposal())
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    held = HeldCheckpoint(api, monkeypatch)
+    held.after_decision(api, paused)
+    cancelled = api.post(f"/v1/campaigns/{campaign_id}/cancel")
+    assert cancelled.status_code == 202, cancelled.text
+    assert cancelled.json()["job"]["cancel_requested"] is True
+    held.release.set()
+    assert api.wait(campaign_id, "cancelled")["outcome"] == "cancelled_by_request"
+
+
+def test_a_resume_inside_a_step_is_not_told_the_campaign_finished(stack, monkeypatch):
+    api = stack(proposal())
+    paused = api.paused()
+    campaign_id = paused["record"]["campaign_id"]
+    held = HeldCheckpoint(api, monkeypatch)
+    held.after_decision(api, paused)
+    resumed = api.post(f"/v1/campaigns/{campaign_id}/resume")
+    assert resumed.status_code == 202, resumed.text
+    held.release.set()
+    assert api.wait(campaign_id, "completed")["outcome"] == "repair_verified"

@@ -17,6 +17,7 @@ import tempfile
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
 
 import httpx
@@ -34,7 +35,8 @@ from ghostlab.contracts.world import (CapsuleV2, WorldCampaignRecord, WorldCampa
 from ghostlab.contracts.world_packs import PACKS
 from ghostlab.contracts.world_refund import (REFUND, capsule_v2_to_v1, diff_to_world,
                                              finding_to_world, proposal_to_world, run_to_world)
-from ghostlab.orchestration import CampaignController, Services, TrustedSession
+from ghostlab.orchestration import (CampaignController, CampaignSettingsChanged, Services,
+                                    TrustedSession)
 from ghostlab.orchestration.controller import CampaignExists, ledger_key
 from ghostlab.policy import (ApprovalDenied, ApproverAuthority, PolicyDenied, action_digest,
                              authorize_capability, authorize_world, root_scope)
@@ -95,6 +97,22 @@ def _keys(value) -> Iterator[str]:
             pending.extend(item)
 
 
+class PinningController(CampaignController):
+    """``start`` with one step between its gates and its first checkpoint.
+
+    A refused start stores nothing, so it leaves no pin; a failed pin leaves no campaign;
+    and nothing can read a campaign before its pin. M05 has no hook here (M07.md, requests).
+    """
+
+    def __init__(self, *args, pin: Callable[[], None], **options):
+        super().__init__(*args, **options)
+        self._pin = pin
+
+    def _invoke(self, payload, campaign_id):
+        self._pin()
+        return super()._invoke(payload, campaign_id)
+
+
 class ControlPlane:
     def __init__(self, config: ApiConfig, saver):
         self.config, self.services, self.saver = config, config.services, saver
@@ -107,10 +125,12 @@ class ControlPlane:
     # -- plumbing ---------------------------------------------------------------------
 
     def _controller(self, session: TrustedSession, *, services: Services | None = None,
-                    cancel=None) -> CampaignController:
-        return CampaignController(session, services or self.services, saver=self.saver,
-                                  max_iterations=self.config.max_iterations,
-                                  approval_ttl=self.config.approval_ttl, cancel=cancel)
+                    cancel=None, pin: Callable[[], None] | None = None) -> CampaignController:
+        options = {"saver": self.saver, "max_iterations": self.config.max_iterations,
+                   "approval_ttl": self.config.approval_ttl, "cancel": cancel}
+        if pin is not None:
+            return PinningController(session, services or self.services, pin=pin, **options)
+        return CampaignController(session, services or self.services, **options)
 
     def _record_failure(self, key: str, error: BaseException, cancelling: bool):
         _, body, _ = describe(error if isinstance(error, Exception) else RuntimeError(),
@@ -131,13 +151,13 @@ class ControlPlane:
             hook = self.services.on_node
             replies = None
             if self.config.scripted:
-                origin = self._origin(session, campaign_id) or {}
-                replies = ScriptedProposals(
-                    scenario or origin.get("scripted_scenario") or DEFAULT_SCENARIO)
+                pinned = (self._origin(session, campaign_id) or {}).get("scripted_scenario")
+                # A stop serves no proposal, so it needs no scenario. Anything else would guess.
+                if scenario is None and pinned is None and not job.cancel.is_set():
+                    raise CampaignSettingsChanged("this campaign has no recorded scenario")
+                replies = ScriptedProposals(scenario or pinned or DEFAULT_SCENARIO)
 
             def on_node(name, state):
-                if scenario is not None and not job.entered:
-                    self._pin_origin(session, campaign_id, scenario)
                 job.entered = True  # the checkpoint exists: this campaign can be read
                 job.settled.set()
                 if self.jobs.stopping.is_set():
@@ -149,7 +169,9 @@ class ControlPlane:
             services = dataclasses.replace(
                 self.services, on_node=on_node,
                 runtime=scripted_runtime(replies) if replies else self.services.runtime)
-            call(self._controller(session, services=services, cancel=job.cancel))
+            pin = None if scenario is None else partial(self._pin_origin, session, campaign_id,
+                                                        scenario)
+            call(self._controller(session, services=services, cancel=job.cancel, pin=pin))
 
         return self.jobs.submit(key, work, cancel=cancel, follow=follow)
 
@@ -165,7 +187,10 @@ class ControlPlane:
             view.put(json.dumps(origin, sort_keys=True).encode(), name=f"{campaign_id}-origin",
                      media_type="application/json", provenance=provenance, created_at=stamp)
         except Conflict:
-            pass  # a restart of this same start; the first pin stands
+            # An earlier start stored this and no checkpoint. A pin never changes, so this
+            # one can only be that same start.
+            if self._origin(session, campaign_id) != origin:
+                raise self._key_reused() from None
 
     def _origin(self, session, campaign_id: str) -> dict | None:
         key = ledger_key(session.project_id, campaign_id)
@@ -272,10 +297,15 @@ class ControlPlane:
             replayed = not started
         state = self._controller(trusted).state(campaign_id)
         pinned = (self._origin(trusted, campaign_id) or {}).get("scripted_scenario")
-        if state["spec"] != spec.model_dump(mode="json") or pinned not in (None, scenario):
-            raise ApiError(409, "conflict", "This Idempotency-Key was used for a different spec",
-                           reason="idempotency_key_reused")
+        if (state["spec"] != spec.model_dump(mode="json")
+                or (pinned or DEFAULT_SCENARIO) != scenario):
+            raise self._key_reused()
         return self.campaign_view(session, campaign_id), replayed
+
+    @staticmethod
+    def _key_reused() -> ApiError:
+        return ApiError(409, "conflict", "This Idempotency-Key was used for a different spec",
+                        reason="idempotency_key_reused")
 
     def _existing(self, trusted: TrustedSession, campaign_id: str) -> dict | None:
         try:

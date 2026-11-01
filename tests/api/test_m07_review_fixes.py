@@ -698,3 +698,105 @@ def test_shutdown_stops_real_workers_after_one_failed_to_start(monkeypatch):
     finally:
         seen.set()
     assert registry.stopping.is_set()
+
+
+# -- third review: a campaign's origin is pinned before it exists ------------------------------
+
+def scripted_id(client, key="k"):
+    sessions = client.app.state.plane.config.sessions
+    return "c-" + request_digest(sessions.project_id, sessions.principal.principal_id, key)
+
+
+def local_session(client):
+    sessions = client.app.state.plane.config.sessions
+    return ApiSession(sessions.principal, sessions.project_id, "local_dev").trusted
+
+
+def at_pin(monkeypatch, before):
+    """Run ``before`` as an origin pin is written, and touch no other artifact."""
+    put = FileArtifactStore._put
+
+    def wrapped(store, data, *, artifact_id, **options):
+        if artifact_id.endswith("-origin"):
+            before()
+        return put(store, data, artifact_id=artifact_id, **options)
+
+    monkeypatch.setattr(FileArtifactStore, "_put", wrapped)
+
+
+def test_a_failed_pin_stores_no_campaign_and_keeps_the_scenario(tmp_path, monkeypatch):
+    armed = [True]
+
+    def fail_once():
+        if armed:
+            armed.clear()
+            raise StorageError("disk full")
+
+    at_pin(monkeypatch, fail_once)
+    with TestClient(scripted_app(tmp_path), **LOOPBACK) as client:
+        scripted = Scripted(client)
+        failed = scripted.create(J, "Find a leak", scripted_scenario="revocation_race")
+        assert failed.status_code == 500 and failed.json()["error"]["retryable"] is True
+        campaign_id = scripted_id(client)
+        assert scripted.api.get(f"/v1/campaigns/{campaign_id}", who=None).status_code == 404
+        retry = scripted.create(J, "Find a leak", scripted_scenario="revocation_race")
+        assert retry.status_code == 202 and "Idempotency-Replayed" not in retry.headers
+        other = scripted.create(J, "Find a leak", scripted_scenario="fault_never_fires")
+        assert other.status_code == 409
+        assert other.json()["reason"] == "idempotency_key_reused"
+        view = scripted.api.wait(campaign_id, "awaiting_approval", who=None)
+        assert view["experiments"][0]["adapter_id"] == "journey-version-checked"
+
+
+def test_a_view_never_reads_a_campaign_before_its_pin(stack, monkeypatch):
+    at_pin(monkeypatch, lambda: time.sleep(0.5))
+    api = stack(proposal())
+    created = api.create()
+    assert created.status_code == 202 and created.json()["inference"] == "fixture"
+
+
+def test_a_refused_create_stores_no_pin(tmp_path):
+    with TestClient(scripted_app(tmp_path, scripted=False), **LOOPBACK) as client:
+        refused = Scripted(client).create(REFUND, "Find a failure")
+        assert refused.status_code == 403
+        assert refused.json()["reason"] == "inference_not_authorized"
+        plane = client.app.state.plane
+        assert plane._origin(local_session(client), scripted_id(client)) is None
+
+
+def test_a_pin_left_with_no_campaign_still_fixes_the_key(tmp_path):
+    with TestClient(scripted_app(tmp_path), **LOOPBACK) as client:
+        scripted, plane = Scripted(client), client.app.state.plane
+        campaign_id = scripted_id(client)
+        # The pin stored, then the first checkpoint failed: a start that left only this.
+        plane._pin_origin(local_session(client), campaign_id, "revocation_race")
+        other = scripted.create(J, "Find a leak", scripted_scenario="fault_never_fires")
+        assert other.status_code == 409
+        assert other.json()["reason"] == "idempotency_key_reused"
+        assert scripted.api.get(f"/v1/campaigns/{campaign_id}", who=None).status_code == 404
+        retry = scripted.create(J, "Find a leak", scripted_scenario="revocation_race")
+        assert retry.status_code == 202
+        view = scripted.api.wait(campaign_id, "awaiting_approval", who=None)
+        assert view["experiments"][0]["adapter_id"] == "journey-version-checked"
+
+
+def test_a_scripted_server_will_not_guess_the_scenario_of_a_campaign_with_no_pin(tmp_path,
+                                                                                monkeypatch):
+    crash = CrashOnce("propose")
+    with TestClient(scripted_app(tmp_path, on_node=crash), **LOOPBACK) as client:
+        scripted, plane = Scripted(client), client.app.state.plane
+        campaign_id = scripted.create(J, "Find a leak", scripted_scenario="revocation_race"
+                                      ).json()["record"]["campaign_id"]
+        assert scripted.api.wait(campaign_id, "running", who=None)["job"]["state"] == "stalled"
+        monkeypatch.setattr(plane, "_origin", lambda session, campaign_id: None)
+        resumed = scripted.api.post(f"/v1/campaigns/{campaign_id}/resume", who=None)
+        assert resumed.status_code == 409
+        assert resumed.json()["reason"] == "settings_changed"
+        view = scripted.api.view(campaign_id, who=None)
+        assert view["experiments"] == [] and view["job"]["state"] == "stalled"
+        other = scripted.create(J, "Find a leak", scripted_scenario="fault_never_fires")
+        assert other.status_code == 409
+        assert other.json()["reason"] == "idempotency_key_reused"
+        cancelled = scripted.api.post(f"/v1/campaigns/{campaign_id}/cancel", who=None)
+        assert cancelled.status_code == 202  # stopping needs no scenario: it serves no proposal
+        assert scripted.api.wait(campaign_id, "cancelled", who=None)["experiments"] == []

@@ -8,6 +8,7 @@ import type {
 } from "../api/api.generated.ts";
 import type { DataSource, Origin } from "../data/source.ts";
 import { coverageOf } from "../logic/coverage.ts";
+import { alignedRowDiffers, changedMetrics, compareLedgers, summarizeAligned } from "../logic/diffSummary.ts";
 import {
   alignTraces,
   isErrorOutcome,
@@ -105,10 +106,42 @@ export function DiffPanel({
   const coverage = coverageOf(experiment, baseline, fork);
   const leaks = leaksIn(fork?.result ?? null, findings);
   const cause = first === null ? null : divergenceCause(first);
+  const summary = summarizeAligned(rows);
+  const changed = changedMetrics(diff);
+  const ledgerComparison = compareLedgers(baseline?.result ?? null, fork?.result ?? null);
 
   return (
     <>
       {coverage === null ? null : <CoverageNotice coverage={coverage.coverage} violations={violating.length} />}
+      <Section title="Summary" origins={runOrigins}>
+        <div data-testid="diff-summary">
+          <p>
+            {summary.total === 0
+              ? "No event records to compare yet."
+              : `Compared ${summary.total} event records; ${summary.differing} differ in request, outcome or state.`}
+          </p>
+          <p>
+            {first === null ? "No divergence recorded." : `First divergence at event ${first.event_id}.`}{" "}
+            {violating.length === 0
+              ? "The verifier cites no failing event."
+              : `The verifier cites ${violating.length} failing event${violating.length === 1 ? "" : "s"}.`}
+          </p>
+          {changed.length === 0 ? (
+            <p>Every recorded metric matches.</p>
+          ) : (
+            <p>
+              Recorded metrics that differ:{" "}
+              {changed.map((metric, index) => (
+                <span key={metric.name}>
+                  {index > 0 ? ", " : null}
+                  <Mono>{metric.name}</Mono>
+                </span>
+              ))}{" "}
+              <span className="muted">(changes are computed from the two recorded values)</span>
+            </p>
+          )}
+        </div>
+      </Section>
       <Section title="Where the worlds separate" origins={origins}>
         {coverage === null ? null : <CoverageLine coverage={coverage.coverage} recorded={coverage.recorded} />}
         <div className="callouts">
@@ -209,9 +242,15 @@ export function DiffPanel({
       {baselineLedger === null && forkLedger === null ? null : (
         <Section title="Ledger" origins={runOrigins}>
           <p className="muted">A synthetic ledger. No real money moved.</p>
+          {ledgerComparison === null ? null : <LedgerComparisonLine comparison={ledgerComparison} />}
           <div className="sides">
-            <LedgerColumn side="baseline" title="Baseline" ledger={baselineLedger} />
-            <LedgerColumn side="fork" title="Fork" ledger={forkLedger} />
+            <LedgerColumn
+              side="baseline"
+              title="Baseline"
+              ledger={baselineLedger}
+              onlyHere={new Set(ledgerComparison?.baselineOnly ?? [])}
+            />
+            <LedgerColumn side="fork" title="Fork" ledger={forkLedger} onlyHere={new Set(ledgerComparison?.forkOnly ?? [])} />
           </div>
         </Section>
       )}
@@ -228,7 +267,7 @@ export function DiffPanel({
 
       <Section title="Every event, side by side" origins={runOrigins}>
         {runsMissing ? (
-          <Notice state="loading" title="Waiting for both recorded runs" />
+          <Notice state="loading" title="Waiting for both recorded runs" live />
         ) : (
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Baseline and fork events">
             <table className="aligned">
@@ -244,31 +283,40 @@ export function DiffPanel({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.eventId}>
-                    <th scope="row">
-                      <a href={link(row.eventId)}>{row.eventId}</a>
-                      {row.eventId === first?.event_id ? (
-                        <>
-                          {" "}
-                          <Tag tone="active">First divergence</Tag>
-                        </>
-                      ) : null}
-                      {violating.includes(row.eventId) ? (
-                        <>
-                          {" "}
-                          <Tag tone="fail">Violation evidence</Tag>
-                        </>
-                      ) : null}
-                    </th>
-                    <td data-label="Baseline">
-                      <EventCell event={row.baseline} />
-                    </td>
-                    <td data-label="Fork">
-                      <EventCell event={row.fork} />
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((row) => {
+                  const differs = alignedRowDiffers(row);
+                  return (
+                    <tr key={row.eventId} data-diff={differs ? "different" : "same"}>
+                      <th scope="row">
+                        <a href={link(row.eventId)}>{row.eventId}</a>
+                        {differs ? (
+                          <>
+                            {" "}
+                            <Tag tone="warn">Differs</Tag>
+                          </>
+                        ) : null}
+                        {row.eventId === first?.event_id ? (
+                          <>
+                            {" "}
+                            <Tag tone="active">First divergence</Tag>
+                          </>
+                        ) : null}
+                        {violating.includes(row.eventId) ? (
+                          <>
+                            {" "}
+                            <Tag tone="fail">Violation evidence</Tag>
+                          </>
+                        ) : null}
+                      </th>
+                      <td data-label="Baseline">
+                        <EventCell event={row.baseline} />
+                      </td>
+                      <td data-label="Fork">
+                        <EventCell event={row.fork} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -316,6 +364,20 @@ function LeakStory({ leak, href }: { leak: Leak; href: string }) {
 
 function MetricTable({ experiment, currency }: { experiment: ExperimentView; currency: string | null }) {
   const rows = metricRows(experiment.diff);
+  const changeOf = (row: { baseline: number | null; fork: number | null }) =>
+    row.baseline === null || row.fork === null ? null : row.fork - row.baseline;
+  const changeCell = (name: string, delta: number | null) => {
+    if (delta === null) return <span className="muted">one side not recorded</span>;
+    if (delta === 0) return <span className="muted">no change</span>;
+    const signed = delta > 0 ? `+${delta}` : String(delta);
+    return name.endsWith("_minor") && currency !== null ? (
+      <>
+        <Mono>{signed}</Mono> <span className="muted">{formatMinor(delta, currency)}</span>
+      </>
+    ) : (
+      <Mono>{signed}</Mono>
+    );
+  };
   if (rows.length === 0) return <Notice state="empty" title="The diff records no metrics" />;
   const shown = (name: string, value: number | null) => {
     if (value === null) return <span className="muted">not recorded</span>;
@@ -328,7 +390,8 @@ function MetricTable({ experiment, currency }: { experiment: ExperimentView; cur
     );
   };
   return (
-    <div className="table-wrap" tabIndex={0} role="region" aria-label="World metrics">
+    <>
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="World metrics">
       <table>
         <thead>
           <tr>
@@ -339,6 +402,7 @@ function MetricTable({ experiment, currency }: { experiment: ExperimentView; cur
             <th scope="col" data-side="fork">
               Fork
             </th>
+            <th scope="col">Change (computed)</th>
           </tr>
         </thead>
         <tbody>
@@ -349,15 +413,50 @@ function MetricTable({ experiment, currency }: { experiment: ExperimentView; cur
               </th>
               <td data-label="Baseline">{shown(row.name, row.baseline)}</td>
               <td data-label="Fork">{shown(row.name, row.fork)}</td>
+              <td data-label="Change (computed)">{changeCell(row.name, changeOf(row))}</td>
             </tr>
           ))}
         </tbody>
-      </table>
-    </div>
+        </table>
+      </div>
+      <p className="muted">Changes are computed from the two recorded values. They are not recorded themselves.</p>
+    </>
   );
 }
 
-function LedgerColumn({ side, title, ledger }: { side: string; title: string; ledger: RefundLedger | null }) {
+function LedgerComparisonLine({
+  comparison,
+}: {
+  comparison: NonNullable<ReturnType<typeof compareLedgers>>;
+}) {
+  const same = comparison.baselineOnly.length === 0 && comparison.forkOnly.length === 0;
+  return (
+    <p data-testid="ledger-comparison">
+      Baseline refunds {comparison.baselineCount} transaction{comparison.baselineCount === 1 ? "" : "s"}; fork refunds{" "}
+      {comparison.forkCount} transaction{comparison.forkCount === 1 ? "" : "s"}.
+      {same ? (
+        " Both sides record the same transaction ids."
+      ) : (
+        <>
+          {comparison.baselineOnly.length > 0 ? ` Only in baseline: ${comparison.baselineOnly.join(", ")}.` : null}
+          {comparison.forkOnly.length > 0 ? ` Only in fork: ${comparison.forkOnly.join(", ")}.` : null}
+        </>
+      )}
+    </p>
+  );
+}
+
+function LedgerColumn({
+  side,
+  title,
+  ledger,
+  onlyHere,
+}: {
+  side: string;
+  title: string;
+  ledger: RefundLedger | null;
+  onlyHere: ReadonlySet<string>;
+}) {
   return (
     <article className="side" data-side={side}>
       <h3>{title}</h3>
@@ -380,6 +479,11 @@ function LedgerColumn({ side, title, ledger }: { side: string; title: string; le
             {ledger.rows.map((row) => (
               <li key={row.transaction_id}>
                 <Mono>{row.transaction_id}</Mono> <Mono>{row.amount_minor}</Mono>{" "}
+                {onlyHere.has(row.transaction_id) ? (
+                  <>
+                    <Tag tone="warn">Only in this run</Tag>{" "}
+                  </>
+                ) : null}
                 <span className="muted">key {row.idempotency_key}</span>
               </li>
             ))}
@@ -428,7 +532,11 @@ export function DifferenceTable({ baseline, fork }: { baseline: WorldTraceEvent 
       {rows.length === 0 ? (
         <p className="muted">The two records are identical.</p>
       ) : (
-        <div className="table-wrap" tabIndex={0} role="region" aria-label="Recorded differences at the first divergence">
+        <>
+          <p data-testid="difference-count">
+            {rows.length} recorded field{rows.length === 1 ? "" : "s"} differ{rows.length === 1 ? "s" : ""} at this event.
+          </p>
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Recorded differences at the first divergence">
           <table data-testid="difference-table">
             <thead>
               <tr>
@@ -453,7 +561,8 @@ export function DifferenceTable({ baseline, fork }: { baseline: WorldTraceEvent 
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
       <p className="muted">A comparison of the two records. It does not say which side is right.</p>
     </>

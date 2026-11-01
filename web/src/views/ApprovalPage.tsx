@@ -6,7 +6,7 @@ import { readCoverage } from "../logic/coverage.ts";
 import { BLOCKED_ENDED_HELP, CAMPAIGN_FINISHED, describeFailure, failureState } from "../logic/failure.ts";
 import { formatTimestamp, prettyJson } from "../logic/format.ts";
 import { isTerminal } from "../logic/status.ts";
-import { Digest, Facts, FailureNotice, Loading, Mono, Notice, Section, Tag } from "../ui/components.tsx";
+import { BusyNote, Digest, Facts, FailureNotice, Loading, Mono, Notice, Section, Tag } from "../ui/components.tsx";
 import { useResource } from "../ui/hooks.ts";
 import { RepairResult } from "./CampaignPage.tsx";
 import { CoverageNotice } from "./experimentData.tsx";
@@ -25,7 +25,8 @@ export function ApprovalPage({
   const approvalId = view.approval?.approval_id ?? null;
   const { resource, reload } = useResource(approvalId, view.event_count, () => source.getApproval(approvalId ?? ""));
   const keys = useRef(new IdempotencyKeys());
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<"decide" | "resume" | null>(null);
+  const busy = busyAction !== null;
   const [resumeLost, setResumeLost] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [result, setResult] = useState<DecisionResult | null>(null);
@@ -52,7 +53,7 @@ export function ApprovalPage({
     !stopped;
 
   async function decide(approval: ApprovalView, decision: Decision, reason: string) {
-    setBusy(true);
+    setBusyAction("decide");
     setFailure(null);
     setResumeLost(false);
     setResult(null);
@@ -63,13 +64,13 @@ export function ApprovalPage({
     // What the page shows next comes from the service, not from the response above.
     await refresh();
     reload();
-    setBusy(false);
+    setBusyAction(null);
     // The buttons are gone by now, so keep keyboard users where the result appears.
     decisionRegion.current?.focus();
   }
 
   async function resume() {
-    setBusy(true);
+    setBusyAction("resume");
     setFailure(null);
     setResumeLost(false);
     const outcome = await source.resumeCampaign(view.record.campaign_id);
@@ -80,7 +81,7 @@ export function ApprovalPage({
     }
     await refresh();
     reload();
-    setBusy(false);
+    setBusyAction(null);
   }
 
   return (
@@ -93,6 +94,7 @@ export function ApprovalPage({
           approval={resource.data}
           session={session}
           busy={busy}
+          busyAction={busyAction}
           failure={failure}
           result={currentResult(result, resumeLost, stopped, resource.data.effective_status)}
           origins={resource.origins}
@@ -214,6 +216,7 @@ export function DecisionPanel({
   approval,
   session,
   busy,
+  busyAction = null,
   failure,
   result,
   origins,
@@ -227,6 +230,7 @@ export function DecisionPanel({
   approval: ApprovalView;
   session: SessionInfo | null;
   busy: boolean;
+  busyAction?: "decide" | "resume" | null;
   failure: Failure | null;
   result: DecisionResult | null;
   origins: readonly Origin[];
@@ -264,6 +268,15 @@ export function DecisionPanel({
         />
       )}
       {gate.note === null ? null : <p>{gate.note}</p>}
+      {busy ? (
+        <BusyNote>
+          {busyAction === "resume"
+            ? "Resuming the campaign…"
+            : busyAction === "decide"
+              ? "Recording your decision…"
+              : "Working…"}
+        </BusyNote>
+      ) : null}
       {gate.open ? (
         <form
           className="stack-form"

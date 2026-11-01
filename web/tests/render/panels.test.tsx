@@ -2,15 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
-import type { ApprovalView, RunView } from "../../src/api/api.generated.ts";
+import type { ApprovalView, RunView, SessionInfo } from "../../src/api/api.generated.ts";
 import { createFixtureSource } from "../../src/data/fixtureSource.ts";
-import type { Failure, Origin } from "../../src/data/source.ts";
+import type { DataSource, Failure, Origin } from "../../src/data/source.ts";
 import { recorded } from "../../src/fixtures/recorded.generated.ts";
 import { SCENARIOS } from "../../src/fixtures/scenarios.ts";
 import { App, TestDataBanner } from "../../src/ui/App.tsx";
 import { FailureNotice, OriginNote, Notice } from "../../src/ui/components.tsx";
 import { ApprovalDetail, DecisionPanel } from "../../src/views/ApprovalPage.tsx";
-import { RepairResult } from "../../src/views/CampaignPage.tsx";
+import { ProgressPanel, RepairResult } from "../../src/views/CampaignPage.tsx";
+import { GuidedDemo } from "../../src/views/HomePage.tsx";
 import { ReplayPanel } from "../../src/views/CapsulePage.tsx";
 import { DiffPanel } from "../../src/views/DiffPage.tsx";
 import { ApplicationEvents, FindingList, RunEvidence } from "../../src/views/EvidencePage.tsx";
@@ -232,6 +233,13 @@ test("controls appear only for a pending approval", () => {
   assert.match(text(panel(consumed)), /Approver \(from the session\) local-dev-user/);
 });
 
+test("an action in progress says what is happening, and an idle panel says nothing", () => {
+  const pending = scenario("fx-refund").stage.approval!;
+  assert.match(text(panel(pending, { busy: true, busyAction: "decide" })), /Recording your decision/);
+  assert.match(text(panel(pending, { busy: true, busyAction: "resume" })), /Resuming the campaign/);
+  assert.doesNotMatch(panel(pending), /Recording your decision|Resuming the campaign/);
+});
+
 test("a session without approval rights sees why, and the form never sends a role", () => {
   const pending = scenario("fx-refund").stage.approval!;
   const markup = panel(pending, { session: { ...session, can_approve: false } });
@@ -305,4 +313,75 @@ test("the fixture app always carries the test data banner; the service app does 
   assert.match(withHarness, /data-testid="test-data-banner"/);
   const service = { ...fixture, kind: "api" as const };
   assert.doesNotMatch(html(<App source={service} harness={null} />), /test-data-banner/);
+});
+test("campaign progress shows live counts and whether the view is updating", () => {
+  const running = scenario("fx-running").stage.view;
+  const markup = html(<ProgressPanel view={running} origins={[]} live={{ connection: "live", cursor: 5 }} />);
+  assert.match(markup, /data-testid="campaign-progress"/);
+  const page = text(markup);
+  assert.match(page, /Running/);
+  assert.match(page, /3 tasks: 2 succeeded, 1 in progress/);
+  assert.match(page, /1 experiment/);
+  assert.match(page, /Events 5 of 5 shown/);
+  assert.match(page, /Worker active/);
+  assert.match(page, /Updating from the service/);
+  const done = scenario("fx-refund").approved!.view;
+  const settled = text(html(<ProgressPanel view={done} origins={[]} live={{ connection: "live", cursor: done.event_count }} />));
+  assert.match(settled, /No further updates are expected/);
+  const stale = text(html(<ProgressPanel view={running} origins={[]} live={{ connection: "reconnecting", cursor: 5 }} />));
+  assert.match(stale, /Reconnecting/);
+});
+
+test("campaign events render as a labelled timeline", () => {
+  const events = scenario("fx-refund").stage.events;
+  const markup = html(<ApplicationEvents events={events} origins={[]} campaignId="fx-refund" experimentId="experiment-1" />);
+  assert.match(markup, /data-testid="event-timeline"/);
+  const page = text(markup);
+  assert.match(page, /Campaign created/);
+  assert.match(page, /Run started/);
+  assert.match(page, /Finding recorded/);
+  assert.match(page, /Approval requested/);
+  assert.match(page, /2026-10-29 10:00:01 UTC/);
+  assert.match(page, /task fx-refund-i1-validate/);
+  assert.match(page, /run run-faulted-1/);
+});
+
+test("the diff summary counts differing records and names changed metrics", () => {
+  const markup = diffPanel(refund);
+  assert.match(markup, /data-testid="diff-summary"/);
+  const page = text(markup);
+  assert.match(page, /Compared \d+ event records; \d+ differ in request, outcome or state/);
+  assert.match(page, /First divergence at event 2/);
+  assert.match(page, /failing event/);
+  assert.match(page, /Recorded metrics that differ: refunded_minor/);
+  assert.match(markup, /data-testid="difference-count"/);
+  assert.match(page, /recorded fields differ at this event/);
+  assert.match(markup, /data-testid="ledger-comparison"/);
+  assert.match(page, /Baseline refunds 1 transaction; fork refunds 2 transactions/);
+  assert.match(page, /Only in fork: refund-2/);
+  assert.match(page, /Change \(computed\)/);
+  assert.match(page, /Differs/);
+  assert.match(page, /computed from the two recorded values/);
+});
+
+const demoSource = { kind: "api" } as unknown as DataSource;
+const demoSession: SessionInfo = { ...session, inference: "scripted", runnable_worlds: ["refund-world/1"] };
+
+test("the guided demo offers one click on synthetic data", () => {
+  const markup = html(<GuidedDemo source={demoSource} session={demoSession} />);
+  assert.match(markup, /data-testid="guided-demo"/);
+  const page = text(markup);
+  assert.match(page, /Start guided demo run/);
+  assert.match(page, /Synthetic world: no real people or money/);
+  assert.match(page, /Proposals scripted: checked-in replies, not a model/);
+  assert.match(page, /Watch campaign progress while the baseline and fork run/);
+  assert.match(page, /Scripted scenario default/);
+  assert.match(page, /refund-world\/1/);
+});
+
+test("the guided demo stays honest when it cannot run", () => {
+  const disabled = html(<GuidedDemo source={demoSource} session={{ ...demoSession, inference: "disabled" }} />);
+  assert.match(disabled, /disabled=""/);
+  assert.match(text(disabled), /cannot start new campaigns/);
+  assert.equal(html(<GuidedDemo source={demoSource} session={{ ...demoSession, runnable_worlds: [] }} />), "");
 });

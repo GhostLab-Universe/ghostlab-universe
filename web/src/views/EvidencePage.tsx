@@ -9,6 +9,7 @@ import type {
 } from "../api/api.generated.ts";
 import type { DataSource, Origin, RunName } from "../data/source.ts";
 import { readCoverage } from "../logic/coverage.ts";
+import { describeEventKind } from "../logic/eventKinds.ts";
 import { findingsForEvent, isErrorOutcome, parseEventRef, violatingEventIds } from "../logic/evidence.ts";
 import { formatTimestamp } from "../logic/format.ts";
 import { deliveryAt, deliveryLabel, sharingLostAt } from "../logic/journeyStory.ts";
@@ -349,15 +350,32 @@ export function ApplicationEvents({
       {events.length === 0 ? (
         <Notice state="empty" title="No campaign events yet" />
       ) : (
-        <ol className="app-events">
-          {events.map((event) => (
-            <li key={event.sequence}>
-              <span className="event-id">{event.sequence}</span>
-              <div>
-                <p>
-                  <Mono>{event.kind}</Mono> <span className="muted">{formatTimestamp(event.occurred_at)}</span>
-                </p>
+        <ol className="event-timeline" data-testid="event-timeline">
+          {events.map((event) => {
+            const info = describeEventKind(event.kind);
+            return (
+              <li key={event.sequence} data-tone={info.tone}>
+                <div className="event-timeline-head">
+                  <span className="event-id">{event.sequence}</span>
+                  <Tag tone={info.tone}>{info.label}</Tag>
+                  <span className="muted">{formatTimestamp(event.occurred_at)}</span>
+                </div>
                 <p>{event.summary}</p>
+                {event.task_id === null && event.run_id === null ? null : (
+                  <p className="muted">
+                    {event.task_id === null ? null : (
+                      <>
+                        task <Mono>{event.task_id}</Mono>
+                      </>
+                    )}
+                    {event.task_id !== null && event.run_id !== null ? " " : null}
+                    {event.run_id === null ? null : (
+                      <>
+                        run <Mono>{event.run_id}</Mono>
+                      </>
+                    )}
+                  </p>
+                )}
                 {event.refs.length === 0 ? null : (
                   <ul className="refs">
                     {event.refs.map((ref) => {
@@ -378,9 +396,9 @@ export function ApplicationEvents({
                     })}
                   </ul>
                 )}
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ol>
       )}
     </Section>

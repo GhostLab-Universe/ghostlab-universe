@@ -4,8 +4,10 @@ import type { DataSource, Failure, Origin, RunName } from "../data/source.ts";
 import { readCoverage } from "../logic/coverage.ts";
 import { violatingEventIds } from "../logic/evidence.ts";
 import { presentReplay } from "../logic/replay.ts";
-import { Digest, Facts, FailureNotice, Mono, Section, Tag } from "../ui/components.tsx";
+import { BusyNote, Digest, Facts, FailureNotice, Mono, Section, Tag } from "../ui/components.tsx";
 import { CoverageNotice, ExperimentGate, ExperimentPicker, LostFaultsNotice, useExperiment } from "./experimentData.tsx";
+
+const RUN_LABEL: Record<RunName, string> = { baseline: "Baseline", fork: "Fork", repaired: "Repaired" };
 
 export function CapsulePage({
   source,
@@ -53,35 +55,36 @@ function CapsuleControls({
   const [capsule, setCapsule] = useState<{ run: RunName; info: CapsuleInfo; origins: readonly Origin[] } | null>(null);
   const [replay, setReplay] = useState<{ run: RunName; result: ReplayResult; origins: readonly Origin[] } | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<"export" | "replay" | "download" | null>(null);
+  const busy = busyAction !== null;
   const download = useRef<HTMLAnchorElement | null>(null);
   const id = experiment.experiment_id;
   const exported = capsule?.run === run ? capsule : null;
   const replayed = replay?.run === run ? replay : null;
 
-  async function act(work: () => Promise<void>) {
-    setBusy(true);
+  async function act(action: "export" | "replay" | "download", work: () => Promise<void>) {
+    setBusyAction(action);
     setFailure(null);
     await work();
-    setBusy(false);
+    setBusyAction(null);
   }
 
   const exportRun = () =>
-    act(async () => {
+    act("export", async () => {
       const result = await source.exportCapsule(campaignId, id, run);
       if (result.ok) setCapsule({ run, info: result.data, origins: result.origins });
       else setFailure(result.failure);
     });
 
   const replayRun = () =>
-    act(async () => {
+    act("replay", async () => {
       const result = await source.replayCapsule(campaignId, id, run);
       if (result.ok) setReplay({ run, result: result.data, origins: result.origins });
       else setFailure(result.failure);
     });
 
   const save = (info: CapsuleInfo) =>
-    act(async () => {
+    act("download", async () => {
       const result = await source.downloadArtifact(info.artifact.id);
       if (!result.ok) {
         setFailure(result.failure);
@@ -117,7 +120,7 @@ function CapsuleControls({
           >
             {runs.map((name) => (
               <option key={name} value={name}>
-                {name}
+                {RUN_LABEL[name]}
               </option>
             ))}
           </select>
@@ -142,6 +145,13 @@ function CapsuleControls({
               Download link
             </a>
           </div>
+          {busyAction === "export" ? (
+            <BusyNote>Exporting the capsule…</BusyNote>
+          ) : busyAction === "replay" ? (
+            <BusyNote>Replaying the capsule…</BusyNote>
+          ) : busyAction === "download" ? (
+            <BusyNote>Preparing the download…</BusyNote>
+          ) : null}
           {exported === null ? <p className="muted">Export a capsule to replay or download it.</p> : null}
         </div>
         {failure === null ? null : <FailureNotice failure={failure} />}

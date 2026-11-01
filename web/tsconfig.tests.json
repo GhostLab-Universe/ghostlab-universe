@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": { "types": ["vite/client", "node"] },
+  "include": ["src", "vite.config.ts", "tests/vite.render.config.ts", "tests/unit", "tests/render", "tests/integration", "tests/browser", "tests/contract-compat.check.ts"],
+  "exclude": ["src/api/generate.mjs"]
+}

@@ -876,3 +876,23 @@ def test_nothing_in_the_published_contract_claims_authentication():
     assert "authenticated" not in document["info"]["description"].lower()
     assert "authenticated" not in document["components"]["schemas"]["SessionInfo"][
         "description"].lower()
+
+
+def test_a_database_name_this_server_would_not_use_is_refused(tmp_path, monkeypatch, capsys):
+    from ghostlab.api import __main__ as entry
+
+    monkeypatch.setenv("GHOSTLAB_AUTH_MODE", "local_dev")
+    monkeypatch.delenv("GHOSTLAB_DEPLOYMENT", raising=False)
+    served = []
+    monkeypatch.setattr(entry.uvicorn, "run", lambda app, **_: served.append(app))
+    monkeypatch.setenv("GHOSTLAB_SQLITE_PATH", str(tmp_path / "a" / "elsewhere.sqlite"))
+    assert entry.main(["--port", "1"]) == 2
+    assert "GHOSTLAB_SQLITE_PATH" in capsys.readouterr().err
+    assert not served and not (tmp_path / "a").exists()
+    monkeypatch.setenv("GHOSTLAB_SQLITE_PATH", str(tmp_path / "a" / "ghostlab.sqlite"))
+    assert entry.main(["--port", "1"]) == 0
+    assert (tmp_path / "a" / "ghostlab.sqlite").exists()
+    # An explicit root is what the server uses, so the variable has no say.
+    monkeypatch.setenv("GHOSTLAB_SQLITE_PATH", str(tmp_path / "a" / "elsewhere.sqlite"))
+    assert entry.main(["--port", "1", "--root", str(tmp_path / "b")]) == 0
+    assert len(served) == 2

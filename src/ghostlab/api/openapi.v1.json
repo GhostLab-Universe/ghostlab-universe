@@ -3518,7 +3518,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "The server is shutting down or could not start a worker; retry later"
           }
         },
         "security": [
@@ -3824,7 +3824,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "The server is shutting down or could not start a worker; retry later"
           }
         },
         "security": [
@@ -4073,7 +4073,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "The server is shutting down or could not start a worker; retry later"
           }
         },
         "security": [
@@ -4485,7 +4485,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "The server is shutting down or could not start a worker; retry later"
           }
         },
         "security": [
@@ -5003,7 +5003,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "The server is shutting down or could not start a worker; retry later"
           }
         },
         "security": [
@@ -5162,7 +5162,7 @@
                 }
               }
             },
-            "description": "The server is shutting down; retry later"
+            "description": "The server is shutting down or could not start a worker; retry later"
           }
         },
         "security": [

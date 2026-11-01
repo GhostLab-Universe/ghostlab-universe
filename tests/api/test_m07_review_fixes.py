@@ -665,6 +665,7 @@ def test_a_create_whose_worker_cannot_start_is_retryable_and_holds_nothing(stack
     fail.armed = True
     refused = api.create()
     assert refused.status_code == 503 and refused.json()["error"]["retryable"] is True
+    assert refused.json()["reason"] == "worker_unavailable"
     assert api.client.app.state.plane.jobs._jobs == {}
     retry = api.create()  # the slot is free and nothing was stored
     assert retry.status_code == 202 and "Idempotency-Replayed" not in retry.headers
@@ -679,6 +680,7 @@ def test_a_decision_whose_worker_cannot_start_leaves_a_resumable_stall(stack, mo
     fail.armed = True
     decided = api.decide(paused).json()
     assert decided["resumed"] is False and decided["resume_error"]["error"]["retryable"] is True
+    assert decided["resume_error"]["reason"] == "worker_unavailable"
     assert api.view(campaign_id)["job"]["state"] == "stalled"
     assert api.post(f"/v1/campaigns/{campaign_id}/resume").status_code == 202
     assert api.wait(campaign_id, "completed")["outcome"] == "repair_verified"
@@ -698,6 +700,9 @@ def test_shutdown_stops_real_workers_after_one_failed_to_start(monkeypatch):
     finally:
         seen.set()
     assert registry.stopping.is_set()
+    with pytest.raises(ApiError) as closing:
+        registry.submit("late", lambda job: None)
+    assert (closing.value.status, closing.value.reason) == (503, "shutting_down")
 
 
 # -- third review: a campaign's origin is pinned before it exists ------------------------------
@@ -857,6 +862,14 @@ def test_a_body_too_deep_to_parse_is_a_declared_400(stack, path):
     assert response.json()["reason"] == "unparsable_body"
     assert "400" in create_app().openapi()["paths"][
         path.replace("approval-1", "{approval_id}")]["post"]["responses"]
+
+
+@pytest.mark.parametrize("body,status,reason", [(b"\xff", 400, "unparsable_body"),
+                                                 (b"{", 422, "invalid_request")])
+def test_only_a_body_the_parser_gives_up_on_is_a_400(stack, body, status, reason):
+    response = stack().post("/v1/campaigns", key="key-1", content=body,
+                            headers={"Content-Type": "application/json"})
+    assert (response.status_code, response.json()["reason"]) == (status, reason)
 
 
 def test_replay_reads_no_pinned_fixture_so_it_has_no_settings_conflict(stack):

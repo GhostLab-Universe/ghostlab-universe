@@ -44,7 +44,8 @@ WRITE_ERRORS = {
     409: {"model": ErrorResponse, "description": "Conflicts with the current state"},
     429: {"model": ErrorResponse, "description": "Too many campaigns running; retry later",
           "headers": {"Retry-After": STRING_HEADER}},
-    503: {"model": ErrorResponse, "description": "The server is shutting down; retry later"},
+    503: {"model": ErrorResponse, "description": "The server is shutting down or could not "
+                                                 "start a worker; retry later"},
 }
 BODY_ERRORS = {
     400: {"model": ErrorResponse, "description": "Body could not be parsed, for example JSON "

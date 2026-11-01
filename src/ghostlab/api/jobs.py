@@ -70,7 +70,8 @@ class JobRegistry:
         """
         with self._lock:
             if self._closing:
-                raise ApiError(503, "internal", "Server is shutting down", retryable=True)
+                raise ApiError(503, "internal", "Server is shutting down",
+                               reason="shutting_down", retryable=True)
             current = self._jobs.get(key)
             if current is not None:
                 if follow:
@@ -89,7 +90,7 @@ class JobRegistry:
                 thread.start()
             except RuntimeError as error:
                 raise ApiError(503, "internal", "Could not start a worker; retry later",
-                               retryable=True) from error
+                               reason="worker_unavailable", retryable=True) from error
             # Only now, so a job here always has a worker. It can't end first: _run needs
             # this lock to leave.
             self._jobs[key], self._threads[key] = job, thread

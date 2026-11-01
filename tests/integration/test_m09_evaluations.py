@@ -245,7 +245,7 @@ def test_the_cli_exit_code_is_what_blocks_ci(evaluated, tmp_path, capsys):
 
 def test_a_real_behaviour_regression_blocks_promotion(tmp_path, monkeypatch):
     """The repaired adapter goes back to retrying: the suite itself must catch it."""
-    monkeypatch.setattr("ghostlab.orchestration.engine.run_agent",
+    monkeypatch.setattr("ghostlab.adapters.refund_target.run_agent",
                         lambda world, adapter: run_agent(world, "vulnerable"))
     errors = run_all(tmp_path, only="flow.refund")
     report = score_directory(tmp_path)

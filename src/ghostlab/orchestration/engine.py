@@ -1,21 +1,28 @@
 """Run the trusted refund world under M06 tool authorization, then derive findings.
 
 ``ghostlab.core`` (M02) is used through its public classes and is not edited.
-``PolicyEnforcedWorld`` asks M06 before every tool call: a denied call raises
-before ``RefundWorld.call``, so it leaves no trace event and no ledger change.
-For allowed calls the result is identical to ``ghostlab.core.run`` (tested).
-The world's actor comes from the controller's ``PrincipalBinding``, never from a
-fixture default or a tool argument.
+``execute_run`` executes behind the frozen extension interfaces: the checked-in
+refund environment and target adapters plus the generic runner, with M06
+deciding every proposed action before dispatch. A denied call never reaches the
+world, so it leaves no trace event and no ledger change. For allowed calls the
+result is identical to ``ghostlab.core.run`` (tested). The world's actor comes
+from the controller's ``PrincipalBinding``, never from a fixture default or a
+tool argument. ``PolicyEnforcedWorld`` remains available for direct authorized
+calls.
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from pydantic import TypeAdapter, ValidationError
 
+from ghostlab.adapters import (REFUND_WORLD_VERSION, default_registry,
+                               ledger_change_events as _ledger_growth)
 from ghostlab.contracts import InvariantFinding, TrustedScope
 from ghostlab.contracts.tools import ToolCall
-from ghostlab.core import (ADAPTER_VERSION, BudgetExceeded, Fixture, RefundWorld, Scenario,
-                           ToolError, run_agent, verify)
+from ghostlab.core import (ADAPTER_VERSION, Fixture, RefundWorld, Scenario, ToolError, verify)
+from ghostlab.extensions.registry import UnknownTargetError, UnknownWorldError
+from ghostlab.extensions.runner import run_attempt
+from ghostlab.extensions.target import TargetTask
 from ghostlab.policy import Decision, PolicyDenied, PrincipalBinding, authorize_tool
 from ghostlab.policy.authorization import deny
 
@@ -60,34 +67,82 @@ class RunOutcome:
     stopped: str | None = None  # why a run stopped early: cancelled or out of wall clock
 
 
+def execute_with_runner(*, target_factory, environment_factory, reset_environment,
+                        build_task, authorize_action, assemble_run, cap: int,
+                        should_stop=None, cooperative_stop: bool = True) -> RunOutcome:
+    """One target-vs-environment attempt through the frozen extension interfaces.
+
+    The world binding supplies every world answer -- factories, reset, task,
+    per-action authorization, run assembly -- and this helper owns only the
+    wiring: build the attempt, run the generic loop, map the outcome.
+    Per-action denials become ``RunOutcome.denial``; a stop becomes
+    ``RunOutcome.stopped``. Setup failures (unknown adapter, unbound actor)
+    propagate to the caller.
+    """
+    target = target_factory()
+    env = environment_factory()
+    reset_environment(env)
+    result = run_attempt(env, target, build_task(), authorize=authorize_action, cap=cap,
+                         should_stop=should_stop, cooperative_stop=cooperative_stop)
+    if result.denial is not None:
+        return RunOutcome(None, result.denial, result.tool_calls)
+    if result.stopped is not None:
+        return RunOutcome(None, None, result.tool_calls, result.stopped)
+    return RunOutcome(assemble_run(result), None, result.tool_calls)
+
+
 def execute_run(fixture: Fixture, scenario: Scenario, adapter: str, *, scope: TrustedScope,
                 project_id: str, binding: PrincipalBinding) -> RunOutcome:
-    """``ghostlab.core.run`` with every tool call authorized through M06."""
-    world = PolicyEnforcedWorld(fixture, scenario, scope=scope, project_id=project_id,
-                                binding=binding)
-    status = "completed"
+    """``ghostlab.core.run`` with every tool call authorized through M06.
+
+    Runs behind the frozen extension interfaces (see :func:`execute_with_runner`):
+    the checked-in refund environment and target adapters plus the generic
+    runner. Evidence is identical to the direct core run when every call is
+    allowed (tested).
+    """
+    actor = binding.customer_id_for(project_id, scope.principal)
+    if actor is None:
+        raise PolicyDenied(deny("unbound_principal", "no world identity is bound"))
+    registry = default_registry()
     try:
-        run_agent(world, adapter)
-    except BudgetExceeded:
-        status = "budget_exhausted"
-    except ToolDenied as denied:
-        return RunOutcome(None, denied.decision, world.calls)
-    state = world.snapshot()
-    return RunOutcome({"adapter": adapter, "adapter_version": ADAPTER_VERSION,
-                       "actor_id": world.actor_id, "status": status, "trace": world.trace,
-                       "final_state": state, "checks": verify(fixture, state)},
-                      None, world.calls)
+        target_factory = registry.target_factory(REFUND_WORLD_VERSION, adapter)
+    except (UnknownWorldError, UnknownTargetError, TypeError):
+        raise ValueError("Unknown adapter") from None
+    environment_factory = registry.environment_factory(REFUND_WORLD_VERSION)
+    fixture_snapshot, scenario_dict = asdict(fixture), asdict(scenario)
+
+    def reset_environment(env):
+        env.reset(fixture_snapshot, scenario_dict, actor_id=actor)
+
+    def build_task():
+        return TargetTask(task_id=f"refund-{adapter}",
+                          params={"order_id": fixture.order_id,
+                                  "customer_id": fixture.customer_id})
+
+    def authorize_action(action):
+        try:
+            parsed = _TOOL_CALL.validate_python(
+                {"tool": action.tool, "arguments": dict(action.arguments)})
+        except ValidationError:
+            return deny("invalid_arguments", "arguments do not match the tool schema")
+        decision = authorize_tool(scope, parsed, project_id=project_id, binding=binding)
+        return None if decision.allowed else decision
+
+    def assemble_run(result):
+        return {"adapter": adapter, "adapter_version": ADAPTER_VERSION, "actor_id": actor,
+                "status": result.status, "trace": result.trace, "final_state": result.state,
+                "checks": verify(fixture, result.state)}
+
+    return execute_with_runner(
+        target_factory=target_factory, environment_factory=environment_factory,
+        reset_environment=reset_environment, build_task=build_task,
+        authorize_action=authorize_action, assemble_run=assemble_run,
+        cap=scenario.max_tool_calls, cooperative_stop=False)
 
 
 def ledger_change_events(run: dict) -> list[int]:
     """Event ids at which the authoritative ledger grew (the evidence for refund checks)."""
-    events, size = [], 0
-    for event in run["trace"]:
-        grown = len(event["state"]["ledger"])
-        if grown > size:
-            events.append(event["event_id"])
-            size = grown
-    return events
+    return _ledger_growth(run["trace"])
 
 
 def derive_findings(run_id: str, run: dict, *, recorded_at: str) -> list[dict]:

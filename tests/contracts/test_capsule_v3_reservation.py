@@ -32,6 +32,7 @@ from ghostlab.contracts.export import ROOT
 from ghostlab.contracts.world import CapsuleV2
 from ghostlab.contracts.world_packs import check_arguments
 from ghostlab.contracts.world_reservation import (
+    DEFAULT_MAX_TOOL_CALLS,
     RESERVATION_ADAPTER_POLICY, RESERVATION_FAULTS, RESERVATION_FIXTURES,
     RESERVATION_INVARIANTS, RESERVATION_REPLAY, RESERVATION_SOURCE, RESERVATION_TOOLS,
     RESERVATION_WORLD, ReservationCapsule, ReservationCapsulePayload, ReservationRunResult,
@@ -141,6 +142,8 @@ def test_manifest_mirrors_the_reviewed_adapter():
             reservation_env.SOURCE) == (ENVIRONMENT_ID, ENVIRONMENT_VERSION,
                                         RESERVATION_SOURCE)
     assert SERVICE_PROVENANCE == reservation_env.SERVICE_PROVENANCE
+    assert (DEFAULT_MAX_TOOL_CALLS ==
+            reservation_env.DEFAULT_MAX_TOOL_CALLS)
     assert VENDOR_SHA256.lower() == vendored_service_dependency()["digest"]
     assert reservation_tool("reserve")["effect"] == "mutate"
     assert reservation_tool("no_such_tool") is None

@@ -99,6 +99,26 @@ class MinimizeTest(unittest.TestCase):
         self.assertIsNone(report.selected_faults)
         self.assertEqual(report.runs_used, 1)
 
+    def test_baseline_search_limit_propagates_documented(self):
+        from ghostlab.replay import SearchLimit
+        base = evidence("completed", row("x", False, (1,)))
+        ticks = iter([0.0, 1000.0])
+        run = lambda subset: base
+        with self.assertRaises(SearchLimit):
+            minimize_faults(run=run, faults=["a"], invariant="x",
+                              deadline_ms=5000, clock=lambda: next(ticks))
+
+    def test_to_dict_output_isolated_from_report(self):
+        base = evidence("completed", row("x", False, (1,)))
+        run = lambda subset: base if subset == ("a",) else evidence(
+            "completed", row("x", True, ()))
+        report = minimize_faults(run=run, faults=["a"], invariant="x")
+        dumped = report.to_dict()
+        dumped["failure_witness"]["failed"].append({"name": "forged"})
+        dumped["trials"].clear()
+        self.assertEqual(len(report.to_dict()["failure_witness"]["failed"]), 1)
+        self.assertEqual(len(report.to_dict()["trials"]), 1)
+
     def test_unreproducible_baseline_raises(self):
         run = lambda subset: evidence("completed", row("x", True, ()))
         with self.assertRaisesRegex(ValueError, "cannot be reproduced"):

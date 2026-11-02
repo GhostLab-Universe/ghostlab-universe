@@ -11,6 +11,7 @@ echoed verbatim under ``qualification``.
 """
 
 from collections.abc import Callable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -96,7 +97,7 @@ class FidelityReport:
         object.__setattr__(self, "notes", tuple(self.notes))
 
     def to_dict(self) -> dict:
-        return {"schema": self.schema, "world_version": self.world_version,
+        data = {"schema": self.schema, "world_version": self.world_version,
                 "environment_id": self.environment_id,
                 "environment_version": self.environment_version,
                 "fidelity_version": self.fidelity_version,
@@ -109,6 +110,7 @@ class FidelityReport:
                 "declared_approximations": list(self.declared_approximations),
                 "declared_omissions": list(self.declared_omissions),
                 "qualification": self.qualification, "notes": list(self.notes)}
+        return deepcopy(data)
 
     def summary(self) -> str:
         verdict = "PASS" if self.passed else "FAIL"

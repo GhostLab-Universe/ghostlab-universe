@@ -157,6 +157,20 @@ class RecordedTest(unittest.TestCase):
             refuse_unless_recorded(replay_kind="recorded", truncated=False,
                                    external_names=["ledger-db"])
 
+    def test_to_dict_output_isolated_from_report(self):
+        registry, fixture, scenario, attempt, checks = run_refund("vulnerable")
+        result = replay_recorded(
+            registry=registry, world_version=REFUND, fixture=asdict(fixture),
+            scenario=scenario, actor_id=fixture.customer_id,
+            recorded_trace=attempt.trace, recorded_state=attempt.state,
+            recorded_checks=check_verdicts(checks))
+        dumped = result.to_dict()
+        dumped["witness"]["failed"].append({"name": "forged"})
+        dumped["matches"]["trace"] = False
+        fresh = result.to_dict()
+        self.assertTrue(fresh["matches"]["trace"])
+        self.assertEqual(fresh["witness"], result.witness)
+
     def test_check_helpers_reject_bad_rows(self):
         good = {"name": "x", "passed": False, "evidence_event_ids": [1],
                 "observed": None, "limit": None, "unit": None}

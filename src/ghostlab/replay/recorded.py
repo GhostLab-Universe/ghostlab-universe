@@ -11,6 +11,7 @@ explicitly (``replay_equivalence_claimed`` is always False).
 import hashlib
 import json
 from collections.abc import Callable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -186,12 +187,13 @@ class ReplayResult:
             raise ValueError("Recorded replay makes no model call")
 
     def to_dict(self) -> dict:
-        return {"schema": self.schema, "world_version": self.world_version,
+        data = {"schema": self.schema, "world_version": self.world_version,
                 "reproduced": self.reproduced, "matches": dict(self.matches),
                 "divergence": self.divergence, "tool_calls": self.tool_calls,
                 "checks": dict(self.checks), "failed": list(self.failed),
                 "witness": self.witness, "witness_sha256": self.witness_sha256,
                 "model_calls": self.model_calls}
+        return deepcopy(data)
 
 
 def replay_recorded(*, registry: AdapterRegistry, world_version: str, fixture: Mapping,
@@ -323,7 +325,7 @@ class RetestResult:
                              "count it at the harness that spent it")
 
     def to_dict(self) -> dict:
-        return {"schema": self.schema, "world_version": self.world_version,
+        data = {"schema": self.schema, "world_version": self.world_version,
                 "target_adapter_id": self.target_adapter_id,
                 "target_adapter_version": self.target_adapter_version,
                 "model": self.model, "provider": self.provider, "endpoint": self.endpoint,
@@ -336,6 +338,7 @@ class RetestResult:
                 "replay_equivalence_claimed": self.replay_equivalence_claimed,
                 "model_calls": self.model_calls,
                 "model_calls_note": "unreported; count inference at the spending harness"}
+        return deepcopy(data)
 
 
 def retest_fresh(*, registry: AdapterRegistry, world_version: str, target_id: str,

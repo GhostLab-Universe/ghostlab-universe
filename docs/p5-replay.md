@@ -58,5 +58,7 @@ opaque mapping.
 
 All reports serialize via `to_dict()` to JSON: `CapsuleInspection`,
 `ReplayResult`, `RetestResult`, `MinimizeReport` (with a `regression` case
-for CI), and `FidelityReport`. No live calls, no secrets, no model
-identifiers are involved anywhere in this package.
+for CI), and `FidelityReport`. No live model calls, no secrets and no
+credentials are involved anywhere in this package. Model, provider and
+endpoint labels are recorded from target info as plain data and never
+used to call anything.

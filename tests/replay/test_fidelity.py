@@ -132,6 +132,20 @@ class FidelityTest(unittest.TestCase):
         self.assertIn("snapshot_restore", report.missing_capabilities)
         self.assertTrue(report.passed, report.summary())
 
+    def test_to_dict_output_isolated_from_report(self):
+        registry = register_refund_adapters()
+        fixture = Fixture()
+        report = assess_fidelity(
+            env_factory=registry.environment_factory(REFUND), fixture=asdict(fixture),
+            scenario={"timeout_after_commit": False, "max_tool_calls": 20},
+            actor_id=fixture.customer_id, script=refund_script(), repeats=1)
+        dumped = report.to_dict()
+        dumped["notes"].append("forged")
+        dumped["capabilities"]["forged"] = True
+        fresh = report.to_dict()
+        self.assertNotIn("forged", fresh["notes"])
+        self.assertNotIn("forged", fresh["capabilities"])
+
     def test_bad_inputs_rejected(self):
         registry = register_refund_adapters()
         fixture = Fixture()

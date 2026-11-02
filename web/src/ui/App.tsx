@@ -7,6 +7,7 @@ import { looksExpired } from "../logic/approval.ts";
 import { campaignHref, VIEWS, type Route } from "../logic/routes.ts";
 import { campaignStatus, inferenceLabel } from "../logic/status.ts";
 import { HomePage } from "../views/HomePage.tsx";
+import { ExtensionsPage } from "../views/ExtensionsPage.tsx";
 import { ApprovalPage } from "../views/ApprovalPage.tsx";
 import { CampaignPanel } from "../views/CampaignPage.tsx";
 import { CapsulePage } from "../views/CapsulePage.tsx";
@@ -38,6 +39,9 @@ export function App({ source, harness }: { source: DataSource; harness: FixtureH
         <a className="brand" href="#/">
           GhostLab<span> Universe</span>
         </a>
+        <nav className="topnav" aria-label="Sections">
+          <a href="#/">Campaigns</a> <a href="#/extensions">Extensions</a>
+        </nav>
         <SessionFacts session={sessionInfo} />
       </header>
       {sessionInfo !== null && source.kind === "api" ? <ServiceModeNotice session={sessionInfo} /> : null}
@@ -47,7 +51,9 @@ export function App({ source, harness }: { source: DataSource; harness: FixtureH
         </div>
       ) : null}
       <main id="main" ref={main} tabIndex={-1} className="page">
-        {route.page === "home" ? (
+        {route.page === "extensions" ? (
+          <ExtensionsPage source={source} />
+        ) : route.page === "home" ? (
           <HomePage source={source} harness={harness} session={sessionInfo} />
         ) : (
           <CampaignPage key={route.campaignId} source={source} harness={harness} route={route} session={sessionInfo} />

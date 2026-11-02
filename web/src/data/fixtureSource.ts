@@ -1,5 +1,15 @@
 import type {
   ApprovalSubmission,
+  ExtCampaignReport,
+  ExtEnvironmentDetail,
+  ExtEnvironmentSummary,
+  ExtFidelityReport,
+  ExtFixture,
+  ExtInspection,
+  ExtMinimizeResult,
+  ExtQualificationReport,
+  ExtReplayResult,
+  ExtRetestResult,
   CampaignView,
   DecisionResult,
   ErrorInfo,
@@ -30,6 +40,11 @@ function refused(status: number, code: ErrorInfo["code"], message: string, reaso
 }
 
 const notFound = (what: string) => refused(404, "not_found", `No ${what} in this test scenario`, null);
+
+const EXT_ENVS: ExtEnvironmentSummary[] = [
+  { world_version: "refund-world/1", environment_id: "refund-environment", environment_version: "refund-environment/1", source: "fixture", tools: ["get_order"], faults: ["timeout_after_commit"], invariants: ["total_refund_within_payment"], fixtures: ["synthetic-inr-2500"], capabilities: { snapshot_restore: true }, targets: ["vulnerable", "repaired"] },
+  { world_version: "reservation-world/1", environment_id: "reservation-environment", environment_version: "reservation-environment/1", source: "fixture", tools: ["check_availability"], faults: ["timeout_after_commit"], invariants: ["capacity_respected"], fixtures: ["half_full"], capabilities: { snapshot_restore: false }, targets: [] },
+];
 
 /** Controls for the fixture source. Only fixture mode has them. */
 export interface FixtureHarness {
@@ -274,5 +289,55 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
         return notFound("approval");
       }),
     decideApproval: (submission) => respond(null, () => decide(submission)),
+    listExtEnvironments: () => respond(null, () => ok({ environments: EXT_ENVS }, [TEST_DOUBLE])),
+    getExtEnvironment: (world) =>
+      respond(null, () => {
+        const found = EXT_ENVS.find((env) => env.world_version === world);
+        if (found === undefined) return notFound("environment");
+        const detail: ExtEnvironmentDetail = { ...found, tool_specs: [], fault_specs: [], package: "fixture", package_version: "fixture/1" };
+        return ok(detail, [TEST_DOUBLE]);
+      }),
+    getExtFixture: (world, name) =>
+      respond(null, () => {
+        const found = EXT_ENVS.find((env) => env.world_version === world);
+        if (found === undefined || !found.fixtures.includes(name)) return notFound("fixture");
+        const fixture: ExtFixture = { world_version: world, name, snapshot: { fixture: name } };
+        return ok(fixture, [TEST_DOUBLE]);
+      }),
+    qualifyExtension: () =>
+      respond(null, () => {
+        const report: ExtQualificationReport = { world_version: "refund-world/1", environment_id: "refund-environment", passed: true, checks: [{ name: "reset", passed: true, details: "fixture" }], missing_capabilities: [], notes: [], details: {} };
+        return ok(report, [TEST_DOUBLE]);
+      }),
+    assessExtFidelity: () =>
+      respond(null, () => {
+        const report: ExtFidelityReport = { world_version: "refund-world/1", passed: true, determinism_identical: true, replay_reproduced: true, snapshot_supported: true, missing_capabilities: [], notes: [], details: {} };
+        return ok(report, [TEST_DOUBLE]);
+      }),
+    runExtCampaign: () =>
+      respond(null, () => {
+        const report: ExtCampaignReport = { attempts_run: 0, tools_used: [], faults_fired: [], rules_failed: [], caps_respected: true, guided_excluded: true, details: {} };
+        return ok(report, [TEST_DOUBLE]);
+      }),
+    inspectExtCapsule: () =>
+      respond(null, () => {
+        const report: ExtInspection = { schema_version: 2, world_version: "refund-world/1", replay_kind: "recorded", truncated: false, failed_invariants: [], external: [], replay_supported: true, replay_detail: "fixture", details: {} };
+        return ok(report, [TEST_DOUBLE]);
+      }),
+    replayExtRecorded: () =>
+      respond(null, () => {
+        const report: ExtReplayResult = { reproduced: true, matches: { trace: true, final_state: true, checks: true }, divergence: null, tool_calls: 0, failed: [], witness_sha256: "fixture", details: {} };
+        return ok(report, [TEST_DOUBLE]);
+      }),
+    retestExtFresh: () =>
+      respond(null, () => {
+        const report: ExtRetestResult = { status: "completed", tool_calls: 0, stopped: null, denied: false, denial_summary: null, target_adapter_id: "fixture", target_adapter_version: "fixture/1", failed: [], witness_sha256: "fixture", replay_equivalence_claimed: false, details: {} };
+        return ok(report, [TEST_DOUBLE]);
+      }),
+    minimizeExtFaults: () =>
+      respond(null, () => {
+        const report: ExtMinimizeResult = { status: "already_minimal", selected_faults: [], removed_faults: [], runs_used: 1, cardinality_minimal: true, witness_sha256: "fixture", regression: {}, details: {} };
+        return ok(report, [TEST_DOUBLE]);
+      }),
   };
 }

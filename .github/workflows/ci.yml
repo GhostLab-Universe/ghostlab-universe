@@ -48,6 +48,19 @@ jobs:
         run: uv run --frozen pytest
       - run: uv run --frozen python -m ghostlab.contracts.export --check
 
+  extension-regressions:
+    name: Extension regression evidence and demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.6"
+      - run: uv sync --locked --all-extras
+      - run: uv run --frozen pytest tests/replay tests/extensions/test_p6_demo_agents.py -q
+      - run: uv run --frozen python scripts/run_regressions.py examples/regressions/ext
+      - run: uv run --frozen python scripts/measured_demo.py --out demo-out/measured-demo
+
   demos:
     name: Refund and journey demo and replay
     runs-on: ubuntu-latest
@@ -97,7 +110,7 @@ jobs:
   promotion-gate:
     name: Promotion gate
     if: always()
-    needs: [core-bare, python, demos, contracts-ts, evaluations]
+    needs: [core-bare, python, demos, contracts-ts, evaluations, extension-regressions]
     runs-on: ubuntu-latest
     steps:
       - name: Every check must have succeeded

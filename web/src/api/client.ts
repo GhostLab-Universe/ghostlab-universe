@@ -132,6 +132,16 @@ export function createApiClient(options: ClientOptions = {}): DataSource {
     replayCapsule: (campaign_id, experiment_id, name) =>
       json("replayCampaignCapsule", run(campaign_id, experiment_id, name)),
     getApproval: (approval_id) => json("getApproval", { path: { approval_id } }),
+    listExtEnvironments: () => json("listExtEnvironments", {}),
+    getExtEnvironment: (world) => json("getExtEnvironment", { path: { world } }),
+    getExtFixture: (world, name) => json("getExtFixture", { path: { world, name } }),
+    qualifyExtension: (request) => json("qualifyExtension", { body: request }),
+    assessExtFidelity: (request) => json("assessExtFidelity", { body: request }),
+    runExtCampaign: (request) => json("runExtCampaign", { body: request }),
+    inspectExtCapsule: (request) => json("inspectExtCapsule", { body: request }),
+    replayExtRecorded: (request) => json("replayExtRecorded", { body: request }),
+    retestExtFresh: (request) => json("retestExtFresh", { body: request }),
+    minimizeExtFaults: (request) => json("minimizeExtFaults", { body: request }),
     decideApproval: (submission, idempotencyKey) =>
       json("decideApproval", { path: { approval_id: submission.approval_id }, body: submission, idempotencyKey }),
     async downloadArtifact(artifact_id) {

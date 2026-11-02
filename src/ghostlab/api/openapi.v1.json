@@ -510,6 +510,44 @@
         "title": "BudgetUsage",
         "type": "object"
       },
+      "CampaignRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allow Tools"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/ExtCampaignAttempt"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Attempts",
+            "type": "array"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "attempts"
+        ],
+        "title": "CampaignRequest",
+        "type": "object"
+      },
       "CampaignView": {
         "additionalProperties": false,
         "description": "Authoritative status from the campaign's checkpoint. Safe to read after reconnect.",
@@ -1362,6 +1400,949 @@
         "title": "ExperimentView",
         "type": "object"
       },
+      "ExtAction": {
+        "additionalProperties": false,
+        "properties": {
+          "arguments": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Arguments",
+            "type": "object"
+          },
+          "tool": {
+            "maxLength": 100,
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "arguments"
+        ],
+        "title": "ExtAction",
+        "type": "object"
+      },
+      "ExtCampaignAttempt": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "arm": {
+            "enum": [
+              "fixed-scenario",
+              "seeded-random",
+              "guided"
+            ],
+            "title": "Arm",
+            "type": "string"
+          },
+          "cap": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Cap",
+            "type": "integer"
+          },
+          "fixture_name": {
+            "title": "Fixture Name",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "title": "Name",
+            "type": "string"
+          },
+          "scenario": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Scenario",
+            "type": "object"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ExtTargetRef"
+          },
+          "task": {
+            "$ref": "#/components/schemas/ExtTask"
+          }
+        },
+        "required": [
+          "name",
+          "arm",
+          "fixture_name",
+          "scenario",
+          "actor_id",
+          "task",
+          "target",
+          "cap"
+        ],
+        "title": "ExtCampaignAttempt",
+        "type": "object"
+      },
+      "ExtCampaignReport": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts_run": {
+            "title": "Attempts Run",
+            "type": "integer"
+          },
+          "caps_respected": {
+            "title": "Caps Respected",
+            "type": "boolean"
+          },
+          "details": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "faults_fired": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Faults Fired",
+            "type": "array"
+          },
+          "guided_excluded": {
+            "title": "Guided Excluded",
+            "type": "boolean"
+          },
+          "rules_failed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rules Failed",
+            "type": "array"
+          },
+          "tools_used": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools Used",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attempts_run",
+          "tools_used",
+          "faults_fired",
+          "rules_failed",
+          "caps_respected",
+          "guided_excluded",
+          "details"
+        ],
+        "title": "ExtCampaignReport",
+        "type": "object"
+      },
+      "ExtEnvironmentDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "capabilities": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Capabilities",
+            "type": "object"
+          },
+          "environment_id": {
+            "title": "Environment Id",
+            "type": "string"
+          },
+          "environment_version": {
+            "title": "Environment Version",
+            "type": "string"
+          },
+          "fault_specs": {
+            "items": {
+              "$ref": "#/components/schemas/ExtFaultSpec"
+            },
+            "title": "Fault Specs",
+            "type": "array"
+          },
+          "faults": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Faults",
+            "type": "array"
+          },
+          "fixtures": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fixtures",
+            "type": "array"
+          },
+          "invariants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Invariants",
+            "type": "array"
+          },
+          "package": {
+            "title": "Package",
+            "type": "string"
+          },
+          "package_version": {
+            "title": "Package Version",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "targets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Targets",
+            "type": "array"
+          },
+          "tool_specs": {
+            "items": {
+              "$ref": "#/components/schemas/ExtToolSpec"
+            },
+            "title": "Tool Specs",
+            "type": "array"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "environment_id",
+          "environment_version",
+          "source",
+          "tools",
+          "faults",
+          "invariants",
+          "fixtures",
+          "capabilities",
+          "targets",
+          "tool_specs",
+          "fault_specs",
+          "package",
+          "package_version"
+        ],
+        "title": "ExtEnvironmentDetail",
+        "type": "object"
+      },
+      "ExtEnvironmentList": {
+        "additionalProperties": false,
+        "properties": {
+          "environments": {
+            "items": {
+              "$ref": "#/components/schemas/ExtEnvironmentSummary"
+            },
+            "title": "Environments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "environments"
+        ],
+        "title": "ExtEnvironmentList",
+        "type": "object"
+      },
+      "ExtEnvironmentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "capabilities": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Capabilities",
+            "type": "object"
+          },
+          "environment_id": {
+            "title": "Environment Id",
+            "type": "string"
+          },
+          "environment_version": {
+            "title": "Environment Version",
+            "type": "string"
+          },
+          "faults": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Faults",
+            "type": "array"
+          },
+          "fixtures": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fixtures",
+            "type": "array"
+          },
+          "invariants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Invariants",
+            "type": "array"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "targets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Targets",
+            "type": "array"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "environment_id",
+          "environment_version",
+          "source",
+          "tools",
+          "faults",
+          "invariants",
+          "fixtures",
+          "capabilities",
+          "targets"
+        ],
+        "title": "ExtEnvironmentSummary",
+        "type": "object"
+      },
+      "ExtFaultParameter": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "description"
+        ],
+        "title": "ExtFaultParameter",
+        "type": "object"
+      },
+      "ExtFaultSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "fault_id": {
+            "title": "Fault Id",
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/ExtFaultParameter"
+            },
+            "title": "Parameters",
+            "type": "array"
+          },
+          "trigger_points": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Trigger Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fault_id",
+          "parameters",
+          "trigger_points",
+          "description"
+        ],
+        "title": "ExtFaultSpec",
+        "type": "object"
+      },
+      "ExtFidelityReport": {
+        "additionalProperties": false,
+        "properties": {
+          "details": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "determinism_identical": {
+            "title": "Determinism Identical",
+            "type": "boolean"
+          },
+          "missing_capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Capabilities",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "replay_reproduced": {
+            "title": "Replay Reproduced",
+            "type": "boolean"
+          },
+          "snapshot_supported": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Supported"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "passed",
+          "determinism_identical",
+          "replay_reproduced",
+          "snapshot_supported",
+          "missing_capabilities",
+          "notes",
+          "details"
+        ],
+        "title": "ExtFidelityReport",
+        "type": "object"
+      },
+      "ExtFixture": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "snapshot": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Snapshot",
+            "type": "object"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "name",
+          "snapshot"
+        ],
+        "title": "ExtFixture",
+        "type": "object"
+      },
+      "ExtInspection": {
+        "additionalProperties": false,
+        "properties": {
+          "details": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "external": {
+            "items": {
+              "type": "string"
+            },
+            "title": "External",
+            "type": "array"
+          },
+          "failed_invariants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failed Invariants",
+            "type": "array"
+          },
+          "replay_detail": {
+            "title": "Replay Detail",
+            "type": "string"
+          },
+          "replay_kind": {
+            "title": "Replay Kind",
+            "type": "string"
+          },
+          "replay_supported": {
+            "title": "Replay Supported",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "world_version",
+          "replay_kind",
+          "truncated",
+          "failed_invariants",
+          "external",
+          "replay_supported",
+          "replay_detail",
+          "details"
+        ],
+        "title": "ExtInspection",
+        "type": "object"
+      },
+      "ExtMinimizeResult": {
+        "additionalProperties": false,
+        "properties": {
+          "cardinality_minimal": {
+            "title": "Cardinality Minimal",
+            "type": "boolean"
+          },
+          "details": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "regression": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Regression",
+            "type": "object"
+          },
+          "removed_faults": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Removed Faults",
+            "type": "array"
+          },
+          "runs_used": {
+            "title": "Runs Used",
+            "type": "integer"
+          },
+          "selected_faults": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Faults"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "witness_sha256": {
+            "title": "Witness Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "selected_faults",
+          "removed_faults",
+          "runs_used",
+          "cardinality_minimal",
+          "witness_sha256",
+          "regression",
+          "details"
+        ],
+        "title": "ExtMinimizeResult",
+        "type": "object"
+      },
+      "ExtQualificationCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "details": {
+            "title": "Details",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "passed",
+          "details"
+        ],
+        "title": "ExtQualificationCheck",
+        "type": "object"
+      },
+      "ExtQualificationReport": {
+        "additionalProperties": false,
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/ExtQualificationCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "details": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "environment_id": {
+            "title": "Environment Id",
+            "type": "string"
+          },
+          "missing_capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Capabilities",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "environment_id",
+          "passed",
+          "checks",
+          "missing_capabilities",
+          "notes",
+          "details"
+        ],
+        "title": "ExtQualificationReport",
+        "type": "object"
+      },
+      "ExtReplayResult": {
+        "additionalProperties": false,
+        "properties": {
+          "details": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "divergence": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Divergence"
+          },
+          "failed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "matches": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Matches",
+            "type": "object"
+          },
+          "reproduced": {
+            "title": "Reproduced",
+            "type": "boolean"
+          },
+          "tool_calls": {
+            "title": "Tool Calls",
+            "type": "integer"
+          },
+          "witness_sha256": {
+            "title": "Witness Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reproduced",
+          "matches",
+          "divergence",
+          "tool_calls",
+          "failed",
+          "witness_sha256",
+          "details"
+        ],
+        "title": "ExtReplayResult",
+        "type": "object"
+      },
+      "ExtRetestResult": {
+        "additionalProperties": false,
+        "properties": {
+          "denial_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denial Summary"
+          },
+          "denied": {
+            "title": "Denied",
+            "type": "boolean"
+          },
+          "details": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "failed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "replay_equivalence_claimed": {
+            "const": false,
+            "title": "Replay Equivalence Claimed",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "stopped": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stopped"
+          },
+          "target_adapter_id": {
+            "title": "Target Adapter Id",
+            "type": "string"
+          },
+          "target_adapter_version": {
+            "title": "Target Adapter Version",
+            "type": "string"
+          },
+          "tool_calls": {
+            "title": "Tool Calls",
+            "type": "integer"
+          },
+          "witness_sha256": {
+            "title": "Witness Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "tool_calls",
+          "stopped",
+          "denied",
+          "denial_summary",
+          "target_adapter_id",
+          "target_adapter_version",
+          "failed",
+          "witness_sha256",
+          "replay_equivalence_claimed",
+          "details"
+        ],
+        "title": "ExtRetestResult",
+        "type": "object"
+      },
+      "ExtTargetRef": {
+        "additionalProperties": false,
+        "description": "A registered target id or an inline deterministic script.",
+        "properties": {
+          "actions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ExtAction"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actions"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "enum": [
+              "registered",
+              "script"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ExtTargetRef",
+        "type": "object"
+      },
+      "ExtTask": {
+        "additionalProperties": false,
+        "properties": {
+          "params": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "task_id": {
+            "maxLength": 200,
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "params"
+        ],
+        "title": "ExtTask",
+        "type": "object"
+      },
+      "ExtToolSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "effect": {
+            "title": "Effect",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "effect",
+          "parameters",
+          "description"
+        ],
+        "title": "ExtToolSpec",
+        "type": "object"
+      },
       "FaultInjection": {
         "additionalProperties": false,
         "properties": {
@@ -1431,6 +2412,107 @@
         "title": "FaultParameter",
         "type": "object"
       },
+      "FidelityRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "declared_approximations": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Declared Approximations",
+            "type": "array"
+          },
+          "declared_omissions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Declared Omissions",
+            "type": "array"
+          },
+          "declared_tested": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Declared Tested",
+            "type": "array"
+          },
+          "expected_state": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected State"
+          },
+          "expected_trace": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Trace"
+          },
+          "fixture": {
+            "title": "Fixture",
+            "type": "string"
+          },
+          "repeats": {
+            "default": 3,
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Repeats",
+            "type": "integer"
+          },
+          "scenario": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Scenario",
+            "type": "object"
+          },
+          "script": {
+            "items": {
+              "$ref": "#/components/schemas/ExtAction"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Script",
+            "type": "array"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "fixture",
+          "scenario",
+          "actor_id",
+          "script"
+        ],
+        "title": "FidelityRequest",
+        "type": "object"
+      },
       "FixtureV1": {
         "additionalProperties": false,
         "properties": {
@@ -1489,6 +2571,23 @@
           "error"
         ],
         "title": "GuardDenial",
+        "type": "object"
+      },
+      "InspectRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "envelope": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Envelope",
+            "type": "object"
+          }
+        },
+        "required": [
+          "envelope"
+        ],
+        "title": "InspectRequest",
         "type": "object"
       },
       "JobStatus": {
@@ -1570,6 +2669,99 @@
           "idempotency_key"
         ],
         "title": "LedgerRow",
+        "type": "object"
+      },
+      "MinimizeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "allow_tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allow Tools"
+          },
+          "cap": {
+            "default": 20,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Cap",
+            "type": "integer"
+          },
+          "deadline_ms": {
+            "default": 5000,
+            "maximum": 30000.0,
+            "minimum": 1.0,
+            "title": "Deadline Ms",
+            "type": "integer"
+          },
+          "fault_keys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Fault Keys",
+            "type": "array"
+          },
+          "fixture": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Fixture",
+            "type": "object"
+          },
+          "invariant": {
+            "title": "Invariant",
+            "type": "string"
+          },
+          "max_runs": {
+            "default": 16,
+            "maximum": 16.0,
+            "minimum": 1.0,
+            "title": "Max Runs",
+            "type": "integer"
+          },
+          "scenario_template": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Scenario Template",
+            "type": "object"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ExtTargetRef"
+          },
+          "task": {
+            "$ref": "#/components/schemas/ExtTask"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "target",
+          "fixture",
+          "scenario_template",
+          "fault_keys",
+          "actor_id",
+          "task",
+          "invariant"
+        ],
+        "title": "MinimizeRequest",
         "type": "object"
       },
       "OrderRecord": {
@@ -1683,6 +2875,48 @@
           "kind"
         ],
         "title": "Principal",
+        "type": "object"
+      },
+      "QualifyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "fixture": {
+            "title": "Fixture",
+            "type": "string"
+          },
+          "scenario": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Scenario",
+            "type": "object"
+          },
+          "script": {
+            "items": {
+              "$ref": "#/components/schemas/ExtAction"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Script",
+            "type": "array"
+          },
+          "task_id": {
+            "default": "api-probe",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "fixture",
+          "scenario",
+          "script"
+        ],
+        "title": "QualifyRequest",
         "type": "object"
       },
       "RealityDiffView": {
@@ -2031,6 +3265,66 @@
         "title": "RepairView",
         "type": "object"
       },
+      "ReplayRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "checks": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Checks",
+            "type": "object"
+          },
+          "fixture": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Fixture",
+            "type": "object"
+          },
+          "scenario": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Scenario",
+            "type": "object"
+          },
+          "state": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "State",
+            "type": "object"
+          },
+          "trace": {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "maxItems": 1000,
+            "title": "Trace",
+            "type": "array"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "fixture",
+          "scenario",
+          "actor_id",
+          "trace",
+          "state",
+          "checks"
+        ],
+        "title": "ReplayRequest",
+        "type": "object"
+      },
       "ReplayResult": {
         "additionalProperties": false,
         "description": "Recorded-action replay. It never calls a model, so ``model_calls`` is always 0.",
@@ -2133,6 +3427,70 @@
           "model_calls"
         ],
         "title": "ReplayResult",
+        "type": "object"
+      },
+      "RetestRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "allow_tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allow Tools"
+          },
+          "cap": {
+            "default": 20,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Cap",
+            "type": "integer"
+          },
+          "fixture": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Fixture",
+            "type": "object"
+          },
+          "scenario": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Scenario",
+            "type": "object"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ExtTargetRef"
+          },
+          "task": {
+            "$ref": "#/components/schemas/ExtTask"
+          },
+          "world_version": {
+            "title": "World Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_version",
+          "target",
+          "fixture",
+          "scenario",
+          "actor_id",
+          "task"
+        ],
+        "title": "RetestRequest",
         "type": "object"
       },
       "RunResult": {
@@ -5279,6 +6637,1037 @@
         "summary": "Replay Capsule",
         "tags": [
           "capsules"
+        ]
+      }
+    },
+    "/v1/extensions/campaigns": {
+      "post": {
+        "operationId": "runExtCampaign",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtCampaignReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run Campaign",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/v1/extensions/environments": {
+      "get": {
+        "operationId": "listExtEnvironments",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtEnvironmentList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Environments",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/v1/extensions/environments/{world}": {
+      "get": {
+        "operationId": "getExtEnvironment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "world",
+            "required": true,
+            "schema": {
+              "title": "World",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtEnvironmentDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Environment",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/v1/extensions/environments/{world}/fixtures/{name}": {
+      "get": {
+        "operationId": "getExtFixture",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "world",
+            "required": true,
+            "schema": {
+              "title": "World",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtFixture"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Fixture",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/v1/extensions/fidelity": {
+      "post": {
+        "operationId": "assessExtFidelity",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FidelityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtFidelityReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assess Fidelity",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/v1/extensions/inspect": {
+      "post": {
+        "operationId": "inspectExtCapsule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtInspection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Inspect Capsule",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/v1/extensions/minimize": {
+      "post": {
+        "operationId": "minimizeExtFaults",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MinimizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtMinimizeResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Minimize Faults",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/v1/extensions/qualify": {
+      "post": {
+        "operationId": "qualifyExtension",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QualifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtQualificationReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Qualify Environment",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/v1/extensions/replay": {
+      "post": {
+        "operationId": "replayExtRecorded",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtReplayResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Replay Recorded",
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/v1/extensions/retest": {
+      "post": {
+        "operationId": "retestExtFresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtRetestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No valid session",
+            "headers": {
+              "WWW-Authenticate": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Refused by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Absent, or owned by another project"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request; nothing was changed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; detail is not disclosed"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retest Fresh",
+        "tags": [
+          "extensions"
         ]
       }
     },

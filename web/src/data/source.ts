@@ -1,13 +1,30 @@
 import type {
   ApprovalSubmission,
+  CampaignRequest,
   ApprovalView,
   CampaignView,
   CapsuleInfo,
   DecisionResult,
   ErrorInfo,
   EventPage,
+  ExtCampaignReport,
+  ExtEnvironmentDetail,
+  ExtEnvironmentList,
+  ExtFidelityReport,
+  ExtFixture,
+  ExtInspection,
+  ExtMinimizeResult,
+  ExtQualificationReport,
+  ExtReplayResult,
+  ExtRetestResult,
+  FidelityRequest,
   ExperimentView,
+  InspectRequest,
+  MinimizeRequest,
+  QualifyRequest,
+  ReplayRequest,
   ReplayResult,
+  RetestRequest,
   RunView,
   SessionInfo,
   WorldCampaignSpec,
@@ -48,6 +65,16 @@ export interface DataSource {
   downloadArtifact(artifactId: string): Promise<Result<Blob>>;
   getApproval(approvalId: string): Promise<Result<ApprovalView>>;
   decideApproval(submission: ApprovalSubmission, idempotencyKey: string): Promise<Result<DecisionResult>>;
+  listExtEnvironments(): Promise<Result<ExtEnvironmentList>>;
+  getExtEnvironment(world: string): Promise<Result<ExtEnvironmentDetail>>;
+  getExtFixture(world: string, name: string): Promise<Result<ExtFixture>>;
+  qualifyExtension(request: QualifyRequest): Promise<Result<ExtQualificationReport>>;
+  assessExtFidelity(request: FidelityRequest): Promise<Result<ExtFidelityReport>>;
+  runExtCampaign(request: CampaignRequest): Promise<Result<ExtCampaignReport>>;
+  inspectExtCapsule(request: InspectRequest): Promise<Result<ExtInspection>>;
+  replayExtRecorded(request: ReplayRequest): Promise<Result<ExtReplayResult>>;
+  retestExtFresh(request: RetestRequest): Promise<Result<ExtRetestResult>>;
+  minimizeExtFaults(request: MinimizeRequest): Promise<Result<ExtMinimizeResult>>;
 }
 
 export const SERVICE_ORIGIN: readonly Origin[] = [{ kind: "service" }];

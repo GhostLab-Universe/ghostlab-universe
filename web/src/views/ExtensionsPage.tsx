@@ -18,7 +18,7 @@ import type {
   ExtRetestResult,
 } from "../api/api.generated.ts";
 import type { DataSource, Failure, Result } from "../data/source.ts";
-import { Facts, FailureNotice, JsonBlock, Mono, Section, Tag } from "../ui/components.tsx";
+import { Facts, FailureNotice, JsonBlock, Loading, Mono, Section, Tag } from "../ui/components.tsx";
 
 function downloadJson(filename: string, value: unknown) {
   const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
@@ -42,7 +42,7 @@ function JsonArea({ label, value, onChange }: { label: string; value: string; on
   return (
     <label className="field">
       <span>{label}</span>
-      <textarea rows={6} spellCheck={false} style={{ width: "100%" }} value={value} onChange={(event) => onChange(event.target.value)} />
+      <textarea rows={6} spellCheck={false} value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
@@ -51,13 +51,15 @@ function TextInput({ label, value, onChange }: { label: string; value: string; o
   return (
     <label className="field">
       <span>{label}</span>
-      <input type="text" style={{ width: "100%" }} value={value} onChange={(event) => onChange(event.target.value)} />
+      <input type="text" value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
 
-function Outcome<T>({ result, render }: { result: Result<T> | null; render: (data: T) => ReactNode }) {
-  if (result === null) return null;
+function Outcome<T>({ result, render, what }: { result: Result<T> | null; render: (data: T) => ReactNode; what?: string }) {
+  // Reads that start with the page name what they load; action results stay
+  // blank until the action runs.
+  if (result === null) return what === undefined ? null : <Loading what={what} />;
   if (!result.ok) return <FailureNotice failure={result.failure} />;
   return <>{render(result.data)}</>;
 }
@@ -122,6 +124,7 @@ export function ExtensionsPage({ source }: { source: DataSource }) {
       <p className="muted">Reviewed local environments and target agents. Worlds here are synthetic test fixtures.</p>
       <Outcome
         result={envs}
+        what="environments"
         render={(data) => (
           <Section title="Connected environments">
             <Facts
@@ -146,6 +149,7 @@ export function ExtensionsPage({ source }: { source: DataSource }) {
       />
       <Outcome
         result={detail}
+        what="environment"
         render={(data) => <EnvironmentDetail source={source} detail={data} />}
       />
     </>
@@ -201,7 +205,7 @@ function EnvironmentDetail({ source, detail }: { source: DataSource; detail: Ext
             ))}
           </select>
         </label>
-        <Outcome result={fixture} render={(data) => <JsonBlock label={`Fixture ${data.name}`} value={data.snapshot} />} />
+        <Outcome result={fixture} what="fixture" render={(data) => <JsonBlock label={`Fixture ${data.name}`} value={data.snapshot} />} />
       </Section>
       <QualifyPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} />
       <CampaignPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} />

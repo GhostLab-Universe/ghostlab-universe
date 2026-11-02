@@ -2,6 +2,6 @@
   "note": "openapi.v1.json is a verbatim copy of the published contract. Do not edit it; refresh both files, then run src/api/generate.mjs.",
   "source_path": "src/ghostlab/api/openapi.v1.json",
   "source_branch": "feature/byoe-unify",
-  "source_commit": "261650d24ac4c993361e6293ac581661656d0f71",
+  "source_commit": "261650d98bb06e8b574163a82e40806c0b5528f9",
   "sha256": "d66216e5f6d6bffa33c51e21beea2fb38b6e460a7b9431b98ba1ebb7a5b6016d"
 }

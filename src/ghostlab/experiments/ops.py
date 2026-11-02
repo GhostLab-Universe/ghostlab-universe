@@ -23,7 +23,10 @@ Execution honesty rules:
   clean pass.
 - World errors during reset or the loop are recorded as failed runs
   with null evidence. Partial tool counts are then unknown: the run
-  says so instead of inventing a number.
+  says so instead of inventing a number. Verdict-assembly failures
+  (evaluate, fired-fault reporting, evidence serialization, secret
+  scan) are likewise recorded as failed runs, but with the known
+  tool count: the world ran, so the run exists.
 """
 
 import json
@@ -32,7 +35,6 @@ from copy import deepcopy
 
 from ..extensions.environment import Action
 from ..extensions.qualify import ScriptTarget
-from ..extensions.registry import AdapterRegistry
 from ..extensions.runner import run_attempt
 from ..extensions.target import TargetTask
 from ..replay import allow_tools
@@ -194,7 +196,7 @@ def run_repetition(store, *, project_id: str, resolved_id: str,
         raise RunRefused("aggregate tool budget cannot cover another run")
     world = resolved["pins"]["world_version"]
     try:
-        env_factory = operators.load_into(AdapterRegistry(), world)
+        env_factory = operators.resolve_class(world)
     except (LookupError, ValueError) as error:
         raise RunRefused(str(error)) from None
     authorize = allow_tools(*resolved["pins"]["discovered_tools"])
@@ -210,21 +212,16 @@ def run_repetition(store, *, project_id: str, resolved_id: str,
             body["limits_exceeded"].append("max_wall_clock_ms")
         validate_run_body(body)
         stamp = created_at or _utcnow()
-        saved = store.save_run(
+        return store.save_run_with_ledger(
             project_id=project_id, resolved_id=resolved_id,
             repetition=repetition, attempt=attempt, body=body,
+            tool_calls=body["tool_calls"], wall_clock_ms=wall,
             created_at=stamp)
-        store.add_ledger(project_id=project_id, resolved_id=resolved_id,
-                         run_id=saved["run_id"], resource="tool_calls",
-                         amount=body["tool_calls"], created_at=stamp)
-        store.add_ledger(project_id=project_id, resolved_id=resolved_id,
-                         run_id=saved["run_id"], resource="wall_clock_ms",
-                         amount=wall, created_at=stamp)
-        return saved
 
-    def failed(reason):
+    def failed(reason, calls=0):
         return finish({
-            "status": "failed", "termination_reason": reason, "tool_calls": 0,
+            "status": "failed", "termination_reason": reason,
+            "tool_calls": calls,
             "wall_clock_ms": 0, "failed_rules": [], "checks": {},
             "faults_configured": faults_configured, "faults_fired": None,
             "faults_status": "unreported-by-world", "denial": None,
@@ -238,6 +235,9 @@ def run_repetition(store, *, project_id: str, resolved_id: str,
         except KeyError:
             env.close()
             return failed("world-error:fixture-unknown (calls unknown)")
+        except Exception:
+            env.close()
+            raise
         try:
             env.reset(dict(snapshot), dict(effective["scenario"]),
                       actor_id=run_by)
@@ -249,46 +249,56 @@ def run_repetition(store, *, project_id: str, resolved_id: str,
     except Exception as error:
         return failed(f"world-error:{type(error).__name__} (calls unknown)")
 
-    checks, fired, faults_status = {}, None, "unreported-by-world"
-    evaluator = env_factory()
     try:
-        verdicts = evaluator.evaluate(trace=attempt_result.trace,
-                                      state=attempt_result.state)
-        checks = {check.name: check.passed for check in verdicts}
-        reporter = getattr(evaluator, "faults_fired", None)
-        if callable(reporter):
-            fired = sorted(reporter(dict(effective["scenario"]),
-                                    list(attempt_result.trace)))
-            faults_status = "reported"
-    finally:
-        evaluator.close()
+        checks: dict = {}
+        fired = None
+        faults_status = "unreported-by-world"
+        evaluator = env_factory()
+        try:
+            verdicts = evaluator.evaluate(trace=attempt_result.trace,
+                                          state=attempt_result.state)
+            checks = {check.name: check.passed for check in verdicts}
+            reporter = getattr(evaluator, "faults_fired", None)
+            if callable(reporter):
+                fired = sorted(reporter(dict(effective["scenario"]),
+                                        list(attempt_result.trace)))
+                faults_status = "reported"
+        finally:
+            evaluator.close()
 
-    selected = set(effective["rules"])
-    failed_rules = sorted(name for name, hit in checks.items()
-                          if hit is False and name in selected)
-    evidence = _jsonable({"trace": attempt_result.trace,
-                          "state": attempt_result.state})
-    if len(json.dumps(evidence).encode()) > MAX_EVIDENCE_BYTES:
-        evidence = None
-    if attempt_result.status == "budget_exhausted":
-        status, termination, over = "incomplete", "budget-exhausted", ["max_tool_calls"]
-    elif attempt_result.denial is not None:
-        status, termination, over = "completed", "denied-by-authorize", []
-    else:
-        status, termination, over = "completed", "target-finished", []
-    return finish({
-        "status": status, "termination_reason": termination,
-        "tool_calls": attempt_result.tool_calls, "wall_clock_ms": 0,
-        "failed_rules": failed_rules, "checks": checks,
-        "faults_configured": faults_configured, "faults_fired": fired,
-        "faults_status": faults_status,
-        "denial": None if attempt_result.denial is None
-        else str(attempt_result.denial)[:500],
-        "limits_exceeded": over,
-        "evidence_digest": None if evidence is None
-        else canonical_digest(evidence),
-        "evidence": evidence})
-
+        selected = set(effective["rules"])
+        failed_rules = sorted(name for name, hit in checks.items()
+                              if hit is False and name in selected)
+        evidence = _jsonable({"trace": attempt_result.trace,
+                              "state": attempt_result.state})
+        if len(json.dumps(evidence).encode()) > MAX_EVIDENCE_BYTES:
+            evidence = None
+        if evidence is not None:
+            scan_for_secrets(evidence, "run evidence")
+        if attempt_result.status == "budget_exhausted":
+            status, termination = "incomplete", "budget-exhausted"
+            over = ["max_tool_calls"]
+        elif attempt_result.denial is not None:
+            status, termination, over = "completed", "denied-by-authorize", []
+        else:
+            status, termination, over = "completed", "target-finished", []
+        body = {
+            "status": status, "termination_reason": termination,
+            "tool_calls": attempt_result.tool_calls, "wall_clock_ms": 0,
+            "failed_rules": failed_rules, "checks": checks,
+            "faults_configured": faults_configured, "faults_fired": fired,
+            "faults_status": faults_status,
+            "denial": None if attempt_result.denial is None
+            else str(attempt_result.denial)[:500],
+            "limits_exceeded": over,
+            "evidence_digest": None if evidence is None
+            else canonical_digest(evidence),
+            "evidence": evidence}
+    except Exception as error:
+        return failed(
+            f"world-error:verdict-assembly:{type(error).__name__}",
+            calls=attempt_result.tool_calls)
+    return finish(body)
 
 def compare_resolved(store, *, project_id: str, left_id: str, right_id: str):
     """Diff two stored resolved configs (comparison metadata)."""

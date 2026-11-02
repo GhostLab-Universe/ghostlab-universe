@@ -227,40 +227,93 @@ class ExperimentStore:
                 (resolved_id, repetition, attempt)).fetchone()
         return row is not None
 
-    def save_run(self, *, project_id: str, resolved_id: str, repetition: int,
-                 attempt: int, body: dict, created_at: str) -> dict:
-        """Store one run record; each (resolved, repetition, attempt) runs once."""
-        check_project_id(project_id)
+    @staticmethod
+    def _insert_run(connection, *, project_id: str, resolved_id: str,
+                    repetition: int, attempt: int, body: dict,
+                    created_at: str) -> str:
+        """Insert one run row on an open connection; returns the run id."""
+        cursor = connection.execute(
+            "SELECT COALESCE(MAX(CAST(SUBSTR(run_id, 5) AS INTEGER)), 0)"
+            " FROM experiment_runs WHERE run_id LIKE 'run-%'",
+        )
+        run_id = f"run-{(cursor.fetchone()[0] or 0) + 1:06d}"
+        body = deepcopy(body)
+        body["run_id"] = run_id
+        digest = canonical_digest(
+            {k: v for k, v in body.items() if k != "digest"})
+        body["digest"] = digest
+        try:
+            connection.execute(
+                "INSERT INTO experiment_runs VALUES"
+                " (:id, :project, :resolved, :rep, :att, :body, :digest,"
+                " :at)",
+                {"id": run_id, "project": project_id,
+                 "resolved": resolved_id, "rep": repetition,
+                 "att": attempt, "body": _dump(body), "digest": digest,
+                 "at": created_at})
+        except sqlite3.IntegrityError as error:
+            raise ValueError(
+                f"attempt {attempt} of repetition {repetition} is already"
+                " recorded; retries use a new attempt number") from error
+        return run_id
+
+    @staticmethod
+    def _insert_ledger(connection, *, project_id: str, resolved_id: str,
+                       run_id: str, resource: str, amount: int,
+                       created_at: str) -> None:
+        connection.execute(
+            "INSERT INTO budget_ledger (project_id, resolved_id, run_id,"
+            " resource, amount, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (project_id, resolved_id, run_id, resource, amount,
+             created_at))
+
+    @staticmethod
+    def _checked_run_body(body: dict) -> None:
         text = _dump(body)
         if len(text.encode()) > MAX_EVIDENCE_BYTES:
             raise ValueError("run evidence exceeds the size bound")
         scan_for_secrets(body, "run record")
+
+    def save_run(self, *, project_id: str, resolved_id: str, repetition: int,
+                 attempt: int, body: dict, created_at: str) -> dict:
+        """Store one run record; each (resolved, repetition, attempt) runs once."""
+        check_project_id(project_id)
+        self._checked_run_body(body)
         with self._connect() as connection:
-            cursor = connection.execute(
-                "SELECT COALESCE(MAX(CAST(SUBSTR(run_id, 5) AS INTEGER)), 0)"
-                " FROM experiment_runs WHERE run_id LIKE 'run-%'",
-            )
-            run_id = f"run-{(cursor.fetchone()[0] or 0) + 1:06d}"
-            body = deepcopy(body)
-            body["run_id"] = run_id
-            digest = canonical_digest(
-                {k: v for k, v in body.items() if k != "digest"})
-            body["digest"] = digest
-            try:
-                connection.execute(
-                    "INSERT INTO experiment_runs VALUES"
-                    " (:id, :project, :resolved, :rep, :att, :body, :digest,"
-                    " :at)",
-                    {"id": run_id, "project": project_id,
-                     "resolved": resolved_id, "rep": repetition,
-                     "att": attempt, "body": _dump(body), "digest": digest,
-                     "at": created_at})
-            except sqlite3.IntegrityError as error:
-                raise ValueError(
-                    f"attempt {attempt} of repetition {repetition} is already"
-                    " recorded; retries use a new attempt number") from error
+            run_id = self._insert_run(
+                connection, project_id=project_id, resolved_id=resolved_id,
+                repetition=repetition, attempt=attempt, body=body,
+                created_at=created_at)
         return self.get_run(project_id, run_id)
 
+    def save_run_with_ledger(self, *, project_id: str, resolved_id: str,
+                             repetition: int, attempt: int, body: dict,
+                             tool_calls: int, wall_clock_ms: int,
+                             created_at: str) -> dict:
+        """Store one run plus its budget charges in a single transaction.
+
+        A crash can lose the whole attempt or keep it whole, never
+        record a run without its charge. Prefer this over save_run plus
+        separate add_ledger calls for live execution.
+        """
+        check_project_id(project_id)
+        if type(tool_calls) is not int or tool_calls < 0:
+            raise ValueError("invalid ledger amount")
+        if type(wall_clock_ms) is not int or wall_clock_ms < 0:
+            raise ValueError("invalid ledger amount")
+        self._checked_run_body(body)
+        with self._connect() as connection:
+            run_id = self._insert_run(
+                connection, project_id=project_id, resolved_id=resolved_id,
+                repetition=repetition, attempt=attempt, body=body,
+                created_at=created_at)
+            for resource, amount in (("tool_calls", tool_calls),
+                                     ("wall_clock_ms", wall_clock_ms)):
+                self._insert_ledger(
+                    connection, project_id=project_id,
+                    resolved_id=resolved_id, run_id=run_id,
+                    resource=resource, amount=amount, created_at=created_at)
+        return self.get_run(project_id, run_id)
     def get_run(self, project_id: str, run_id: str) -> dict:
         check_project_id(project_id)
         with self._connect() as connection:
@@ -318,11 +371,10 @@ class ExperimentStore:
         if type(amount) is not int or amount < 0:
             raise ValueError("invalid ledger amount")
         with self._connect() as connection:
-            connection.execute(
-                "INSERT INTO budget_ledger (project_id, resolved_id, run_id,"
-                " resource, amount, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (project_id, resolved_id, run_id, resource, amount,
-                 created_at))
+            self._insert_ledger(
+                connection, project_id=project_id,
+                resolved_id=resolved_id, run_id=run_id,
+                resource=resource, amount=amount, created_at=created_at)
 
     def budget_used(self, project_id: str, resolved_id: str,
                     resource: str = "tool_calls") -> int:

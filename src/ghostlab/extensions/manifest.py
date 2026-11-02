@@ -4,7 +4,8 @@ A manifest declares what an environment claims to offer; it carries no
 code, no package installs, no URLs and no filesystem paths. Unknown fields
 are rejected, so ``pip``/``code``/``url``/``path`` style keys can never
 sneak in. Validation is pure: it never imports adapter code and never runs
-anything. Claims are checked against the adapter at qualification time.
+anything. Claims are checked against the described adapter at resolve
+time and at CLI qualification with --manifest-digest.
 """
 
 import hashlib

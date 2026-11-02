@@ -1,5 +1,6 @@
 """Live experiment operations over operator-gated P1 worlds."""
 
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,7 +11,7 @@ from ghostlab.experiments.ops import (
     RunRefused, compare_resolved, create_requested, resolve_config,
     run_repetition, validate_run_body)
 from ghostlab.experiments.store import CrossProjectError, ExperimentStore
-from ghostlab.extensions.environment import Action
+from ghostlab.extensions.environment import Action, Observation
 from ghostlab.extensions.operator_registry import OperatorRegistry
 from ghostlab.extensions.registry import (
     AdapterManifest, AdapterRegistry)
@@ -24,6 +25,34 @@ class BoomEnv(ReservationEnvironment):
 
     def reset(self, fixture, scenario, *, actor_id):
         raise RuntimeError("boom")
+
+
+class EvilEvaluateEnv(ReservationEnvironment):
+    """Verdict assembly explodes after the world ran."""
+
+    def evaluate(self, *, trace, state):
+        raise RuntimeError("evil-evaluate")
+
+
+class PoisonStateEnv(ReservationEnvironment):
+    """State carries frozenset values JSON cannot serialize."""
+
+    def observe(self):
+        seen = super().observe()
+        return Observation(trace=seen.trace,
+                             state={"poison": frozenset({1})},
+                             calls=seen.calls)
+
+
+class SecretStateEnv(ReservationEnvironment):
+    """State carries secret-shaped world text that must never persist."""
+
+    def observe(self):
+        seen = super().observe()
+        state = dict(seen.state)
+        state["note"] = "leaked API_KEY=abc"
+        return Observation(trace=seen.trace, state=state,
+                             calls=seen.calls)
 
 
 class DeniedTarget:
@@ -328,6 +357,66 @@ class OpsFlowTest(unittest.TestCase):
         self.assertIn("world-error", run["termination_reason"])
         self.assertIsNone(run["evidence"])
         self.assertIsNone(run["evidence_digest"])
+
+    def run_on_stub(self, stub_name):
+        operator = fresh_operators(self, ref=f"{__name__}:{stub_name}")
+        store, _, resolved = self.setup_config(operator=operator)
+        qualify(operator)
+        resolved = resolve_config(
+            store, project_id="proj-a",
+            requested_id=resolved["requested_id"], policy=policy(),
+            operators=operator, targets=targets_with("reservation-target"))
+        return store, operator, resolved
+
+    def test_evaluate_failure_records_failed_run(self):
+        store, operator, resolved = self.run_on_stub("EvilEvaluateEnv")
+        saved = run_repetition(
+            store, project_id="proj-a",
+            resolved_id=resolved["resolved_id"], repetition=1,
+            attempt=1, run_by="dev", operators=operator,
+            targets=targets_with("reservation-target"))
+        run = saved["run"]
+        self.assertEqual(run["status"], "failed")
+        self.assertIn("world-error:verdict-assembly",
+                         run["termination_reason"])
+        self.assertEqual(run["tool_calls"], 1)
+        self.assertIsNone(run["evidence"])
+        self.assertEqual(store.budget_used("proj-a",
+                                         resolved["resolved_id"]), 1)
+        self.assertTrue(store.attempt_recorded(
+            resolved["resolved_id"], 1, 1))
+
+    def test_unserializable_evidence_records_failed_run(self):
+        store, operator, resolved = self.run_on_stub("PoisonStateEnv")
+        saved = run_repetition(
+            store, project_id="proj-a",
+            resolved_id=resolved["resolved_id"], repetition=1,
+            attempt=1, run_by="dev", operators=operator,
+            targets=targets_with("reservation-target"))
+        run = saved["run"]
+        self.assertEqual(run["status"], "failed")
+        self.assertIn("world-error:verdict-assembly",
+                         run["termination_reason"])
+        self.assertEqual(run["tool_calls"], 1)
+        self.assertIsNone(run["evidence"])
+
+    def test_secret_evidence_never_persists(self):
+        store, operator, resolved = self.run_on_stub("SecretStateEnv")
+        saved = run_repetition(
+            store, project_id="proj-a",
+            resolved_id=resolved["resolved_id"], repetition=1,
+            attempt=1, run_by="dev", operators=operator,
+            targets=targets_with("reservation-target"))
+        self.assertEqual(saved["run"]["status"], "failed")
+        self.assertIsNone(saved["run"]["evidence"])
+        connection = sqlite3.connect(store.db_path)
+        try:
+            rows = connection.execute(
+                "SELECT run_json FROM experiment_runs").fetchall()
+        finally:
+            connection.close()
+        self.assertEqual(len(rows), 1)
+        self.assertNotIn("API_KEY", rows[0][0])
 
     def test_compare_resolved(self):
         store, operator, resolved = self.setup_config()

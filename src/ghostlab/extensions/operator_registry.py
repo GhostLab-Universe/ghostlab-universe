@@ -343,16 +343,44 @@ class OperatorRegistry:
                 "capabilities": dict(description.capabilities),
                 "modes": list(record["declared_modes"])}
 
-    def load_into(self, registry, world_version):
-        """Resolve a registered adapter into a live factory, gated on health.
+    def manifest_agreement(self, world_version, manifest_digest):
+        """Manifest claims versus described reality: agreement plus detail.
+
+        Compares the pinned manifest against a fresh describe-only
+        discovery. Unknown digests raise LookupError; code-changed
+        adapters raise ValueError. Callers refuse a False agreement
+        instead of pinning claims the adapter disproves.
+        """
+        manifest = self.get_manifest(manifest_digest)
+        if manifest["world_version"] != world_version:
+            return False, "manifest names a different world"
+        described = self.describe_only(world_version)
+        mismatches = []
+        if (sorted(tool["name"] for tool in manifest["tools"])
+                != sorted(tool["name"] for tool in described["tools"])):
+            mismatches.append("tools")
+        for key in ("fixtures", "invariants"):
+            if sorted(manifest[key]) != sorted(described[key]):
+                mismatches.append(key)
+        if (sorted(manifest["fault_hooks"])
+                != sorted(fault["id"] for fault in described["faults"])):
+            mismatches.append("fault_hooks")
+        if dict(manifest["capabilities"]) != described["capabilities"]:
+            mismatches.append("capabilities")
+        if mismatches:
+            return False, ("manifest disagrees on: "
+                           + ", ".join(sorted(mismatches)))
+        return True, "manifest matches the described adapter"
+
+    def resolve_class(self, world_version):
+        """Resolve the pinned adapter class, gated on health.
 
         Refuses unknown registrations, adapter code that changed since
         review, and environments whose latest qualification for these exact
-        versions did not pass. Returns a zero-argument adapter factory.
+        versions did not pass. Returns the class; registers nothing and
+        instantiates nothing. The caller instantiates for describe-only
+        discovery or gated execution.
         """
-        from .registry import AdapterRegistry
-        if not isinstance(registry, AdapterRegistry):
-            raise TypeError("load_into registry must be an AdapterRegistry")
         record = self.get(world_version)
         cls = resolve_adapter_ref(record["adapter_ref"], self._prefixes)
         if adapter_code_digest(cls) != record["code_digest"]:

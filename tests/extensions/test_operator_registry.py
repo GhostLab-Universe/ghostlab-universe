@@ -12,7 +12,6 @@ from ghostlab.extensions.manifest import (canonical_digest, parse_manifest_bytes
 from ghostlab.extensions.operator_registry import (
     STATUS_NOT_QUALIFIED, STATUS_QUALIFIED, OperatorRegistry,
     adapter_code_digest, check_adapter_ref_allowed, resolve_adapter_ref)
-from ghostlab.extensions.registry import AdapterRegistry
 
 RESERVATION_REF = "ghostlab.adapters.reservation_env:ReservationEnvironment"
 RESERVATION_WORLD = "reservation-world/1"
@@ -177,7 +176,7 @@ class RegistryTest(unittest.TestCase):
         operator = fresh_registry(self)
         register_reservation(operator)
         with self.assertRaisesRegex(ValueError, "not qualified"):
-            operator.load_into(AdapterRegistry(), RESERVATION_WORLD)
+            operator.resolve_class(RESERVATION_WORLD)
 
     def test_gate_refuses_code_change(self):
         operator = fresh_registry(self)
@@ -194,7 +193,7 @@ class RegistryTest(unittest.TestCase):
         finally:
             connection.close()
         with self.assertRaisesRegex(ValueError, "changed since review"):
-            operator.load_into(AdapterRegistry(), RESERVATION_WORLD)
+            operator.resolve_class(RESERVATION_WORLD)
 
     def test_gate_loads_after_qualification(self):
         operator = fresh_registry(self)
@@ -203,7 +202,7 @@ class RegistryTest(unittest.TestCase):
             world_version=RESERVATION_WORLD,
             checks=[{"name": "x", "passed": True, "details": "y"}], passed=True)
         self.assertEqual(stored["status"], STATUS_QUALIFIED)
-        factory = operator.load_into(AdapterRegistry(), RESERVATION_WORLD)
+        factory = operator.resolve_class(RESERVATION_WORLD)
         env = factory()
         try:
             self.assertEqual(env.describe().world_version, RESERVATION_WORLD)
@@ -318,7 +317,7 @@ class CliTest(unittest.TestCase):
                          "qualified for declared capabilities")
         operator = OperatorRegistry(
             db, allowed_adapter_prefixes=("ghostlab.",))
-        factory = operator.load_into(AdapterRegistry(), RESERVATION_WORLD)
+        factory = operator.resolve_class(RESERVATION_WORLD)
         self.assertIs(factory, ReservationEnvironment)
 
     def test_manifest_agreement(self):

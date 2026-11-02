@@ -395,6 +395,13 @@ def resolve_requested(requested, *, project_id: str, requested_id: str,
             raise ConfigError("manifest names a different world")
         if manifest_body["adapter_ref"] != record["adapter_ref"]:
             raise ConfigError("manifest names a different adapter")
+        try:
+            agree, detail = operators.manifest_agreement(
+                clean["world_version"], manifest_digest)
+        except (LookupError, ValueError) as error:
+            raise ConfigError(str(error)) from None
+        if not agree:
+            raise ConfigError(detail)
 
     scenario = {fault["hook"]: True for fault in clean["faults"]}
     for fault in clean["faults"]:

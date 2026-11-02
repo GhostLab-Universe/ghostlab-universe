@@ -93,25 +93,6 @@ def _describe_only(operator: OperatorRegistry, world: str) -> dict:
             "fixtures": described["fixtures"],
             "capabilities": described["capabilities"]}
 
-def _manifest_agreement(operator, world, manifest) -> tuple:
-    """Manifest claims versus described reality: agreement plus detail."""
-    described = _describe_only(operator, world)
-    mismatches = []
-    if (sorted(tool["name"] for tool in manifest["tools"])
-            != sorted(tool["name"] for tool in described["tools"])):
-        mismatches.append("tools")
-    for key in ("fixtures", "invariants"):
-        if sorted(manifest[key]) != sorted(described[key]):
-            mismatches.append(key)
-    if sorted(manifest["fault_hooks"]) != sorted(described["faults"]):
-        mismatches.append("fault_hooks")
-    if dict(manifest["capabilities"]) != described["capabilities"]:
-        mismatches.append("capabilities")
-    if mismatches:
-        return False, "manifest disagrees on: " + ", ".join(sorted(mismatches))
-    return True, "manifest matches the described adapter"
-
-
 def run_env_command(args) -> int:
     """Execute one parsed ``envs`` command. Returns the process exit code."""
     try:
@@ -158,8 +139,8 @@ def run_env_command(args) -> int:
             checks = [check.to_dict() for check in report.checks]
             passed = report.passed
             if args.manifest_digest is not None:
-                manifest = operator.get_manifest(args.manifest_digest)
-                agree, detail = _manifest_agreement(operator, args.world, manifest)
+                agree, detail = operator.manifest_agreement(
+                    args.world, args.manifest_digest)
                 checks.append({"name": "manifest_agreement",
                                "passed": agree, "details": detail})
                 passed = passed and agree

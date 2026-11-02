@@ -298,7 +298,8 @@ class ResolveTest(unittest.TestCase):
                     "tools": [{"name": name, "parameters": []} for name in
                               ("check_availability", "reserve", "cancel",
                                "get_status")],
-                    "fixtures": ["half_full", "near_full"],
+                    "fixtures": ["empty_small", "full", "half_full",
+                                "near_full"],
                     "fault_hooks": ["timeout_after_commit", "stale_snapshot",
                                     "skip_capacity_check"],
                     "invariants": ["capacity_respected", "records_wellformed",
@@ -314,6 +315,11 @@ class ResolveTest(unittest.TestCase):
                          imported["manifest_digest"])
         with self.assertRaises(ConfigError):
             self.resolve(operator=operator, manifest_digest="0" * 64)
+        manifest["tools"] = [{"name": "bogus_tool", "parameters": []}]
+        forged = operator.import_manifest(json.dumps(manifest).encode())
+        with self.assertRaises(ConfigError):
+            self.resolve(operator=operator,
+                             manifest_digest=forged["manifest_digest"])
 
     def test_resolve_idempotent_across_metadata(self):
         first = self.resolve(operator=fresh_operators(self))
@@ -435,6 +441,25 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(store.budget_used("proj-a", "res-abc"), 3)
         self.assertEqual(store.budget_used("proj-a", "res-other"), 0)
 
+
+    def test_atomic_run_with_ledger(self):
+        store = fresh_store(self)
+        run = {"status": "completed", "termination_reason": "target-finished",
+               "tool_calls": 3, "failed_rules": [],
+               "checks": {"capacity_respected": True}}
+        saved = store.save_run_with_ledger(
+            project_id="proj-a", resolved_id="res-atomic", repetition=1,
+            attempt=1, body=run, tool_calls=3, wall_clock_ms=41,
+            created_at="2026-11-02T00:00:00+00:00")
+        self.assertTrue(saved["run_id"].startswith("run-"))
+        self.assertEqual(store.budget_used("proj-a", "res-atomic"), 3)
+        self.assertEqual(
+            store.budget_used("proj-a", "res-atomic", "wall_clock_ms"), 41)
+        with self.assertRaises(ValueError):
+            store.save_run_with_ledger(
+                project_id="proj-a", resolved_id="res-atomic", repetition=1,
+                attempt=1, body=run, tool_calls=3, wall_clock_ms=41,
+                created_at="2026-11-02T00:00:01+00:00")
 
 class DiffTest(unittest.TestCase):
     def test_equal_resolutions(self):

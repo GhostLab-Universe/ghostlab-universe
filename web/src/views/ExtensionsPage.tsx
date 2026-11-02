@@ -820,10 +820,16 @@ function ExperimentPanel({ source, detail, fixtureName, snapshot }: { source: Da
         result={run}
         render={(data) => {
           const body = data.run as unknown as RunBody;
+          const requiredUntested =
+            resolved !== null &&
+            resolved.ok &&
+            body.faults_fired === null &&
+            (resolved.data.resolved as unknown as ResolvedBody).effective.faults.some((fault) => fault.required);
+          const tone = body.status !== "completed" ? "warn" : body.failed_rules.length > 0 ? "fail" : requiredUntested ? "warn" : "ok";
           return (
             <>
               <p>
-                <Tag tone={body.status === "completed" && body.failed_rules.length === 0 ? "ok" : body.status === "completed" ? "fail" : "warn"}>{body.status}</Tag>{" "}
+                <Tag tone={tone}>{body.status}</Tag>{" "}
                 <span className="muted">{body.termination_reason}; {body.tool_calls} calls in {body.wall_clock_ms} ms</span>
               </p>
               <Facts
@@ -835,6 +841,7 @@ function ExperimentPanel({ source, detail, fixtureName, snapshot }: { source: Da
                 ]}
               />
               {body.denial !== null ? <p><Tag tone="warn">denied</Tag> <span className="muted">{body.denial}</span></p> : null}
+              {requiredUntested ? <p><Tag tone="warn">untested</Tag> <span className="muted">a required fault fired nowhere the world reports; this is not a clean pass</span></p> : null}
               {body.limits_exceeded.length > 0 ? <p className="muted">Limits exceeded: {body.limits_exceeded.join(", ")}</p> : null}
               {body.evidence !== null ? <JsonBlock label={`Trace (${body.evidence.trace.length} events)`} value={body.evidence.trace} /> : null}
             </>

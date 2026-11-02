@@ -118,3 +118,86 @@ round-trips v2 to v3 and back exactly, and rejects tampered, mismatched and
 over-budget capsules. This contract is reviewed independently before P5
 builds on it. No live calls, no streaming, no model identifiers and no
 secrets are involved.
+
+## Reservation-world/1 envelopes (non-pack worlds, milestone T4)
+
+This section is the explicit M00 follow-up the envelope boundary anticipated:
+enveloping ``reservation-world/1``, the one non-pack world in the tree (the
+vendored external reservation service behind its checked-in adapter). No
+second non-pack world exists yet, so only reservation is enveloped; the
+generalization recipe below keeps the next one mechanical.
+
+### Where it lives
+
+``ghostlab.contracts.world_reservation`` holds a reviewed reservation manifest
+plus the envelope types. ``CapsuleV1``, ``CapsuleV2`` and ``CapsuleV3`` are
+byte-untouched: reservation envelopes reuse the v3 payload layout, the v3
+``CapsuleProvenance`` rules and the canonical capsule checksum, but validate
+names against the reservation manifest instead of the pack registry.
+
+The manifest mirrors the reviewed adapter exactly -- the four tool schemas,
+effects and descriptions, the three fault ids with their P1 trigger points,
+the four invariants, the four fixtures, the environment id and version, the
+source string and the ``VENDOR_SHA256`` pin (lowercased into ``Sha256Hex``
+shape). ``tests/contracts/test_capsule_v3_reservation.py`` cross-checks every
+mirror, the way pack manifests are cross-checked against the real core.
+
+### Deliberate differences from pack worlds
+
+- Open adapter set. Reservation is a bring-your-own-agent world: external
+  agent ids such as ``demo-booker`` at ``demo/1`` cannot be enumerated in
+  advance, so only their shape is checked. This is the policy
+  ``CapsuleProvenance`` already applies to ``retest_adapter_id``. Pack
+  worlds keep their closed adapter sets.
+- Parameterless faults, no timing. The world takes boolean toggles only, so
+  the envelope requires empty fault parameter lists. A non-default
+  ``after_event`` validates in the envelope but is refused by the evidence
+  mapping, exactly like the refund v1 mapping refuses custom fault timing.
+- The vendored service is always declared. Every reservation capsule names
+  ``reservation-service`` at ``ghostlab-ext-example@79684eb`` with the pinned
+  service digest first in ``external_dependencies``. The service is reviewed
+  in-tree code, but it is developed outside this tree and re-vendored by
+  hash, so omitting the pin would overclaim self-containment. By the P5 rule
+  the envelope itself therefore does not claim self-contained recorded
+  replay; ``replay_recorded`` still reproduces against byte-identical service
+  code (proven in tests), and a replayer may verify the pinned digest before
+  replaying. Recorded-replay policy for pinned vendored bytes belongs to the
+  replay track.
+
+### Compatibility and conversion rules
+
+- Reservation capsules are v3-only. There is no pack v2 capsule for a
+  non-pack world, so no v2 downgrade exists; the pack readers (``CapsuleV2``,
+  ``CapsuleV3``, the v1 loader) reject reservation capsules, and the
+  reservation reader rejects every pack capsule. Both directions are tested.
+- Evidence converts losslessly. ``reservation_evidence_to_v3`` seals executed
+  evidence (fixture snapshot, toggle scenario, run evidence, detection-based
+  ``faults_fired``) with a fresh checksum; ``reservation_capsule_to_evidence``
+  verifies the checksum BEFORE converting and never replaces a mismatch. The
+  per-event actor the adapter records is stripped on sealing (after proving
+  it equals the capsule actor) and restored on opening, so
+  evidence-capsule-evidence is exact, including the checksum on resealing.
+- No new contract version. The payload layout, provenance rules and checksum
+  algorithm are v3's unchanged, so no version is minted and the registry,
+  the contract set version and every published schema stay byte-identical.
+
+### What was rejected and why
+
+- A ``reservation-world/1`` entry in ``PACKS``: rejected, since the frozen
+  v1/v2 readers and published v2 schema pin the closed pack set; extending
+  it would rewrite frozen artifacts.
+- Widening ``CapsuleV3`` with a world union now: rejected, since any
+  registered-model change forces a bundle regeneration, and regeneration is
+  blocked by pre-existing set-1 drift on the base commit (the
+  ``experiment_proposal`` description). Unifying the pack and reservation
+  readers into one ``CapsuleV3`` model is the follow-up once M00 resolves
+  that drift; the shared layout, provenance and checksum make it mechanical.
+
+### Generalizing to the next non-pack world
+
+A second world repeats the reservation shape: a reviewed manifest module
+mirroring its adapter (cross-checked in tests), scenario/run mirrors
+reusing the world leaf types, a v3-shaped payload reusing ``CapsuleV3Version``,
+``CapsuleProvenance`` and the checksum gates, detection-based
+``faults_fired``, and a pinned ``ExternalDependency`` for any vendored code.
+Nothing in the existing versions changes.

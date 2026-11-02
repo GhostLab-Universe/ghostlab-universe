@@ -156,9 +156,16 @@ class RefundEnvAdapter:
         if type(params) is not dict or params != {}:
             raise ValueError("timeout_after_commit takes no parameters")
         self._fault_armed = True
+        if self._world is not None:
+            # Late arming: a reset world reads its scenario per dispatch,
+            # so occurrence triggers can arm between reset and invoke.
+            # Single-shot per reset: an already-fired world stays fired.
+            self._world.scenario = Scenario(timeout_after_commit=True)
 
     def clear_faults(self) -> None:
         self._fault_armed = False
+        if self._world is not None:
+            self._world.scenario = Scenario(timeout_after_commit=False)
 
     def probe_calls(self, fixture: dict) -> list:
         """Canonical valid sequence the generic runner may execute."""

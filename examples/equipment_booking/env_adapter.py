@@ -88,9 +88,19 @@ class BookingEnvAdapter:
         if type(params) is not dict or params != {}:
             raise ValueError("timeout_after_commit takes no parameters")
         self._fault_armed = True
+        if self._world is not None:
+            # Late arming (mirrors RefundEnvAdapter): a reset world reads
+            # its scenario per dispatch. Single-shot per reset.
+            self._world.scenario = EquipmentScenario(
+                timeout_after_commit=True,
+                max_tool_calls=self._world.scenario.max_tool_calls)
 
     def clear_faults(self) -> None:
         self._fault_armed = False
+        if self._world is not None:
+            self._world.scenario = EquipmentScenario(
+                timeout_after_commit=False,
+                max_tool_calls=self._world.scenario.max_tool_calls)
 
     def probe_calls(self, fixture: dict) -> list:
         """Canonical valid sequence the generic runner may execute."""

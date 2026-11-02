@@ -52,8 +52,8 @@ All records are project-scoped, digest-verified on read, secret-scanned
 
 ## Promotion and the approval flow (`candidates/service.py`)
 
-`CandidateService` reuses `policy/approvals.py` by import (that module is
-untouched). Authority comes from the trusted session (`TrustedScope` /
+`CandidateService` reuses `policy/approvals.py` by import (that module gained
+only a read-only `get_request` lookup). Authority comes from the trusted session (`TrustedScope` /
 project id), never from record bodies. The promotion approval action pins
 `promotion_id`, `candidate_id`, `project_id`, both endpoint identities and
 the evaluation digest, so any change needs a new approval and consumption
@@ -73,6 +73,12 @@ Usage counts tool calls only -- wall-clock time is never measured, so
 results are deterministic (tested by double-run equality). Zero model
 calls, no network.
 
+Every recorded evaluation carries the required `world_version` and the
+evaluated `endpoints` triple (parent/proposed target id, version, code
+identity, plus config digest when the change is config-only);
+`record_evaluation` refuses evaluations whose world or endpoints differ
+from the candidate under test.
+
 ## Demo targets (`candidates/demo_targets.py`, stdlib only)
 
 `demo-refund-naive@demo-refund-targets/1` refunds the full INR 2,500 twice
@@ -87,9 +93,11 @@ checked-in adapters.
   `no_duplicate_full_refund`, candidate passes), promotes through a real
   SQLite-backed approval, and shows `not_allowlisted`, `escape_attempt`
   and `generated_code_refused` refusals. Exit 0/1/2.
-- `pytest tests/candidates`: 27 tests covering records, allowlist,
+- `pytest tests/candidates`: 43 tests covering records, allowlist,
   refusals, store isolation/transitions, harness dimensions and
-  determinism, and the approval-bound service lifecycle.
+  determinism, the approval-bound service lifecycle, evaluation
+  endpoint/world binding, CAS-first promotion, expiry, and secret
+  redaction.
 
 ## Limits and non-goals
 

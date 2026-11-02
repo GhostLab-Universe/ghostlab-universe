@@ -233,7 +233,6 @@ class CandidateService:
                 expected="promotion_requested", new_status="evaluated")
             raise
         return self._store.get_promotion(scope.project_id, promo_id)
-        return self._store.get_promotion(scope.project_id, promo_id)
 
     def complete_promotion(self, *, scope: TrustedScope,
                            candidate_id: str, promotion_id: str,

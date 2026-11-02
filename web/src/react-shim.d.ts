@@ -25,6 +25,7 @@ declare module "react" {
     props: P,
   ): ReactElement;
   export function useState<S>(initial: S | (() => S)): [S, (next: S | ((prev: S) => S)) => void];
+  export function useRef<T>(initial: T): { current: T };
   export function useEffect(effect: () => void | (() => void), deps?: readonly unknown[]): void;
   export function useMemo<T>(factory: () => T, deps: readonly unknown[]): T;
 }

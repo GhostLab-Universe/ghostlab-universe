@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ADAPTER_VERSION } from "../config";
+import { isServiceGuide } from "../serviceClient";
 import {
   banner,
   div,
@@ -21,11 +22,17 @@ export function Step3(props: { ctx: StepContext }): ReactNode {
   return div(
     null,
     h1(null, "Step 3: Select agent"),
-    banner(
-      "info",
-      "Scripted inference in fixture mode",
-      "Fixture mode shows approved results instead of executing. The live core runs deterministic adapters; a model-driven adapter is a separate experiment.",
-    ),
+    isServiceGuide(ctx.api)
+      ? banner(
+          "info",
+          "Deterministic adapters, executed live",
+          "Both adapters are deterministic local procedures executed by the service (the controller records 0 model calls). A model-driven adapter would be a separate experiment; nothing here performs live inference.",
+        )
+      : banner(
+          "info",
+          "Scripted inference in fixture mode",
+          "Fixture mode shows approved results instead of executing. The live core runs deterministic adapters; a model-driven adapter is a separate experiment.",
+        ),
     h2(null, "Adapter"),
     radioRow({
       name: "adapter",

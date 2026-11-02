@@ -1,6 +1,6 @@
 /* Step 4: configure fixture, faults, invariant focus, limits, objective. */
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import {
   INVARIANT_NAMES,
   validateEffectiveConfig,
@@ -31,6 +31,18 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
   const config = ctx.config;
   const validation = useMemo(() => validateEffectiveConfig(config), [config]);
 
+  // Unsupported limits have exactly one honest value each (deterministic
+  // serial execution, no tokens, no cost). Coerce once per visit so a stale
+  // config can never submit a misleading recorded value.
+  useEffect(() => {
+    if (config.limits.maxModelCalls !== 0) ctx.update("limits.maxModelCalls", 0);
+    if (config.limits.maxInputTokens !== 0) ctx.update("limits.maxInputTokens", 0);
+    if (config.limits.maxOutputTokens !== 0) ctx.update("limits.maxOutputTokens", 0);
+    if (config.limits.maxParallelRuns !== 1) ctx.update("limits.maxParallelRuns", 1);
+    if (config.limits.maxCostMinor !== null) ctx.update("limits.maxCostMinor", null);
+    if (config.limits.costCurrency !== null) ctx.update("limits.costCurrency", null);
+  }, [ctx, config.limits]);
+
   const currency = config.limits.costCurrency ?? "";
   return div(
     null,
@@ -38,7 +50,7 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
     banner(
       "info",
       "One config, validated twice",
-      "Every control below writes one effective-config field. The UI validates it here and the service re-validates the same rules before running.",
+      "Every control below writes one effective-config field. The UI validates it here and the service re-validates the same rules before running. Unsupported limits are disabled at their only honest value; step 5 shows the full control-to-execution audit.",
     ),
     h2(null, "Fixture (synthetic order)"),
     field(
@@ -125,10 +137,10 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
         testid: "limit-tools",
         configPath: "limits.maxToolCalls",
       }),
-      { htmlFor: "limit-tools" },
+      { hint: "Execution-affecting. 1 is rejected at submit: a refund attempt needs get_order + issue_refund (floor 2).", htmlFor: "limit-tools" },
     ),
     field(
-      "Max model calls",
+      "Max model calls (unsupported: fixed 0)",
       numberInput({
         id: "limit-models",
         value: config.limits.maxModelCalls,
@@ -138,11 +150,12 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
         },
         testid: "limit-models",
         configPath: "limits.maxModelCalls",
+        disabled: true,
       }),
-      { htmlFor: "limit-models" },
+      { hint: "Unsupported: local execution records 0 model calls. Disabled so the record stays honest.", htmlFor: "limit-models" },
     ),
     field(
-      "Max input tokens",
+      "Max input tokens (unsupported: fixed 0)",
       numberInput({
         id: "limit-input",
         value: config.limits.maxInputTokens,
@@ -152,11 +165,12 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
         },
         testid: "limit-input",
         configPath: "limits.maxInputTokens",
+        disabled: true,
       }),
-      { htmlFor: "limit-input" },
+      { hint: "Unsupported: execution tracks no token usage.", htmlFor: "limit-input" },
     ),
     field(
-      "Max output tokens",
+      "Max output tokens (unsupported: fixed 0)",
       numberInput({
         id: "limit-output",
         value: config.limits.maxOutputTokens,
@@ -166,8 +180,9 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
         },
         testid: "limit-output",
         configPath: "limits.maxOutputTokens",
+        disabled: true,
       }),
-      { htmlFor: "limit-output" },
+      { hint: "Unsupported: execution tracks no token usage.", htmlFor: "limit-output" },
     ),
     field(
       "Max wall clock (ms)",
@@ -181,10 +196,10 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
         testid: "limit-clock",
         configPath: "limits.maxWallClockMs",
       }),
-      { htmlFor: "limit-clock" },
+      { hint: "Execution-affecting. Above 3,600,000 the service rejects the submit instead of clamping.", htmlFor: "limit-clock" },
     ),
     field(
-      "Max parallel runs (1..64)",
+      "Max parallel runs (unsupported: fixed 1)",
       numberInput({
         id: "limit-parallel",
         value: config.limits.maxParallelRuns,
@@ -194,11 +209,12 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
         },
         testid: "limit-parallel",
         configPath: "limits.maxParallelRuns",
+        disabled: true,
       }),
-      { htmlFor: "limit-parallel" },
+      { hint: "Unsupported: run-groups execute serially.", htmlFor: "limit-parallel" },
     ),
     field(
-      "Max cost (minor units, empty = none)",
+      "Max cost (unsupported: fixed none)",
       numberInput({
         id: "limit-cost",
         value: config.limits.maxCostMinor,
@@ -206,11 +222,12 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
         onCommit: (v) => ctx.update("limits.maxCostMinor", v),
         testid: "limit-cost",
         configPath: "limits.maxCostMinor",
+        disabled: true,
       }),
-      { htmlFor: "limit-cost" },
+      { hint: "Unsupported: execution tracks no cost and makes no paid calls.", htmlFor: "limit-cost" },
     ),
     field(
-      "Cost currency (empty = none; set together with max cost)",
+      "Cost currency (unsupported: fixed none)",
       textInput({
         id: "limit-currency",
         value: currency,
@@ -219,8 +236,9 @@ export function Step4(props: { ctx: StepContext }): ReactNode {
         configPath: "limits.costCurrency",
         maxLength: 3,
         placeholder: "USD",
+        disabled: true,
       }),
-      { htmlFor: "limit-currency" },
+      { hint: "Unsupported: execution tracks no cost.", htmlFor: "limit-currency" },
     ),
     h2(null, "Objective"),
     field(

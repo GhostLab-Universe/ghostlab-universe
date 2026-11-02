@@ -3,6 +3,7 @@
 import { useMemo, type ReactNode } from "react";
 import {
   CONTROL_PATHS,
+  dispositionFor,
   flattenConfig,
   toCampaignSpec,
   toExperimentProposal,
@@ -46,21 +47,29 @@ export function Step5(props: { ctx: StepContext }): ReactNode {
       ? banner("ok", "Config valid", "It satisfies the UI checks; the service re-validates the same rules.")
       : errorList(validation.errors),
     h2(null, "Field provenance"),
+    p(
+      null,
+      "Disposition mirrors the service mapping (mapping_notes are the runtime check): execution-affecting fields ",
+      "land in the resolved config; recorded-metadata is validated and echoed but never executed; unsupported ",
+      "fields are disabled in step 4 at their only honest value.",
+    ),
     table(
       { className: "trace", "data-testid": "review-table" },
-      thead(null, tr(null, th(null, "Step"), th(null, "Field"), th(null, "Path"), th(null, "Value"))),
+      thead(null, tr(null, th(null, "Step"), th(null, "Field"), th(null, "Path"), th(null, "Value"), th(null, "Disposition"))),
       tbody(
         null,
         ...rows.map(([path, value], index) => {
           const control = CONTROL_PATHS[index];
           const step = control === undefined ? "?" : String(control.step);
           const label = control === undefined ? path : control.label;
+          const disposition = dispositionFor(path);
           return tr(
             { key: path },
             td(null, step),
             td(null, label),
             td(null, code(null, path)),
             td(null, code(null, JSON.stringify(value) ?? "null")),
+            td({ "data-testid": `disposition-${path}` }, disposition === undefined ? "?" : `${disposition.disposition}: ${disposition.note}`),
           );
         }),
       ),

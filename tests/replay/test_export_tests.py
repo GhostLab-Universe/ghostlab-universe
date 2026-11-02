@@ -547,3 +547,38 @@ def test_cli_script_end_to_end(tmp_path):
         text=True, timeout=120)
     assert bad.returncode == 2
     assert "export refused" in bad.stderr and "Traceback" not in bad.stderr
+
+def test_refuses_credential_shaped_case_witness(tmp_path):
+    case_path = _refund_violation(tmp_path)
+    case = json.loads(case_path.read_text(encoding="utf-8"))
+    assert type(case["failure_witness"]) is dict
+    case["failure_witness"]["api_key"] = "sk-tainted"
+    tainted = case_path.parent / "tainted-case.json"
+    _write_json(tainted, case)
+    with pytest.raises(ValueError, match="credential-shaped key"):
+        export_pytest_module(tainted, tmp_path / "out.py")
+
+
+def test_doc_sources_are_rendered_safe(tmp_path):
+    from ghostlab.replay.export_tests import (
+        _sanitize_doc_text, render_incomplete_module)
+    hostile = "a" + chr(34) * 3 + chr(10) + "__import__" + chr(34) * 3
+    clean = _sanitize_doc_text(hostile)
+    assert chr(34) not in clean and chr(10) not in clean
+    assert clean.strip() == clean and clean
+    text = render_incomplete_module(case_id="x", sources=hostile,
+                                    reason="unfinished")
+    compile(text, "<exported>", "exec")
+
+
+def test_cli_refusal_is_a_single_line(tmp_path, capsys, monkeypatch):
+    import ghostlab.replay.export_tests as exporter
+    def boom(*args, **kwargs):
+        raise ValueError("first line" + chr(10) + "second line")
+    monkeypatch.setattr(exporter, "export_pytest_module", boom)
+    with pytest.raises(SystemExit) as refused:
+        main([str(tmp_path / "case.json"), "--out",
+              str(tmp_path / "x.py")])
+    assert refused.value.code == 2
+    err = capsys.readouterr().err
+    assert err == "export refused: first line second line" + chr(10)

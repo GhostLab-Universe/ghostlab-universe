@@ -143,6 +143,17 @@ def _sanitize_case_id(raw):
         text = "case_" + text
     return text[:80]
 
+def _sanitize_doc_text(raw):
+    """Docstring-safe text: no quotes/backslashes, one printable line."""
+    out = []
+    for char in str(raw):
+        if char == chr(34) or char == chr(92):
+            out.append(chr(39))
+        elif char.isprintable() and char not in chr(13) + chr(10):
+            out.append(char)
+        else:
+            out.append(" ")
+    return "".join(out).strip() or "case"
 
 def _load_json(path: Path, label):
     try:
@@ -221,6 +232,8 @@ def validate_v2_case(case, case_path: Path):
             raise ValueError("recipient_witnesses must be a string list")
         witness = case["failure_witness"]
         witness_sha = case["failure_witness_sha256"]
+        assert_no_credentials(witness, where="case failure_witness")
+        assert_no_credentials(recipients, where="case recipient_witnesses")
         _check_sha256(witness_sha, "failure witness sha256")
         if hashlib.sha256(canonical(witness)).hexdigest() != witness_sha:
             raise ValueError("failure_witness does not match failure_witness_sha256")
@@ -261,6 +274,7 @@ def validate_ext_regression(data):
     for row in witness["failed"]:
         if normalize_check(row)["passed"] is not False:
             raise ValueError("ext failure witness names only failed checks")
+    assert_no_credentials(witness, where="ext failure_witness")
     _check_sha256(data.get("failure_witness_sha256"), "ext witness sha256")
     if witness_sha256(witness) != data["failure_witness_sha256"]:
         raise ValueError("ext failure_witness does not match its sha256")
@@ -537,6 +551,7 @@ def test_export_is_incomplete():
 
 def render_v2_module(validated, *, case_id, source):
     """Render the standalone pytest module for a validated /2 case."""
+    source = _sanitize_doc_text(source)
     if validated["expected_passed"]:
         expectation = (f"The fixed invariant {validated['invariant']} must hold: "
                        "the test fails if the defined violation recurs.")
@@ -569,6 +584,7 @@ def render_v2_module(validated, *, case_id, source):
 def render_ext_module(*, case_id, sources, world, invariant, failed, witness,
                       witness_sha, faults, evidence):
     """Render the standalone pytest module for validated ext evidence."""
+    sources = _sanitize_doc_text(sources)
     text = _EXT_TEMPLATE
     for token, value in (
             ("__SOURCES__", sources),
@@ -586,6 +602,7 @@ def render_ext_module(*, case_id, sources, world, invariant, failed, witness,
 
 def render_incomplete_module(*, case_id, sources, reason):
     """Render the explicit unknown-report for an unfinished or bare export."""
+    sources = _sanitize_doc_text(sources)
     text = _INCOMPLETE_TEMPLATE
     for token, value in (("__SOURCES__", sources),
                          ("__CASE_ID__", repr(case_id)),
@@ -682,6 +699,7 @@ def main(argv=None) -> int:
                                        case_id=args.case_id,
                                        evidence_path=args.evidence)
     except (ValueError, TypeError, KeyError, OSError, RecursionError) as error:
-        parser.exit(2, f"export refused: {error}\n")
+        detail = " ".join(str(error).split()) or "unspecified reason"
+        parser.exit(2, f"export refused: {detail}\n")
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0

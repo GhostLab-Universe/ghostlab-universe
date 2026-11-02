@@ -291,8 +291,8 @@ def qualify_environment(*, world_version: str, env_factory, manifest: AdapterMan
             close(env)
 
     def check_registration():
-        expect(manifest.origin == "checked_in",
-               f"origin {manifest.origin!r} is not checked_in")
+        expect(manifest.origin in ("checked_in", "registered"),
+               f"origin {manifest.origin!r} is not reviewed local code")
         env = make()
         try:
             return f"{manifest.package}@{manifest.version} ({type(env).__name__})"

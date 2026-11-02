@@ -61,7 +61,12 @@ def main(argv=None):
     journey_replay = commands.add_parser("journey-replay",
                                          help="Re-execute a v2 journey capsule without a model")
     journey_replay.add_argument("capsule", type=Path)
+    from .extensions.operator_cli import add_env_commands
+    add_env_commands(commands)
     args = parser.parse_args(argv)
+    if args.command == "envs":
+        from .extensions.operator_cli import run_env_command
+        return run_env_command(args)
     try:
         if args.command == "journey-demo":
             print(json.dumps(journey_demo(args.capsule), indent=2))

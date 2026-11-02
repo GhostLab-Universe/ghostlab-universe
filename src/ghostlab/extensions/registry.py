@@ -15,6 +15,7 @@ from .environment import EnvironmentAdapter
 from .target import TargetAdapter
 
 CHECKED_IN = "checked_in"
+REGISTERED = "registered"
 
 
 class RegistrationError(ValueError):
@@ -42,8 +43,8 @@ class AdapterManifest:
         for value, label in ((self.package, "package"), (self.version, "version")):
             if type(value) is not str or not value or len(value) > 200:
                 raise ValueError(f"Invalid manifest {label}")
-        if self.origin != CHECKED_IN:
-            raise ValueError("Only reviewed checked-in adapter packages may register "
+        if self.origin not in (CHECKED_IN, REGISTERED):
+            raise ValueError("Only reviewed local adapter packages may register "
                              f"(got origin {self.origin!r})")
         if type(self.description) is not str or len(self.description) > 2000:
             raise ValueError("Invalid manifest description")

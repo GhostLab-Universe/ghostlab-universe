@@ -13,6 +13,7 @@ results are deterministic. Zero model calls, no network.
 
 from datetime import datetime, timezone
 
+from .allowlist import code_identity_of
 from ..extensions.runner import run_attempt
 from ..extensions.target import TargetTask
 from .records import (CANDIDATE_SCHEMA_VERSION, digest_of, evaluation_id,
@@ -98,6 +99,13 @@ def run_candidate_evaluation(*, registry, world_version: str,
         raise TypeError("authorize must be callable")
     _check_case(original, "original")
     regressions = list(regressions)
+    endpoints = {}
+    for side, target_id in (("parent", parent_id), ("proposed", proposed_id)):
+        manifest = registry.target_manifest(world_version, target_id)
+        endpoints[side] = {"target_id": target_id,
+                         "target_version": manifest.version,
+                         "code_identity": code_identity_of(manifest),
+                         "config_digest": None}
     for index, case in enumerate(regressions):
         _check_case(case, f"regressions[{index}]")
     stamp = now_iso or datetime.now(timezone.utc).isoformat()
@@ -148,6 +156,8 @@ def run_candidate_evaluation(*, registry, world_version: str,
         "evaluation_id": "pending",
         "candidate_id": candidate_id,
         "project_id": project_id,
+        "world_version": world_version,
+        "endpoints": endpoints,
         "original": strip(original_full),
         "regressions": [strip(case) for case in regression_full],
         "completion": completion,

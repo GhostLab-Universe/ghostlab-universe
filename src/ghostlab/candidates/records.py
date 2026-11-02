@@ -55,6 +55,7 @@ _DIFF_KEYS = {"kind", "path", "before", "after"}
 _REF_KEYS = {"kind", "id", "sha256"}
 _REJECTION_KEYS = {"code", "message", "rejected_by", "rejected_at"}
 _EVALUATION_KEYS = {"schema_version", "evaluation_id", "candidate_id",
+                    "world_version", "endpoints",
                     "project_id", "original", "regressions", "completion",
                     "fault_coverage", "usage", "evaluated_by",
                     "evaluated_at", "digest"}
@@ -338,11 +339,19 @@ def validate_evaluation(obj) -> dict:
         if type(node["tool_calls"]) is not int or node["tool_calls"] < 0:
             raise CandidateError(f"invalid usage.{side}.tool_calls")
         clean_usage[side] = {"tool_calls": node["tool_calls"]}
+    endpoints = obj["endpoints"]
+    if type(endpoints) is not dict or set(endpoints) != {"parent", "proposed"}:
+        raise CandidateError("endpoints must carry exactly parent and proposed")
+    clean_endpoints = {side: _check_endpoint(endpoints[side],
+                                     f"endpoints.{side}")
+                     for side in ("parent", "proposed")}
     body = {
         "schema_version": CANDIDATE_SCHEMA_VERSION,
         "evaluation_id": _short(obj["evaluation_id"], "evaluation_id"),
         "candidate_id": _short(obj["candidate_id"], "candidate_id"),
         "project_id": check_project_id(obj["project_id"]),
+        "world_version": _short(obj["world_version"], "world_version"),
+        "endpoints": clean_endpoints,
         "original": _check_case(obj["original"], "original"),
         "regressions": [_check_case(item, f"regressions[{i}]")
                         for i, item in enumerate(regressions)],
@@ -392,6 +401,8 @@ def validate_promotion(obj) -> dict:
     if type(obj["digest"]) is not str or not obj["digest"]:
         raise CandidateError("invalid digest")
     body["digest"] = obj["digest"]
+    scan_for_secrets({k: v for k, v in body.items() if k != "digest"},
+                     "promotion")
     return body
 
 

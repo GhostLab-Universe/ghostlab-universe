@@ -121,6 +121,8 @@ class CandidateStore:
         """Store a validated candidate; identical proposes are idempotent."""
         check_project_id(project_id)
         clean = validate_candidate(body)
+        if clean["status"] != "proposed":
+            raise CandidateError("saved candidates start proposed")
         if clean["project_id"] != project_id:
             raise CrossProjectError("candidate names a different project")
         if digest_of(clean) != clean["digest"]:
@@ -262,6 +264,8 @@ class CandidateStore:
         """Store one promotion; one row per (candidate, approval)."""
         check_project_id(project_id)
         clean = validate_promotion(body)
+        if clean["status"] != "pending":
+            raise CandidateError("saved promotions start pending")
         if clean["project_id"] != project_id:
             raise CrossProjectError("promotion names a different project")
         if digest_of(clean) != clean["digest"]:

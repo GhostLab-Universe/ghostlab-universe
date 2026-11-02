@@ -3,8 +3,8 @@
 :class:`CandidateService` moves candidates through propose, validate,
 evaluate and promotion. Authority always comes from the caller's
 trusted session (``scope`` / ``project_id``), never from record
-bodies: ``created_by``, ``evaluated_by`` and ``rejected_by`` are the
-session principal id. Promotion executes only through the existing
+bodies: ``created_by``, ``evaluated_by``, ``rejected_by`` and
+``decided_by`` are the session principal id. Promotion executes only through the existing
 single-use digest-bound approval flow (``ApprovalService.consume``):
 the promotion action pins the candidate, both endpoints and the
 evaluation digest, so any change needs a new approval. Zero model
@@ -150,6 +150,19 @@ class CandidateService:
         if current["status"] != "validated":
             raise CandidateError(
                 f"candidate is {current['status']}, not validated")
+        if clean["world_version"] != self._world:
+            raise CandidateError("evaluation is for a different world")
+        for side in ("parent", "proposed"):
+            claimed = clean["endpoints"][side]
+            pinned = current[side]
+            for key in ("target_id", "target_version", "code_identity"):
+                if claimed[key] != pinned[key]:
+                    raise CandidateError(
+                        f"evaluation {side} does not match the candidate")
+            if (claimed["config_digest"] is not None
+                    and claimed["config_digest"] != pinned["config_digest"]):
+                raise CandidateError(
+                    f"evaluation {side} config does not match the candidate")
         stored = self._store.save_evaluation(project_id=scope.project_id,
                                              body=clean)
         self._store.transition_candidate(
@@ -185,11 +198,23 @@ class CandidateService:
             project_id=scope.project_id, parent=current["parent"],
             proposed=current["proposed"],
             evaluation_digest=evaluation["digest"])
-        self._approvals.request(
-            scope=scope, approval_id=approval_id, campaign_id=campaign_id,
-            task_id=task_id, action_kind=PROMOTION_ACTION_KIND,
-            action=action, payload_ref_id=evaluation_id, summary=summary,
-            material_risks=list(material_risks), now=now, ttl=ttl)
+        # CAS the candidate before any side effect: concurrent losers fail
+        # here with nothing leaked, and a failed insert below reverts.
+        self._store.transition_candidate(
+            scope.project_id, candidate_id, expected="evaluated",
+            new_status="promotion_requested")
+        try:
+            self._approvals.request(
+                scope=scope, approval_id=approval_id,
+                campaign_id=campaign_id, task_id=task_id,
+                action_kind=PROMOTION_ACTION_KIND, action=action,
+                payload_ref_id=evaluation_id, summary=summary,
+                material_risks=list(material_risks), now=now, ttl=ttl)
+        except Exception:
+            self._store.transition_candidate(
+                scope.project_id, candidate_id,
+                expected="promotion_requested", new_status="evaluated")
+            raise
         promo_body = {"schema_version": CANDIDATE_SCHEMA_VERSION,
                         "promotion_id": promo_id,
                         "candidate_id": candidate_id,
@@ -199,27 +224,50 @@ class CandidateService:
                         "status": "pending", "decided_by": None,
                         "decided_at": None, "digest": "pending"}
         promo_body["digest"] = digest_of(promo_body)
-        self._store.save_promotion(project_id=scope.project_id,
-                                   body=promo_body)
-        self._store.transition_candidate(
-            scope.project_id, candidate_id, expected="evaluated",
-            new_status="promotion_requested")
+        try:
+            self._store.save_promotion(project_id=scope.project_id,
+                                       body=promo_body)
+        except Exception:
+            self._store.transition_candidate(
+                scope.project_id, candidate_id,
+                expected="promotion_requested", new_status="evaluated")
+            raise
+        return self._store.get_promotion(scope.project_id, promo_id)
         return self._store.get_promotion(scope.project_id, promo_id)
 
-    def complete_promotion(self, *, project_id: str, candidate_id: str,
-                           promotion_id: str, action: dict, now: datetime,
-                           decided_by: str, decided_at: str) -> dict:
+    def complete_promotion(self, *, scope: TrustedScope,
+                           candidate_id: str, promotion_id: str,
+                           action: dict, now: datetime,
+                           decided_at: str) -> dict:
         """Consume the approval once and promote; single use by digest.
 
-        On success the promotion completes and the candidate is
-        ``promoted``. An expired approval marks the promotion expired
-        and returns the candidate to ``evaluated`` for a fresh request.
-        Any other denial propagates and the promotion stays pending.
+        Project and decider come from the trusted session, never the
+        caller. Local state is verified before the burn: a changed
+        action or a non-pending promotion refuses without consuming
+        the approval. On success the promotion completes and the
+        candidate is ``promoted``. An expired approval marks the
+        promotion expired and returns the candidate to ``evaluated``
+        for a fresh request. Any other denial propagates and the
+        promotion stays pending.
         """
+        if not isinstance(scope, TrustedScope):
+            raise TypeError("scope must come from the trusted session")
+        project_id = scope.project_id
+        decided_by = scope.principal.principal_id
         check_project_id(project_id)
         promotion = self._store.get_promotion(project_id, promotion_id)
         if promotion["candidate_id"] != candidate_id:
             raise CandidateError("promotion is for a different candidate")
+        if promotion["status"] != "pending":
+            raise CandidateError(
+                f"promotion is {promotion['status']}, not pending")
+        candidate = self._store.get_candidate(project_id, candidate_id)
+        if candidate["status"] != "promotion_requested":
+            raise CandidateError(
+                f"candidate is {candidate['status']}, not promotion_requested")
+        if action_digest(action) != promotion["action_digest"]:
+            raise CandidateError(
+                "action changed; a new approval is required")
         if self._approvals is None:
             raise CandidateError("this service has no approval service")
         try:
@@ -248,15 +296,29 @@ class CandidateService:
                           promotion_id: str, now_iso: str) -> dict:
         """Drop a pending promotion after its approval was rejected.
 
-        The human rejection lives on the approval itself; this marks the
-        promotion rejected and returns the candidate to ``evaluated`` so
-        a corrected request can follow.
+        Requires the approval to be actually rejected: abandonment
+        mirrors a human rejection, so it cannot kill a pending or
+        approved promotion. The candidate returns to ``evaluated``
+        so a corrected request can follow.
         """
         if not isinstance(scope, TrustedScope):
             raise TypeError("scope must come from the trusted session")
+        if self._approvals is None:
+            raise CandidateError("this service has no approval service")
         promotion = self._store.get_promotion(scope.project_id, promotion_id)
         if promotion["candidate_id"] != candidate_id:
             raise CandidateError("promotion is for a different candidate")
+        try:
+            request = self._approvals.get_request(
+                project_id=scope.project_id,
+                approval_id=promotion["approval_id"])
+        except ApprovalDenied as denied:
+            raise CandidateError(
+                f"approval is unavailable: {denied}") from denied
+        if request.status != "rejected":
+            raise CandidateError(
+                "approval is " + request.status + ", not rejected;"
+                " abandonment needs a human rejection")
         self._store.transition_promotion(
             scope.project_id, promotion_id, new_status="rejected",
             decided_by=scope.principal.principal_id, decided_at=now_iso)

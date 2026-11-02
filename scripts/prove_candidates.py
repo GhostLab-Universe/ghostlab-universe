@@ -172,11 +172,13 @@ def main(argv=None) -> int:
             "decision": "approve", "reason": "fix verified in proof"}),
         decision_id="dec-1", now=NOW + timedelta(minutes=1))
     done = service.complete_promotion(
-        project_id=PROJECT, candidate_id=candidate["candidate_id"],
+        scope=scope, candidate_id=candidate["candidate_id"],
         promotion_id=promotion["promotion_id"], action=action,
-        now=NOW + timedelta(minutes=2), decided_by="reviewer-1",
+        now=NOW + timedelta(minutes=2),
         decided_at=NOW.isoformat())
     check("promoted", done["status"] == "completed")
+    check("decided_by from session",
+          done["decided_by"] == "reviewer-1")
     check("candidate promoted",
           store.get_candidate(PROJECT, candidate["candidate_id"])["status"]
           == "promoted")

@@ -14,7 +14,8 @@ from ghostlab.candidates.demo_targets import (
     register_demo_targets)
 from ghostlab.candidates.evaluate import run_candidate_evaluation
 from ghostlab.candidates.records import (CandidateError, candidate_id,
-                                         digest_of, validate_candidate,
+                                         digest_of, evaluation_id,
+                                         validate_candidate,
                                          validate_evaluation,
                                          validate_promotion)
 from ghostlab.candidates.service import (PROMOTION_ACTION_KIND,
@@ -482,9 +483,9 @@ def test_service_lifecycle_to_promotion(tmp_path):
             "decision": "approve", "reason": "fix verified"}),
         decision_id="dec-1", now=now + timedelta(minutes=1))
     done = service.complete_promotion(
-        project_id=PROJECT, candidate_id=candidate["candidate_id"],
+        scope=scope, candidate_id=candidate["candidate_id"],
         promotion_id=promotion["promotion_id"], action=action,
-        now=now + timedelta(minutes=2), decided_by="dev-1",
+        now=now + timedelta(minutes=2),
         decided_at=NOW)
     assert done["status"] == "completed"
     assert service.store.get_candidate(
@@ -524,16 +525,20 @@ def test_promotion_is_single_use(tmp_path):
             "decision": "approve", "reason": "ok"}),
         decision_id="dec-1", now=now + timedelta(minutes=1))
     service.complete_promotion(
-        project_id=PROJECT, candidate_id=candidate["candidate_id"],
+        scope=scope, candidate_id=candidate["candidate_id"],
         promotion_id=promotion["promotion_id"], action=action,
-        now=now + timedelta(minutes=2), decided_by="dev-1",
+        now=now + timedelta(minutes=2),
         decided_at=NOW)
-    with pytest.raises(ApprovalDenied):
+    with pytest.raises(CandidateError):
         service.complete_promotion(
-            project_id=PROJECT, candidate_id=candidate["candidate_id"],
+            scope=scope, candidate_id=candidate["candidate_id"],
             promotion_id=promotion["promotion_id"], action=action,
-            now=now + timedelta(minutes=3), decided_by="dev-1",
+            now=now + timedelta(minutes=3),
             decided_at=NOW)
+    # And the approval itself burns exactly once at its own layer.
+    with pytest.raises(ApprovalDenied):
+        approvals.consume(project_id=PROJECT, approval_id="appr-1",
+                          action=action, now=now + timedelta(minutes=4))
 
 
 def test_changed_action_needs_new_approval(tmp_path):
@@ -568,13 +573,14 @@ def test_changed_action_needs_new_approval(tmp_path):
             "action_digest": promotion["action_digest"],
             "decision": "approve", "reason": "ok"}),
         decision_id="dec-1", now=now + timedelta(minutes=1))
-    with pytest.raises(ApprovalDenied) as error:
+    with pytest.raises(CandidateError, match="action changed"):
         service.complete_promotion(
-            project_id=PROJECT, candidate_id=candidate["candidate_id"],
+            scope=scope, candidate_id=candidate["candidate_id"],
             promotion_id=promotion["promotion_id"], action=action,
-            now=now + timedelta(minutes=2), decided_by="dev-1",
+            now=now + timedelta(minutes=2),
             decided_at=NOW)
-    assert error.value.code == "digest_mismatch"
+    assert approvals.get_request(
+        project_id=PROJECT, approval_id="appr-1").status == "approved"
     assert service.store.get_promotion(
         PROJECT, promotion["promotion_id"])["status"] == "pending"
 
@@ -663,3 +669,340 @@ def test_rejected_approval_returns_candidate_to_evaluated(tmp_path):
 
 def test_promotion_action_kind_is_stable():
     assert PROMOTION_ACTION_KIND == "execute_consequential_action"
+
+
+# -- critic-fix coverage --------------------------------------------------
+
+
+def _evaluated_candidate(tmp_path):
+    service, approvals = make_service(tmp_path)
+    registry = make_registry()
+    scope = make_scope()
+    candidate = propose_demo(service, scope, registry)
+    service.validate(scope=scope, candidate_id=candidate["candidate_id"],
+                     now_iso=NOW)
+    evaluation = run_candidate_evaluation(
+        registry=registry, world_version=WORLD_VERSION, project_id=PROJECT,
+        candidate_id=candidate["candidate_id"], parent_id=NAIVE_ID,
+        proposed_id=FIXED_ID, original=ORIGINAL, regressions=REGRESSIONS,
+        cap=20, evaluated_by="dev-1", now_iso=NOW)
+    service.record_evaluation(scope=scope, evaluation=evaluation)
+    return service, approvals, scope, registry, candidate, evaluation
+
+
+def _request(service, scope, candidate, evaluation, approval_id="appr-1"):
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    promotion = service.request_promotion(
+        scope=scope, candidate_id=candidate["candidate_id"],
+        evaluation_id=evaluation["evaluation_id"], approval_id=approval_id,
+        campaign_id="camp-1", task_id="task-1",
+        summary="promote demo fix", material_risks=["none"],
+        now=now, ttl=timedelta(hours=1))
+    return promotion, now
+
+
+def _decide(approvals, scope, approval_id, action_digest_value, decision,
+            now, decision_id="dec-1"):
+    from ghostlab.contracts import ApprovalSubmission
+    approvals.decide(
+        session_principal=scope.principal, project_id=PROJECT,
+        submission=ApprovalSubmission.model_validate({
+            "schema_version": 1, "approval_id": approval_id,
+            "action_digest": action_digest_value,
+            "decision": decision, "reason": "test verdict"}),
+        decision_id=decision_id, now=now)
+
+
+def _action_for(candidate, promotion, evaluation):
+    return promotion_action(
+        promotion_id=promotion["promotion_id"],
+        candidate_id=candidate["candidate_id"], project_id=PROJECT,
+        parent=candidate["parent"], proposed=candidate["proposed"],
+        evaluation_digest=evaluation["digest"])
+
+
+def test_complete_derives_authority_from_scope(tmp_path):
+    service, approvals, scope, _, candidate, evaluation = \
+        _evaluated_candidate(tmp_path)
+    promotion, now = _request(service, scope, candidate, evaluation)
+    action = _action_for(candidate, promotion, evaluation)
+    _decide(approvals, scope, "appr-1", promotion["action_digest"],
+            "approve", now + timedelta(minutes=1))
+    other = make_scope(principal_id="op-2")
+    done = service.complete_promotion(
+        scope=other, candidate_id=candidate["candidate_id"],
+        promotion_id=promotion["promotion_id"], action=action,
+        now=now + timedelta(minutes=2), decided_at=NOW)
+    assert done["decided_by"] == "op-2"
+    with pytest.raises(TypeError):
+        service.complete_promotion(
+            project_id=PROJECT, candidate_id=candidate["candidate_id"],
+            promotion_id=promotion["promotion_id"], action=action,
+            now=now, decided_by="mallory", decided_at=NOW)
+
+
+def test_abandon_refuses_unrejected_approval(tmp_path):
+    service, approvals, scope, _, candidate, evaluation = \
+        _evaluated_candidate(tmp_path)
+    promotion, now = _request(service, scope, candidate, evaluation)
+    with pytest.raises(CandidateError, match="not rejected"):
+        service.abandon_promotion(
+            scope=scope, candidate_id=candidate["candidate_id"],
+            promotion_id=promotion["promotion_id"], now_iso=NOW)
+    _decide(approvals, scope, "appr-1", promotion["action_digest"],
+            "approve", now + timedelta(minutes=1))
+    with pytest.raises(CandidateError, match="not rejected"):
+        service.abandon_promotion(
+            scope=scope, candidate_id=candidate["candidate_id"],
+            promotion_id=promotion["promotion_id"], now_iso=NOW)
+    assert service.store.get_candidate(
+        PROJECT, candidate["candidate_id"])["status"] == "promotion_requested"
+
+
+def test_abandon_after_rejection_still_works(tmp_path):
+    service, approvals, scope, _, candidate, evaluation = \
+        _evaluated_candidate(tmp_path)
+    promotion, now = _request(service, scope, candidate, evaluation)
+    _decide(approvals, scope, "appr-1", promotion["action_digest"],
+            "reject", now + timedelta(minutes=1))
+    dropped = service.abandon_promotion(
+        scope=scope, candidate_id=candidate["candidate_id"],
+        promotion_id=promotion["promotion_id"], now_iso=NOW)
+    assert dropped["status"] == "rejected"
+    assert service.store.get_candidate(
+        PROJECT, candidate["candidate_id"])["status"] == "evaluated"
+
+
+def test_abandon_needs_approval_service(tmp_path):
+    from ghostlab.candidates.store import CandidateStore
+    service = CandidateService(CandidateStore(tmp_path / "c.db"),
+                               make_registry(), WORLD_VERSION)
+    with pytest.raises(CandidateError, match="no approval service"):
+        service.abandon_promotion(
+            scope=make_scope(), candidate_id="cand-1",
+            promotion_id="promo-1", now_iso=NOW)
+
+
+def test_complete_refuses_nonpending_without_burn(tmp_path):
+    service, approvals, scope, _, candidate, evaluation = \
+        _evaluated_candidate(tmp_path)
+    promotion, now = _request(service, scope, candidate, evaluation)
+    action = _action_for(candidate, promotion, evaluation)
+    _decide(approvals, scope, "appr-1", promotion["action_digest"],
+            "reject", now + timedelta(minutes=1))
+    service.abandon_promotion(
+        scope=scope, candidate_id=candidate["candidate_id"],
+        promotion_id=promotion["promotion_id"], now_iso=NOW)
+    with pytest.raises(CandidateError, match="not pending"):
+        service.complete_promotion(
+            scope=scope, candidate_id=candidate["candidate_id"],
+            promotion_id=promotion["promotion_id"], action=action,
+            now=now + timedelta(minutes=2), decided_at=NOW)
+    assert approvals.get_request(
+        project_id=PROJECT, approval_id="appr-1").status == "rejected"
+
+
+def test_complete_after_expiry_returns_to_evaluated(tmp_path):
+    service, approvals, scope, _, candidate, evaluation = \
+        _evaluated_candidate(tmp_path)
+    now = datetime(2026, 11, 2, tzinfo=timezone.utc)
+    promotion = service.request_promotion(
+        scope=scope, candidate_id=candidate["candidate_id"],
+        evaluation_id=evaluation["evaluation_id"], approval_id="appr-1",
+        campaign_id="camp-1", task_id="task-1",
+        summary="promote demo fix", material_risks=["none"],
+        now=now, ttl=timedelta(seconds=1))
+    action = _action_for(candidate, promotion, evaluation)
+    _decide(approvals, scope, "appr-1", promotion["action_digest"],
+            "approve", now)
+    done = service.complete_promotion(
+        scope=scope, candidate_id=candidate["candidate_id"],
+        promotion_id=promotion["promotion_id"], action=action,
+        now=now + timedelta(hours=2), decided_at=NOW)
+    assert done["status"] == "expired"
+    assert service.store.get_candidate(
+        PROJECT, candidate["candidate_id"])["status"] == "evaluated"
+
+
+def test_generated_config_refuses_target_entries(tmp_path):
+    registry = make_registry()
+    parent = endpoint(NAIVE_ID, NAIVE_VERSION, registry)
+    field = {"kind": "field", "path": "run.max_tool_calls",
+             "before": 20, "after": 50}
+    spurious = {"kind": "target", "path": "target",
+                "before": {"target_id": NAIVE_ID,
+                           "target_version": NAIVE_VERSION},
+                "after": {"target_id": NAIVE_ID,
+                          "target_version": NAIVE_VERSION}}
+    with pytest.raises(ChangeRefusal) as error:
+        validate_change(mode="generated_config", parent=parent,
+                        proposed=dict(parent), diff=[field, spurious],
+                        registry=registry, world_version=WORLD_VERSION)
+    assert error.value.code == "diff_mismatch"
+
+
+def test_diff_mismatch_double_target(tmp_path):
+    registry = make_registry()
+    parent = endpoint(NAIVE_ID, NAIVE_VERSION, registry)
+    proposed = endpoint(FIXED_ID, FIXED_VERSION, registry)
+    diff = target_diff(parent, proposed) + target_diff(parent, proposed)
+    with pytest.raises(ChangeRefusal) as error:
+        validate_change(mode="developer_supplied", parent=parent,
+                        proposed=proposed, diff=diff, registry=registry,
+                        world_version=WORLD_VERSION)
+    assert error.value.code == "diff_mismatch"
+
+
+def test_identity_mismatch_refused(tmp_path):
+    service, _, scope, registry, _, _ = _evaluated_candidate(tmp_path)
+    parent = endpoint(NAIVE_ID, NAIVE_VERSION, registry)
+    proposed = endpoint(FIXED_ID, FIXED_VERSION, registry)
+    proposed["code_identity"] = "f" * 64
+    with pytest.raises(ChangeRefusal) as error:
+        validate_change(mode="developer_supplied", parent=parent,
+                        proposed=proposed,
+                        diff=target_diff(parent, proposed),
+                        registry=registry,
+                        world_version=WORLD_VERSION)
+    assert error.value.code == "identity_mismatch"
+
+
+def test_store_save_enforces_initial_status(tmp_path):
+    from ghostlab.candidates.store import CandidateStore
+    store = CandidateStore(tmp_path / "c.db")
+    registry = make_registry()
+    body = candidate_body(registry, status="validated")
+    with pytest.raises(CandidateError, match="start proposed"):
+        store.save_candidate(project_id=PROJECT, body=body)
+    promo = {"schema_version": 1, "promotion_id": "promo-1",
+             "candidate_id": "cand-1", "project_id": PROJECT,
+             "approval_id": "appr-1", "action_digest": "d" * 64,
+             "status": "completed", "decided_by": "dev-1",
+             "decided_at": NOW, "digest": "pending"}
+    promo["digest"] = digest_of(promo)
+    with pytest.raises(CandidateError, match="start pending"):
+        store.save_promotion(project_id=PROJECT, body=promo)
+
+
+def test_double_promotion_request_refused(tmp_path):
+    service, _, scope, _, candidate, evaluation = \
+        _evaluated_candidate(tmp_path)
+    _request(service, scope, candidate, evaluation, approval_id="appr-1")
+    with pytest.raises(CandidateError, match="not evaluated"):
+        _request(service, scope, candidate, evaluation, approval_id="appr-2")
+    assert service.store.get_candidate(
+        PROJECT, candidate["candidate_id"])["status"] == "promotion_requested"
+
+
+def _retargeted_evaluation(evaluation, candidate_id, **over):
+    body = dict(evaluation)
+    body["candidate_id"] = candidate_id
+    body.update(over)
+    stable = {k: v for k, v in body.items()
+              if k not in ("evaluation_id", "digest")}
+    body["evaluation_id"] = evaluation_id(
+        body["project_id"], candidate_id, stable)
+    body["digest"] = digest_of(body)
+    return body
+
+
+def test_evaluation_endpoints_must_match(tmp_path):
+    service, _, scope, registry, candidate, evaluation = \
+        _evaluated_candidate(tmp_path)
+    assert evaluation["world_version"] == WORLD_VERSION
+    assert evaluation["endpoints"]["parent"]["target_id"] == NAIVE_ID
+    assert evaluation["endpoints"]["proposed"]["target_id"] == FIXED_ID
+    assert evaluation["endpoints"]["proposed"]["config_digest"] is None
+    def fresh_validated(tag):
+        parent = endpoint(NAIVE_ID, NAIVE_VERSION, registry)
+        proposed = endpoint(FIXED_ID, FIXED_VERSION, registry)
+        cand = service.propose(
+            scope=scope, mode="developer_supplied", parent=parent,
+            proposed=proposed, diff=target_diff(parent, proposed),
+            evidence_refs=[{"kind": "run", "id": tag, "sha256": None}],
+            now_iso=NOW)
+        service.validate(scope=scope, candidate_id=cand["candidate_id"],
+                       now_iso=NOW)
+        return service.store.get_candidate(PROJECT, cand["candidate_id"])
+    other = fresh_validated("tamper-parent")
+    swapped = _retargeted_evaluation(
+        evaluation, other["candidate_id"],
+        endpoints={"parent": evaluation["endpoints"]["proposed"],
+                   "proposed": evaluation["endpoints"]["proposed"]})
+    with pytest.raises(CandidateError, match="does not match"):
+        service.record_evaluation(scope=scope, evaluation=swapped)
+    other2 = fresh_validated("tamper-world")
+    foreign = _retargeted_evaluation(
+        evaluation, other2["candidate_id"], world_version="other-world/9")
+    with pytest.raises(CandidateError, match="different world"):
+        service.record_evaluation(scope=scope, evaluation=foreign)
+
+
+def test_promotion_refuses_secrets():
+    body = {"schema_version": 1, "promotion_id": "promo-1",
+            "candidate_id": "cand-1", "project_id": PROJECT,
+            "approval_id": "x API_KEY=abc", "action_digest": "d" * 64,
+            "status": "pending", "decided_by": None,
+            "decided_at": None, "digest": "pending"}
+    body["digest"] = digest_of(body)
+    with pytest.raises(CandidateError):
+        validate_promotion(body)
+
+
+def test_cross_project_evaluation_and_promotion_refused(tmp_path):
+    service, _, scope, _, candidate, evaluation = \
+        _evaluated_candidate(tmp_path)
+    other = make_scope(project_id="cand-other")
+    with pytest.raises(CandidateError):
+        service.record_evaluation(scope=other, evaluation=evaluation)
+    promotion, _ = _request(service, scope, candidate, evaluation)
+    with pytest.raises(CrossProjectError):
+        service.store.get_promotion("cand-other",
+                                    promotion["promotion_id"])
+    with pytest.raises(CrossProjectError):
+        service.store.get_evaluation("cand-other",
+                                     evaluation["evaluation_id"])
+
+
+def test_concurrent_transition_loses_cleanly(tmp_path):
+    import threading
+    from ghostlab.candidates.store import CandidateStore
+    store = CandidateStore(tmp_path / "c.db")
+    registry = make_registry()
+    body = candidate_body(registry)
+    store.save_candidate(project_id=PROJECT, body=body)
+    results = []
+
+    def attempt():
+        try:
+            store.transition_candidate(
+                PROJECT, "cand-x", expected="proposed",
+                new_status="validated")
+            results.append("won")
+        except CandidateError:
+            results.append("lost")
+
+    threads = [threading.Thread(target=attempt) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert sorted(results) == ["lost", "lost", "lost", "won"]
+
+
+def test_promotion_terminal_edges(tmp_path):
+    service, approvals, scope, _, candidate, evaluation = \
+        _evaluated_candidate(tmp_path)
+    promotion, now = _request(service, scope, candidate, evaluation)
+    action = _action_for(candidate, promotion, evaluation)
+    _decide(approvals, scope, "appr-1", promotion["action_digest"],
+            "approve", now + timedelta(minutes=1))
+    done = service.complete_promotion(
+        scope=scope, candidate_id=candidate["candidate_id"],
+        promotion_id=promotion["promotion_id"], action=action,
+        now=now + timedelta(minutes=2), decided_at=NOW)
+    assert done["status"] == "completed"
+    with pytest.raises(CandidateError):
+        service.store.transition_promotion(
+            PROJECT, promotion["promotion_id"], new_status="rejected",
+            decided_by="dev-1", decided_at=NOW)

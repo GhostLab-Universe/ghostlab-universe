@@ -114,6 +114,10 @@ class ApprovalService:
         except NotFound as error:
             raise ApprovalDenied("not_found", "no such approval in this project") from error
 
+    def get_request(self, *, project_id: str, approval_id: str) -> ApprovalRequest:
+        """Read one approval request (status polling for lifecycle cleanup)."""
+        return self._get(project_id, approval_id)
+
     def decide(self, *, session_principal: Principal, project_id: str,
                submission: ApprovalSubmission, decision_id: str,
                now: datetime) -> ApprovalDecision:

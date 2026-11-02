@@ -138,6 +138,10 @@ def validate_change(*, mode: str, parent: dict, proposed: dict, diff: list,
                 "target_change_forbidden",
                 "generated_config candidates are config-only; the target "
                 "must stay identical")
+        if target_entries:
+            raise ChangeRefusal(
+                "diff_mismatch",
+                "generated_config diff must not carry target entries")
         if not field_entries:
             raise ChangeRefusal("no_change", "generated_config diff changes nothing")
         if parent.get("config_digest") == proposed.get("config_digest"):

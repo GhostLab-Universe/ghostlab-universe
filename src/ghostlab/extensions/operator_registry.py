@@ -8,7 +8,7 @@ code or fetches remote references.
 
 Each developer keeps a local database file; live database files are never
 committed or shared. Tests pass a temporary path, never the default.
-Execution starts through :func:`load_into`, which refuses unknown,
+Execution starts through :func:`resolve_class`, which refuses unknown,
 code-changed or unqualified environments.
 """
 

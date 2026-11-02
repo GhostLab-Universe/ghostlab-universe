@@ -1,7 +1,7 @@
 """Live experiment operations: create, resolve, run, compare.
 
 This module wires R2 configs and the project-scoped store onto P1
-execution: operator-gated environments (``load_into`` refuses unknown,
+execution: operator-gated environments (``resolve_class`` refuses unknown,
 code-changed, unqualified or failed worlds), the generic
 :func:`run_attempt` loop, and invariant checks evaluated on a fresh
 adapter from the recorded evidence.

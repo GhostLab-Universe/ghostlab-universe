@@ -11,6 +11,7 @@ import type {
 } from "../../schemas/typescript/contracts";
 import type { ConfigError, EffectiveConfig, InvariantName } from "./config";
 import type { ExperimentApi } from "./api";
+import type { RecoveryOutcome, ServiceGuideApi } from "./serviceClient";
 import type { ExperimentEvidence } from "./types";
 
 export type Props = Record<string, unknown>;
@@ -124,6 +125,7 @@ export interface TextInputOpts {
   configPath?: string;
   maxLength?: number;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export function textInput(opts: TextInputOpts): ReactNode {
@@ -137,6 +139,7 @@ export function textInput(opts: TextInputOpts): ReactNode {
   if (opts.configPath !== undefined) out["data-config-path"] = opts.configPath;
   if (opts.maxLength !== undefined) out["maxLength"] = opts.maxLength;
   if (opts.placeholder !== undefined) out["placeholder"] = opts.placeholder;
+  if (opts.disabled === true) out["disabled"] = true;
   return h("input", out);
 }
 
@@ -154,6 +157,7 @@ export function textArea(opts: TextAreaOpts): ReactNode {
   };
   if (opts.configPath !== undefined) out["data-config-path"] = opts.configPath;
   if (opts.maxLength !== undefined) out["maxLength"] = opts.maxLength;
+  if (opts.disabled === true) out["disabled"] = true;
   return h("textarea", out);
 }
 
@@ -165,6 +169,7 @@ export function numberInput(opts: {
   onCommit: (value: number | null) => void;
   testid: string;
   configPath: string;
+  disabled?: boolean;
 }): ReactNode {
   const committed = opts.value === null ? "" : String(opts.value);
   const [draft, setDraft] = useState(committed);
@@ -198,17 +203,19 @@ export function numberInput(opts: {
     setError(null);
     opts.onCommit(parsed);
   };
+  const inputProps: Props = {
+    id: opts.id,
+    type: "text",
+    inputMode: "numeric",
+    value: shown,
+    "data-testid": opts.testid,
+    "data-config-path": opts.configPath,
+    onChange: (event: ChangeEventLike) => commit(event.target.value),
+  };
+  if (opts.disabled === true) inputProps["disabled"] = true;
   return div(
     null,
-    h("input", {
-      id: opts.id,
-      type: "text",
-      inputMode: "numeric",
-      value: shown,
-      "data-testid": opts.testid,
-      "data-config-path": opts.configPath,
-      onChange: (event: ChangeEventLike) => commit(event.target.value),
-    }),
+    h("input", inputProps),
     error === null ? null : small({ className: "field-error", role: "alert" }, error),
   );
 }
@@ -376,9 +383,16 @@ export function stepper(
 }
 
 /** Shared per-screen context: one config, one evidence record, one API. */
+export interface ServiceInfo {
+  baseUrl: string;
+  projectId: string;
+  projectObserved: boolean;
+}
+
 export interface StepContext {
   config: EffectiveConfig;
-  api: ExperimentApi;
+  /** Service adapter in production; fixture only via the dev-only flag. */
+  api: ExperimentApi | ServiceGuideApi;
   evidence: ExperimentEvidence | null;
   setEvidence: (next: ExperimentEvidence | null) => void;
   manifestText: string;
@@ -387,7 +401,14 @@ export interface StepContext {
   importCanonical: string | null;
   setImport: (digest: string | null, canonical: string | null) => void;
   update: (path: string, value: unknown) => void;
+  /** Replace the whole config (recovery restore, retest input). */
+  replaceConfig: (next: EffectiveConfig) => void;
   notices: readonly string[];
   notify: (message: string) => void;
   navigate: (path: string) => void;
+  /** Service connection facts; null on the fixture path. */
+  service: ServiceInfo | null;
+  /** Reload-recovery outcomes (service only); empty on the fixture path. */
+  recovery: readonly RecoveryOutcome[];
+  refreshRecovery: () => void;
 }

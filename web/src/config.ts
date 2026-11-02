@@ -139,17 +139,67 @@ export function defaultConfig(): EffectiveConfig {
     checks: { invariants: [...INVARIANT_NAMES] },
     limits: {
       maxToolCalls: 20,
-      maxModelCalls: 20,
-      maxInputTokens: 200000,
-      maxOutputTokens: 20000,
+      // Deterministic local execution records 0 model calls, tracks no
+      // tokens or cost, and runs serially: the honest defaults are 0/1/null
+      // and the step-4 controls for these fields are disabled. The service
+      // records whatever value is submitted as metadata, so the UI only ever
+      // submits these honest values.
+      maxModelCalls: 0,
+      maxInputTokens: 0,
+      maxOutputTokens: 0,
       maxWallClockMs: 600000,
-      maxParallelRuns: 2,
+      maxParallelRuns: 1,
       maxCostMinor: null,
       costCurrency: null,
     },
     objective: "Find duplicate-refund failures after a payment timeout",
     successCriteria: ["A failing invariant is reproduced from a capsule"],
   };
+}
+
+/** Control-to-execution disposition. Mirrors the service mapping
+ * (POST /v1/guide/submit mapping_notes): every effective-config leaf is
+ * execution-affecting (mapped/verified/derived into the resolved config),
+ * recorded-metadata (validated + echoed, never executed), or unsupported
+ * (no execution effect; the UI disables the control so the record stays
+ * honest). mapping_notes are the runtime drift detector for this table. */
+export type ControlDisposition = "execution-affecting" | "recorded-metadata" | "unsupported";
+
+export interface DispositionRow {
+  path: string;
+  disposition: ControlDisposition;
+  note: string;
+}
+
+export const CONTROL_DISPOSITIONS: readonly DispositionRow[] = [
+  { path: "env.envId", disposition: "execution-affecting", note: "Mapped exactly to requested env_id; unknown envs are rejected." },
+  { path: "env.envVersion", disposition: "execution-affecting", note: "Verified against the stored registration at submit; a mismatch rejects the submit." },
+  { path: "env.adapterRef", disposition: "execution-affecting", note: "Verified against the stored registration at submit; a mismatch rejects the submit." },
+  { path: "env.manifestDigest", disposition: "execution-affecting", note: "Pinned via resolve manifest_digest; discovery agreement gates resolution." },
+  { path: "agent.adapter", disposition: "execution-affecting", note: "Requested agent; selects the vulnerable or repaired refund procedure." },
+  { path: "agent.note", disposition: "recorded-metadata", note: "Validated and echoed in exports; never executed or sent to a model." },
+  { path: "fixture.orderId", disposition: "execution-affecting", note: "Reset value; identity checked on every tool call." },
+  { path: "fixture.customerId", disposition: "execution-affecting", note: "Reset value; ownership checked on every tool call." },
+  { path: "fixture.paidMinor", disposition: "execution-affecting", note: "Reset value; drives refund amounts and ledger totals." },
+  { path: "fixture.currency", disposition: "execution-affecting", note: "Reset value; recorded on the order and ledger." },
+  { path: "faults.timeoutAfterCommit", disposition: "execution-affecting", note: "true arms one required timeout_after_commit fault (a run whose required fault never fires is a fail); false arms nothing." },
+  { path: "checks.invariants", disposition: "execution-affecting", note: "Requested rules; the verdict fails when any evaluated rule fails." },
+  { path: "limits.maxToolCalls", disposition: "execution-affecting", note: "Per-run budget and (x1 repetition) aggregate; 1 is unmappable — a refund attempt needs get_order + issue_refund (floor 2), so the service rejects it." },
+  { path: "limits.maxModelCalls", disposition: "unsupported", note: "Disabled in the UI (fixed 0): local execution records model_calls 0. The service would record any sent value as metadata only." },
+  { path: "limits.maxInputTokens", disposition: "unsupported", note: "Disabled in the UI (fixed 0): execution tracks no token usage." },
+  { path: "limits.maxOutputTokens", disposition: "unsupported", note: "Disabled in the UI (fixed 0): execution tracks no token usage." },
+  { path: "limits.maxWallClockMs", disposition: "execution-affecting", note: "Wall budget per run; above the 3,600,000 ms Track C ceiling the service rejects the submit instead of clamping." },
+  { path: "limits.maxParallelRuns", disposition: "unsupported", note: "Disabled in the UI (fixed 1): run-groups execute serially." },
+  { path: "limits.maxCostMinor", disposition: "unsupported", note: "Disabled in the UI (fixed null): execution tracks no cost and makes no paid calls." },
+  { path: "limits.costCurrency", disposition: "unsupported", note: "Disabled in the UI (fixed null): execution tracks no cost." },
+  { path: "objective", disposition: "recorded-metadata", note: "Full text recorded; the first 100 chars derive the requested name." },
+  { path: "successCriteria", disposition: "recorded-metadata", note: "Recorded; verdicts come from invariant checks over executed evidence, never from matching criteria text." },
+  { path: "(repetitions)", disposition: "execution-affecting", note: "No UI control: defaulted to a single-run group (count 1), noted by the service." },
+  { path: "(policy)", disposition: "execution-affecting", note: "No UI control: guide-service/1 with maximal Track C ceilings; over-ceiling limits are rejected, never clamped." },
+];
+
+export function dispositionFor(path: string): DispositionRow | undefined {
+  return CONTROL_DISPOSITIONS.find((row) => row.path === path);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

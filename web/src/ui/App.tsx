@@ -40,7 +40,12 @@ export function App({ source, harness }: { source: DataSource; harness: FixtureH
           GhostLab<span> Universe</span>
         </a>
         <nav className="topnav" aria-label="Sections">
-          <a href="#/">Campaigns</a> <a href="#/extensions">Extensions</a>
+          <a href="#/" {...(route.page === "extensions" ? {} : { "aria-current": "page" as const })}>
+            Campaigns
+          </a>{" "}
+          <a href="#/extensions" {...(route.page === "extensions" ? { "aria-current": "page" as const } : {})}>
+            Extensions
+          </a>
         </nav>
         <SessionFacts session={sessionInfo} />
       </header>

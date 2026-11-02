@@ -20,6 +20,33 @@ import { BusyNote, Facts, FailureNotice, Mono, Notice, Section } from "../ui/com
 
 const ID_PATTERN = "[A-Za-z0-9][A-Za-z0-9._:\\-]{0,127}";
 
+const RECENTS_KEY = "ghostlab.recent-campaigns.v1";
+const MAX_RECENTS = 8;
+
+/** Campaign ids opened from this browser. A convenience list, never service data. */
+function readRecents(): string[] {
+  try {
+    if (typeof localStorage === "undefined") return [];
+    const raw = localStorage.getItem(RECENTS_KEY);
+    if (raw === null) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is string => typeof item === "string").slice(0, MAX_RECENTS);
+  } catch {
+    return [];
+  }
+}
+
+function rememberCampaign(id: string): string[] {
+  const next = [id, ...readRecents().filter((item) => item !== id)].slice(0, MAX_RECENTS);
+  try {
+    if (typeof localStorage !== "undefined") localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
+  } catch {
+    // Private browsing or quota: recents are a convenience, not data.
+  }
+  return next;
+}
+
 export function HomePage({
   source,
   harness,
@@ -73,6 +100,7 @@ function ScenarioList({ harness }: { harness: FixtureHarness }) {
 
 function OpenCampaign() {
   const [id, setId] = useState("");
+  const [recents, setRecents] = useState(readRecents);
   return (
     <Section title="Open a campaign">
       <p className="muted">The service has no campaign list, so a campaign is opened by its id.</p>
@@ -80,7 +108,9 @@ function OpenCampaign() {
         className="inline-form"
         onSubmit={(event) => {
           event.preventDefault();
-          window.location.hash = campaignHref(id.trim());
+          const trimmed = id.trim();
+          setRecents(rememberCampaign(trimmed));
+          window.location.hash = campaignHref(trimmed);
         }}
       >
         <label htmlFor="campaign-id">Campaign id</label>
@@ -96,6 +126,20 @@ function OpenCampaign() {
         />
         <button type="submit">Open</button>
       </form>
+      {recents.length === 0 ? null : (
+        <>
+          <h3>Recently opened in this browser</h3>
+          <ul className="recents">
+            {recents.map((item) => (
+              <li key={item}>
+                <a href={campaignHref(item)}>
+                  <Mono>{item}</Mono>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </Section>
   );
 }

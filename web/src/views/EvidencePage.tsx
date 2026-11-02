@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   CampaignView,
   ExperimentEvent,
@@ -14,7 +14,7 @@ import { findingsForEvent, isErrorOutcome, parseEventRef, violatingEventIds } fr
 import { formatTimestamp } from "../logic/format.ts";
 import { deliveryAt, deliveryLabel, sharingLostAt } from "../logic/journeyStory.ts";
 import { campaignHref, type Route } from "../logic/routes.ts";
-import { Facts, FailureNotice, JsonBlock, Loading, Mono, Notice, Section, Tag } from "../ui/components.tsx";
+import { Facts, FailureNotice, FilterBar, JsonBlock, Loading, Mono, Notice, Section, Tag } from "../ui/components.tsx";
 import { CoverageNotice, ExperimentGate, ExperimentPicker, LostFaultsNotice, useExperiment, useRun } from "./experimentData.tsx";
 
 type CampaignRoute = Extract<Route, { page: "campaign" }>;
@@ -150,6 +150,20 @@ export function RunEvidence({
   const { result, findings } = run;
   const firstDivergence = run.run === "repaired" ? null : (experiment.diff.first_divergence?.event_id ?? null);
   const violating = violatingEventIds(findings);
+  const [filter, setFilter] = useState<"all" | "errors" | "violations" | "cited">("all");
+  const annotated = result.trace.map((event) => ({
+    event,
+    failed: isErrorOutcome(event.outcome),
+    violating: violating.includes(event.event_id),
+    cited: findingsForEvent(findings, event.event_id).length,
+  }));
+  const shown = annotated.filter(
+    (item) =>
+      filter === "all" ||
+      (filter === "errors" && item.failed) ||
+      (filter === "violations" && item.violating) ||
+      (filter === "cited" && item.cited > 0),
+  );
   return (
     <>
       <Section title={`${RUN_LABEL[run.run]} run`} origins={origins}>
@@ -193,18 +207,35 @@ export function RunEvidence({
         {result.trace.length === 0 ? (
           <Notice state="empty" title="This run recorded no tool events" />
         ) : (
-          <ol className="events">
-            {result.trace.map((event) => (
-              <ToolEvent
-                key={event.event_id}
-                event={event}
-                findings={findingsForEvent(findings, event.event_id)}
-                isFirstDivergence={event.event_id === firstDivergence}
-                isViolating={violating.includes(event.event_id)}
-                focused={event.event_id === focusEventId}
-              />
-            ))}
-          </ol>
+          <>
+            <FilterBar
+              label="Show"
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: "all", label: "All events", count: annotated.length },
+                { value: "errors", label: "Errors", count: annotated.filter((item) => item.failed).length },
+                { value: "violations", label: "Violation evidence", count: annotated.filter((item) => item.violating).length },
+                { value: "cited", label: "Cited by findings", count: annotated.filter((item) => item.cited > 0).length },
+              ]}
+            />
+            {shown.length === 0 ? (
+              <Notice state="empty" title="No tool events match this filter" />
+            ) : (
+              <ol className="events">
+                {shown.map((item) => (
+                  <ToolEvent
+                    key={item.event.event_id}
+                    event={item.event}
+                    findings={findingsForEvent(findings, item.event.event_id)}
+                    isFirstDivergence={item.event.event_id === firstDivergence}
+                    isViolating={item.violating}
+                    focused={item.event.event_id === focusEventId}
+                  />
+                ))}
+              </ol>
+            )}
+          </>
         )}
       </Section>
     </>
@@ -345,13 +376,25 @@ export function ApplicationEvents({
   campaignId: string;
   experimentId: string | null;
 }) {
+  const [order, setOrder] = useState<"oldest" | "newest">("oldest");
+  const ordered = order === "oldest" ? events : [...events].reverse();
   return (
     <Section title="Campaign events" origins={origins}>
       {events.length === 0 ? (
         <Notice state="empty" title="No campaign events yet" />
       ) : (
-        <ol className="event-timeline" data-testid="event-timeline">
-          {events.map((event) => {
+        <>
+          <FilterBar
+            label="Order"
+            value={order}
+            onChange={setOrder}
+            options={[
+              { value: "oldest", label: "Oldest first" },
+              { value: "newest", label: "Newest first" },
+            ]}
+          />
+          <ol className="event-timeline" data-testid="event-timeline">
+            {ordered.map((event) => {
             const info = describeEventKind(event.kind);
             return (
               <li key={event.sequence} data-tone={info.tone}>
@@ -399,7 +442,8 @@ export function ApplicationEvents({
               </li>
             );
           })}
-        </ol>
+          </ol>
+        </>
       )}
     </Section>
   );

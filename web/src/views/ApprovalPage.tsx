@@ -292,7 +292,11 @@ export function DecisionPanel({
             value={reason}
             disabled={busy}
             onChange={(event) => setReason(event.currentTarget.value)}
+            aria-describedby="decision-reason-count"
           />
+          <p className="char-count" id="decision-reason-count">
+            {2000 - reason.length} characters left
+          </p>
           <div className="actions">
             <button type="button" disabled={!canSubmit} onClick={() => onDecide("approve", reason)}>
               Approve this action

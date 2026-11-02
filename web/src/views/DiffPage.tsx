@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type {
   CampaignView,
   ExperimentView,
@@ -30,7 +31,7 @@ import {
 } from "../logic/journeyStory.ts";
 import { campaignHref } from "../logic/routes.ts";
 import { differences } from "../logic/stateDiff.ts";
-import { FailureNotice, JsonBlock, Mono, Notice, Section, Tag } from "../ui/components.tsx";
+import { FailureNotice, FilterBar, JsonBlock, Mono, Notice, Section, Tag } from "../ui/components.tsx";
 import { EvidenceLinks } from "./EvidencePage.tsx";
 import {
   CoverageLine,
@@ -109,6 +110,8 @@ export function DiffPanel({
   const summary = summarizeAligned(rows);
   const changed = changedMetrics(diff);
   const ledgerComparison = compareLedgers(baseline?.result ?? null, fork?.result ?? null);
+  const [rowFilter, setRowFilter] = useState<"all" | "differences">("all");
+  const shownRows = rowFilter === "all" ? rows : rows.filter(alignedRowDiffers);
 
   return (
     <>
@@ -269,6 +272,21 @@ export function DiffPanel({
         {runsMissing ? (
           <Notice state="loading" title="Waiting for both recorded runs" live />
         ) : (
+          <>
+            <FilterBar
+              label="Show"
+              value={rowFilter}
+              onChange={setRowFilter}
+              options={[
+                { value: "all", label: "All events", count: rows.length },
+                { value: "differences", label: "Differences", count: summary.differing },
+              ]}
+            />
+            {rows.length > 0 && shownRows.length === 0 ? (
+              <Notice state="empty" title="No event records differ">
+                The baseline and fork records match on every compared event.
+              </Notice>
+            ) : (
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Baseline and fork events">
             <table className="aligned">
               <thead>
@@ -283,7 +301,7 @@ export function DiffPanel({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => {
+                {shownRows.map((row) => {
                   const differs = alignedRowDiffers(row);
                   return (
                     <tr key={row.eventId} data-diff={differs ? "different" : "same"}>
@@ -320,6 +338,8 @@ export function DiffPanel({
               </tbody>
             </table>
           </div>
+            )}
+          </>
         )}
       </Section>
     </>
@@ -364,6 +384,8 @@ function LeakStory({ leak, href }: { leak: Leak; href: string }) {
 
 function MetricTable({ experiment, currency }: { experiment: ExperimentView; currency: string | null }) {
   const rows = metricRows(experiment.diff);
+  const [filter, setFilter] = useState<"all" | "changed">("all");
+  const visible = filter === "all" ? rows : rows.filter((row) => row.baseline !== row.fork);
   const changeOf = (row: { baseline: number | null; fork: number | null }) =>
     row.baseline === null || row.fork === null ? null : row.fork - row.baseline;
   const changeCell = (name: string, delta: number | null) => {
@@ -391,6 +413,20 @@ function MetricTable({ experiment, currency }: { experiment: ExperimentView; cur
   };
   return (
     <>
+      <FilterBar
+        label="Show"
+        value={filter}
+        onChange={setFilter}
+        options={[
+          { value: "all", label: "All metrics", count: rows.length },
+          { value: "changed", label: "Changed", count: rows.filter((row) => row.baseline !== row.fork).length },
+        ]}
+      />
+      {visible.length === 0 ? (
+        <Notice state="empty" title="No recorded metrics differ">
+          The baseline and fork values match on every recorded metric.
+        </Notice>
+      ) : (
       <div className="table-wrap" tabIndex={0} role="region" aria-label="World metrics">
       <table>
         <thead>
@@ -406,7 +442,7 @@ function MetricTable({ experiment, currency }: { experiment: ExperimentView; cur
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {visible.map((row) => (
             <tr key={row.name}>
               <th scope="row">
                 <Mono>{row.name}</Mono>
@@ -419,6 +455,7 @@ function MetricTable({ experiment, currency }: { experiment: ExperimentView; cur
         </tbody>
         </table>
       </div>
+      )}
       <p className="muted">Changes are computed from the two recorded values. They are not recorded themselves.</p>
     </>
   );

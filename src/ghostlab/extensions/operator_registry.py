@@ -310,6 +310,39 @@ class OperatorRegistry:
                            "code_digest": row[2], "runner_version": row[3],
                            "created_at": row[4], "current": current}}
 
+    def describe_only(self, world_version):
+        """Describe-only capability discovery: instantiate, describe, close.
+
+        Refuses unknown registrations and adapter code that changed since
+        review. Never resets, invokes, faults, closes a run, qualifies,
+        or calls a model. Qualification is reported by
+        qualification_status, not enforced here.
+        """
+        record = self.get(world_version)
+        cls = resolve_adapter_ref(record["adapter_ref"], self._prefixes)
+        if adapter_code_digest(cls) != record["code_digest"]: 
+            raise ValueError(f"adapter code for "+world_version+" changed since review")
+        adapter = cls()
+        try:
+            description = adapter.describe()
+        finally:
+            adapter.close()
+        return {"world_version": description.world_version,
+                "environment_id": description.environment_id,
+                "environment_version": description.environment_version,
+                "tools": [{"name": tool.name, "effect": tool.effect,
+                           "parameters": dict(tool.parameters)}
+                          for tool in description.tools],
+                "faults": [{"id": fault.fault_id,
+                            "parameters": [{"name": item.name, "type": item.type}
+                                           for item in fault.parameters],
+                            "trigger_points": list(fault.trigger_points)}
+                           for fault in description.faults],
+                "invariants": list(description.invariants),
+                "fixtures": list(description.fixtures),
+                "capabilities": dict(description.capabilities),
+                "modes": list(record["declared_modes"])}
+
     def load_into(self, registry, world_version):
         """Resolve a registered adapter into a live factory, gated on health.
 

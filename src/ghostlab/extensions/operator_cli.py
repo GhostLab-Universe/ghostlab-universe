@@ -12,8 +12,7 @@ import sys
 from pathlib import Path
 
 from .environment import Action
-from .operator_registry import (OperatorRegistry, adapter_code_digest,
-                                resolve_adapter_ref)
+from .operator_registry import OperatorRegistry, resolve_adapter_ref
 from .qualify import ProbeScript, qualify_environment
 
 DEFAULT_DB = Path("artifacts/local/env-registry.sqlite")
@@ -84,25 +83,15 @@ def _as_json(payload) -> str:
 
 
 def _describe_only(operator: OperatorRegistry, world: str) -> dict:
-    record = operator.get(world)
-    cls = resolve_adapter_ref(record["adapter_ref"], operator.allowed_prefixes)
-    if adapter_code_digest(cls) != record["code_digest"]:
-        raise ValueError(f"'{world}' adapter code changed since review")
-    adapter = cls()
-    try:
-        description = adapter.describe()
-    finally:
-        adapter.close()
-    return {"world_version": description.world_version,
-            "environment_id": description.environment_id,
-            "environment_version": description.environment_version,
-            "tools": [{"name": tool.name, "effect": tool.effect,
-                       "parameters": dict(tool.parameters)} for tool in description.tools],
-            "faults": [fault.fault_id for fault in description.faults],
-            "invariants": list(description.invariants),
-            "fixtures": list(description.fixtures),
-            "capabilities": dict(description.capabilities)}
-
+    described = operator.describe_only(world)
+    return {"world_version": described["world_version"],
+            "environment_id": described["environment_id"],
+            "environment_version": described["environment_version"],
+            "tools": described["tools"],
+            "faults": [fault["id"] for fault in described["faults"]],
+            "invariants": described["invariants"],
+            "fixtures": described["fixtures"],
+            "capabilities": described["capabilities"]}
 
 def _manifest_agreement(operator, world, manifest) -> tuple:
     """Manifest claims versus described reality: agreement plus detail."""

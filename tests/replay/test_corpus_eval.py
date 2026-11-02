@@ -254,6 +254,22 @@ class NotApplicableTests(unittest.TestCase):
         self.assertEqual(record["verdict"], NOT_APPLICABLE)
         self.assertIn("no adapter package", record["detail"])
 
+    def test_dev_entry_with_missing_world_is_declined(self):
+        from ghostlab.adapters.reservation_env import (
+            register_reservation_adapters)
+        from ghostlab.extensions.registry import AdapterRegistry
+        registry = AdapterRegistry()
+        register_reservation_adapters(registry)
+        self.assertNotIn("refund-world/1", registry.worlds())
+        report = evaluate_corpus(
+            registry=registry, target=parse_target(CAREFUL),
+            include_dev=True, only=["DEV-R1"])
+        self.assertEqual(len(report["cases"]), 1)
+        record = report["cases"][0]
+        self.assertEqual(record["case_id"], "DEV-R1")
+        self.assertEqual(record["verdict"], NOT_APPLICABLE)
+        self.assertIn("no adapter package", record["detail"])
+
     def test_dev_modes_are_all_accounted_for(self):
         report = evaluate_corpus(
             target=parse_target({"kind": "registered", "id": "repaired"}),
@@ -419,6 +435,12 @@ class CliTests(unittest.TestCase):
         code, out = _eval_cli(["--target-id", "repaired"])
         self.assertEqual(code, 2)
         self.assertIn("no case files", out)
+
+    def test_cli_case_filter_matching_nothing_exits_two(self):
+        code, out = _eval_cli(["--target-id", "repaired",
+                                "--case", "NOPE-9", "--include-dev"])
+        self.assertEqual(code, 2)
+        self.assertIn("no cases matched", out)
 
 
 if __name__ == "__main__":

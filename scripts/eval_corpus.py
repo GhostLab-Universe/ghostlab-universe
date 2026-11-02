@@ -66,6 +66,9 @@ def main(argv=None) -> int:
     except (ValueError, TypeError, RuntimeError) as error:
         print(f"error: {error}")
         return 2
+    if args.only and not report["cases"]:
+        print(f"no cases matched --case {sorted(set(args.only))}")
+        return 2
     print(format_summary(report))
     ok, failed = gate(report)
     if args.out:

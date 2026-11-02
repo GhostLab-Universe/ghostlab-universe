@@ -483,6 +483,12 @@ def evaluate_corpus(*, registry=None, corpus=(), target, include_dev=False,
                 records.append(_declined(entry["case_id"], entry["source"],
                                          entry["world"], entry["detail"]))
                 continue
+            if entry["world"] not in registry.worlds():
+                records.append(_declined(
+                    entry["case_id"], entry["source"],
+                    entry["world"],
+                    "no adapter package registered for " + entry["world"]))
+                continue
             required = tuple(sorted(set(entry["required_faults"]) | set(overlay)))
             records.append(_evaluate_runnable(
                 registry=registry, case_id=entry["case_id"], source=entry["source"],

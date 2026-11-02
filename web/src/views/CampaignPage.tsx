@@ -444,7 +444,7 @@ function TaskTimeline({ view }: { view: CampaignView }) {
       />
       {shown.length === 0 ? (
         <Notice state="empty" title="No tasks match this filter">
-          The campaign records no {filter === "attention" ? "running, waiting or failed" : "finished"} tasks.
+          The campaign records no {filter === "attention" ? "running, awaiting decision or failed" : "finished"} tasks.
         </Notice>
       ) : (
     <ol className="timeline">

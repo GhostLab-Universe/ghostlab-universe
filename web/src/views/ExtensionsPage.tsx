@@ -147,11 +147,13 @@ export function ExtensionsPage({ source }: { source: DataSource }) {
           </Section>
         )}
       />
-      <Outcome
-        result={detail}
-        what="environment"
-        render={(data) => <EnvironmentDetail source={source} detail={data} />}
-      />
+      {world === "" ? null : (
+        <Outcome
+          result={detail}
+          what="environment"
+          render={(data) => <EnvironmentDetail source={source} detail={data} />}
+        />
+      )}
     </>
   );
 }

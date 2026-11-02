@@ -522,7 +522,7 @@ pre {
   background: var(--panel);
 }
 
-/* Long comparisons keep their column labels while scrolling. */
+/* Column labels stay visible while scrolling inside the wrap. */
 .table-wrap thead th {
   position: sticky;
   top: 0;
@@ -953,10 +953,6 @@ button:disabled {
   margin-top: 0;
 }
 
-.refresh-note {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
 
 /* Recently opened campaigns on the home page. */
 .recents {

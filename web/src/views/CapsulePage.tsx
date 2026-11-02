@@ -183,7 +183,7 @@ function CapsuleControls({
         />
       )}
       {replayed === null ? null : (
-        <EnforcementPanel execution={experiment.execution} checks={replayed.result.checks} origins={replayed.origins} />
+        <EnforcementPanel execution={experiment.execution} checks={replayed.result.checks} reproduced={replayed.result.reproduced} checksMatch={replayed.result.matches["checks"] === true} origins={replayed.origins} />
       )}
     </>
   );
@@ -283,7 +283,8 @@ export interface EnforcementPresentation {
  */
 export function presentEnforcement(
   execution: ExecutionRecord | null,
-  checks: Record<string, boolean | undefined> | null,
+  checks: Record<string, boolean | undefined>,
+  replay: { reproduced: boolean; checksMatch: boolean },
 ): EnforcementPresentation {
   if (execution === null) {
     return {
@@ -292,18 +293,25 @@ export function presentEnforcement(
       detail: "This run recorded no execution mode, so there is no enforcement outcome to assess.",
     };
   }
-  if (execution.mode !== "enforced" || execution.guarded !== true) {
+  if (execution.mode !== "enforced") {
     return {
       tone: "neutral",
       headline: "Lab run: enforcement was off",
       detail: "The guard was off for this run, so its checks are findings, not an enforcement outcome.",
     };
   }
-  if (checks === null) {
+  if (execution.guarded !== true) {
     return {
       tone: "neutral",
-      headline: "Enforcement needs the recorded checks",
-      detail: "Replay the capsule to read the checks this enforced run recorded.",
+      headline: "Guard off: no enforcement outcome",
+      detail: "This run recorded enforced mode but the guard was off, so its checks are findings, not an enforcement outcome.",
+    };
+  }
+  if (!replay.reproduced || !replay.checksMatch) {
+    return {
+      tone: "neutral",
+      headline: "Replay diverged: enforcement not assessed",
+      detail: "The replay checks differ from the recording, so they cannot assess the recorded enforced run.",
     };
   }
   const failed = Object.entries(checks)
@@ -326,16 +334,21 @@ export function presentEnforcement(
 export function EnforcementPanel({
   execution,
   checks,
+  reproduced,
+  checksMatch,
   origins,
 }: {
   execution: ExecutionRecord | null;
-  checks: Record<string, boolean | undefined> | null;
+  checks: Record<string, boolean | undefined>;
+  reproduced: boolean;
+  checksMatch: boolean;
   origins: readonly Origin[];
 }) {
-  const shown = presentEnforcement(execution, checks);
+  const shown = presentEnforcement(execution, checks, { reproduced, checksMatch });
   const enforced = execution !== null && execution.mode === "enforced" && execution.guarded === true;
-  const failed = checks === null ? null : Object.entries(checks).filter(([, passed]) => !passed);
-  const held = enforced && failed !== null && failed.length === 0;
+  const assessed = enforced && reproduced && checksMatch;
+  const failed = Object.entries(checks).filter(([, passed]) => !passed);
+  const held = assessed && failed.length === 0;
   return (
     <Section title="Enforcement outcome" origins={origins}>
       <dl className="recorded" data-testid="enforcement-fields">
@@ -356,7 +369,7 @@ export function EnforcementPanel({
             <Mono>held</Mono>
           </dt>
           <dd>
-            {enforced && failed !== null ? (
+            {assessed ? (
               <Mono>{String(held)}</Mono>
             ) : (
               <span className="muted">no enforcement outcome for this run</span>
@@ -368,18 +381,14 @@ export function EnforcementPanel({
         <strong>{shown.headline}</strong>
         <p>{shown.detail}</p>
       </div>
-      {checks === null ? null : (
-        <>
-          <h3>Checks under enforcement</h3>
-          <ul className="checks">
-            {Object.entries(checks).map(([name, passed]) => (
-              <li key={name}>
-                <Tag tone={passed === true ? "neutral" : "fail"}>{passed === true ? "passed" : "failed"}</Tag> <Mono>{name}</Mono>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <h3>Checks after replay</h3>
+      <ul className="checks">
+        {Object.entries(checks).map(([name, passed]) => (
+          <li key={name}>
+            <Tag tone={passed === true ? "neutral" : "fail"}>{passed === true ? "passed" : "failed"}</Tag> <Mono>{name}</Mono>
+          </li>
+        ))}
+      </ul>
     </Section>
   );
 }

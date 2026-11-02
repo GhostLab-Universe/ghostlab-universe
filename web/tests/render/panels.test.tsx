@@ -178,6 +178,8 @@ test("an enforced run with failing checks shows enforcement violated", () => {
     <EnforcementPanel
       execution={{ mode: "enforced", guarded: true }}
       checks={recorded.journey_replay.checks}
+      reproduced
+      checksMatch
       origins={repairedOrigins}
     />,
   );
@@ -192,6 +194,8 @@ test("an enforced run with clean checks shows enforcement held", () => {
     <EnforcementPanel
       execution={{ mode: "enforced", guarded: true }}
       checks={{ delivered_messages_permitted: true }}
+      reproduced
+      checksMatch
       origins={repairedOrigins}
     />,
   );
@@ -205,6 +209,8 @@ test("a lab run shows no enforcement outcome, never a verdict", () => {
     <EnforcementPanel
       execution={{ mode: "lab", guarded: false }}
       checks={recorded.journey_replay.checks}
+      reproduced
+      checksMatch
       origins={repairedOrigins}
     />,
   );
@@ -214,8 +220,39 @@ test("a lab run shows no enforcement outcome, never a verdict", () => {
   assert.doesNotMatch(markup, /Enforcement (held|violated)/);
 });
 
+test("a diverged replay assesses no enforcement outcome", () => {
+  const markup = html(
+    <EnforcementPanel
+      execution={{ mode: "enforced", guarded: true }}
+      checks={{ delivered_messages_permitted: true }}
+      reproduced={false}
+      checksMatch={false}
+      origins={repairedOrigins}
+    />,
+  );
+  assert.match(markup, /data-tone="neutral" data-testid="enforcement-verdict"/);
+  assert.match(section(markup, "enforcement-verdict"), /Replay diverged: enforcement not assessed/);
+  assert.match(text(section(markup, "enforcement-fields")), /no enforcement outcome for this run/);
+  assert.doesNotMatch(markup, /Enforcement (held|violated)/);
+});
+
+test("enforced mode with the guard off is not a lab run", () => {
+  const markup = html(
+    <EnforcementPanel
+      execution={{ mode: "enforced", guarded: false }}
+      checks={{ delivered_messages_permitted: true }}
+      reproduced
+      checksMatch
+      origins={repairedOrigins}
+    />,
+  );
+  assert.match(markup, /data-tone="neutral" data-testid="enforcement-verdict"/);
+  assert.match(section(markup, "enforcement-verdict"), /Guard off: no enforcement outcome/);
+  assert.doesNotMatch(section(markup, "enforcement-verdict"), /Lab run/);
+});
+
 test("a run with no recorded mode says so", () => {
-  const markup = html(<EnforcementPanel execution={null} checks={recorded.journey_replay.checks} origins={repairedOrigins} />);
+  const markup = html(<EnforcementPanel execution={null} checks={recorded.journey_replay.checks} reproduced checksMatch origins={repairedOrigins} />);
   assert.match(section(markup, "enforcement-verdict"), /No recorded execution mode/);
   assert.match(text(section(markup, "enforcement-fields")), /not recorded/);
 });

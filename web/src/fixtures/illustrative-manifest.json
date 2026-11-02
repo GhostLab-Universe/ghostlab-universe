@@ -1,0 +1,15 @@
+{
+  "adapter_ref": "ghostlab.envs.adapters:RefundEnvAdapter",
+  "display_name": "Synthetic refund",
+  "env_id": "refund-env",
+  "env_version": "refund-env/1",
+  "fault_hooks": ["timeout_after_commit"],
+  "manifest_version": 1,
+  "notes": "Illustrative dev-aid manifest for the Track D guided UI; not qualification evidence.",
+  "reproduction_modes": ["recorded-actions", "deterministic-reset"],
+  "tools": [
+    {"name": "get_order", "parameters": ["order_id", "customer_id"]},
+    {"name": "get_refund_status", "parameters": ["order_id", "customer_id", "idempotency_key"]},
+    {"name": "issue_refund", "parameters": ["order_id", "customer_id", "amount_minor", "idempotency_key"]}
+  ]
+}

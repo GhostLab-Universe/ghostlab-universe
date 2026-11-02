@@ -216,6 +216,49 @@ export function BusyNote({ children }: { children: ReactNode }) {
   );
 }
 
+export interface FilterOption<T extends string> {
+  value: T;
+  label: string;
+  /** Shown when the choice filters to a subset; order toggles leave it out. */
+  count?: number;
+}
+
+/**
+ * One-choice filter above a long list. Buttons with pressed state, so the
+ * choice is a view concern: it never changes the address or refetches.
+ */
+export function FilterBar<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly FilterOption<T>[];
+  value: T;
+  onChange: (next: T) => void;
+}) {
+  return (
+    <div className="toolbar" role="group" aria-label={label}>
+      <span className="toolbar-label" aria-hidden="true">
+        {label}
+      </span>
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className="chip"
+          aria-pressed={option.value === value}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+          {option.count === undefined ? null : <span className="count"> {option.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Loading({ what }: { what: string }) {
   return <Notice state="loading" title={`Loading ${what}`} live />;
 }

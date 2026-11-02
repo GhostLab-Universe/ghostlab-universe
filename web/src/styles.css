@@ -1,11 +1,12 @@
 :root {
   color-scheme: light dark;
-  --paper: #f6f6f3;
+  --paper: #f4f4f1;
   --panel: #ffffff;
-  --ink: #1c2026;
-  --muted: #586070;
-  --line: #d9dbd8;
-  --accent: #1f5fbf;
+  --well: #eceee9;
+  --ink: #1a1e24;
+  --muted: #57606e;
+  --line: #d8dad6;
+  --accent: #1a56b0;
   --baseline: #1d6f7a;
   --fork: #b4521a;
   --ok: #17693d;
@@ -27,7 +28,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --paper: #14171c;
-    --panel: #1c2027;
+    --panel: #1d2129;
+    --well: #10131a;
     --ink: #e8e9e6;
     --muted: #a3aab6;
     --line: #333a44;
@@ -71,8 +73,9 @@ h3 {
 }
 
 h1 {
-  font-size: clamp(1.45rem, 1.1rem + 1.6vw, 2rem);
-  letter-spacing: -0.01em;
+  font-size: clamp(1.5rem, 1.15rem + 1.6vw, 2.05rem);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
 h1:focus {
@@ -80,7 +83,8 @@ h1:focus {
 }
 
 h2 {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  letter-spacing: -0.005em;
 }
 
 h3 {
@@ -183,6 +187,29 @@ pre {
   color: var(--muted);
 }
 
+.topnav {
+  display: flex;
+  gap: 4px;
+  font-size: 0.92rem;
+}
+
+.topnav a {
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.topnav a:hover {
+  background: var(--neutral-soft);
+}
+
+.topnav a[aria-current="page"] {
+  background: var(--neutral-soft);
+  font-weight: 700;
+}
+
 .session {
   margin: 0;
   font-size: 0.85rem;
@@ -208,7 +235,8 @@ pre {
   max-width: 68ch;
 }
 
-.status-line {
+.status-line,
+.progress-facts {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -251,9 +279,15 @@ pre {
 .sub-nav {
   margin: 0 0 16px;
   overflow-x: auto;
+  scrollbar-width: thin;
 }
 
+/* The campaign views stay in reach: the tab row sticks while evidence scrolls. */
 .view-nav {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--paper);
   border-bottom: 1px solid var(--line);
 }
 
@@ -298,6 +332,57 @@ pre {
 .sub-nav a[aria-current="page"] {
   border-color: var(--ink);
   font-weight: 600;
+}
+
+/* Filter and order controls above long lists. Buttons, not links: they change
+   the view, not the page. Counts are recorded list lengths, never computed data. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.toolbar-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.chip {
+  padding: 4px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  border-color: var(--muted);
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chip .count {
+  color: inherit;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
 }
 
 .section {
@@ -361,24 +446,30 @@ pre {
 
 .facts dt {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .facts dd {
   margin: 0;
 }
 
+/* Recorded fields read as ruled rows, not cards inside cards. */
 .recorded {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 8px;
+  gap: 2px 20px;
   margin: 8px 0;
 }
 
 .recorded div {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 6px 10px;
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+
+.recorded dt {
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .recorded dd {
@@ -426,6 +517,17 @@ pre {
 .table-wrap {
   overflow-x: auto;
   max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+/* Long comparisons keep their column labels while scrolling. */
+.table-wrap thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
 }
 
 table {
@@ -433,6 +535,11 @@ table {
   border-collapse: collapse;
   font-size: 0.92rem;
   overflow-wrap: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+tbody tr:hover {
+  background: var(--paper);
 }
 
 th,
@@ -548,6 +655,12 @@ th[data-side="fork"] {
   outline: 3px solid var(--accent);
 }
 
+/* Focused events scroll clear of the sticky tab row. */
+.events > li,
+.event-timeline > li {
+  scroll-margin-top: 64px;
+}
+
 .event-head {
   display: flex;
   flex-wrap: wrap;
@@ -657,8 +770,9 @@ pre {
   overflow: auto;
   max-height: 340px;
   margin: 6px 0;
-  padding: 10px;
-  background: var(--neutral-soft);
+  padding: 10px 12px;
+  background: var(--well);
+  border: 1px solid var(--line);
   border-radius: 4px;
   font-size: 0.82rem;
   overflow-wrap: normal;
@@ -673,6 +787,23 @@ label {
   font-size: 0.9rem;
 }
 
+/* Extensions console fields: label over control, full width. */
+.field {
+  display: block;
+  margin: 10px 0;
+  max-width: 720px;
+}
+
+.field > span {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.field textarea {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
 input,
 select,
 textarea {
@@ -683,6 +814,10 @@ textarea {
   background: var(--panel);
   color: var(--ink);
   font: inherit;
+}
+
+textarea {
+  resize: vertical;
 }
 
 .stack-form {
@@ -802,6 +937,72 @@ button:disabled {
 .progress-bar span {
   display: block;
   height: 100%;
+  transition: width 0.4s ease;
+}
+
+/* The campaign head is the one glanceable moment: status, counts, refresh. */
+.progress-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.progress-head .progress-facts {
+  margin-top: 0;
+}
+
+.refresh-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Recently opened campaigns on the home page. */
+.recents {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.recents li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.recents li:last-child {
+  border-bottom: none;
+}
+
+.char-count {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 2px 0 0;
+}
+
+/* Loading notices breathe gently; motion stays off when asked. */
+[data-testid="state-loading"] {
+  animation: notice-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes notice-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar span {
+    transition: none;
+  }
+
+  [data-testid="state-loading"] {
+    animation: none;
+  }
 }
 
 .progress-bar span[data-seg="done"] {

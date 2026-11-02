@@ -7,7 +7,7 @@ Standard library only (unittest style).
 
 import unittest
 
-from ghostlab.verify import FAIL, assess, refund_completion
+from ghostlab.verify import CATALOG, FAIL, assess, refund_completion
 from ghostlab.verify.dev_defects import (DEV_CASES, WORLD_COMPLETION, WORLD_RULES,
                                          format_matrix, run_dev_suite)
 
@@ -37,7 +37,7 @@ class DevSuiteTests(unittest.TestCase):
             view = case.build()
             assessment = assess(view, WORLD_RULES[case.world])
             for verdict in assessment.verdicts:
-                self.assertEqual(verdict.rule_version, "ghostlab-rules/1")
+                self.assertEqual(verdict.rule_version, CATALOG[verdict.rule].version)
                 if verdict.outcome == FAIL:
                     self.assertTrue(verdict.evidence_event_ids,
                                     f"{case.case_id}/{verdict.rule} cites nothing")

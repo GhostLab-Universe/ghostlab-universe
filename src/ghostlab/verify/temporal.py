@@ -3,7 +3,9 @@
 A temporal rule pairs a ban timeline (when authority changed) with an action
 log (when the agent acted). Violations are judged at the event they happened,
 so later cleanup -- a rebooking, a re-grant, a final tidy state -- can never
-erase them. Standard library only.
+erase them. Temporal verdicts carry :data:`TEMPORAL_RULES_VERSION`, not the
+core :data:`ghostlab.verify.rules.RULES_VERSION`, so the two release lines
+stay attributable per verdict. Standard library only.
 """
 
 from .rules import FAIL, PASS, Rule
@@ -76,9 +78,11 @@ TEMPORAL_RULES = (
     Rule("after_takeover_no_commitment",
          frozenset({"approval_timeline", "commitment_log"}),
          _check_after_takeover_no_commitment,
-         "After a mid-run approval change, commitments cite the version in force."),
+         "After a mid-run approval change, commitments cite the version in force.",
+         version=TEMPORAL_RULES_VERSION),
     Rule("no_delivery_after_revocation",
          frozenset({"permission_timeline", "delivery_log"}),
          _check_no_delivery_after_revocation,
-         "No delivery while the recipient's sharing is revoked (ban framing)."),
+         "No delivery while the recipient's sharing is revoked (ban framing).",
+         version=TEMPORAL_RULES_VERSION),
 )

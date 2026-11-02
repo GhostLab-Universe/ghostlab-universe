@@ -19,7 +19,8 @@ RULES_VERSION = "ghostlab-rules/1"
 PASS = "pass"
 FAIL = "fail"
 UNKNOWN = "unknown"
-_OUTCOMES = (PASS, FAIL, UNKNOWN)
+NOT_APPLICABLE = "not-applicable"
+_OUTCOMES = (PASS, FAIL, UNKNOWN, NOT_APPLICABLE)
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,9 @@ class Verdict:
     """One rule verdict from authoritative evidence.
 
     A failure always cites at least one event; UNKNOWN carries no measurement,
-    only the reason the rule could not be decided.
+    only the reason the rule could not be decided. NOT_APPLICABLE means the
+    rule's own check declined the evidence as outside the rule's scope: it is
+    reported, never counted as a pass and never folded into another outcome.
     """
 
     rule: str
@@ -73,13 +76,17 @@ class Rule:
 
     ``check`` receives the facts mapping and returns ``(outcome, event_ids,
     observed, limit, unit, detail)``. It may return UNKNOWN itself when a
-    required *value* (as opposed to a table) is absent.
+    required *value* (as opposed to a table) is absent, or NOT_APPLICABLE
+    when the evidence is outside the rule's own scope. ``version`` stamps
+    every verdict the rule produces, so rule families with their own release
+    line (see :mod:`ghostlab.verify.temporal`) stay attributable.
     """
 
     name: str
     requires: frozenset[str]
     check: Callable[[Mapping[str, Any]], tuple]
     description: str = ""
+    version: str = RULES_VERSION
 
     def __post_init__(self):
         if type(self.name) is not str or not self.name or len(self.name) > 100:
@@ -90,18 +97,25 @@ class Rule:
             raise ValueError("Invalid rule check")
         if type(self.description) is not str or len(self.description) > 2000:
             raise ValueError("Invalid rule description")
+        if type(self.version) is not str or not self.version or len(self.version) > 200:
+            raise ValueError("Invalid rule version")
 
 
 def evaluate_rule(rule, view):
-    """Run one rule against an evidence view: UNKNOWN when facts are missing."""
+    """Run one rule against an evidence view: UNKNOWN when facts are missing.
+
+    Every verdict carries the rule's own version stamp, including the
+    missing-evidence UNKNOWN. Only the rule's own check may return
+    NOT_APPLICABLE; missing facts stay UNKNOWN, exactly as before.
+    """
     if not isinstance(rule, Rule):
         raise TypeError("evaluate_rule needs a Rule")
     missing = sorted(name for name in rule.requires if name not in view.facts)
     if missing:
-        return Verdict(rule=rule.name, rule_version=RULES_VERSION, outcome=UNKNOWN,
+        return Verdict(rule=rule.name, rule_version=rule.version, outcome=UNKNOWN,
                        detail=f"missing evidence: {', '.join(missing)}")
     outcome, event_ids, observed, limit, unit, detail = rule.check(view.facts)
-    return Verdict(rule=rule.name, rule_version=RULES_VERSION, outcome=outcome,
+    return Verdict(rule=rule.name, rule_version=rule.version, outcome=outcome,
                    evidence_event_ids=tuple(event_ids), observed=observed,
                    limit=limit, unit=unit, detail=detail)
 

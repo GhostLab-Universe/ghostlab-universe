@@ -374,6 +374,7 @@ function InspectPanel({ source }: { source: DataSource }) {
               <Tag tone="neutral">retest: new experiment</Tag>{" "}
               <span className="muted">{data.replay_detail}</span>
             </p>
+            <EnforcementOutcome inspection={data} />
             <Facts
               facts={[
                 { term: "Schema", detail: <Mono>v{data.schema_version}</Mono> },
@@ -388,6 +389,51 @@ function InspectPanel({ source }: { source: DataSource }) {
         )}
       />
     </Section>
+  );
+}
+
+interface InspectionMode {
+  supported: boolean;
+  detail: string;
+}
+
+function readMode(value: unknown): InspectionMode | null {
+  if (typeof value !== "object" || value === null) return null;
+  const mode = value as Record<string, unknown>;
+  if (typeof mode.supported !== "boolean" || typeof mode.detail !== "string") return null;
+  return { supported: mode.supported, detail: mode.detail };
+}
+
+/**
+ * The enforcement outcome beside replay and retest, read from the
+ * inspection's own details: the `enforced_execution` mode plus the
+ * recorded failed invariants. No extra request.
+ */
+export function EnforcementOutcome({ inspection }: { inspection: ExtInspection }) {
+  const mode = readMode(inspection.details["enforced_execution"]);
+  if (mode === null) {
+    return (
+      <p className="muted" data-testid="enforcement-outcome">
+        This inspection carries no enforcement mode.
+      </p>
+    );
+  }
+  if (!mode.supported) {
+    return (
+      <p data-testid="enforcement-outcome">
+        <Tag tone="neutral">no enforcement outcome</Tag> <span className="muted">{mode.detail}</span>
+      </p>
+    );
+  }
+  const failed = inspection.failed_invariants;
+  return (
+    <div data-testid="enforcement-outcome">
+      <p>
+        <Tag tone={failed.length > 0 ? "fail" : "ok"}>{failed.length > 0 ? "Enforcement violated" : "Enforcement held"}</Tag>{" "}
+        <span className="muted">{mode.detail}</span>
+      </p>
+      {failed.length > 0 ? <Facts facts={[{ term: "Failed", detail: failed.join(", ") }]} /> : null}
+    </div>
   );
 }
 

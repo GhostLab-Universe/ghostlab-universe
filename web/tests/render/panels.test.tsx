@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
-import type { ApprovalView, RunView, SessionInfo } from "../../src/api/api.generated.ts";
+import type { ApprovalView, ExtInspection, RunView, SessionInfo } from "../../src/api/api.generated.ts";
 import { createFixtureSource } from "../../src/data/fixtureSource.ts";
 import type { DataSource, Failure, Origin } from "../../src/data/source.ts";
 import { recorded } from "../../src/fixtures/recorded.generated.ts";
@@ -12,8 +12,9 @@ import { FailureNotice, OriginNote, Notice } from "../../src/ui/components.tsx";
 import { ApprovalDetail, DecisionPanel } from "../../src/views/ApprovalPage.tsx";
 import { ProgressPanel, RepairResult } from "../../src/views/CampaignPage.tsx";
 import { GuidedDemo } from "../../src/views/HomePage.tsx";
-import { ReplayPanel } from "../../src/views/CapsulePage.tsx";
+import { EnforcementPanel, ReplayPanel } from "../../src/views/CapsulePage.tsx";
 import { DiffPanel } from "../../src/views/DiffPage.tsx";
+import { EnforcementOutcome } from "../../src/views/ExtensionsPage.tsx";
 import { ApplicationEvents, FindingList, RunEvidence } from "../../src/views/EvidencePage.tsx";
 
 const html = (node: ReactNode) => renderToStaticMarkup(node);
@@ -170,6 +171,100 @@ test("a capsule that did not reproduce is a failure", () => {
   const markup = html(<ReplayPanel result={result} origins={repairedOrigins} />);
   assert.match(section(markup, "replay-verdict"), /data-tone="fail"/);
   assert.match(section(markup, "replay-verdict"), /Not reproduced/);
+});
+
+test("an enforced run with failing checks shows enforcement violated", () => {
+  const markup = html(
+    <EnforcementPanel
+      execution={{ mode: "enforced", guarded: true }}
+      checks={recorded.journey_replay.checks}
+      origins={repairedOrigins}
+    />,
+  );
+  assert.match(text(section(markup, "enforcement-fields")), /mode enforced .*guarded true .*held false/);
+  assert.match(markup, /data-tone="fail" data-testid="enforcement-verdict"/);
+  assert.match(section(markup, "enforcement-verdict"), /Enforcement violated/);
+  assert.match(text(markup), /failed delivered_messages_permitted/);
+});
+
+test("an enforced run with clean checks shows enforcement held", () => {
+  const markup = html(
+    <EnforcementPanel
+      execution={{ mode: "enforced", guarded: true }}
+      checks={{ delivered_messages_permitted: true }}
+      origins={repairedOrigins}
+    />,
+  );
+  assert.match(text(section(markup, "enforcement-fields")), /held true/);
+  assert.match(markup, /data-tone="ok" data-testid="enforcement-verdict"/);
+  assert.match(section(markup, "enforcement-verdict"), /Enforcement held/);
+});
+
+test("a lab run shows no enforcement outcome, never a verdict", () => {
+  const markup = html(
+    <EnforcementPanel
+      execution={{ mode: "lab", guarded: false }}
+      checks={recorded.journey_replay.checks}
+      origins={repairedOrigins}
+    />,
+  );
+  assert.match(markup, /data-tone="neutral" data-testid="enforcement-verdict"/);
+  assert.match(section(markup, "enforcement-verdict"), /Lab run: enforcement was off/);
+  assert.match(text(section(markup, "enforcement-fields")), /no enforcement outcome for this run/);
+  assert.doesNotMatch(markup, /Enforcement (held|violated)/);
+});
+
+test("a run with no recorded mode says so", () => {
+  const markup = html(<EnforcementPanel execution={null} checks={recorded.journey_replay.checks} origins={repairedOrigins} />);
+  assert.match(section(markup, "enforcement-verdict"), /No recorded execution mode/);
+  assert.match(text(section(markup, "enforcement-fields")), /not recorded/);
+});
+
+function extInspection(mode: unknown, failed: string[]): ExtInspection {
+  return {
+    details: mode === undefined ? {} : { enforced_execution: mode as never },
+    external: [],
+    failed_invariants: failed,
+    replay_detail: "replay recorded actions against a reset environment",
+    replay_kind: "recorded",
+    replay_supported: true,
+    schema_version: 3,
+    truncated: false,
+    world_version: "group-journey/1",
+  };
+}
+
+test("the extensions inspection renders the enforcement outcome from its own details", () => {
+  const violated = text(
+    html(
+      <EnforcementOutcome
+        inspection={extInspection(
+          { supported: true, detail: "an enforced run" },
+          ["delivered_messages_permitted"],
+        )}
+      />,
+    ),
+  );
+  assert.match(violated, /Enforcement violated/);
+  assert.match(violated, /delivered_messages_permitted/);
+  const held = text(
+    html(<EnforcementOutcome inspection={extInspection({ supported: true, detail: "an enforced run" }, [])} />),
+  );
+  assert.match(held, /Enforcement held/);
+});
+
+test("the extensions inspection names why there is no enforcement outcome", () => {
+  const lab = text(
+    html(
+      <EnforcementOutcome
+        inspection={extInspection({ supported: false, detail: "recorded in lab mode" }, [])}
+      />,
+    ),
+  );
+  assert.match(lab, /no enforcement outcome/);
+  assert.match(lab, /recorded in lab mode/);
+  const missing = text(html(<EnforcementOutcome inspection={extInspection(undefined, [])} />));
+  assert.match(missing, /carries no enforcement mode/);
 });
 
 const session = {

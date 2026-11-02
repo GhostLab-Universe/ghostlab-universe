@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
-import type { CampaignView, CapsuleInfo, ExperimentView, ReplayResult } from "../api/api.generated.ts";
+import type { CampaignView, CapsuleInfo, ExecutionRecord, ExperimentView, ReplayResult } from "../api/api.generated.ts";
 import type { DataSource, Failure, Origin, RunName } from "../data/source.ts";
 import { readCoverage } from "../logic/coverage.ts";
 import { violatingEventIds } from "../logic/evidence.ts";
 import { presentReplay } from "../logic/replay.ts";
+import type { Tone } from "../logic/repair.ts";
 import { BusyNote, Digest, Facts, FailureNotice, Mono, Section, Tag } from "../ui/components.tsx";
 import { CoverageNotice, ExperimentGate, ExperimentPicker, LostFaultsNotice, useExperiment } from "./experimentData.tsx";
 
@@ -181,6 +182,9 @@ function CapsuleControls({
           faultNeverFired={run === "fork" && experiment.coverage?.faults_triggered === false}
         />
       )}
+      {replayed === null ? null : (
+        <EnforcementPanel execution={experiment.execution} checks={replayed.result.checks} origins={replayed.origins} />
+      )}
     </>
   );
 }
@@ -261,6 +265,120 @@ export function ReplayPanel({
         <p className="muted">
           Recorded with <Mono>guarded</Mono> <Mono>{String(result.guarded)}</Mono>.
         </p>
+      )}
+    </Section>
+  );
+}
+
+export interface EnforcementPresentation {
+  tone: Tone;
+  headline: string;
+  detail: string;
+}
+
+/**
+ * The enforcement outcome is the third reproduction outcome, beside replay
+ * and retest. It exists only for enforced runs: a lab run's checks are
+ * findings, never an enforcement verdict.
+ */
+export function presentEnforcement(
+  execution: ExecutionRecord | null,
+  checks: Record<string, boolean | undefined> | null,
+): EnforcementPresentation {
+  if (execution === null) {
+    return {
+      tone: "neutral",
+      headline: "No recorded execution mode",
+      detail: "This run recorded no execution mode, so there is no enforcement outcome to assess.",
+    };
+  }
+  if (execution.mode !== "enforced" || execution.guarded !== true) {
+    return {
+      tone: "neutral",
+      headline: "Lab run: enforcement was off",
+      detail: "The guard was off for this run, so its checks are findings, not an enforcement outcome.",
+    };
+  }
+  if (checks === null) {
+    return {
+      tone: "neutral",
+      headline: "Enforcement needs the recorded checks",
+      detail: "Replay the capsule to read the checks this enforced run recorded.",
+    };
+  }
+  const failed = Object.entries(checks)
+    .filter(([, passed]) => !passed)
+    .map(([name]) => name);
+  if (failed.length === 0) {
+    return {
+      tone: "ok",
+      headline: "Enforcement held",
+      detail: "Every check passed with the guard on: nothing got through the enforced boundary.",
+    };
+  }
+  return {
+    tone: "fail",
+    headline: "Enforcement violated",
+    detail: `The guard was on and these checks still failed: ${failed.join(", ")}.`,
+  };
+}
+
+export function EnforcementPanel({
+  execution,
+  checks,
+  origins,
+}: {
+  execution: ExecutionRecord | null;
+  checks: Record<string, boolean | undefined> | null;
+  origins: readonly Origin[];
+}) {
+  const shown = presentEnforcement(execution, checks);
+  const enforced = execution !== null && execution.mode === "enforced" && execution.guarded === true;
+  const failed = checks === null ? null : Object.entries(checks).filter(([, passed]) => !passed);
+  const held = enforced && failed !== null && failed.length === 0;
+  return (
+    <Section title="Enforcement outcome" origins={origins}>
+      <dl className="recorded" data-testid="enforcement-fields">
+        <div>
+          <dt>
+            <Mono>mode</Mono>
+          </dt>
+          <dd>{execution === null ? <span className="muted">not recorded</span> : <Mono>{execution.mode}</Mono>}</dd>
+        </div>
+        <div>
+          <dt>
+            <Mono>guarded</Mono>
+          </dt>
+          <dd>{execution === null ? <span className="muted">not recorded</span> : <Mono>{String(execution.guarded)}</Mono>}</dd>
+        </div>
+        <div>
+          <dt>
+            <Mono>held</Mono>
+          </dt>
+          <dd>
+            {enforced && failed !== null ? (
+              <Mono>{String(held)}</Mono>
+            ) : (
+              <span className="muted">no enforcement outcome for this run</span>
+            )}
+          </dd>
+        </div>
+      </dl>
+      <div className="verdict" data-tone={shown.tone} data-testid="enforcement-verdict">
+        <strong>{shown.headline}</strong>
+        <p>{shown.detail}</p>
+      </div>
+      {checks === null ? null : (
+        <>
+          <h3>Checks under enforcement</h3>
+          <ul className="checks">
+            {Object.entries(checks).map(([name, passed]) => (
+              <li key={name}>
+                <Tag tone={passed === true ? "neutral" : "fail"}>{passed === true ? "passed" : "failed"}</Tag> <Mono>{name}</Mono>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </Section>
   );

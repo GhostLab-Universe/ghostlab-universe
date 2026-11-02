@@ -40,6 +40,17 @@ ENDPOINTS = {
     ("post", "/v1/extensions/replay"),
     ("post", "/v1/extensions/retest"),
     ("post", "/v1/extensions/minimize"),
+    ("post", "/v1/extensions/exp-configs"),
+    ("get", "/v1/extensions/exp-configs"),
+    ("get", "/v1/extensions/exp-configs/{config_id}"),
+    ("post", "/v1/extensions/exp-configs/{config_id}/resolve"),
+    ("get", "/v1/extensions/exp-resolved"),
+    ("get", "/v1/extensions/exp-resolved/{resolved_id}"),
+    ("post", "/v1/extensions/exp-resolved/{resolved_id}/run"),
+    ("get", "/v1/extensions/exp-runs"),
+    ("get", "/v1/extensions/exp-runs/{run_id}"),
+    ("get", "/v1/extensions/exp-diff"),
+    ("get", "/v1/extensions/exp-policy"),
 }
 
 

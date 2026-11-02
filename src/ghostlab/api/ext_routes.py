@@ -10,6 +10,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request, Security
 
 from ghostlab.core import ToolError
+from ghostlab.experiments.store import CrossProjectError
 
 from .errors import ApiError, not_found
 from .ext_models import (CampaignRequest, ExtCampaignReport, ExtEnvironmentDetail,
@@ -18,6 +19,10 @@ from .ext_models import (CampaignRequest, ExtCampaignReport, ExtEnvironmentDetai
                          ExtReplayResult, ExtRetestResult, FidelityRequest,
                          InspectRequest, MinimizeRequest, ReplayRequest, RetestRequest,
                          QualifyRequest)
+from .exp_models import (ExpCreateRequest, ExpDiff, ExpPolicy, ExpRequested,
+                         ExpRequestedList, ExpResolveRequest, ExpResolved,
+                         ExpResolvedList, ExpRun, ExpRunList, ExpRunRequest)
+from .exp_plane import ExperimentPlane
 from .ext_plane import ExtBaselineNotReproduced, ExtTooLarge, ExtensionPlane
 from .routes import COMMON_ERRORS, bearer
 
@@ -34,6 +39,13 @@ def session(request: Request):
 
 
 Plane = Annotated[ExtensionPlane, Depends(ext_plane)]
+
+
+def exp_plane(request: Request):
+    return request.app.state.exp_plane
+
+
+ExpPlane = Annotated[ExperimentPlane, Depends(exp_plane)]
 Session = Annotated[object, Depends(session)]
 
 
@@ -47,6 +59,8 @@ def _guard(call):
         raise ApiError(422, "validation_failed",
                        "The baseline run did not show the selected failure",
                        reason="baseline_not_reproduced") from None
+    except CrossProjectError:
+        raise not_found() from None
     except LookupError:
         raise not_found() from None
     except ToolError:
@@ -194,3 +208,81 @@ def minimize_faults(control: Plane, who: Session, request: MinimizeRequest):
             "cardinality_minimal": report["cardinality_minimal"],
             "witness_sha256": report["failure_witness_sha256"],
             "regression": report["regression"], "details": report}
+
+
+@router.post("/exp-configs", response_model=ExpRequested,
+             operation_id="createExpConfig", tags=["extensions"])
+def create_exp_config(control: ExpPlane, who: Session, request: ExpCreateRequest):
+    return _guard(lambda: control.create_config(
+        project_id=who.project_id, config=_json(request)["config"],
+        requested_by=who.principal.principal_id))
+
+
+@router.get("/exp-configs", response_model=ExpRequestedList,
+            operation_id="listExpConfigs", tags=["extensions"])
+def list_exp_configs(control: ExpPlane, who: Session):
+    return {"configs": _guard(lambda: control.list_configs(who.project_id))}
+
+
+@router.get("/exp-configs/{config_id}", response_model=ExpRequested,
+            operation_id="getExpConfig", tags=["extensions"])
+def get_exp_config(control: ExpPlane, who: Session, config_id: str):
+    return _guard(lambda: control.get_config(who.project_id, config_id))
+
+
+@router.post("/exp-configs/{config_id}/resolve", response_model=ExpResolved,
+             operation_id="resolveExpConfig", tags=["extensions"])
+def resolve_exp_config(control: ExpPlane, who: Session, config_id: str,
+                       request: ExpResolveRequest):
+    return _guard(lambda: control.resolve(
+        project_id=who.project_id, requested_id=config_id,
+        manifest_digest=_json(request)["manifest_digest"],
+        resolved_by=who.principal.principal_id))
+
+
+@router.get("/exp-resolved", response_model=ExpResolvedList,
+            operation_id="listExpResolved", tags=["extensions"])
+def list_exp_resolved(control: ExpPlane, who: Session):
+    return {"configs": _guard(lambda: control.list_resolved(who.project_id))}
+
+
+@router.get("/exp-resolved/{resolved_id}", response_model=ExpResolved,
+            operation_id="getExpResolved", tags=["extensions"])
+def get_exp_resolved(control: ExpPlane, who: Session, resolved_id: str):
+    return _guard(lambda: control.get_resolved(who.project_id, resolved_id))
+
+
+@router.post("/exp-resolved/{resolved_id}/run", response_model=ExpRun,
+             operation_id="runExpResolved", tags=["extensions"])
+def run_exp_resolved(control: ExpPlane, who: Session, resolved_id: str,
+                     request: ExpRunRequest):
+    body = _json(request)
+    return _guard(lambda: control.run(
+        project_id=who.project_id, resolved_id=resolved_id,
+        repetition=body["repetition"], attempt=body["attempt"],
+        run_by=who.principal.principal_id))
+
+
+@router.get("/exp-runs", response_model=ExpRunList,
+            operation_id="listExpRuns", tags=["extensions"])
+def list_exp_runs(control: ExpPlane, who: Session, resolved_id: str | None = None):
+    return {"runs": _guard(lambda: control.list_runs(who.project_id, resolved_id))}
+
+
+@router.get("/exp-runs/{run_id}", response_model=ExpRun,
+            operation_id="getExpRun", tags=["extensions"])
+def get_exp_run(control: ExpPlane, who: Session, run_id: str):
+    return _guard(lambda: control.get_run(who.project_id, run_id))
+
+
+@router.get("/exp-diff", response_model=ExpDiff,
+            operation_id="diffExpResolved", tags=["extensions"])
+def diff_exp_resolved(control: ExpPlane, who: Session, left_id: str, right_id: str):
+    return _guard(lambda: control.diff(project_id=who.project_id, left_id=left_id,
+                                       right_id=right_id))
+
+
+@router.get("/exp-policy", response_model=ExpPolicy,
+            operation_id="getExpPolicy", tags=["extensions"])
+def get_exp_policy(control: ExpPlane):
+    return _guard(control.get_policy)

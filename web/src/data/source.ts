@@ -7,6 +7,17 @@ import type {
   DecisionResult,
   ErrorInfo,
   EventPage,
+  ExpCreateRequest,
+  ExpDiff,
+  ExpPolicy,
+  ExpRequested,
+  ExpRequestedList,
+  ExpResolveRequest,
+  ExpResolved,
+  ExpResolvedList,
+  ExpRun,
+  ExpRunList,
+  ExpRunRequest,
   ExtCampaignReport,
   ExtEnvironmentDetail,
   ExtEnvironmentList,
@@ -75,6 +86,17 @@ export interface DataSource {
   replayExtRecorded(request: ReplayRequest): Promise<Result<ExtReplayResult>>;
   retestExtFresh(request: RetestRequest): Promise<Result<ExtRetestResult>>;
   minimizeExtFaults(request: MinimizeRequest): Promise<Result<ExtMinimizeResult>>;
+  createExpConfig(request: ExpCreateRequest): Promise<Result<ExpRequested>>;
+  listExpConfigs(): Promise<Result<ExpRequestedList>>;
+  getExpConfig(configId: string): Promise<Result<ExpRequested>>;
+  resolveExpConfig(configId: string, request: ExpResolveRequest): Promise<Result<ExpResolved>>;
+  listExpResolved(): Promise<Result<ExpResolvedList>>;
+  getExpResolved(resolvedId: string): Promise<Result<ExpResolved>>;
+  runExpResolved(resolvedId: string, request: ExpRunRequest): Promise<Result<ExpRun>>;
+  listExpRuns(resolvedId?: string): Promise<Result<ExpRunList>>;
+  getExpRun(runId: string): Promise<Result<ExpRun>>;
+  diffExpResolved(leftId: string, rightId: string): Promise<Result<ExpDiff>>;
+  getExpPolicy(): Promise<Result<ExpPolicy>>;
 }
 
 export const SERVICE_ORIGIN: readonly Origin[] = [{ kind: "service" }];

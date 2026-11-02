@@ -128,7 +128,7 @@ class ExperimentStore:
                 "SELECT * FROM requested_configs WHERE config_id = ?",
                 (config_id,)).fetchone()
         if row is None:
-            raise ValueError(f"unknown requested config '{config_id}'")
+            raise LookupError(f"unknown requested config '{config_id}'")
         if row["project_id"] != project_id:
             raise CrossProjectError(
                 f"requested config '{config_id}' belongs to a different"
@@ -185,7 +185,7 @@ class ExperimentStore:
                 "SELECT * FROM resolved_configs WHERE resolved_id = ?",
                 (resolved_id,)).fetchone()
         if row is None:
-            raise ValueError(f"unknown resolved config '{resolved_id}'")
+            raise LookupError(f"unknown resolved config '{resolved_id}'")
         if row["project_id"] != project_id:
             raise CrossProjectError(
                 f"resolved config '{resolved_id}' belongs to a different"
@@ -268,7 +268,7 @@ class ExperimentStore:
                 "SELECT * FROM experiment_runs WHERE run_id = ?",
                 (run_id,)).fetchone()
         if row is None:
-            raise ValueError(f"unknown run '{run_id}'")
+            raise LookupError(f"unknown run '{run_id}'")
         if row["project_id"] != project_id:
             raise CrossProjectError(
                 f"run '{run_id}' belongs to a different project")

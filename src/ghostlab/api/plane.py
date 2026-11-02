@@ -76,6 +76,7 @@ class ApiConfig:
     approval_ttl: timedelta = timedelta(hours=1)
     environ: dict | None = None
     scripted: bool = False  # the explicit opt-in: see ghostlab.api.scripted
+    exp_policy: dict | None = None  # experiment policy override; local-dev default otherwise
 
 
 def request_digest(*parts: str) -> str:

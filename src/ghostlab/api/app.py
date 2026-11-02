@@ -15,6 +15,8 @@ from ghostlab.security.redaction import RedactingFilter, Redactor
 from ghostlab.storage.checkpoints import graph_checkpointer
 
 from .errors import install
+from .ext_plane import ExtensionPlane
+from .ext_routes import router as ext_router
 from .middleware import RequestGuard
 from .plane import ApiConfig, ControlPlane
 from .rootlock import RootLock, require_one_root
@@ -53,6 +55,7 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
         with RootLock(config.graph_db.parent), graph_checkpointer(
                 config.graph_db, app_db=config.app_db) as saver:
             plane = app.state.plane = ControlPlane(config, saver)
+            app.state.ext_plane = ExtensionPlane()
             try:
                 yield
             finally:
@@ -68,4 +71,5 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
     app.add_middleware(RequestGuard, sessions=config.sessions if config else NoSessions(),
                        redactor=redactor)
     app.include_router(router)
+    app.include_router(ext_router)
     return app

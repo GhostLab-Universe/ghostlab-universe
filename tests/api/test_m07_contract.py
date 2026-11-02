@@ -30,6 +30,16 @@ ENDPOINTS = {
     ("get", "/v1/artifacts/{artifact_id}"),
     ("get", "/v1/approvals/{approval_id}"),
     ("post", "/v1/approvals/{approval_id}/decision"),
+    ("get", "/v1/extensions/environments"),
+    ("get", "/v1/extensions/environments/{world}"),
+    ("get", "/v1/extensions/environments/{world}/fixtures/{name}"),
+    ("post", "/v1/extensions/qualify"),
+    ("post", "/v1/extensions/fidelity"),
+    ("post", "/v1/extensions/campaigns"),
+    ("post", "/v1/extensions/inspect"),
+    ("post", "/v1/extensions/replay"),
+    ("post", "/v1/extensions/retest"),
+    ("post", "/v1/extensions/minimize"),
 }
 
 

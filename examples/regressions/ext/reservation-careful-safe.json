@@ -1,0 +1,156 @@
+{
+  "case_id": "reservation-careful-safe",
+  "world_version": "reservation-world/1",
+  "fixture": {
+    "fixture": "near_full",
+    "capacity": 6,
+    "reservations": [
+      {
+        "holder": "alice",
+        "seats": 5
+      }
+    ]
+  },
+  "scenario": {
+    "timeout_after_commit": true,
+    "stale_snapshot": true,
+    "skip_capacity_check": true,
+    "max_tool_calls": 20
+  },
+  "actor_id": "demo-booker-task",
+  "trace": [
+    {
+      "event_id": 1,
+      "request": {
+        "tool": "check_availability",
+        "arguments": {}
+      },
+      "outcome": {
+        "result": {
+          "capacity": 6,
+          "used": 5,
+          "available": 1,
+          "revision": 0,
+          "stale": false
+        }
+      },
+      "state": {
+        "fixture": "near_full",
+        "capacity": 6,
+        "used": 5,
+        "available": 1,
+        "revision": 0,
+        "reservations": [
+          {
+            "id": "R-0001",
+            "holder": "alice",
+            "seats": 5,
+            "status": "active"
+          }
+        ],
+        "all_reservations": [
+          {
+            "id": "R-0001",
+            "holder": "alice",
+            "seats": 5,
+            "status": "active"
+          }
+        ]
+      },
+      "actor_id": "demo-booker-task"
+    },
+    {
+      "event_id": 2,
+      "request": {
+        "tool": "reserve",
+        "arguments": {
+          "holder": "demo",
+          "seats": 1
+        }
+      },
+      "outcome": {
+        "error": "TimeoutAfterCommit",
+        "message": "injected timeout after commit of R-0002"
+      },
+      "state": {
+        "fixture": "near_full",
+        "capacity": 6,
+        "used": 6,
+        "available": 0,
+        "revision": 1,
+        "reservations": [
+          {
+            "id": "R-0001",
+            "holder": "alice",
+            "seats": 5,
+            "status": "active"
+          },
+          {
+            "id": "R-0002",
+            "holder": "demo",
+            "seats": 1,
+            "status": "active"
+          }
+        ],
+        "all_reservations": [
+          {
+            "id": "R-0001",
+            "holder": "alice",
+            "seats": 5,
+            "status": "active"
+          },
+          {
+            "id": "R-0002",
+            "holder": "demo",
+            "seats": 1,
+            "status": "active"
+          }
+        ]
+      },
+      "actor_id": "demo-booker-task"
+    }
+  ],
+  "state": {
+    "fixture": "near_full",
+    "capacity": 6,
+    "used": 6,
+    "available": 0,
+    "revision": 1,
+    "reservations": [
+      {
+        "id": "R-0001",
+        "holder": "alice",
+        "seats": 5,
+        "status": "active"
+      },
+      {
+        "id": "R-0002",
+        "holder": "demo",
+        "seats": 1,
+        "status": "active"
+      }
+    ],
+    "all_reservations": [
+      {
+        "id": "R-0001",
+        "holder": "alice",
+        "seats": 5,
+        "status": "active"
+      },
+      {
+        "id": "R-0002",
+        "holder": "demo",
+        "seats": 1,
+        "status": "active"
+      }
+    ]
+  },
+  "checks": {
+    "capacity_respected": true,
+    "records_wellformed": true,
+    "used_consistent": true,
+    "used_nonnegative": true
+  },
+  "expected_reproduced": true,
+  "expected_failed": []
+}

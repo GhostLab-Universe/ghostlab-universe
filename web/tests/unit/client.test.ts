@@ -29,6 +29,7 @@ const CAMPAIGN = Object.fromEntries(OPERATIONS.getCampaign.required.map((key) =>
 
 test("every operation in the contract has a client path through the generated table", () => {
   assert.deepEqual(Object.keys(OPERATIONS).sort(), [
+    "assessExtFidelity",
     "cancelCampaign",
     "createCampaign",
     "decideApproval",
@@ -37,14 +38,23 @@ test("every operation in the contract has a client path through the generated ta
     "getApproval",
     "getCampaign",
     "getExperiment",
+    "getExtEnvironment",
+    "getExtFixture",
     "getRealityDiff",
     "getRun",
     "getSession",
     "importCapsule",
+    "inspectExtCapsule",
     "listCampaignEvents",
+    "listExtEnvironments",
+    "minimizeExtFaults",
+    "qualifyExtension",
     "replayCampaignCapsule",
     "replayCapsule",
+    "replayExtRecorded",
     "resumeCampaign",
+    "retestExtFresh",
+    "runExtCampaign",
   ]);
 });
 

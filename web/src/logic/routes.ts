@@ -12,6 +12,7 @@ export const VIEWS: ReadonlyArray<{ name: ViewName; label: string }> = [
 
 export type Route =
   | { page: "home" }
+  | { page: "extensions" }
   | {
       page: "campaign";
       campaignId: string;
@@ -27,6 +28,7 @@ const RUN_NAMES = new Set<string>(["baseline", "fork", "repaired"]);
 export function parseRoute(hash: string): Route {
   const [path = "", search = ""] = hash.replace(/^#\/?/, "").split("?");
   const [section, rawId, rawView] = path.split("/");
+  if (section === "extensions") return { page: "extensions" };
   if (section !== "campaign" || rawId === undefined || rawId === "") return { page: "home" };
   let campaignId: string;
   try {
@@ -61,4 +63,7 @@ export function campaignHref(campaignId: string, link: CampaignLink = {}): strin
   if (link.eventId) params.set("event", String(link.eventId));
   const query = params.size > 0 ? `?${params}` : "";
   return `#/campaign/${encodeURIComponent(campaignId)}/${link.view ?? "overview"}${query}`;
+}
+export function extensionsHref(): string {
+  return "#/extensions";
 }

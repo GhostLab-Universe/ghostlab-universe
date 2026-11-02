@@ -3,7 +3,7 @@
  *   by tests/contracts/test_contracts.py. Rendered only with a fixture label.
  * - Illustrative env fixtures below: hand-shaped from the inspected Track A
  *   return shapes (discover()/run_qualification()/import_manifest digests).
- *   They preview UI states until the Track A service lands; never evidence. */
+ *   They preview UI states for offline UI development; never evidence. */
 
 import budgetLimitsRaw from "../../examples/contracts/budget_limits.local_demo.json";
 import campaignSpecRaw from "../../examples/contracts/campaign_spec.refund_timeout.json";

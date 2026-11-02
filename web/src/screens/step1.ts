@@ -132,7 +132,7 @@ export function Step1(props: { ctx: StepContext }): ReactNode {
           `Registered envs from ${ctx.service?.baseUrl === "" ? "the same-origin service" : ctx.service?.baseUrl} ` +
             `(project ${ctx.service?.projectId ?? "?"}). Unregistered envs are refused; nothing here is a dev aid.`,
         )
-      : banner("info", "Fixture mode", "Environment data below is an illustrative dev aid until the Track A service lands."),
+      : banner("info", "Fixture mode", "Environment data below is an illustrative dev aid for offline UI development, never evidence."),
     envPanel,
     h2(null, "Manifest"),
     p(

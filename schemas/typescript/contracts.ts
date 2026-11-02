@@ -47,6 +47,7 @@ export type GhostLabContracts =
   | WorldRealityDiff
   | WorldInvariantFinding
   | CapsuleV2
+  | CapsuleV3
   | WorldMemoryRecord
   | WorldMemoryQuery
   | EvidenceInterpretation
@@ -2541,6 +2542,244 @@ export interface CapsulePayloadV2 {
   seed: number;
   source: string;
   world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+/**
+ * v3 envelope: same checksum rule as v2.
+ *
+ * The checksum detects accidental change; it does not establish authorship.
+ */
+export interface CapsuleV3 {
+  payload: CapsulePayloadV3;
+  sha256: string;
+}
+/**
+ * v2 evidence plus optional external-environment provenance.
+ */
+export interface CapsulePayloadV3 {
+  actor_id: string;
+  fixture: {
+    [k: string]: JsonValue | undefined;
+  };
+  provenance?: CapsuleProvenance | null;
+  /**
+   * @maxItems 1000
+   */
+  recorded_model_outputs: JsonValue[];
+  run: WorldRunResult;
+  scenario: WorldScenario;
+  schema_version: 3;
+  seed: number;
+  source: string;
+  world_version: "refund-world/1" | "group-journey/1" | "service-relay/1";
+}
+/**
+ * Optional companion metadata for external environments.
+ *
+ * Environment, fixture and fault ids use the frozen P1 names; the contract
+ * checks their shape, while P5 replay resolves them against the adapter
+ * registry (fail closed on unknown ids). ``retest_adapter_*`` may name an
+ * adapter outside the world pack: a retest can come from an external agent.
+ */
+export interface CapsuleProvenance {
+  config?: {
+    /**
+     * This interface was referenced by `undefined`'s JSON-Schema definition
+     * via the `patternProperty` "^[a-z][a-z0-9_]{1,63}$".
+     */
+    [k: string]: string | number | boolean | undefined;
+  };
+  environment_id?: string | null;
+  environment_version?: string | null;
+  /**
+   * @maxItems 16
+   */
+  external_dependencies?:
+    | []
+    | [ExternalDependency]
+    | [ExternalDependency, ExternalDependency]
+    | [ExternalDependency, ExternalDependency, ExternalDependency]
+    | [ExternalDependency, ExternalDependency, ExternalDependency, ExternalDependency]
+    | [ExternalDependency, ExternalDependency, ExternalDependency, ExternalDependency, ExternalDependency]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ]
+    | [
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency,
+        ExternalDependency
+      ];
+  /**
+   * @maxItems 8
+   */
+  faults_fired?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string];
+  fixture_name?: string | null;
+  fixture_sha256?: string | null;
+  replay_kind?: "recorded" | "retest";
+  retest_adapter_id?: string | null;
+  retest_adapter_version?: string | null;
+  rule_versions?: {
+    /**
+     * This interface was referenced by `undefined`'s JSON-Schema definition
+     * via the `patternProperty` "^[a-z][a-z0-9_]{1,63}$".
+     */
+    [k: string]: string | undefined;
+  };
+  truncated?: boolean;
+}
+/**
+ * One resource outside the capsule that the recorded run needed.
+ *
+ * Names plus pinned versions/digests only: no URIs, credentials or live
+ * handles. A capsule that names any is not reproducible from its own bytes.
+ */
+export interface ExternalDependency {
+  digest?: string | null;
+  name: string;
+  version?: string | null;
 }
 export interface WorldMemoryRecord {
   campaign_id: string | null;

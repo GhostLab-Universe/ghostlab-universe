@@ -1,5 +1,5 @@
 {
-  "contract_set": "ghostlab-contracts/1.1",
+  "contract_set": "ghostlab-contracts/1.2",
   "contracts": [
     {
       "consumers": [
@@ -627,6 +627,22 @@
       "schema": "v1/capsule_v2.schema.json",
       "sha256": "8ae8554ea2f4454345d5cecb95a73ec2f441cdadf36b7698a5353bac6da1502d",
       "type": "CapsuleV2",
+      "version": 1
+    },
+    {
+      "consumers": [
+        "M04",
+        "M07",
+        "M08",
+        "M09"
+      ],
+      "id": "urn:ghostlab:contract:capsule_v3:1",
+      "model_facing": false,
+      "name": "capsule_v3",
+      "producer": "M00",
+      "schema": "v1/capsule_v3.schema.json",
+      "sha256": "31774ffbddcfed656815a7895e24ac0f9ee4feb1c1f55c44150e91dc4fd93f0d",
+      "type": "CapsuleV3",
       "version": 1
     },
     {

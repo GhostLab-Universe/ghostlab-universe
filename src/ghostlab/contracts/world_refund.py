@@ -4,11 +4,13 @@ Refund v1 remains the authoritative format for ``refund-world/1``: the core and
 ``ghostlab.capsule`` keep emitting and replaying v1. These functions let generic
 consumers (M05/M07/M08/M09) treat refund evidence like any other world, and
 round-trip back to v1 exactly (tested), including the capsule checksum.
+v1 <-> v3 composes through v2 (see ``ghostlab.contracts.capsule_v3``).
 """
 
 import hashlib
 import json
 
+from .capsule_v3 import CapsuleChecksumError
 from .evidence import CapsuleV1, ExperimentResult, InvariantFinding, RealityDiff, RunResult
 from .evidence import ScenarioV1
 from .provider import ExperimentProposal
@@ -105,9 +107,6 @@ def finding_to_world(finding: InvariantFinding | dict) -> WorldInvariantFinding:
         "observed_value": data["observed_minor"], "limit_value": data["limit_minor"],
         "unit": "minor_units" if valued else None, "recorded_at": data["recorded_at"]})
 
-
-class CapsuleChecksumError(ValueError):
-    """The capsule's payload does not match its checksum; it is never converted."""
 
 
 def _verified_payload(capsule) -> dict:

@@ -56,8 +56,8 @@ def test_contract_set_1_is_unchanged():
             (frozen["version"], frozen["type"], frozen["sha256"]), name
     for name, digest in snapshot["bundle_defs"].items():  # generated TS names/types stay put
         assert canon(bundle["$defs"][name]) == digest, name
-    assert CONTRACT_SET_VERSION == "ghostlab-contracts/1.1"
-    assert len(CONTRACTS) == 47
+    assert CONTRACT_SET_VERSION == "ghostlab-contracts/1.2"
+    assert len(CONTRACTS) == 48
 
 
 # --- the refund pack describes the real core ----------------------------------------

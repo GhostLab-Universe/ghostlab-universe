@@ -1,9 +1,9 @@
 """Frozen contract index: name -> (model, version, producer, consumers).
 
 Changing a model's shape requires a new version and an M00 interface proposal.
-Contract set 1.1 is additive: the 30 set-1 contracts are unchanged (pinned by
-``schemas/v1/contract-set-1.0.snapshot.json``) and 17 world/Analyst contracts
-are added.
+Contract set 1.2 is additive: the 30 set-1 contracts are unchanged (pinned by
+``schemas/v1/contract-set-1.0.snapshot.json``), the 17 set-1.1 contracts are
+unchanged, and ``capsule_v3`` is added for external environments.
 """
 
 from dataclasses import dataclass
@@ -24,9 +24,10 @@ from .world import (CapsuleV2, WorldCampaignRecord, WorldCampaignSpec, WorldExpe
                     WorldInvariantFinding, WorldMemoryQuery, WorldMemoryRecord, WorldRealityDiff,
                     WorldRunResult, WorldScenario, WorldToolDefinition, WorldToolInvocation,
                     WorldToolResult, WorldTrustedScope)
+from .capsule_v3 import CapsuleV3
 from .world_packs import WorldPack
 
-CONTRACT_SET_VERSION = "ghostlab-contracts/1.1"
+CONTRACT_SET_VERSION = "ghostlab-contracts/1.2"
 
 
 @dataclass(frozen=True)
@@ -91,6 +92,7 @@ CONTRACTS: tuple[Contract, ...] = (
     Contract("world_invariant_finding", WorldInvariantFinding, 1, "M02",
              ("M03", "M04", "M08", "M09")),
     Contract("capsule_v2", CapsuleV2, 1, "M02", ("M04", "M07", "M08", "M09")),
+    Contract("capsule_v3", CapsuleV3, 1, "M00", ("M04", "M07", "M08", "M09")),
     Contract("world_memory_record", WorldMemoryRecord, 1, "M04", ("M03", "M05")),
     Contract("world_memory_query", WorldMemoryQuery, 1, "M03", ("M04",)),
     Contract("evidence_interpretation", EvidenceInterpretation, 1, "M01", ("M05", "M08", "M09"),

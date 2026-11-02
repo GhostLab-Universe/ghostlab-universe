@@ -2,9 +2,10 @@
 
 :func:`inspect_capsule` validates one parsed capsule envelope (v1, v2 or
 v3) and reports which reproduction modes it supports: read-only evidence
-inspection, recorded-action replay, or fresh-agent retest. Inspection never
-executes tools, calls models, or touches the network: it only validates the
-envelope and reads its checksum-verified metadata.
+inspection, recorded-action replay, fresh-agent retest, or enforced
+execution. Inspection never executes tools, calls models, or touches the
+network: it only validates the envelope and reads its checksum-verified
+metadata.
 
 Every mode decision is explicit. A capsule that cannot replay says why
 (external dependencies, truncation, or a retest kind). Unknown worlds are a
@@ -66,6 +67,7 @@ class CapsuleInspection:
     evidence_inspection: ModeSupport
     recorded_replay: ModeSupport
     fresh_retest: ModeSupport
+    enforced_execution: ModeSupport
 
     def __post_init__(self):
         if self.schema_version not in (1, 2, 3):
@@ -99,7 +101,8 @@ class CapsuleInspection:
             raise ValueError("Invalid inspected rule versions")
         if self.fixture_name is not None and type(self.fixture_name) is not str:
             raise ValueError("Invalid inspected fixture name")
-        for mode in (self.evidence_inspection, self.recorded_replay, self.fresh_retest):
+        for mode in (self.evidence_inspection, self.recorded_replay,
+                       self.fresh_retest, self.enforced_execution):
             if not isinstance(mode, ModeSupport):
                 raise ValueError("Invalid inspected mode support")
         object.__setattr__(self, "failed_invariants", tuple(self.failed_invariants))
@@ -119,6 +122,7 @@ class CapsuleInspection:
             "evidence_inspection": self.evidence_inspection.to_dict(),
             "recorded_replay": self.recorded_replay.to_dict(),
             "fresh_retest": self.fresh_retest.to_dict(),
+            "enforced_execution": self.enforced_execution.to_dict(),
         }
 
 
@@ -146,7 +150,21 @@ def _failed(checks: Any) -> tuple:
     return tuple(sorted(name for name, passed in checks.items() if passed is False))
 
 
-def _modes(*, replay_kind: str, truncated: bool, external: tuple) -> dict:
+def _guarded(fixture: Any) -> bool | None:
+    """The recorded execution mode: exact ``guarded`` booleans only.
+
+    Worlds that record no mode (or a non-boolean flag) yield None, which
+    refuses enforced execution without failing the inspection: the capsule
+    is valid evidence, it just carries no enforcement outcome.
+    """
+    if not isinstance(fixture, Mapping):
+        return None
+    guarded = fixture.get("guarded")
+    return guarded if type(guarded) is bool else None
+
+
+def _modes(*, replay_kind: str, truncated: bool, external: tuple,
+           guarded: bool | None) -> dict:
     if replay_kind == RETEST:
         replay = ModeSupport(False, "retest capsules are new experiments; "
                                     "rerun the target instead of recorded replay")
@@ -158,11 +176,21 @@ def _modes(*, replay_kind: str, truncated: bool, external: tuple) -> dict:
         replay = ModeSupport(False, f"capsule needs resources outside itself: {names}")
     else:
         replay = ModeSupport(True, "replay recorded actions against a reset environment")
+    if guarded is True:
+        enforced = ModeSupport(True, "an enforced run; assess its recorded checks "
+                                     "as the enforcement outcome")
+    elif guarded is False:
+        enforced = ModeSupport(False, "recorded in lab mode; enforcement was off, "
+                                      "so there is no enforcement outcome")
+    else:
+        enforced = ModeSupport(False, "no recorded execution mode; enforcement "
+                                      "cannot be assessed from this capsule")
     return {
         "evidence_inspection": ModeSupport(True, "read-only; validates the envelope only"),
         "recorded_replay": replay,
         "fresh_retest": ModeSupport(True, "a new experiment under the same scenario; "
                                           "never a replay-equivalence claim"),
+        "enforced_execution": enforced,
     }
 
 
@@ -180,7 +208,8 @@ def _inspect_v1(data: dict) -> CapsuleInspection:
         tool_calls=len(run["trace"]), failed_invariants=_failed(run["checks"]),
         replay_kind=RECORDED, truncated=False, external_dependencies=(), faults_fired=(),
         rule_versions={}, fixture_name=None, **_modes(replay_kind=RECORDED,
-                                                      truncated=False, external=()))
+                                                      truncated=False, external=(),
+                                                      guarded=_guarded(payload["fixture"])))
 
 
 def _inspect_v2(data: dict) -> CapsuleInspection:
@@ -193,7 +222,8 @@ def _inspect_v2(data: dict) -> CapsuleInspection:
         tool_calls=len(run.trace), failed_invariants=_failed(run.checks),
         replay_kind=RECORDED, truncated=False, external_dependencies=(), faults_fired=(),
         rule_versions={}, fixture_name=None, **_modes(replay_kind=RECORDED,
-                                                      truncated=False, external=()))
+                                                      truncated=False, external=(),
+                                                      guarded=_guarded(payload.fixture)))
 
 
 def _inspect_v3(data: dict) -> CapsuleInspection:
@@ -215,7 +245,8 @@ def _inspect_v3(data: dict) -> CapsuleInspection:
         tool_calls=len(run.trace), failed_invariants=_failed(run.checks),
         replay_kind=replay_kind, truncated=truncated, external_dependencies=external,
         faults_fired=faults, rule_versions=rules, fixture_name=fixture,
-        **_modes(replay_kind=replay_kind, truncated=truncated, external=external))
+        **_modes(replay_kind=replay_kind, truncated=truncated, external=external,
+                 guarded=_guarded(payload.fixture)))
 
 
 def inspect_capsule(data: Any) -> CapsuleInspection:

@@ -12,10 +12,32 @@ boundary (`inspect`, `export_v3`); the core (`recorded`, `minimize_ext`,
 | Evidence inspection | `inspect_capsule` | read-only envelope facts; never executes |
 | Recorded-action replay | `replay_recorded` | the recorded evidence reproduces byte-identical |
 | Fresh-agent retest | `retest_fresh` | a new experiment under the same scenario |
+| Enforced execution | `assess_enforcement` | the guard held on an enforced record |
 
 A retest result carries `replay_equivalence_claimed: false` always: fresh
 inference or a changed script may take a different trajectory. The UI must
-render these as three outcomes, never one vague "fixed" badge.
+render replay, retest and enforcement as three outcomes, never one vague
+"fixed" badge.
+
+## Enforcement outcome
+
+`assess_enforcement` reads one enforced execution record -- its
+mode/guarded flag plus its invariant checks -- and reports `held`: true
+exactly when every recorded check passed. It never re-executes; it
+assesses the recorded evidence. The mode comes first: a lab record (or a
+missing or non-boolean flag) is refused before its checks are read, so a
+run recorded with enforcement off can never render as an enforcement
+verdict. Held and violated outcomes carry the same failure witness and
+digest shape as their replay/retest siblings, so the three stay
+comparable.
+
+Inspection reports `enforced_execution` as a fourth mode from the
+capsule's checksum-verified fixture flag: supported only when the capsule
+records `guarded: true`, refused with an explicit reason for lab runs and
+for worlds that record no mode. The refusal is orthogonal to replay
+support: truncation or external dependencies say the evidence cannot be
+re-executed, while the enforcement outcome says what the recorded run
+already showed under the guard.
 
 Inspection is checksum-first and registry-free. A capsule that cannot
 replay says why: `retest` kind, `truncated: true`, or a named list of
@@ -57,8 +79,8 @@ opaque mapping.
 ## P6 interfaces
 
 All reports serialize via `to_dict()` to JSON: `CapsuleInspection`,
-`ReplayResult`, `RetestResult`, `MinimizeReport` (with a `regression` case
-for CI), and `FidelityReport`. No live model calls, no secrets and no
-credentials are involved anywhere in this package. Model, provider and
-endpoint labels are recorded from target info as plain data and never
-used to call anything.
+`ReplayResult`, `RetestResult`, `EnforcementResult`, `MinimizeReport`
+(with a `regression` case for CI), and `FidelityReport`. No live model
+calls, no secrets and no credentials are involved anywhere in this
+package. Model, provider and endpoint labels are recorded from target
+info as plain data and never used to call anything.

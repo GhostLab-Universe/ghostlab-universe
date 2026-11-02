@@ -1561,7 +1561,7 @@
     },
     "ExperimentProposal": {
       "additionalProperties": false,
-      "description": "Explorer structured output. Every field required; no identity or authority.\n\nShaped for Meta strict structured output (object root, all fields required,\nadditionalProperties false). Accepted live by Meta 2026-11-01.",
+      "description": "Explorer structured output. Every field required; no identity or authority.\n\nShaped for Meta strict structured output (object root, all fields required,\nadditionalProperties false). Live acceptance by the model is untested.",
       "properties": {
         "adapter": {
           "enum": [

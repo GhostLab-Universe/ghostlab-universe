@@ -65,9 +65,9 @@ unknown ids.
 Every conversion validates the incoming checksum BEFORE converting. A
 mismatch raises and is never replaced with a fresh-valid checksum.
 
-- v3 is v2 evidence.
-  provenance is ``None``.
-  The v3 checksum is fresh, the evidence identical.
+- v2 to v3 upgrades a checksum-verified v2 capsule; provenance stays
+  absent (``None``, plain v2 semantics). The v3 checksum is fresh.
+  v2 evidence round-trips byte-identical.
 - v3 to v2 downgrades only a provenance-free v3 capsule. A present block
   would be silently lost, so the downgrade refuses with an explicit error
   naming the replay kind, the external count and the truncation flag.

@@ -32,6 +32,10 @@ class ExtTooLarge(ValueError):
     """A request body exceeds the shared synchronous bound."""
 
 
+class ExtBaselineNotReproduced(ValueError):
+    """The baseline run did not show the selected failure; nothing minimized."""
+
+
 def default_registry() -> AdapterRegistry:
     """Fresh registry with the reviewed local adapters registered."""
     registry = AdapterRegistry()
@@ -249,5 +253,12 @@ class ExtensionPlane:
             return RunEvidence(status=attempt.status, checks=checks,
                                tool_calls=attempt.tool_calls)
 
-        return minimize_faults(run=run, faults=keys, invariant=invariant,
-                               max_runs=max_runs, deadline_ms=deadline_ms).to_dict()
+        try:
+            report = minimize_faults(run=run, faults=keys, invariant=invariant,
+                                       max_runs=max_runs, deadline_ms=deadline_ms)
+        except ValueError as error:
+            if str(error) == "selected failure cannot be reproduced":
+                raise ExtBaselineNotReproduced(
+                    "The baseline run did not reproduce the selected failure") from None
+            raise
+        return report.to_dict()

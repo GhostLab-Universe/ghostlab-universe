@@ -64,6 +64,13 @@ function defaultScenario(world: string): string {
   return JSON.stringify({ timeout_after_commit: false, max_tool_calls: 20 }, null, 2);
 }
 
+function defaultTaskParams(world: string, snapshot: Record<string, unknown> | null): Record<string, string> {
+  if (world.includes("reservation")) return {};
+  const orderId = typeof snapshot?.order_id === "string" ? snapshot.order_id : "order-1";
+  const customerId = typeof snapshot?.customer_id === "string" ? snapshot.customer_id : "customer-1";
+  return { order_id: orderId, customer_id: customerId };
+}
+
 function defaultScript(world: string, snapshot: Record<string, unknown> | null): string {
   if (world.includes("reservation")) {
     return JSON.stringify([{ tool: "check_availability", arguments: {} }], null, 2);
@@ -265,13 +272,12 @@ function QualifyPanel({ source, detail, fixtureName, snapshot }: { source: DataS
 }
 
 function CampaignPanel({ source, detail, fixtureName, snapshot }: { source: DataSource; detail: ExtEnvironmentDetail; fixtureName: string; snapshot: Record<string, unknown> | null }) {
-  const orderId = typeof snapshot?.order_id === "string" ? snapshot.order_id : "order-1";
   const customerId = typeof snapshot?.customer_id === "string" ? snapshot.customer_id : "console-probe";
   const [attempts, setAttempts] = useState<string>(() =>
     JSON.stringify([{
       name: "console-1", arm: "fixed-scenario", fixture_name: fixtureName,
       scenario: JSON.parse(defaultScenario(detail.world_version)) as unknown,
-      actor_id: customerId, task: { task_id: "console", params: { order_id: orderId, customer_id: customerId } },
+      actor_id: customerId, task: { task_id: "console", params: defaultTaskParams(detail.world_version, snapshot) },
       target: detail.targets.length > 0 ? { kind: "registered", id: detail.targets[0] } : { kind: "script", actions: JSON.parse(defaultScript(detail.world_version, snapshot)) as unknown },
       cap: 20,
     }], null, 2),
@@ -429,7 +435,6 @@ function RetestPanel({ source, detail, fixtureName, snapshot }: { source: DataSo
   const [failure, setFailure] = useState<Failure | null>(null);
 
   async function run() {
-    const orderId = typeof snapshot?.order_id === "string" ? snapshot.order_id : "order-1";
     const customerId = typeof snapshot?.customer_id === "string" ? snapshot.customer_id : "console-probe";
     const parsed = parseJson(script);
     if (targetId === "" && parsed.error !== undefined) {
@@ -448,7 +453,7 @@ function RetestPanel({ source, detail, fixtureName, snapshot }: { source: DataSo
       setResult(await source.retestExtFresh({
         world_version: detail.world_version, target: target as never, fixture: fixtureSnap.data.snapshot as Record<string, never>,
         scenario: JSON.parse(defaultScenario(detail.world_version)) as Record<string, never>, actor_id: customerId,
-        task: { task_id: "console", params: { order_id: orderId, customer_id: customerId } }, cap: 20,
+        task: { task_id: "console", params: defaultTaskParams(detail.world_version, snapshot) }, cap: 20,
       }));
     } finally {
       setBusy(false);
@@ -513,7 +518,6 @@ function MinimizePanel({ source, detail, fixtureName, snapshot }: { source: Data
     setFailure(null);
     setBusy(true);
     try {
-      const orderId = typeof snapshot?.order_id === "string" ? snapshot.order_id : "order-1";
       const customerId = typeof snapshot?.customer_id === "string" ? snapshot.customer_id : "console-probe";
       const fixtureSnap = await source.getExtFixture(detail.world_version, fixtureName);
       if (!fixtureSnap.ok) {
@@ -524,7 +528,7 @@ function MinimizePanel({ source, detail, fixtureName, snapshot }: { source: Data
         world_version: detail.world_version, target: { kind: "registered", id: targetId } as never,
         fixture: fixtureSnap.data.snapshot as Record<string, never>, scenario_template: parsed.value as Record<string, never>,
         fault_keys: faultKeys.split(",").map((key) => key.trim()).filter((key) => key !== "") as never, actor_id: customerId,
-        task: { task_id: "console", params: { order_id: orderId, customer_id: customerId } }, cap: 20, invariant,
+        task: { task_id: "console", params: defaultTaskParams(detail.world_version, snapshot) }, cap: 20, invariant,
       }));
     } finally {
       setBusy(false);

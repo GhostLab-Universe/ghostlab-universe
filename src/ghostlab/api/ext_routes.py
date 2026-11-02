@@ -18,7 +18,7 @@ from .ext_models import (CampaignRequest, ExtCampaignReport, ExtEnvironmentDetai
                          ExtReplayResult, ExtRetestResult, FidelityRequest,
                          InspectRequest, MinimizeRequest, ReplayRequest, RetestRequest,
                          QualifyRequest)
-from .ext_plane import ExtTooLarge, ExtensionPlane
+from .ext_plane import ExtBaselineNotReproduced, ExtTooLarge, ExtensionPlane
 from .routes import COMMON_ERRORS, bearer
 
 router = APIRouter(prefix="/v1/extensions", responses=COMMON_ERRORS,
@@ -43,6 +43,10 @@ def _guard(call):
     except ExtTooLarge:
         raise ApiError(413, "validation_failed",
                        "The request exceeds the size bound; nothing was run") from None
+    except ExtBaselineNotReproduced:
+        raise ApiError(422, "validation_failed",
+                       "The baseline run did not show the selected failure",
+                       reason="baseline_not_reproduced") from None
     except LookupError:
         raise not_found() from None
     except ToolError:

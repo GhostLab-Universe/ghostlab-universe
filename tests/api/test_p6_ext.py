@@ -149,3 +149,85 @@ def test_invalid_extension_requests(stack):
     assert bad_world.status_code == 404, bad_world.text
     bad_body = api.post("/v1/extensions/inspect", json={"envelope": {"nope": 1}})
     assert bad_body.status_code == 422, bad_body.text
+
+
+def reservation_snapshot(api, name="half_full"):
+    response = api.get(f"/v1/extensions/environments/{RESERVATION}/fixtures/{name}")
+    assert response.status_code == 200, response.text
+    return response.json()["snapshot"]
+
+
+def test_campaign_script_target(stack):
+    api = stack()
+    response = api.post("/v1/extensions/campaigns", json={
+        "world_version": RESERVATION, "attempts": [{
+            "name": "script-probe", "arm": "fixed-scenario",
+            "fixture_name": "half_full",
+            "scenario": {"timeout_after_commit": False, "stale_snapshot": False,
+                         "skip_capacity_check": False, "max_tool_calls": 20},
+            "actor_id": "console-probe",
+            "task": {"task_id": "probe", "params": {}},
+            "target": {"kind": "script", "actions": [
+                {"tool": "check_availability", "arguments": {}},
+                {"tool": "reserve", "arguments": {"holder": "carol", "seats": 1}}]},
+            "cap": 20}]})
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report["attempts_run"] == 1
+    assert report["details"]["attempts"][0]["tool_calls"] == 2
+
+
+def test_retest_script_target(stack):
+    api = stack()
+    order_id, customer_id = refund_ids(api)
+    response = api.post("/v1/extensions/retest", json={
+        "world_version": REFUND,
+        "target": {"kind": "script", "actions": [
+            {"tool": "get_order", "arguments": {"order_id": order_id,
+                                               "customer_id": customer_id}}]},
+        "fixture": refund_snapshot(api),
+        "scenario": {"timeout_after_commit": False, "max_tool_calls": 20},
+        "actor_id": customer_id,
+        "task": {"task_id": "probe", "params": {}},
+        "cap": 20})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["target_adapter_id"] == "api-script"
+    assert body["failed"] == []
+    assert body["replay_equivalence_claimed"] is False
+
+
+def test_minimize_script_target(stack):
+    api = stack()
+    response = api.post("/v1/extensions/minimize", json={
+        "world_version": RESERVATION,
+        "target": {"kind": "script", "actions": [
+            {"tool": "reserve", "arguments": {"holder": "demo", "seats": 2}}]},
+        "fixture": reservation_snapshot(api, "near_full"),
+        "scenario_template": {"timeout_after_commit": False, "stale_snapshot": False,
+                              "max_tool_calls": 20},
+        "fault_keys": ["skip_capacity_check"], "actor_id": "console-probe",
+        "task": {"task_id": "probe", "params": {}},
+        "cap": 20, "invariant": "capacity_respected"})
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report["status"] == "already_minimal"
+    assert report["selected_faults"] == ["skip_capacity_check"]
+
+
+def test_minimize_baseline_not_reproduced(stack):
+    api = stack()
+    order_id, customer_id = refund_ids(api)
+    response = api.post("/v1/extensions/minimize", json={
+        "world_version": REFUND,
+        "target": {"kind": "registered", "id": "repaired"},
+        "fixture": refund_snapshot(api),
+        "scenario_template": {"max_tool_calls": 20},
+        "fault_keys": ["timeout_after_commit"], "actor_id": customer_id,
+        "task": {"task_id": "demo", "params": {"order_id": order_id,
+                                               "customer_id": customer_id}},
+        "cap": 20, "invariant": "total_refund_within_payment"})
+    assert response.status_code == 422, response.text
+    body = response.json()
+    assert body["reason"] == "baseline_not_reproduced"
+    assert "did not show" in body["error"]["message"]

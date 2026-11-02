@@ -14,6 +14,14 @@ import type {
   DecisionResult,
   ErrorInfo,
   EventPage,
+  ExpDiff,
+  ExpPolicy,
+  ExpRequested,
+  ExpRequestedList,
+  ExpResolved,
+  ExpResolvedList,
+  ExpRun,
+  ExpRunList,
   ExperimentView,
 } from "../api/api.generated.ts";
 import { SCENARIOS, type ExperimentFixture, type Scenario, type Stage } from "../fixtures/scenarios.ts";
@@ -338,6 +346,49 @@ export function createFixtureSource(scenarios: readonly Scenario[] = SCENARIOS):
       respond(null, () => {
         const report: ExtMinimizeResult = { status: "already_minimal", selected_faults: [], removed_faults: [], runs_used: 1, cardinality_minimal: true, witness_sha256: "fixture", regression: {}, details: {} };
         return ok(report, [TEST_DOUBLE]);
+      }),
+    createExpConfig: () =>
+      respond(null, () => {
+        const record: ExpRequested = { config_id: "req-fixture", project_id: "project-local", name: "fixture", config: {}, digest: "fixture", requested_by: "fixture", created_at: "2026-11-02T00:00:00+00:00" };
+        return ok(record, [TEST_DOUBLE]);
+      }),
+    listExpConfigs: () =>
+      respond(null, () => {
+        const list: ExpRequestedList = { configs: [] };
+        return ok(list, [TEST_DOUBLE]);
+      }),
+    getExpConfig: () => respond(null, () => notFound("experiment config")),
+    resolveExpConfig: () =>
+      respond(null, () => {
+        const record: ExpResolved = { resolved_id: "res-fixture", project_id: "project-local", requested_id: "req-fixture", resolved: {}, digest: "fixture", created_at: "2026-11-02T00:00:00+00:00" };
+        return ok(record, [TEST_DOUBLE]);
+      }),
+    listExpResolved: () =>
+      respond(null, () => {
+        const list: ExpResolvedList = { configs: [] };
+        return ok(list, [TEST_DOUBLE]);
+      }),
+    getExpResolved: () => respond(null, () => notFound("resolved config")),
+    runExpResolved: () =>
+      respond(null, () => {
+        const record: ExpRun = { run_id: "run-fixture", project_id: "project-local", resolved_id: "res-fixture", repetition: 1, attempt: 1, run: {}, digest: "fixture", created_at: "2026-11-02T00:00:00+00:00" };
+        return ok(record, [TEST_DOUBLE]);
+      }),
+    listExpRuns: () =>
+      respond(null, () => {
+        const list: ExpRunList = { runs: [] };
+        return ok(list, [TEST_DOUBLE]);
+      }),
+    getExpRun: () => respond(null, () => notFound("experiment run")),
+    diffExpResolved: () =>
+      respond(null, () => {
+        const diff: ExpDiff = { left_id: null, right_id: null, left_digest: null, right_digest: null, equal: true, diff_count: 0, truncated: false, diffs: [] };
+        return ok(diff, [TEST_DOUBLE]);
+      }),
+    getExpPolicy: () =>
+      respond(null, () => {
+        const policy: ExpPolicy = { policy_version: "fixture/1", ceiling_tool_calls: 50, ceiling_total_tool_calls: 500, ceiling_repetitions: 5, ceiling_wall_clock_ms: 120000, allowed_targets: ["script"], allowed_hooks: [] };
+        return ok(policy, [TEST_DOUBLE]);
       }),
   };
 }

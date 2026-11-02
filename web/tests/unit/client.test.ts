@@ -32,11 +32,17 @@ test("every operation in the contract has a client path through the generated ta
     "assessExtFidelity",
     "cancelCampaign",
     "createCampaign",
+    "createExpConfig",
     "decideApproval",
+    "diffExpResolved",
     "downloadArtifact",
     "exportCapsule",
     "getApproval",
     "getCampaign",
+    "getExpConfig",
+    "getExpPolicy",
+    "getExpResolved",
+    "getExpRun",
     "getExperiment",
     "getExtEnvironment",
     "getExtFixture",
@@ -46,14 +52,19 @@ test("every operation in the contract has a client path through the generated ta
     "importCapsule",
     "inspectExtCapsule",
     "listCampaignEvents",
+    "listExpConfigs",
+    "listExpResolved",
+    "listExpRuns",
     "listExtEnvironments",
     "minimizeExtFaults",
     "qualifyExtension",
     "replayCampaignCapsule",
     "replayCapsule",
     "replayExtRecorded",
+    "resolveExpConfig",
     "resumeCampaign",
     "retestExtFresh",
+    "runExpResolved",
     "runExtCampaign",
   ]);
 });
@@ -75,6 +86,29 @@ test("reads go to the contract's path, escaped, with no client identity", async 
   assert.equal(seen[0]?.credentials, "same-origin");
   assert.deepEqual(Object.keys(seen[0]?.headers ?? {}), ["Accept"]);
   assert.equal(seen[0]?.body, undefined);
+});
+
+test("experiment runs post to the resolved id and diffs compare by query", async () => {
+  const seen: Seen[] = [];
+  const runBody = Object.fromEntries(OPERATIONS.runExpResolved.required.map((key) => [key, null]));
+  const client = createApiClient({ fetch: stub(200, runBody, seen) });
+  const ran = await client.runExpResolved("res-1", { repetition: 2, attempt: 1 });
+  assert.ok(ran.ok);
+  assert.equal(seen[0]?.url, "/v1/extensions/exp-resolved/res-1/run");
+  assert.equal(seen[0]?.method, "POST");
+  assert.deepEqual(JSON.parse(seen[0]?.body ?? "{}"), { repetition: 2, attempt: 1 });
+  const diffBody = Object.fromEntries(OPERATIONS.diffExpResolved.required.map((key) => [key, null]));
+  const seenDiff: Seen[] = [];
+  const diffClient = createApiClient({ fetch: stub(200, diffBody, seenDiff) });
+  const compared = await diffClient.diffExpResolved("res-1", "res-2");
+  assert.ok(compared.ok);
+  assert.equal(seenDiff[0]?.url, "/v1/extensions/exp-diff?left_id=res-1&right_id=res-2");
+  const listBody = Object.fromEntries(OPERATIONS.listExpRuns.required.map((key) => [key, null]));
+  const seenList: Seen[] = [];
+  const listClient = createApiClient({ fetch: stub(200, listBody, seenList) });
+  const listed = await listClient.listExpRuns();
+  assert.ok(listed.ok);
+  assert.equal(seenList[0]?.url, "/v1/extensions/exp-runs");
 });
 
 test("events page by the sequence cursor", async () => {

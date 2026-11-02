@@ -142,6 +142,17 @@ export function createApiClient(options: ClientOptions = {}): DataSource {
     replayExtRecorded: (request) => json("replayExtRecorded", { body: request }),
     retestExtFresh: (request) => json("retestExtFresh", { body: request }),
     minimizeExtFaults: (request) => json("minimizeExtFaults", { body: request }),
+    createExpConfig: (request) => json("createExpConfig", { body: request }),
+    listExpConfigs: () => json("listExpConfigs", {}),
+    getExpConfig: (config_id) => json("getExpConfig", { path: { config_id } }),
+    resolveExpConfig: (config_id, request) => json("resolveExpConfig", { path: { config_id }, body: request }),
+    listExpResolved: () => json("listExpResolved", {}),
+    getExpResolved: (resolved_id) => json("getExpResolved", { path: { resolved_id } }),
+    runExpResolved: (resolved_id, request) => json("runExpResolved", { path: { resolved_id }, body: request }),
+    listExpRuns: (resolved_id) => json("listExpRuns", resolved_id === undefined ? {} : { query: { resolved_id } }),
+    getExpRun: (run_id) => json("getExpRun", { path: { run_id } }),
+    diffExpResolved: (left_id, right_id) => json("diffExpResolved", { query: { left_id, right_id } }),
+    getExpPolicy: () => json("getExpPolicy", {}),
     decideApproval: (submission, idempotencyKey) =>
       json("decideApproval", { path: { approval_id: submission.approval_id }, body: submission, idempotencyKey }),
     async downloadArtifact(artifact_id) {

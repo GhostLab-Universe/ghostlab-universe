@@ -15,7 +15,10 @@ from ghostlab.security.redaction import RedactingFilter, Redactor
 from ghostlab.storage.checkpoints import graph_checkpointer
 
 from .errors import install
-from .ext_plane import ExtensionPlane
+from .exp_plane import ExperimentPlane, default_experiment_policy
+from .ext_plane import ExtensionPlane, default_registry
+from ghostlab.experiments.store import ExperimentStore
+from ghostlab.extensions.operator_registry import OperatorRegistry
 from .ext_routes import router as ext_router
 from .middleware import RequestGuard
 from .plane import ApiConfig, ControlPlane
@@ -55,7 +58,14 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
         with RootLock(config.graph_db.parent), graph_checkpointer(
                 config.graph_db, app_db=config.app_db) as saver:
             plane = app.state.plane = ControlPlane(config, saver)
-            app.state.ext_plane = ExtensionPlane()
+            shared = default_registry()
+            app.state.ext_plane = ExtensionPlane(shared)
+            root = config.graph_db.parent
+            app.state.exp_plane = ExperimentPlane(
+                store=ExperimentStore(root / "experiments.sqlite"),
+                operators=OperatorRegistry(root / "operator_registry.sqlite"),
+                targets=shared,
+                policy=config.exp_policy or default_experiment_policy(shared))
             try:
                 yield
             finally:

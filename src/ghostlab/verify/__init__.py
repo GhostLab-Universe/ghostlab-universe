@@ -13,8 +13,8 @@ from .evidence import (JOURNEY_WORLD, REFUND_WORLD, EvidenceView, journey_eviden
 from .heldout import (HELDOUT_RESULT_VERSION, HELDOUT_RUNNER_VERSION, FreezeRecord,
                       HeldoutContractError, HeldoutRunner, NotCleanError,
                       evaluate_heldout, freeze, validate_result)
-from .rules import (FAIL, PASS, REFUND_RULES, RULES_VERSION, UNKNOWN, JOURNEY_CORE_RULES,
-                    Rule, Verdict, evaluate_rule)
+from .rules import (FAIL, NOT_APPLICABLE, PASS, REFUND_RULES, RULES_VERSION, UNKNOWN,
+                    JOURNEY_CORE_RULES, Rule, Verdict, evaluate_rule)
 from .temporal import TEMPORAL_RULES, TEMPORAL_RULES_VERSION, approval_takeovers, value_at
 
 JOURNEY_RULES = JOURNEY_CORE_RULES + TEMPORAL_RULES
@@ -24,7 +24,7 @@ assert len(CATALOG) == len(REFUND_RULES) + len(JOURNEY_RULES), "duplicate rule n
 
 __all__ = [
     "Assessment", "CATALOG", "FAIL", "HELDOUT_RESULT_VERSION", "HELDOUT_RUNNER_VERSION",
-    "JOURNEY_CORE_RULES", "JOURNEY_RULES", "JOURNEY_WORLD", "PASS", "REFUND_RULES",
+    "JOURNEY_CORE_RULES", "JOURNEY_RULES", "JOURNEY_WORLD", "NOT_APPLICABLE", "PASS",
     "REFUND_WORLD", "RULES_VERSION", "TEMPORAL_RULES", "TEMPORAL_RULES_VERSION",
     "UNKNOWN", "EvidenceView", "FreezeRecord", "HeldoutContractError", "HeldoutRunner",
     "NotCleanError", "Rule", "Verdict", "approval_takeovers", "assess", "evaluate_heldout",

@@ -10,6 +10,7 @@ supplies ``run``; the core owns only ordering, budgets and the verdict.
 import itertools
 import time
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -112,7 +113,7 @@ class MinimizeReport:
             object.__setattr__(self, "selected_faults", tuple(self.selected_faults))
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "schema": self.schema, "invariant": self.invariant,
             "failure_witness": self.failure_witness,
             "failure_witness_sha256": self.failure_witness_sha256,
@@ -125,6 +126,7 @@ class MinimizeReport:
             "cardinality_minimal": self.cardinality_minimal, "status": self.status,
             "regression": self.regression, "model_calls": self.model_calls,
         }
+        return deepcopy(data)
 
 
 def classify_evidence(evidence: RunEvidence, invariant: str,
@@ -158,6 +160,9 @@ def minimize_faults(*, run: Callable[[tuple], RunEvidence], faults: Any, invaria
     Minimality means smallest fault *count* among subsets of this exact
     schedule. It says nothing about other fixtures, timings, adapters or
     production systems. Exhausted negative trials cannot establish absence.
+    If the budget dies before the baseline completes, SearchLimit propagates
+    (no witness exists yet, so no report can be built); mid-search exhaustion
+    returns a report instead.
     """
     if not callable(run):
         raise TypeError("minimize_faults run must be callable")

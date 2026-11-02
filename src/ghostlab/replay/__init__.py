@@ -13,6 +13,8 @@ from ghostlab.replay.inspect import (CapsuleInspection, ModeSupport, inspect_cap
                                      inspect_capsule_file)
 from ghostlab.replay.minimize_ext import (MinimizeReport, RunEvidence, classify_evidence,
                                           minimize_faults)
+from ghostlab.diagnostics.minimize import SearchLimit
+
 from ghostlab.replay.recorded import (ReplayResult, RetestResult, allow_tools, canonical,
                                       check_verdicts, failure_witness, normalize_check,
                                       refuse_unless_recorded, replay_recorded, retest_fresh,
@@ -24,5 +26,6 @@ __all__ = [
     "check_verdicts", "classify_evidence", "export_refund_run_v3", "export_v3",
     "failure_witness", "inspect_capsule", "inspect_capsule_file", "minimize_faults",
     "normalize_check", "refuse_unless_recorded", "replay_recorded", "retest_fresh",
+    "SearchLimit",
     "witness_sha256", "write_capsule_file",
 ]

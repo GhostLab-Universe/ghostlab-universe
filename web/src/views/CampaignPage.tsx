@@ -9,7 +9,7 @@ import { summarizeProgress, type ProgressLive } from "../logic/progress.ts";
 import { campaignHref } from "../logic/routes.ts";
 import { campaignStatus, outcomeNotice, proposalCallsLabel, taskStatus } from "../logic/status.ts";
 import { orderTasks } from "../logic/timeline.ts";
-import { BusyNote, Digest, Facts, FailureNotice, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
+import { BusyNote, Digest, Facts, FailureNotice, FilterBar, Mono, Notice, RecordedErrors, RefLabel, Section, Tag } from "../ui/components.tsx";
 import { CoverageLine } from "./experimentData.tsx";
 
 export function CampaignPanel({
@@ -44,7 +44,7 @@ export function CampaignPanel({
       ) : record.status === "failed" ? (
         <Notice state="failed" title="Campaign failed" />
       ) : null}
-      <ProgressPanel view={view} origins={origins} live={progressLive} />
+      <ProgressPanel view={view} origins={origins} live={progressLive} onRefresh={refresh} />
       {view.errors.length > 0 ? (
         <Section title="Recorded errors" origins={origins}>
           <RecordedErrors errors={view.errors} />
@@ -98,13 +98,17 @@ export function ProgressPanel({
   view,
   origins,
   live,
+  onRefresh,
 }: {
   view: CampaignView;
   origins: readonly Origin[];
   live: ProgressLive;
+  /** Manual re-read. The poller refreshes on its own; this is for "now". */
+  onRefresh?: () => Promise<void>;
 }) {
   const progress = summarizeProgress(view, live);
   const status = campaignStatus(view.record.status, view.outcome);
+  const [refreshing, setRefreshing] = useState(false);
   const { tasks } = progress;
   const parts: string[] = [];
   if (tasks.succeeded > 0) parts.push(`${tasks.succeeded} succeeded`);
@@ -122,16 +126,32 @@ export function ProgressPanel({
   return (
     <Section title="Progress" origins={origins}>
       <div data-testid="campaign-progress">
-        <p className="status-line">
-          <Tag tone={status.tone}>{status.label}</Tag>
-          <span>
-            {progress.experiments === 0 ? "No experiments yet" : `${progress.experiments} experiment${progress.experiments === 1 ? "" : "s"}`}
-          </span>
-          <span>
-            Events {progress.eventsSeen} of {progress.eventsTotal} shown
-          </span>
-          <span className="muted">Worker {view.job.state}</span>
-        </p>
+        <div className="progress-head">
+          {/* Named apart from the campaign heading's status line: one .status-line per page. */}
+          <p className="progress-facts">
+            <Tag tone={status.tone}>{status.label}</Tag>
+            <span>
+              {progress.experiments === 0 ? "No experiments yet" : `${progress.experiments} experiment${progress.experiments === 1 ? "" : "s"}`}
+            </span>
+            <span>
+              Events {progress.eventsSeen} of {progress.eventsTotal} shown
+            </span>
+            <span className="muted">Worker {view.job.state}</span>
+          </p>
+          {onRefresh === undefined ? null : (
+            <button
+              type="button"
+              className="quiet"
+              disabled={refreshing}
+              onClick={() => {
+                setRefreshing(true);
+                void onRefresh().finally(() => setRefreshing(false));
+              }}
+            >
+              {refreshing ? "Refreshing" : "Refresh now"}
+            </button>
+          )}
+        </div>
         {tasks.total === 0 ? (
           <p className="muted">No tasks recorded yet.</p>
         ) : (
@@ -392,8 +412,14 @@ function BudgetTable({
   );
 }
 
+type TaskFilter = "all" | "attention" | "finished";
+
+const ATTENTION = new Set(["failed", "running", "awaiting_approval"]);
+const FINISHED = new Set(["succeeded", "cancelled", "skipped"]);
+
 function TaskTimeline({ view }: { view: CampaignView }) {
   const ordered = orderTasks(view.tasks);
+  const [filter, setFilter] = useState<TaskFilter>("all");
   if (ordered.length === 0) {
     return (
       <Notice state="empty" title="No tasks yet">
@@ -401,10 +427,28 @@ function TaskTimeline({ view }: { view: CampaignView }) {
       </Notice>
     );
   }
+  const shown =
+    filter === "all" ? ordered : ordered.filter(({ task }) => (filter === "attention" ? ATTENTION : FINISHED).has(task.status));
   const position = new Map(ordered.map((item, index) => [item.task.task_id, index + 1]));
   return (
+    <>
+      <FilterBar
+        label="Show"
+        value={filter}
+        onChange={setFilter}
+        options={[
+          { value: "all", label: "All tasks", count: ordered.length },
+          { value: "attention", label: "Needs attention", count: ordered.filter(({ task }) => ATTENTION.has(task.status)).length },
+          { value: "finished", label: "Finished", count: ordered.filter(({ task }) => FINISHED.has(task.status)).length },
+        ]}
+      />
+      {shown.length === 0 ? (
+        <Notice state="empty" title="No tasks match this filter">
+          The campaign records no {filter === "attention" ? "running, waiting or failed" : "finished"} tasks.
+        </Notice>
+      ) : (
     <ol className="timeline">
-      {ordered.map(({ task, unknownDependencies }) => {
+      {shown.map(({ task, unknownDependencies }) => {
         const status = taskStatus(task.status);
         const after = task.depends_on.flatMap((id) => position.get(id) ?? []);
         return (
@@ -434,6 +478,8 @@ function TaskTimeline({ view }: { view: CampaignView }) {
           </li>
         );
       })}
-    </ol>
+      </ol>
+      )}
+    </>
   );
 }

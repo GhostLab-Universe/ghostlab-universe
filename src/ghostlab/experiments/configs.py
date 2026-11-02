@@ -20,6 +20,18 @@ Purity:
 Policy ceilings come from the caller (the deployment's policy owner). A
 requested limit above its ceiling is rejected, never clamped, and resolution
 records the policy version without raising any ceiling.
+
+Fault triggers (optional, backward compatible):
+
+A fault may carry ``trigger`` = ``{"type", "tool", "occurrence"}``. ``type``
+must be ``"occurrence"`` (anything else is rejected as unsupported, never
+silently reinterpreted). ``tool`` is ``"*"`` (any tool: the occurrence counts
+every dispatch) or one discovered tool name (the occurrence counts dispatches
+of that tool only); resolution rejects names the environment does not
+implement. ``occurrence`` is an int in 1..64: the fault arms immediately
+before that counted dispatch and disarms right after, so it fires at most
+once. Faults without ``trigger`` behave exactly as before (armed at reset,
+firing on the first opportunity the hook allows).
 """
 
 import hashlib
@@ -53,6 +65,8 @@ MIN_WALL_CLOCK_MS = 1
 MAX_WALL_CLOCK_MS = 3_600_000
 MAX_FAULTS = 8
 MAX_HOOKS = 16
+MIN_TRIGGER_OCCURRENCE = 1
+MAX_TRIGGER_OCCURRENCE = 64
 
 PROJECT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 ENV_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
@@ -63,6 +77,8 @@ _REQUESTED_KEYS = {"config_version", "name", "env_id", "agent", "fixture",
                    "faults", "rules", "limits", "repetitions"}
 _FIXTURE_KEYS = {"order_id", "customer_id", "paid_minor", "currency"}
 _FAULT_KEYS = {"hook", "params", "required"}
+_FAULT_KEYS_TRIGGERED = {"hook", "params", "required", "trigger"}
+_TRIGGER_KEYS = {"type", "tool", "occurrence"}
 _LIMITS_KEYS = {"max_tool_calls", "max_total_tool_calls", "max_wall_clock_ms"}
 _REPETITIONS_KEYS = {"count"}
 _POLICY_KEYS = {"policy_version", "ceiling_tool_calls",
@@ -173,6 +189,28 @@ def _validate_fixture(obj) -> dict:
             "paid_minor": paid, "currency": currency}
 
 
+def _validate_trigger(obj, path: str) -> dict:
+    if type(obj) is not dict or set(obj) != _TRIGGER_KEYS:
+        raise ConfigError(f"{path}.trigger must carry exactly type, tool"
+                          " and occurrence")
+    trigger_type = obj["type"]
+    if trigger_type != "occurrence":
+        raise ConfigError(
+            f"{path}.trigger.type {trigger_type!r} is unsupported: v1"
+            " triggers are 'occurrence' only")
+    tool = obj["tool"]
+    if tool != "*" and (type(tool) is not str
+                        or not HOOK_PATTERN.match(tool)):
+        raise ConfigError(f"invalid {path}.trigger.tool: '*' or a tool name")
+    occurrence = obj["occurrence"]
+    if type(occurrence) is not int \
+            or not MIN_TRIGGER_OCCURRENCE <= occurrence \
+            <= MAX_TRIGGER_OCCURRENCE:
+        raise ConfigError(f"{path}.trigger.occurrence must be"
+                          f" {MIN_TRIGGER_OCCURRENCE}-{MAX_TRIGGER_OCCURRENCE}")
+    return {"type": "occurrence", "tool": tool, "occurrence": occurrence}
+
+
 def _validate_faults(obj, allowed_hooks: list) -> list:
     if type(obj) is not list or len(obj) > MAX_FAULTS:
         raise ConfigError("faults must list 0-8 fault entries")
@@ -180,9 +218,10 @@ def _validate_faults(obj, allowed_hooks: list) -> list:
     faults = []
     for index, entry in enumerate(obj):
         path = f"faults[{index}]"
-        if type(entry) is not dict or set(entry) != _FAULT_KEYS:
+        if type(entry) is not dict \
+                or set(entry) not in (_FAULT_KEYS, _FAULT_KEYS_TRIGGERED):
             raise ConfigError(f"{path} must carry exactly hook, params"
-                              " and required")
+                              " and required, plus optional trigger")
         hook = entry["hook"]
         if type(hook) is not str or not HOOK_PATTERN.match(hook):
             raise ConfigError(f"invalid {path}.hook")
@@ -195,8 +234,11 @@ def _validate_faults(obj, allowed_hooks: list) -> list:
             raise ConfigError(f"{path}.params: v1 faults take no parameters")
         if type(entry["required"]) is not bool:
             raise ConfigError(f"{path}.required must be boolean")
-        faults.append({"hook": hook, "params": {},
-                       "required": entry["required"]})
+        fault = {"hook": hook, "params": {},
+                 "required": entry["required"]}
+        if "trigger" in entry:
+            fault["trigger"] = _validate_trigger(entry["trigger"], path)
+        faults.append(fault)
     return faults
 
 
@@ -313,12 +355,28 @@ class FixtureSpec:
 
 
 @dataclass(frozen=True)
+class TriggerSpec:
+    type: str
+    tool: str
+    occurrence: int
+
+    def to_dict(self) -> dict:
+        return {"type": self.type, "tool": self.tool,
+                "occurrence": self.occurrence}
+
+
+@dataclass(frozen=True)
 class FaultSpec:
     hook: str
     required: bool
+    trigger: TriggerSpec | None = None
 
     def to_dict(self) -> dict:
-        return {"hook": self.hook, "params": {}, "required": self.required}
+        body = {"hook": self.hook, "params": {},
+                "required": self.required}
+        if self.trigger is not None:
+            body["trigger"] = self.trigger.to_dict()
+        return body
 
 
 @dataclass(frozen=True)
@@ -389,8 +447,11 @@ class RequestedConfig:
     def from_obj(cls, obj, policy_obj) -> "RequestedConfig":
         body = validate_requested(obj, policy_obj)
         fixture = FixtureSpec(**body["fixture"])
-        faults = tuple(FaultSpec(f["hook"], f["required"])
-                       for f in body["faults"])
+        faults = tuple(
+            FaultSpec(f["hook"], f["required"],
+                      TriggerSpec(**f["trigger"])
+                      if "trigger" in f else None)
+            for f in body["faults"])
         return cls(body["name"], body["env_id"], body["agent"], fixture,
                    faults, tuple(body["rules"]),
                    LimitSpec(**body["limits"]),
@@ -575,6 +636,14 @@ def resolve_requested(requested: RequestedConfig, *, project_id: str,
                           f" {requested.agent!r} needs tool(s)"
                           f" {', '.join(missing)}, which env"
                           f" {requested.env_id!r} does not implement")
+    for fault in requested.faults:
+        trigger = fault.trigger
+        if trigger is not None and trigger.tool != "*" \
+                and trigger.tool not in discovered_names:
+            raise ConfigError(
+                f"impossible combination: fault trigger tool"
+                f" {trigger.tool!r} is not implemented by env"
+                f" {requested.env_id!r}")
     pins = Pins(
         env_id=requested.env_id,
         env_version=registration["env_version"],

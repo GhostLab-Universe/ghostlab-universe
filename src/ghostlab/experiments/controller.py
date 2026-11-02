@@ -11,6 +11,19 @@ project-scoped ledger keyed by resolved config, and every attempt — first try
 or retry — checks the same envelope before touching the environment. Required
 faults that never fired are recorded on the run, and a run is never a pass
 when evidence is missing or the run did not complete.
+
+Occurrence triggers: faults without ``trigger`` are armed at reset and fire
+on the first opportunity, exactly as before. Faults with ``trigger`` are NOT
+armed at reset; instead, before each dispatch the controller counts the
+upcoming dispatch (per-tool count for a named tool, total dispatches for
+``"*"``) and arms each still-unarmed fault whose occurrence matches, then
+disarms right after that dispatch so it fires at most once. Triggered faults
+are recorded with their ``trigger`` and ``fired_occurrence`` (the counted
+dispatch that armed them when the trace shows they fired, else null);
+untriggered faults keep the exact ``{"hook", "required", "fired"}`` record.
+Late arming needs adapter support: ``set_fault`` must take effect between
+``reset`` and ``invoke``. Verdict semantics are unchanged: a required fault
+that never fired fails the run as untested, never passes it.
 """
 
 import time
@@ -194,7 +207,10 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
             "supports_cancellation", False))
     except Exception as error:
         raise ConfigError(f"env describe() failed: {error}") from error
-    for fault in effective["faults"]:
+    untriggered = [f for f in effective["faults"] if "trigger" not in f]
+    pending = [{"spec": f, "armed": False, "armed_occurrence": None}
+               for f in effective["faults"] if "trigger" in f]
+    for fault in untriggered:
         try:
             adapter.set_fault(fault["hook"], dict(fault["params"]))
         except Exception as error:
@@ -208,6 +224,7 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
     dispatches = 0
     status = "completed"
     error_text = None
+    tool_counts: dict = {}
 
     def cancelled() -> bool:
         return cancel is not None and cancel.is_set()
@@ -223,6 +240,33 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
                 or used + dispatches >= aggregate:
             status = "budget_exhausted"
             raise BudgetExceeded("run budget exhausted")
+        upcoming_tool_count = tool_counts.get(tool, 0) + 1
+        upcoming_total = dispatches + 1
+        armed_now = []
+        for entry in pending:
+            if entry["armed"]:
+                continue
+            trigger = entry["spec"]["trigger"]
+            if trigger["tool"] == "*":
+                matched = upcoming_total == trigger["occurrence"]
+                counted = upcoming_total
+            else:
+                matched = tool == trigger["tool"] \
+                    and upcoming_tool_count == trigger["occurrence"]
+                counted = upcoming_tool_count
+            if not matched:
+                continue
+            try:
+                adapter.set_fault(entry["spec"]["hook"],
+                                  dict(entry["spec"]["params"]))
+            except Exception as error:
+                raise ConfigError(
+                    f"env rejected fault hook"
+                    f" {entry['spec']['hook']!r}: {error}") from error
+            entry["armed"] = True
+            entry["armed_occurrence"] = counted
+            armed_now.append(entry)
+        tool_counts[tool] = upcoming_tool_count
         try:
             if cancel is not None and supports_cancel:
                 result = adapter.invoke_cancellable(tool, arguments, cancel)
@@ -243,8 +287,25 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
             # budget, so they count exactly like successes.
             dispatches += 1
             raise
-        dispatches += 1
-        return result
+        else:
+            dispatches += 1
+            return result
+        finally:
+            if armed_now:
+                # Fire-at-most-once: disarm right after the counted dispatch
+                # so the hook cannot leak onto a later one, then restore the
+                # reset-time arming of untriggered faults (clear_faults is
+                # adapter-wide). A disarm failure aborts like any other env
+                # arming failure: no run record is written.
+                try:
+                    adapter.clear_faults()
+                    for fault in untriggered:
+                        adapter.set_fault(fault["hook"],
+                                          dict(fault["params"]))
+                except Exception as error:
+                    raise ConfigError(
+                        "env failed to disarm a triggered fault"
+                        f" after dispatch: {error}") from error
 
     if cancelled():
         status = "cancelled"
@@ -286,9 +347,18 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
             ok = False
     else:
         ok = False
-    faults = [{"hook": f["hook"], "required": f["required"],
-               "fired": fault_fired(f["hook"], evidence.get("trace"))}
-              for f in effective["faults"]]
+    armed_by_hook = {e["spec"]["hook"]: e["armed_occurrence"]
+                     for e in pending}
+    faults = []
+    for f in effective["faults"]:
+        entry = {"hook": f["hook"], "required": f["required"],
+                 "fired": fault_fired(f["hook"], evidence.get("trace"))}
+        if "trigger" in f:
+            armed_occurrence = armed_by_hook.get(f["hook"])
+            entry["fired_occurrence"] = armed_occurrence \
+                if entry["fired"] else None
+            entry["trigger"] = dict(f["trigger"])
+        faults.append(entry)
     verdict = evaluate_verdict(status=status, evidence_ok=ok, checks=checks,
                                rules=effective["rules"], faults=faults)
     body = {"schema_version": EXPERIMENTS_SCHEMA_VERSION,

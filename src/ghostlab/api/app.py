@@ -25,6 +25,8 @@ from .plane import ApiConfig, ControlPlane
 from .rootlock import RootLock, require_one_root
 from .routes import router
 from .sessions import NoSessions, require_local_deployment
+from .oauth import auth_router
+from .source_routes import router as source_router
 from .tracing import disable_trace_export
 
 API_VERSION = "1.0.0"
@@ -80,6 +82,8 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
     install(app, redactor)
     app.add_middleware(RequestGuard, sessions=config.sessions if config else NoSessions(),
                        redactor=redactor)
+    app.include_router(auth_router(config.sessions if config else NoSessions()))
+    app.include_router(source_router)
     app.include_router(router)
     app.include_router(ext_router)
     return app

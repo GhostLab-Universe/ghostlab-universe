@@ -27,8 +27,8 @@ function stub(status: number, body: unknown, seen: Seen[] = [], text?: string) {
 
 const CAMPAIGN = Object.fromEntries(OPERATIONS.getCampaign.required.map((key) => [key, null]));
 
-test("every operation in the contract has a client path through the generated table", () => {
-  assert.deepEqual(Object.keys(OPERATIONS).sort(), [
+test("campaign and environment operations have client paths; account/source use dedicated components", () => {
+  assert.deepEqual(Object.keys(OPERATIONS).filter(id => !["getAuthStatus", "startSignIn", "completeSignIn", "signOut", "inspectGitHubSource"].includes(id)).sort(), [
     "assessExtFidelity",
     "cancelCampaign",
     "createCampaign",

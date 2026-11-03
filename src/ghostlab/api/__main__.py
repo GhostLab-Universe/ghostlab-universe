@@ -31,6 +31,7 @@ from .live import live_config
 from .local import local_config
 from .rootlock import RootLock, RootLocked
 from .sessions import DEFAULT_PROJECT, LocalDevSessions
+from .oauth import OAuthSessions
 from .tracing import drop_provider_keys
 
 DEFAULT_DATABASE = Path("artifacts/local/ghostlab.sqlite")
@@ -38,6 +39,7 @@ DEFAULT_DATABASE = Path("artifacts/local/ghostlab.sqlite")
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--auth", choices=["local", "oauth"], default="local", help="OAuth requires configured GitHub/Google clients and member assignments")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
     parser.add_argument("--root", type=Path, help="default: GHOSTLAB_SQLITE_PATH's directory")
@@ -86,7 +88,8 @@ def main(argv=None) -> int:
         print("Refused: --project is not a usable project id", file=sys.stderr)
         return 2
     try:
-        sessions = LocalDevSessions.from_environment(args.host, project_id=args.project)
+        sessions = (OAuthSessions.from_environment() if args.auth == "oauth" else
+                    LocalDevSessions.from_environment(args.host, project_id=args.project))
         with RootLock(args.root):  # a clear refusal; the server takes its own at startup
             pass
         if args.live:
@@ -100,7 +103,7 @@ def main(argv=None) -> int:
                                   scripted=args.scripted)
         app = create_app(config)
     except (LocalDevRefused, RootLocked, LiveInferenceRefused,
-            ProviderConfigError) as refused:
+            ProviderConfigError, ValueError) as refused:
         print(f"Refused: {refused}", file=sys.stderr)
         return 2
     if args.scripted:

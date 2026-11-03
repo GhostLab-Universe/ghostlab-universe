@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { GitHubSource } from "./GitHubSource.tsx";
 import type { ReactNode } from "react";
 import type {
   ExpDiff,
@@ -39,12 +40,17 @@ function parseJson(text: string): { value?: unknown; error?: string } {
 }
 
 function JsonArea({ label, value, onChange }: { label: string; value: string; onChange: (text: string) => void }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <textarea rows={6} spellCheck={false} value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
+  const parsed = parseJson(value).value;
+  const simple = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+    ? Object.entries(parsed).filter(([, v]) => ["boolean", "number", "string"].includes(typeof v)) : [];
+  const friendly = (key: string) => key.replaceAll("_", " ").replace(/^./, x => x.toUpperCase());
+  function update(key: string, next: string | number | boolean) { onChange(JSON.stringify({ ...(parsed as object), [key]: next }, null, 2)); }
+  return <div className="parameter-group">
+    {simple.length > 0 && <fieldset><legend>{label}</legend><div className="parameter-grid">{simple.map(([key, v]) => <label className="field" key={key}>
+      {typeof v === "boolean" ? <><input type="checkbox" checked={v} onChange={e => update(key, e.target.checked)} /><span>{friendly(key)}</span></> : <><span>{friendly(key)}</span><input type={typeof v === "number" ? "number" : "text"} value={String(v)} onChange={e => { if (typeof v === "number") {if (e.target.value !== "") update(key, Number(e.target.value));} else update(key, e.target.value); }} /></>}
+    </label>)}</div></fieldset>}
+    <details className="advanced-editor"><summary>{label} · Advanced JSON</summary><label className="field"><span>{label}</span><textarea rows={6} spellCheck={false} value={value} onChange={(event) => onChange(event.target.value)} /></label></details>
+  </div>;
 }
 
 function TextInput({ label, value, onChange }: { label: string; value: string; onChange: (text: string) => void }) {
@@ -120,30 +126,17 @@ export function ExtensionsPage({ source }: { source: DataSource }) {
 
   return (
     <>
-      <h1>Extensions</h1>
-      <p className="muted">Reviewed local environments and target agents. Worlds here are synthetic test fixtures.</p>
+      <h1>Your test environments</h1>
+      <p className="muted">Connect a project, check that it can be tested, then configure an experiment.</p>
+      <GitHubSource enabled={source.kind === "api"} />
       <Outcome
         result={envs}
         what="environments"
         render={(data) => (
           <Section title="Connected environments">
-            <Facts
-              facts={data.environments.map((env) => ({
-                term: env.world_version,
-                detail: (
-                  <>
-                    <Mono>{env.environment_id}</Mono> <Mono>{env.environment_version}</Mono>{" "}
-                    <button type="button" onClick={() => setWorld(env.world_version)} disabled={env.world_version === world}>
-                      {env.world_version === world ? "Selected" : "Select"}
-                    </button>{" "}
-                    <span className="muted">
-                      {env.tools.length} tools, {env.faults.length} faults, {env.fixtures.length} fixtures,{" "}
-                      {env.capabilities.snapshot_restore ? "snapshots" : "no snapshots"}, targets: {env.targets.join(", ") || "none"}
-                    </span>
-                  </>
-                ),
-              }))}
-            />
+            <div className="environment-grid">{data.environments.map(env => <button type="button" className="environment-choice" key={env.world_version} aria-pressed={world === env.world_version} onClick={() => setWorld(env.world_version)}>
+              <strong>{env.environment_id.replaceAll("-", " ")}</strong><span>{env.tools.length} tools · {env.faults.length} fault types · {env.fixtures.length} test datasets</span><small>{world === env.world_version ? "Selected environment" : "Choose environment"}</small>
+            </button>)}</div>
           </Section>
         )}
       />
@@ -151,7 +144,7 @@ export function ExtensionsPage({ source }: { source: DataSource }) {
         <Outcome
           result={detail}
           what="environment"
-          render={(data) => <EnvironmentDetail source={source} detail={data} />}
+          render={(data) => <EnvironmentDetail key={data.world_version} source={source} detail={data} />}
         />
       )}
     </>
@@ -159,6 +152,7 @@ export function ExtensionsPage({ source }: { source: DataSource }) {
 }
 
 function EnvironmentDetail({ source, detail }: { source: DataSource; detail: ExtEnvironmentDetail }) {
+  const [panel, setPanel] = useState("setup");
   const [fixtureName, setFixtureName] = useState<string>(detail.fixtures[0] ?? "");
   const [fixture, setFixture] = useState<Result<ExtFixture> | null>(null);
 
@@ -178,7 +172,7 @@ function EnvironmentDetail({ source, detail }: { source: DataSource; detail: Ext
   return (
     <>
       <Section title={detail.world_version}>
-        <Facts
+        <details className="environment-spec"><summary>Tools, rules & technical details</summary><Facts
           facts={[
             { term: "Environment", detail: <><Mono>{detail.environment_id}</Mono> <Mono>{detail.environment_version}</Mono></> },
             { term: "Source", detail: <Mono>{detail.source}</Mono> },
@@ -199,8 +193,8 @@ function EnvironmentDetail({ source, detail }: { source: DataSource; detail: Ext
             },
           ]}
         />
-        <label className="field">
-          <span>Fixture</span>
+        </details><label className="field">
+          <span>Test dataset</span>
           <select value={fixtureName} onChange={(event) => setFixtureName(event.target.value)}>
             {detail.fixtures.map((name) => (
               <option key={name} value={name}>{name}</option>
@@ -209,13 +203,11 @@ function EnvironmentDetail({ source, detail }: { source: DataSource; detail: Ext
         </label>
         <Outcome result={fixture} what="fixture" render={(data) => <JsonBlock label={`Fixture ${data.name}`} value={data.snapshot} />} />
       </Section>
-      <QualifyPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} />
-      <CampaignPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} />
-      <InspectPanel source={source} />
-      <ReplayPanel source={source} detail={detail} />
-      <RetestPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} />
-      <MinimizePanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} />
-      <ExperimentPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} />
+      <nav className="workspace-tabs" aria-label="Environment tools">{[["setup", "Check environment"], ["experiment", "Configure experiment"], ["evidence", "Replay & evidence"], ["repair", "Retest & minimize"]].map(([id, label]) => <button key={id} type="button" aria-pressed={panel === id} onClick={() => setPanel(id!)}>{label}</button>)}</nav>
+      <div hidden={panel !== "setup"}><QualifyPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} /></div>
+      <div hidden={panel !== "experiment"}><ExperimentPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} /><details className="advanced-editor"><summary>Batch campaign settings</summary><CampaignPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} /></details></div>
+      <div hidden={panel !== "evidence"}><InspectPanel source={source} /><ReplayPanel source={source} detail={detail} /></div>
+      <div hidden={panel !== "repair"}><RetestPanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} /><MinimizePanel source={source} detail={detail} fixtureName={fixtureName} snapshot={snapshot} /></div>
     </>
   );
 }
@@ -260,7 +252,7 @@ function QualifyPanel({ source, detail, fixtureName, snapshot }: { source: DataS
 
   return (
     <Section title="Qualification and fidelity">
-      <TextInput label="Fixture" value={fixtureName} onChange={() => undefined} />
+      <p className="muted">Test dataset: {fixtureName}</p>
       <JsonArea label="Scenario" value={scenario} onChange={setScenario} />
       <JsonArea label="Probe script" value={script} onChange={setScript} />
       <p>
@@ -647,7 +639,7 @@ interface RunBody {
 function ExperimentPanel({ source, detail, fixtureName, snapshot }: { source: DataSource; detail: ExtEnvironmentDetail; fixtureName: string; snapshot: Record<string, unknown> | null }) {
   const [policy, setPolicy] = useState<Result<ExpPolicy> | null>(null);
   const [name, setName] = useState("console-experiment");
-  const [targetKind, setTargetKind] = useState<"registered" | "script">("script");
+  const [targetKind, setTargetKind] = useState<"registered" | "script">(detail.targets.length > 0 ? "registered" : "script");
   const [targetId, setTargetId] = useState(detail.targets[0] ?? "");
   const [script, setScript] = useState<string>(() => defaultScript(detail.world_version, snapshot));
   const [faults, setFaults] = useState<Record<string, { on: boolean; required: boolean }>>(() =>
@@ -667,6 +659,11 @@ function ExperimentPanel({ source, detail, fixtureName, snapshot }: { source: Da
   const [leftId, setLeftId] = useState("");
   const [rightId, setRightId] = useState("");
   const [diff, setDiff] = useState<Result<ExpDiff> | null>(null);
+
+  useEffect(() => {
+    setSaved(null); setResolved(null); setRun(null); setFailure(null);
+  }, [name, targetKind, targetId, script, faults, rules, maxCalls, maxTotal, maxWall, count, fixtureName]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -785,11 +782,12 @@ function ExperimentPanel({ source, detail, fixtureName, snapshot }: { source: Da
       Number(count) > ceilings.ceiling_repetitions);
 
   return (
-    <Section title="Experiment configs">
+    <Section title="Configure your experiment">
       <p className="muted">
-        Saved configs resolve to pinned versions before anything runs. The server validates every field;{` `}
-        {ceilings === null ? "loading policy ceilings." : `ceilings: ${ceilings.ceiling_tool_calls} calls/run, ${ceilings.ceiling_total_tool_calls} total, ${ceilings.ceiling_repetitions} repetitions, ${ceilings.ceiling_wall_clock_ms} ms.`}
+        Choose an agent, faults, rules and limits. Save your settings, then prepare the run. {` `}
+        {ceilings === null ? "Loading workspace limits…" : `Workspace limits: ${ceilings.ceiling_tool_calls} calls/run, ${ceilings.ceiling_total_tool_calls} total, ${ceilings.ceiling_repetitions} repetitions, ${ceilings.ceiling_wall_clock_ms} ms.`}
       </p>
+      <fieldset className="experiment-fields" disabled={busy}>
       <TextInput label="Name" value={name} onChange={setName} />
       <label className="field">
         <span>Target</span>
@@ -808,41 +806,26 @@ function ExperimentPanel({ source, detail, fixtureName, snapshot }: { source: Da
       ) : (
         <JsonArea label="Script actions" value={script} onChange={setScript} />
       )}
-      <p>
-        <span className="muted">Faults: </span>
-        {detail.faults.map((hook) => (
-          <label key={hook} style={{ marginRight: "1em" }}>
-            <input type="checkbox" checked={faults[hook]?.on ?? false} onChange={() => toggleFault(hook, "on")} /> {hook}
-            {faults[hook]?.on === true ? (
-              <label style={{ marginLeft: "0.5em" }}>
-                <input type="checkbox" checked={faults[hook]?.required ?? false} onChange={() => toggleFault(hook, "required")} /> required
-              </label>
-            ) : null}
-          </label>
-        ))}
-      </p>
-      <p>
-        <span className="muted">Rules: </span>
-        {detail.invariants.map((rule) => (
-          <label key={rule} style={{ marginRight: "1em" }}>
-            <input type="checkbox" checked={rules.includes(rule)} onChange={() => toggleRule(rule)} /> {rule}
-          </label>
-        ))}
-      </p>
-      <TextInput label="Max tool calls per run" value={maxCalls} onChange={setMaxCalls} />
+      <fieldset className="choice-group"><legend>Faults to introduce</legend>
+        {detail.faults.map(hook => <div className="fault-choice" key={hook}><label><input type="checkbox" checked={faults[hook]?.on ?? false} onChange={() => toggleFault(hook, "on")} />{hook.replaceAll("_", " ")}</label>
+          {faults[hook]?.on && <label><input type="checkbox" checked={faults[hook]?.required ?? false} onChange={() => toggleFault(hook, "required")} />Must trigger during the test</label>}</div>)}
+      </fieldset>
+      <fieldset className="choice-group"><legend>Rules to verify</legend>{detail.invariants.map(rule => <label key={rule}><input type="checkbox" checked={rules.includes(rule)} onChange={() => toggleRule(rule)} />{rule.replaceAll("_", " ")}</label>)}</fieldset>
+      <div className="parameter-grid"><TextInput label="Max tool calls per run" value={maxCalls} onChange={setMaxCalls} />
       <TextInput label="Max total tool calls" value={maxTotal} onChange={setMaxTotal} />
-      <TextInput label="Max wall clock (ms)" value={maxWall} onChange={setMaxWall} />
-      <TextInput label="Repetitions" value={count} onChange={setCount} />
+      <TextInput label="Time limit (milliseconds)" value={maxWall} onChange={setMaxWall} />
+      <TextInput label="Repetitions" value={count} onChange={setCount} /></div>
+      </fieldset>
       {overCeiling ? <p><Tag tone="warn">Over policy ceiling; the server will refuse this config</Tag></p> : null}
       <p>
-        <button type="button" disabled={busy || overCeiling} onClick={() => void save()}>{busy ? "Working." : "Save config"}</button>{" "}
-        <button type="button" disabled={busy || saved === null || !saved.ok} onClick={() => void resolve()}>{busy ? "Working." : "Resolve"}</button>
+        <button type="button" disabled={busy || overCeiling} onClick={() => void save()}>{busy ? "Working." : "Save experiment"}</button>{" "}
+        <button type="button" disabled={busy || saved === null || !saved.ok} onClick={() => void resolve()}>{busy ? "Working." : "Prepare run"}</button>
       </p>
       {failure !== null ? <FailureNotice failure={failure} /> : null}
       <Outcome
         result={saved}
         render={(data) => (
-          <p><Mono>{data.config_id}</Mono> <span className="muted">digest {data.digest.slice(0, 16)} by {data.requested_by}</span></p>
+          <details className="advanced-editor"><summary>Experiment saved · View record</summary><p><Mono>{data.config_id}</Mono></p><p>Digest: <Mono>{data.digest}</Mono></p></details>
         )}
       />
       <Outcome
@@ -863,7 +846,7 @@ function ExperimentPanel({ source, detail, fixtureName, snapshot }: { source: Da
               />
               <TextInput label="Repetition" value={repetition} onChange={setRepetition} />
               <TextInput label="Attempt" value={attempt} onChange={setAttempt} />
-              <p><button type="button" disabled={busy} onClick={() => void runOnce()}>{busy ? "Running." : "Run repetition"}</button></p>
+              <p><button type="button" disabled={busy} onClick={() => void runOnce()}>{busy ? "Running." : "Run test"}</button></p>
             </>
           );
         }}
@@ -900,9 +883,10 @@ function ExperimentPanel({ source, detail, fixtureName, snapshot }: { source: Da
           );
         }}
       />
+      <details className="advanced-editor"><summary>Compare saved experiment versions</summary>
       <TextInput label="Compare left resolved id" value={leftId} onChange={setLeftId} />
       <TextInput label="Compare right resolved id" value={rightId} onChange={setRightId} />
-      <p><button type="button" disabled={busy} onClick={() => void compare()}>{busy ? "Working." : "Compare resolved"}</button></p>
+      <p><button type="button" disabled={busy} onClick={() => void compare()}>{busy ? "Working." : "Compare resolved"}</button></p></details>
       <Outcome
         result={diff}
         render={(data) => (

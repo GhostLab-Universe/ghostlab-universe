@@ -61,7 +61,8 @@ const types = await compile(bundle, "GhostLabApiSchema", {
 const operations = {};
 for (const [path, methods] of Object.entries(doc.paths)) {
   for (const [method, operation] of Object.entries(methods)) {
-    const success = Object.keys(operation.responses).find((code) => code.startsWith("2"));
+    const success = Object.keys(operation.responses).find((code) => code.startsWith("2"))
+      ?? Object.keys(operation.responses).find((code) => code.startsWith("3"));
     const body = operation.responses[success]?.content?.["application/json"]?.schema;
     const name = body?.$ref?.split("/").pop();
     operations[operation.operationId] = {

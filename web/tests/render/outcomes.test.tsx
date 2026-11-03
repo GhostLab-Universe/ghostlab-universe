@@ -169,7 +169,7 @@ test("a capsule that did not reproduce says why it has no run_status", () => {
 
 test("unrecorded inference is said plainly in the session and the budget", () => {
   const unrecorded = { ...session, inference: "unrecorded" as const };
-  assert.match(text(html(<SessionFacts session={unrecorded} />)), /inference unrecorded/);
+  assert.match(text(html(<SessionFacts session={unrecorded} />)), /Model connection: unrecorded/);
   const notice = text(html(<ServiceModeNotice session={unrecorded} />));
   assert.match(notice, /not recorded/);
   assert.doesNotMatch(notice, /disabled|scripted test data/);
@@ -436,13 +436,13 @@ const session = {
   runnable_worlds: [] as [],
 };
 
-test("the session's three modes are always shown as recorded", () => {
+test("the workspace menu retains accurate connection details", () => {
   const facts = text(html(<SessionFacts session={session} />));
-  assert.match(facts, /auth_mode local_dev/);
-  assert.match(facts, /production_authenticated false/);
-  assert.match(facts, /inference fixture/);
+  assert.match(facts, /Authentication: local_dev/);
+  assert.match(facts, /Hosted access: Not enabled/);
+  assert.match(facts, /Model connection: fixture/);
   const disabled = text(html(<SessionFacts session={{ ...session, inference: "disabled" }} />));
-  assert.match(disabled, /inference disabled/);
+  assert.match(disabled, /Model connection: disabled/);
 });
 
 test("scripted inference behind the service is called out", () => {

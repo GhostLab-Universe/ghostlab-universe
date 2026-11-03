@@ -33,7 +33,7 @@ type Inference = CampaignView["inference"];
 export function inferenceLabel(inference: Inference): string {
   if (inference === "fixture" || inference === "scripted") return "Proposals scripted: checked-in replies, not a model";
   if (inference === "unrecorded") return "Inference not recorded for this campaign";
-  return `inference ${inference}`;
+  return inference === "live" ? "Model connected" : "Model unavailable";
 }
 
 /** Under scripted or fixture inference, model_calls counts checked-in replies. */

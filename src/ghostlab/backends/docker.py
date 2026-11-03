@@ -1019,12 +1019,15 @@ class DockerBackend(ExecutionBackend):
                 if timeout_left <= 0 and job.pending:
                     return
             try:
-                if terminal or deadline is None:
+                if terminal or deadline is None or job.pending:
+                    # Events are ready: drain what is queued, never block
+                    # for the full poll timeout once a result exists.
                     item = job.inbox.get_nowait()
                 else:
                     item = job.inbox.get(timeout=timeout_left)
             except queue.Empty:
-                if terminal:
+                if terminal or job.eof_seen:
+                    # EOF may precede process reaping; re-check the exit.
                     self._note_exit(job)
                 return
             if item is _EOF:
@@ -1067,6 +1070,9 @@ class DockerBackend(ExecutionBackend):
 
     def status(self, job_id: str) -> dict:
         job = self._require(job_id)
+        self._pump(job, 0)  # surface queued EOF/exit before reporting
+        if job.eof_seen:
+            self._note_exit(job)  # exit may be reaped after EOF was seen
         self._enforce_deadline(job)
         with job.lock:
             state = job.state

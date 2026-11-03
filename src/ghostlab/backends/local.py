@@ -431,7 +431,9 @@ class LocalBackend(ExecutionBackend):
                 if timeout_left <= 0 and job.pending:
                     return
             try:
-                if terminal or deadline is None:
+                if terminal or deadline is None or job.pending:
+                    # Events are ready: drain what is queued, never block
+                    # for the full poll timeout once a result exists.
                     item = job.inbox.get_nowait()
                 else:
                     item = job.inbox.get(timeout=timeout_left)

@@ -1332,7 +1332,7 @@ class DaemonEnforcedTests(unittest.TestCase):
 
     def test_usability_refund_lifecycle(self):
         backend = self.make_backend()
-        self.start("job-use", wall_clock_ms=180000)
+        self.start(backend, "job-use", wall_clock_ms=180000)
         backend.send("job-use", {"type": "hello", "payload": {}})
         events = backend.poll("job-use", 60000)
         self.assertEqual([e["type"] for e in events], ["started"])

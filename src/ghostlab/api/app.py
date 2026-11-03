@@ -19,7 +19,15 @@ Contract:
   requires the header so callers cannot forget scoping.
 - Errors are always ``{error, detail}``: ``ConfigError``/bad input
   ``400``, cross-project ``403``, unknown ids ``404``,
-  budget-exhausted ``409``, oversize ``413``, integrity/internal ``500``.
+  budget-exhausted ``409``, oversize ``413``, integrity/internal ``500``,
+  known-but-unavailable execution backend ``503`` (never a fallback).
+- ``GET /v1/backends`` lists execution backends (name, version,
+  capabilities, qualification; ``trusted-local`` is labeled explicitly
+  as in-process, not a sandbox). ``GET /v1/backends/{name}/status``
+  adds a live liveness probe. Run responses (start, group status,
+  export) carry additive ``backend``/``job``/``termination`` keys;
+  ``POST /v1/runs`` accepts an optional ``backend`` selector that
+  defaults to ``trusted-local``.
 - No registration route. Installing adapter code stays an explicit local
   CLI operator act (``ghostlab env-register``) because registration
   resolves an allowlisted ``module:Class`` and fingerprints its source;
@@ -45,6 +53,8 @@ handles (stored runs and configs survive in SQLite).
 
 import json
 import os
+import shutil
+import subprocess
 import threading
 import uuid
 from copy import deepcopy
@@ -71,6 +81,213 @@ REGISTRY_ENV = "GHOSTLAB_REGISTRY_DB"
 STORE_ENV = "GHOSTLAB_STORE_DB"
 
 _TERMINAL_GROUPS = ("completed", "cancelled", "failed")
+
+BACKENDS_VERSION = "backends/1"
+TRUSTED_LOCAL_BACKEND = "trusted-local"
+_JOB_STATES = ("prepared", "starting", "running", "completed", "failed",
+               "cancelled", "timed_out")
+_LIVENESS_TIMEOUT_SECONDS = 2
+
+
+class BackendUnavailableError(Exception):
+    """A known backend refused execution (mapped to 503, no fallback)."""
+
+    def __init__(self, backend: str, reason: str):
+        super().__init__(f"backend '{backend}' unavailable: {reason}")
+        self.backend = backend
+        self.reason = reason
+
+
+def _backend_catalog() -> list:
+    """Static backend descriptors (B5 status surface).
+
+    Single seam for the isolated-backend milestone: a future
+    ``ExecutionBackend`` registry plugs in here by returning these same
+    descriptor shapes. Until then the catalog is honest about what
+    exists: in-process trusted-local execution only. The container
+    backend is listed as known-but-unavailable so selection refuses
+    with 503 instead of silently falling back.
+    """
+    trusted = {
+        "name": TRUSTED_LOCAL_BACKEND,
+        "version": BACKENDS_VERSION,
+        "trusted_local": True,
+        "isolation": "in-process-checked-in-local",
+        "isolation_scope": ("none: runs in the controller process;"
+                            " reviewed checked-in adapter code only;"
+                            " never presented as a sandbox"),
+        "limitations": [
+            "no OS/process boundary: jobs share the controller process",
+            "reviewed checked-in adapter code only (allowlist + digest)",
+            "no per-job resource enforcement beyond controller budgets",
+            "cancellation is cooperative between repetitions and dispatches",
+        ],
+        "available": True,
+        "unavailable_reason": None,
+        "capabilities": {
+            "execute_runs": True,
+            "cancel": True,
+            "lifecycle": list(_JOB_STATES),
+            "network": "in-process (shares the controller process;"
+                       " no network boundary)",
+            "model_access": ("controller-side only;"
+                             " no provider keys reach jobs"),
+        },
+        "qualification": {
+            "status": "trusted-local (explicit; not an isolation boundary)",
+            "qualified_for_isolation": False,
+            "detail": ("trusted built-in path: allowlist + code digest +"
+                       " project scoping + budgets; adversarial isolation"
+                       " qualification does not apply in-process"),
+            "checks": [],
+        },
+        "limits": {
+            "enforced": False,
+            "cpu": None,
+            "memory": None,
+            "pids": None,
+            "wall_clock": None,
+            "output": None,
+            "detail": ("controller budgets only;"
+                       " no OS-level enforcement in-process"),
+        },
+        "package_identity": {
+            "kind": "checked-in-adapter",
+            "image": None,
+            "detail": ("operator-registered allowlisted module:Class +"
+                       " code digest, bound per env at resolve time"),
+        },
+    }
+    container = {
+        "name": "linux-container",
+        "version": BACKENDS_VERSION,
+        "trusted_local": False,
+        "isolation": "container (planned; no runtime qualified)",
+        "isolation_scope": ("unavailable: no container runtime is qualified"
+                            " in this build"),
+        "limitations": [
+            "backend unavailable in this build: selection refuses (503)",
+            "no adversarial qualification evidence exists",
+            "no image approved or verified",
+        ],
+        "available": False,
+        "unavailable_reason": ("no container runtime is qualified in this"
+                               " build: the daemon is unreachable or"
+                               " unapproved and no adversarial"
+                               " qualification evidence exists; refusing"
+                               " instead of falling back"),
+        "capabilities": {
+            "execute_runs": False,
+            "cancel": False,
+            "lifecycle": list(_JOB_STATES),
+            "network": "default none (planned)",
+            "model_access": ("controller broker only; keys never in jobs"
+                             " (planned)"),
+        },
+        "qualification": {
+            "status": "unqualified-for-isolation",
+            "qualified_for_isolation": False,
+            "detail": ("adversarial qualification suite has not passed"
+                       " against this backend"),
+            "checks": [],
+        },
+        "limits": {
+            "enforced": False,
+            "cpu": None,
+            "memory": None,
+            "pids": None,
+            "wall_clock": None,
+            "output": None,
+            "detail": "unenforced: backend unavailable",
+        },
+        "package_identity": {
+            "kind": "container-image",
+            "image": None,
+            "detail": "no image approved or verified in this build",
+        },
+    }
+    return [trusted, container]
+
+
+def _describe_backend(name: str) -> dict:
+    for descriptor in _backend_catalog():
+        if descriptor["name"] == name:
+            return deepcopy(descriptor)
+    raise _ServiceError(404, "not_found", f"unknown backend '{name}'")
+
+
+def _probe_liveness(name: str) -> dict:
+    """Bounded offline liveness probe (no secrets, no model calls)."""
+    checked_at = utcnow()
+    if name == TRUSTED_LOCAL_BACKEND:
+        return {"backend": name, "reachable": True,
+                "checked_at": checked_at,
+                "detail": ("in-process execution path in the controller"
+                           " process; no external runtime to probe")}
+    if name == "linux-container":
+        docker = shutil.which("docker")
+        if docker is None:
+            return {"backend": name, "reachable": False,
+                    "checked_at": checked_at,
+                    "detail": ("docker CLI not found on PATH;"
+                               " daemon unreachable")}
+        try:
+            proc = subprocess.run(
+                [docker, "info", "--format", "{{.ServerVersion}}"],
+                capture_output=True, text=True,
+                timeout=_LIVENESS_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            return {"backend": name, "reachable": False,
+                    "checked_at": checked_at,
+                    "detail": ("docker info timed out after"
+                               f" {_LIVENESS_TIMEOUT_SECONDS}s;"
+                               " daemon unreachable")}
+        except OSError:
+            return {"backend": name, "reachable": False,
+                    "checked_at": checked_at,
+                    "detail": ("docker CLI could not be executed;"
+                               " daemon unreachable")}
+        if proc.returncode != 0:
+            return {"backend": name, "reachable": False,
+                    "checked_at": checked_at,
+                    "detail": (f"docker info exited"
+                               f" {proc.returncode}; daemon unreachable")}
+        version = proc.stdout.strip().splitlines()
+        label = version[0][:32] if version and version[0] else "unknown"
+        return {"backend": name, "reachable": True,
+                "checked_at": checked_at,
+                "detail": (f"docker daemon reachable (server {label});"
+                           " backend still unqualified, refusing execution")}
+    raise _ServiceError(404, "not_found", f"unknown backend '{name}'")
+
+
+def _select_backend(requested) -> dict:
+    """Validate an explicit backend selection (fail closed, no fallback)."""
+    if requested is None:
+        return _describe_backend(TRUSTED_LOCAL_BACKEND)
+    if type(requested) is not str or not requested:
+        raise _ServiceError(400, "invalid_request",
+                            "runs body 'backend' must be a non-empty"
+                            " string")
+    descriptor = _describe_backend(requested[:100])
+    if not descriptor["available"]:
+        raise BackendUnavailableError(descriptor["name"],
+                                      descriptor["unavailable_reason"]
+                                      or "backend unavailable")
+    return descriptor
+
+
+def _backend_view(descriptor: dict) -> dict:
+    return {"name": descriptor["name"],
+            "trusted_local": descriptor["trusted_local"],
+            "isolation": descriptor["isolation"]}
+
+
+def _job_termination(status: str, error, job_id: str) -> tuple:
+    job = {"job_id": job_id, "state": status}
+    if status in _TERMINAL_GROUPS:
+        return job, {"reason": status, "detail": error}
+    return job, None
 
 
 class _ServiceError(Exception):
@@ -156,6 +373,8 @@ def _is_unknown_id(message: str) -> bool:
 def _map_failure(error: Exception) -> JSONResponse:
     if isinstance(error, _ServiceError):
         return _error(error.status, error.error, error.detail)
+    if isinstance(error, BackendUnavailableError):
+        return _error(503, "backend_unavailable", str(error))
     if isinstance(error, CrossProjectError):
         return _error(403, "forbidden", str(error))
     if isinstance(error, BudgetExhaustedError):
@@ -404,6 +623,27 @@ def create_app(registry_path=None, store_path=None,
         except Exception as error:
             return _map_failure(error)
 
+    @app.get("/v1/backends")
+    async def list_backends(request: Request):
+        try:
+            project_id = _require_project(request)
+            return {"project_id": project_id,
+                    "backends": _backend_catalog()}
+        except Exception as error:
+            return _map_failure(error)
+
+    @app.get("/v1/backends/{name}/status")
+    async def backend_status(request: Request, name: str):
+        try:
+            project_id = _require_project(request)
+            descriptor = _describe_backend(name[:100])
+            liveness = _probe_liveness(descriptor["name"])
+            return {"project_id": project_id,
+                    "backend": descriptor,
+                    "live_liveness": liveness}
+        except Exception as error:
+            return _map_failure(error)
+
     @app.post("/v1/guide/submit")
     async def guide_submit(request: Request):
         try:
@@ -443,7 +683,8 @@ def create_app(registry_path=None, store_path=None,
         try:
             project_id = _require_project(request)
             body = await _read_json(request)
-            _strict_keys(body, {"resolved_id", "attempt"}, "runs")
+            _strict_keys(body, {"resolved_id", "attempt", "backend"},
+                         "runs")
             resolved_id = body.get("resolved_id")
             if type(resolved_id) is not str or not resolved_id:
                 raise _ServiceError(400, "invalid_request",
@@ -463,6 +704,10 @@ def create_app(registry_path=None, store_path=None,
                 raise _ServiceError(400, "invalid_request",
                                     "runs body 'attempt' must be an"
                                     " integer >= 0")
+            # Explicit backend selection, validated before any record is
+            # created: unknown names 404, known-but-unavailable backends
+            # 503. There is no silent fallback to another backend.
+            backend = _select_backend(body.get("backend"))
             resolved_record = store.get_resolved(project_id, resolved_id)
             aggregate = resolved_record["resolved"]["effective"]["limits"][
                 "max_total_tool_calls"]
@@ -474,9 +719,11 @@ def create_app(registry_path=None, store_path=None,
                     " calls consumed; the environment was not touched")
             group_id = "grp-" + uuid.uuid4().hex[:16]
             created_at = utcnow()
+            job_id = "job-" + uuid.uuid4().hex[:16]
             group = {"group_id": group_id, "project_id": project_id,
                      "resolved_id": resolved_id, "status": "running",
                      "attempt": attempt,
+                     "backend": backend["name"], "job_id": job_id,
                      "runs": [], "error": None,
                      "cancel": threading.Event(),
                      "created_at": created_at, "updated_at": created_at}
@@ -489,7 +736,10 @@ def create_app(registry_path=None, store_path=None,
                 group["thread"] = worker
             return {"project_id": project_id, "group_id": group_id,
                     "resolved_id": resolved_id, "status": "running",
-                    "attempt": attempt}
+                    "attempt": attempt,
+                    "backend": _backend_view(backend),
+                    "job": {"job_id": job_id, "state": "starting"},
+                    "termination": None}
         except Exception as error:
             return _map_failure(error)
 
@@ -504,11 +754,17 @@ def create_app(registry_path=None, store_path=None,
                 error = group["error"]
                 resolved_id = group["resolved_id"]
                 attempt = group["attempt"]
+                backend_name = group["backend"]
+                job_id = group["job_id"]
                 created_at = group["created_at"]
                 updated_at = group["updated_at"]
+            job, termination = _job_termination(status, error, job_id)
             return {"project_id": project_id, "group_id": group_id,
                     "resolved_id": resolved_id, "status": status,
                     "attempt": attempt,
+                    "backend": _backend_view(
+                        _describe_backend(backend_name)),
+                    "job": job, "termination": termination,
                     "runs": runs, "error": error, "created_at": created_at,
                     "updated_at": updated_at}
         except Exception as error:
@@ -559,6 +815,11 @@ def create_app(registry_path=None, store_path=None,
                 runs = deepcopy(group["runs"])
                 status = group["status"]
                 resolved_id = group["resolved_id"]
+                backend_name = group["backend"]
+                job_id = group["job_id"]
+                group_error = group["error"]
+            job, termination = _job_termination(status, group_error,
+                                                job_id)
             resolved_record = store.get_resolved(project_id, resolved_id)
             with lock:
                 submission = submissions.get(resolved_id)
@@ -582,6 +843,9 @@ def create_app(registry_path=None, store_path=None,
             bundle = {"project_id": project_id, "group_id": group_id,
                       "resolved_id": resolved_id,
                       "requested_id": requested_id, "status": status,
+                      "backend": _backend_view(
+                          _describe_backend(backend_name)),
+                      "job": job, "termination": termination,
                       "effective_config": effective_config,
                       "resolved": resolved_record["resolved"], "runs": runs,
                       "mapping_notes": mapping_notes, "digests": digests,

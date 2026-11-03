@@ -1,0 +1,70 @@
+# GhostLab TRACK B4 worker image — OPERATOR-BUILT from reviewed sources.
+#
+# Build context MUST be the repository root:
+#   docker build -f src/ghostlab/backends/Dockerfile.worker \
+#     -t ghostlab-b4-worker .
+# Then record the content pin with the qualification report
+# (local builds carry no RepoDigest until pushed; the image Id is the pin):
+#   docker inspect --format '{{.Id}}' ghostlab-b4-worker
+# Pass pushed digests to DockerBackend(image_digest=...) so jobs pin the
+# exact image.
+#
+# Base pinned to the python:3.13-slim line (never a floating tag);
+# the operator re-records the image Id on every rebuild. No pip/apt installs:
+# the worker subset below is standard-library only, and NO dependency
+# install happens at job runtime. NO uploaded/tenant content is baked in —
+# per-job reviewed archives arrive via the read-only /work/inputs mount.
+
+FROM python:3.13-slim
+
+LABEL org.opencontainers.image.title="ghostlab-b4-worker" \
+      org.opencontainers.image.description="GhostLab isolated job worker (TRACK B4)" \
+      org.opencontainers.image.version="execution-backend/1"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_INSTALL=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Non-root job user + fixed layout. /src holds the checked-in worker subset
+# (read-only at runtime via --read-only); /work/inputs is the per-job
+# read-only mount; /work/scratch and /tmp are bounded tmpfs mounts.
+RUN set -eux; \
+    useradd --create-home --uid 10001 --shell /usr/sbin/nologin job; \
+    mkdir -p /src/ghostlab/backends /src/ghostlab/envs /work/inputs /work/scratch; \
+    chown -R job:job /src /work; \
+    chmod 755 /src /work
+
+# Worker subset: backend loop + strict protocol + interface + intake, the
+# trusted env adapter it resolves, and their stdlib-only dependencies.
+COPY --chown=job:job src/ghostlab/__init__.py /src/ghostlab/__init__.py
+COPY --chown=job:job src/ghostlab/core.py /src/ghostlab/core.py
+COPY --chown=job:job src/ghostlab/envs/__init__.py /src/ghostlab/envs/__init__.py
+COPY --chown=job:job src/ghostlab/envs/adapters.py /src/ghostlab/envs/adapters.py
+COPY --chown=job:job src/ghostlab/backends/__init__.py /src/ghostlab/backends/__init__.py
+COPY --chown=job:job src/ghostlab/backends/interface.py /src/ghostlab/backends/interface.py
+COPY --chown=job:job src/ghostlab/backends/protocol.py /src/ghostlab/backends/protocol.py
+COPY --chown=job:job src/ghostlab/backends/worker.py /src/ghostlab/backends/worker.py
+COPY --chown=job:job src/ghostlab/backends/local.py /src/ghostlab/backends/local.py
+COPY --chown=job:job src/ghostlab/backends/intake.py /src/ghostlab/backends/intake.py
+
+# Byte-compile + import check so a broken subset fails the build, not a job.
+RUN set -eux; \
+    chmod 644 /src/ghostlab/__init__.py /src/ghostlab/core.py \
+      /src/ghostlab/envs/__init__.py /src/ghostlab/envs/adapters.py \
+      /src/ghostlab/backends/__init__.py /src/ghostlab/backends/interface.py \
+      /src/ghostlab/backends/protocol.py /src/ghostlab/backends/worker.py \
+      /src/ghostlab/backends/local.py /src/ghostlab/backends/intake.py; \
+    python -m py_compile /src/ghostlab/core.py \
+      /src/ghostlab/envs/adapters.py \
+      /src/ghostlab/backends/interface.py \
+      /src/ghostlab/backends/protocol.py \
+      /src/ghostlab/backends/worker.py \
+      /src/ghostlab/backends/intake.py; \
+    PYTHONPATH=/src python -c "import ghostlab.backends.worker, ghostlab.envs.adapters"
+
+USER job
+WORKDIR /work
+ENV PYTHONPATH=/work/inputs:/src
+
+ENTRYPOINT ["python", "-m", "ghostlab.backends.worker"]

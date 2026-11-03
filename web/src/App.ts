@@ -9,6 +9,7 @@
 
 import { createElement, useEffect, useRef, useState, type ReactNode } from "react";
 import { LiveExperimentApi, type ExperimentApi } from "./api";
+import { BackendStatusPanel } from "./backend-status";
 import { ServiceGuideApi, isServiceGuide, type RecoveryOutcome } from "./serviceClient";
 import { defaultConfig, setPath, GUIDED_STATE_VERSION } from "./config";
 import { Step1 } from "./screens/step1";
@@ -207,6 +208,18 @@ export function App(): ReactNode {
 
   const step = STEPS.find((s) => s.path === route);
 
+  // B5 status surface: read-only backend panel on the run/results view.
+  // The latest executed arm (if any) supplies the group behind the panel's
+  // job/termination/evidence rows; without one it shows backend state only.
+  const runStepPath = STEPS[5]?.path ?? "/guide/6-run";
+  const arms = evidence?.references?.arms ?? [];
+  const latestArm = arms.length === 0 ? null : (arms[arms.length - 1] ?? null);
+  const latestGroupId = latestArm === null ? null : latestArm.groupId;
+  const backendPanel =
+    route === runStepPath && api !== null
+      ? createElement(BackendStatusPanel, { api, groupId: latestGroupId })
+      : null;
+
   const serviceInfo =
     api !== null && isServiceGuide(api)
       ? { baseUrl: api.serviceBaseUrl, projectId: api.projectId(), projectObserved: api.projectObserved() }
@@ -268,6 +281,7 @@ export function App(): ReactNode {
           )
         : null,
       ...(fixtureRefused ? [p({ "data-testid": "fixture-refused" }, "fixture-refused")] : []),
+      backendPanel,
       ...notices.map((notice) => banner("ok", notice, undefined)),
       step === undefined
         ? createElement(NotFound, { navigate })

@@ -32,6 +32,19 @@ implement. ``occurrence`` is an int in 1..64: the fault arms immediately
 before that counted dispatch and disarms right after, so it fires at most
 once. Faults without ``trigger`` behave exactly as before (armed at reset,
 firing on the first opportunity the hook allows).
+
+Backend selection (optional, backward compatible):
+
+A requested config may carry ``backend`` = ``{"name", "package"?}`` where
+``package`` (when present) is exactly ``{"kind", "identity"}``. Omitted
+backends resolve to ``trusted-local`` (the current in-process path, with
+byte-identical behavior). Resolution pins ``backend`` =
+``{"name", "backend_version", "package_kind"?, "package_identity"?}`` on
+the resolved pins; unknown backend names are rejected at resolve time,
+never silently remapped. Requested validation only checks the shape;
+name validity is decided at resolve against the controller's backend
+registry, without probing any backend (availability is an execution-time
+refusal, never a resolve-time fallback).
 """
 
 import hashlib
@@ -72,9 +85,20 @@ PROJECT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 ENV_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 HOOK_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 POLICY_VERSION_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
+BACKEND_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
+BACKEND_VERSION_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
+
+TRUSTED_LOCAL_BACKEND = "trusted-local"
+TRUSTED_LOCAL_VERSION = "trusted-local/1"
+EXECUTION_BACKEND_VERSION = "execution-backend/1"
+CHECKED_IN_PACKAGE_KIND = "checked-in"
 
 _REQUESTED_KEYS = {"config_version", "name", "env_id", "agent", "fixture",
                    "faults", "rules", "limits", "repetitions"}
+_REQUESTED_KEYS_BACKEND = _REQUESTED_KEYS | {"backend"}
+_BACKEND_KEYS = {"name"}
+_BACKEND_KEYS_PACKAGE = {"name", "package"}
+_PACKAGE_KEYS = {"kind", "identity"}
 _FIXTURE_KEYS = {"order_id", "customer_id", "paid_minor", "currency"}
 _FAULT_KEYS = {"hook", "params", "required"}
 _FAULT_KEYS_TRIGGERED = {"hook", "params", "required", "trigger"}
@@ -89,7 +113,14 @@ _RESOLVED_KEYS = {"schema_version", "resolved_config_id", "project_id",
                   "resolved_by", "pins", "effective", "provenance", "digest"}
 _PINS_KEYS = {"env_id", "env_version", "adapter_ref", "code_digest",
               "manifest_digest", "world_version", "adapter_version",
-              "controller_version", "discovered_tools", "discovered_modes"}
+              "controller_version", "discovered_tools", "discovered_modes",
+              "backend"}
+# Resolved configs written before backend pinning carry no "backend" pin;
+# they stay readable and execute as trusted-local.
+_PINS_KEYS_LEGACY = _PINS_KEYS - {"backend"}
+_PIN_BACKEND_KEYS = {"name", "backend_version"}
+_PIN_BACKEND_KEYS_PACKAGE = {"name", "backend_version", "package_kind",
+                             "package_identity"}
 _EFFECTIVE_KEYS = {"agent", "fixture", "faults", "rules", "limits",
                    "repetitions", "seeds"}
 _PROVENANCE_KEYS = {"policy_version", "requested_by", "requested_digest",
@@ -319,6 +350,70 @@ def _validate_repetitions(obj, policy: dict) -> dict:
     return {"count": count}
 
 
+def _validate_backend(obj) -> dict | None:
+    """Validate the optional requested backend selector (pure, shape only).
+
+    Returns the normalized ``{"name", "package"?}`` selector. Unknown
+    fields are rejected; name validity is decided at resolve time, never
+    here.
+    """
+    if type(obj) is not dict \
+            or set(obj) not in (_BACKEND_KEYS, _BACKEND_KEYS_PACKAGE):
+        raise ConfigError("backend must carry exactly name"
+                          " and optional package")
+    name = obj["name"]
+    if type(name) is not str or not BACKEND_NAME_PATTERN.match(name):
+        raise ConfigError("invalid backend.name")
+    if "package" not in obj:
+        return {"name": name}
+    package = obj["package"]
+    if type(package) is not dict or set(package) != _PACKAGE_KEYS:
+        raise ConfigError(
+            "backend.package must carry exactly kind and identity")
+    kind = package["kind"]
+    if type(kind) is not str or not BACKEND_NAME_PATTERN.match(kind):
+        raise ConfigError("invalid backend.package.kind")
+    identity = package["identity"]
+    if type(identity) is not str or not identity or len(identity) > 256:
+        raise ConfigError("invalid backend.package.identity")
+    return {"name": name,
+            "package": {"kind": kind, "identity": identity}}
+
+
+def validate_backend_pin(obj) -> dict:
+    """Validate a resolved backend pin (pure).
+
+    A pin carries ``name`` + ``backend_version`` plus the package pair
+    (``package_kind`` + ``package_identity``) or neither; anything else
+    is rejected.
+    """
+    if type(obj) is not dict \
+            or set(obj) not in (_PIN_BACKEND_KEYS,
+                                _PIN_BACKEND_KEYS_PACKAGE):
+        raise ConfigError("resolved backend pin must carry name and"
+                          " backend_version, plus the package pair or"
+                          " neither")
+    name = obj["name"]
+    if type(name) is not str or not BACKEND_NAME_PATTERN.match(name):
+        raise ConfigError("invalid resolved backend name")
+    version = obj["backend_version"]
+    if type(version) is not str \
+            or not BACKEND_VERSION_PATTERN.match(version):
+        raise ConfigError("invalid resolved backend_version")
+    pin = {"name": name, "backend_version": version}
+    if "package_kind" in obj:
+        kind = obj["package_kind"]
+        identity = obj["package_identity"]
+        if type(kind) is not str or not BACKEND_NAME_PATTERN.match(kind):
+            raise ConfigError("invalid resolved package_kind")
+        if type(identity) is not str or not identity \
+                or len(identity) > 256:
+            raise ConfigError("invalid resolved package_identity")
+        pin["package_kind"] = kind
+        pin["package_identity"] = identity
+    return pin
+
+
 def validate_requested(obj, policy_obj) -> dict:
     """Validate reusable client-supplied experiment settings (pure).
 
@@ -327,9 +422,11 @@ def validate_requested(obj, policy_obj) -> dict:
     above policy ceilings are rejected, never adjusted.
     """
     policy = validate_policy(policy_obj)
-    if type(obj) is not dict or set(obj) != _REQUESTED_KEYS:
+    if type(obj) is not dict \
+            or set(obj) not in (_REQUESTED_KEYS, _REQUESTED_KEYS_BACKEND):
         raise ConfigError("requested config must carry exactly the v1 fields:"
-                          f" {', '.join(sorted(_REQUESTED_KEYS))}")
+                          f" {', '.join(sorted(_REQUESTED_KEYS))},"
+                          " plus optional backend")
     if type(obj["config_version"]) is not int \
             or obj["config_version"] != CONFIG_VERSION:
         raise ConfigError("unsupported config_version")
@@ -361,9 +458,13 @@ def validate_requested(obj, policy_obj) -> dict:
             f" ({repetitions['count'] * MIN_TOOL_CALLS_PER_RUN} calls) can"
             " never fit in max_total_tool_calls="
             f"{limits['max_total_tool_calls']}")
+    backend = _validate_backend(obj["backend"]) if "backend" in obj \
+        else None
     body = {"config_version": CONFIG_VERSION, "name": name, "env_id": env_id,
             "agent": agent, "fixture": fixture, "faults": faults,
             "rules": rules, "limits": limits, "repetitions": repetitions}
+    if backend is not None:
+        body["backend"] = backend
     scan_for_secrets(body, "requested config")
     return body
 
@@ -426,6 +527,42 @@ class RepetitionSpec:
 
 
 @dataclass(frozen=True)
+class PackageSpec:
+    kind: str
+    identity: str
+
+    def to_dict(self) -> dict:
+        return {"kind": self.kind, "identity": self.identity}
+
+
+@dataclass(frozen=True)
+class BackendSpec:
+    name: str
+    package: PackageSpec | None = None
+
+    def to_dict(self) -> dict:
+        body = {"name": self.name}
+        if self.package is not None:
+            body["package"] = self.package.to_dict()
+        return body
+
+
+@dataclass(frozen=True)
+class BackendPin:
+    name: str
+    backend_version: str
+    package_kind: str | None = None
+    package_identity: str | None = None
+
+    def to_dict(self) -> dict:
+        body = {"name": self.name, "backend_version": self.backend_version}
+        if self.package_kind is not None:
+            body["package_kind"] = self.package_kind
+            body["package_identity"] = self.package_identity
+        return body
+
+
+@dataclass(frozen=True)
 class Policy:
     """Immutable validated policy ceilings."""
 
@@ -468,6 +605,7 @@ class RequestedConfig:
     rules: tuple
     limits: LimitSpec
     repetitions: RepetitionSpec
+    backend: BackendSpec | None = None
 
     @classmethod
     def from_obj(cls, obj, policy_obj) -> "RequestedConfig":
@@ -478,19 +616,28 @@ class RequestedConfig:
                       TriggerSpec(**f["trigger"])
                       if "trigger" in f else None)
             for f in body["faults"])
+        backend = None
+        if "backend" in body:
+            package = None
+            if "package" in body["backend"]:
+                package = PackageSpec(**body["backend"]["package"])
+            backend = BackendSpec(body["backend"]["name"], package)
         return cls(body["name"], body["env_id"], body["agent"], fixture,
                    faults, tuple(body["rules"]),
                    LimitSpec(**body["limits"]),
-                   RepetitionSpec(**body["repetitions"]))
+                   RepetitionSpec(**body["repetitions"]), backend)
 
     def to_dict(self) -> dict:
-        return {"config_version": CONFIG_VERSION, "name": self.name,
+        body = {"config_version": CONFIG_VERSION, "name": self.name,
                 "env_id": self.env_id, "agent": self.agent,
                 "fixture": self.fixture.to_dict(),
                 "faults": [f.to_dict() for f in self.faults],
                 "rules": list(self.rules),
                 "limits": self.limits.to_dict(),
                 "repetitions": self.repetitions.to_dict()}
+        if self.backend is not None:
+            body["backend"] = self.backend.to_dict()
+        return body
 
     def digest(self) -> str:
         return canonical_digest(self.to_dict())
@@ -508,6 +655,7 @@ class Pins:
     controller_version: str
     discovered_tools: tuple
     discovered_modes: tuple
+    backend: BackendPin
 
     def to_dict(self) -> dict:
         return {"env_id": self.env_id, "env_version": self.env_version,
@@ -520,7 +668,8 @@ class Pins:
                 "discovered_tools": [
                     {"name": name, "parameters": list(params)}
                     for name, params in self.discovered_tools],
-                "discovered_modes": list(self.discovered_modes)}
+                "discovered_modes": list(self.discovered_modes),
+                "backend": self.backend.to_dict()}
 
 
 @dataclass(frozen=True)
@@ -611,11 +760,53 @@ def _required_tools(agent: str) -> tuple:
     return ("get_order", "issue_refund", "get_refund_status")
 
 
+def _backend_pin_for(requested: RequestedConfig, registration,
+                     backends) -> BackendPin:
+    """Pin the requested backend without probing any backend.
+
+    ``backends`` maps known backend names to backend instances (or version
+    strings); None consults the controller's registry. ``trusted-local``
+    is always known. Unknown names are rejected; availability is never
+    probed here (it is an execution-time refusal).
+    """
+    name = requested.backend.name if requested.backend is not None \
+        else TRUSTED_LOCAL_BACKEND
+    if name == TRUSTED_LOCAL_BACKEND:
+        return BackendPin(name, TRUSTED_LOCAL_VERSION)
+    version = None
+    if backends is None:
+        from .controller import get_backend
+        try:
+            backend = get_backend(name)
+        except ConfigError:
+            raise ConfigError(
+                f"unknown backend {name!r}; register the backend before"
+                " resolving") from None
+        version = getattr(backend, "version", None)
+    else:
+        if name not in backends:
+            raise ConfigError(
+                f"unknown backend {name!r}; register the backend before"
+                " resolving")
+        candidate = backends[name]
+        version = candidate if isinstance(candidate, str) \
+            else getattr(candidate, "version", None)
+    if type(version) is not str or not BACKEND_VERSION_PATTERN.match(version):
+        raise ConfigError(
+            f"backend {name!r} reports an invalid version")
+    if requested.backend is not None and requested.backend.package is not None:
+        package = requested.backend.package
+        return BackendPin(name, version, package.kind, package.identity)
+    return BackendPin(name, version, CHECKED_IN_PACKAGE_KIND,
+                      registration["code_digest"])
+
+
 def resolve_requested(requested: RequestedConfig, *, project_id: str,
                       requested_id: str, requested_digest: str,
                       requested_by: str, policy: Policy, registry,
                       manifest_digest: str | None = None,
-                      resolved_by: str = "controller") -> ResolvedConfig:
+                      resolved_by: str = "controller",
+                      backends=None) -> ResolvedConfig:
     """Bind a requested config to pinned versions (describe-only env access).
 
     Reads the environment registration and runs capability discovery, which
@@ -625,6 +816,12 @@ def resolve_requested(requested: RequestedConfig, *, project_id: str,
     and missing required tools are rejected as impossible combinations, and
     rules outside the env driver's declared checks are rejected as
     unsupported (envs without a registered driver skip that check).
+
+    Backend pinning resolves the requested backend name against ``backends``
+    (a name-to-backend mapping) or, when None, the controller's registry;
+    unknown names are rejected. Resolution never probes backend
+    availability. A requested package is pinned as given, otherwise the
+    registered adapter's code digest is pinned as a ``checked-in`` package.
     """
     check_project_id(project_id)
     if type(requested_id) is not str or not requested_id:
@@ -691,6 +888,7 @@ def resolve_requested(requested: RequestedConfig, *, project_id: str,
                 f"impossible combination: fault trigger tool"
                 f" {trigger.tool!r} is not implemented by env"
                 f" {requested.env_id!r}")
+    backend_pin = _backend_pin_for(requested, registration, backends)
     pins = Pins(
         env_id=requested.env_id,
         env_version=registration["env_version"],
@@ -703,7 +901,8 @@ def resolve_requested(requested: RequestedConfig, *, project_id: str,
         discovered_tools=tuple(
             (t["name"], tuple(t["parameters"]))
             for t in found["discovered_tools"]),
-        discovered_modes=tuple(found["discovered_modes"]))
+        discovered_modes=tuple(found["discovered_modes"]),
+        backend=backend_pin)
     effective = Effective(
         agent=requested.agent, fixture=requested.fixture,
         faults=requested.faults, rules=requested.rules,
@@ -738,8 +937,11 @@ def resolved_from_dict(obj) -> dict:
                 "requested_digest", "resolved_at", "resolved_by"):
         if type(obj[key]) is not str or not obj[key]:
             raise ConfigError(f"invalid resolved {key}")
-    if type(obj["pins"]) is not dict or set(obj["pins"]) != _PINS_KEYS:
+    if type(obj["pins"]) is not dict \
+            or set(obj["pins"]) not in (_PINS_KEYS, _PINS_KEYS_LEGACY):
         raise ConfigError("invalid resolved pins")
+    if "backend" in obj["pins"]:
+        validate_backend_pin(obj["pins"]["backend"])
     if type(obj["effective"]) is not dict \
             or set(obj["effective"]) != _EFFECTIVE_KEYS:
         raise ConfigError("invalid resolved effective values")

@@ -71,7 +71,9 @@ if [ -n "$DOMAIN" ]; then
   # Caddy {$VAR} placeholders adapt from the process environment, and the
   # distro caddy unit sources no ghostlab env file, so substitute the values
   # into the installed Caddyfile: validate and the daemon then agree.
-  sed -i "s|{\\$DOMAIN_NAME}|$DOMAIN|g; s|{\\$ACME_EMAIL}|$ACME|g" /etc/caddy/Caddyfile
+  domain_esc="$(printf '%s' "$DOMAIN" | sed 's/[&|\/]/\\&/g')"
+  acme_esc="$(printf '%s' "$ACME" | sed 's/[&|\/]/\\&/g')"
+  sed -i "s|{\$DOMAIN_NAME}|$domain_esc|g; s|{\$ACME_EMAIL}|$acme_esc|g" /etc/caddy/Caddyfile
   grep -q "{\\$" /etc/caddy/Caddyfile && {
     echo "unsubstituted placeholder left in /etc/caddy/Caddyfile" >&2
     exit 1

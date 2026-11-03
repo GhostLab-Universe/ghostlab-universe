@@ -23,6 +23,11 @@ def config_body(**overrides):
 def register_only(api):
     root = api.lab.paths.graph_db.parent
     operators = OperatorRegistry(root / "operator_registry.sqlite")
+    try:
+        operators.get(RESERVATION)
+        return operators
+    except LookupError:
+        pass
     operators.register(
         world_version=RESERVATION, environment_id="reservation-environment",
         environment_version="reservation-environment/1", adapter_ref=REF,

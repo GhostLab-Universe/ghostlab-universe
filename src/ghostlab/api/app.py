@@ -6,7 +6,7 @@ hosted deployment or a non-loopback bind, because no production authentication e
 """
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -17,6 +17,8 @@ from ghostlab.storage.checkpoints import graph_checkpointer
 from .errors import install
 from .exp_plane import ExperimentPlane, default_experiment_policy
 from .ext_plane import ExtensionPlane, default_registry
+from ghostlab.adapters.refund_env import RefundEnvironment
+from ghostlab.adapters.reservation_env import ReservationEnvironment
 from ghostlab.experiments.store import ExperimentStore
 from ghostlab.extensions.operator_registry import OperatorRegistry
 from .ext_routes import router as ext_router
@@ -40,6 +42,55 @@ def _attach_log_redaction(redactor: Redactor) -> None:
         logger.addFilter(RedactingFilter(redactor))
 
 
+_BUILTIN_ADAPTERS = (
+    ("ghostlab.adapters.refund_env:RefundEnvironment", RefundEnvironment),
+    ("ghostlab.adapters.reservation_env:ReservationEnvironment", ReservationEnvironment),
+)
+
+
+def seed_builtin_registrations(operators: OperatorRegistry) -> None:
+    """Seed built-in registrations on a fresh registry. Idempotent."""
+    for adapter_ref, factory in _BUILTIN_ADAPTERS:
+        adapter = factory()
+        try:
+            description = adapter.describe()
+        finally:
+            adapter.close()
+        try:
+            operators.get(description.world_version)
+            continue
+        except LookupError:
+            pass
+        declared_tools = []
+        for tool in description.tools:
+            parameters = tool.parameters
+            if isinstance(parameters, Mapping):
+                properties = parameters.get("properties")
+                if isinstance(properties, Mapping):
+                    names = sorted(properties)
+                else:
+                    required = parameters.get("required")
+                    names = sorted(required) if isinstance(required, (list, tuple)) else []
+            else:
+                names = []
+            declared_tools.append({"name": tool.name, "parameters": names})
+        try:
+            operators.register(
+                world_version=description.world_version,
+                environment_id=description.environment_id,
+                environment_version=description.environment_version,
+                adapter_ref=adapter_ref,
+                display_name=description.environment_id,
+                declared_tools=declared_tools,
+                declared_modes=["recorded-actions"],
+                registered_by="builtin")
+        except ValueError:
+            try:
+                operators.get(description.world_version)
+            except LookupError:
+                raise
+
+
 def create_app(config: ApiConfig | None = None) -> FastAPI:
     if config is not None:
         require_local_deployment(config.bind_host, config.environ)
@@ -61,9 +112,11 @@ def create_app(config: ApiConfig | None = None) -> FastAPI:
             shared = default_registry()
             app.state.ext_plane = ExtensionPlane(shared)
             root = config.graph_db.parent
+            operators = OperatorRegistry(root / "operator_registry.sqlite")
+            seed_builtin_registrations(operators)
             app.state.exp_plane = ExperimentPlane(
                 store=ExperimentStore(root / "experiments.sqlite"),
-                operators=OperatorRegistry(root / "operator_registry.sqlite"),
+                operators=operators,
                 targets=shared,
                 policy=config.exp_policy or default_experiment_policy(shared))
             try:

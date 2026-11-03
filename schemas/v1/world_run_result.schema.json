@@ -1,0 +1,169 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "WorldOutcomeError": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "message"
+      ],
+      "title": "WorldOutcomeError",
+      "type": "object"
+    },
+    "WorldOutcomeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "title": "WorldOutcomeResult",
+      "type": "object"
+    },
+    "WorldRecordedRequest": {
+      "additionalProperties": false,
+      "description": "What the target attempted, recorded even when the world rejected it.",
+      "properties": {
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "tool": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "arguments"
+      ],
+      "title": "WorldRecordedRequest",
+      "type": "object"
+    },
+    "WorldTraceEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorldOutcomeResult"
+            },
+            {
+              "$ref": "#/$defs/WorldOutcomeError"
+            }
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/WorldRecordedRequest"
+        },
+        "state": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "event_id",
+        "request",
+        "outcome",
+        "state"
+      ],
+      "title": "WorldTraceEvent",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:world_run_result:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actor_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "type": "string"
+    },
+    "adapter_id": {
+      "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+      "type": "string"
+    },
+    "adapter_version": {
+      "pattern": "^[a-z0-9][a-z0-9._/-]{0,99}$",
+      "type": "string"
+    },
+    "checks": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "type": "object"
+    },
+    "final_state": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "budget_exhausted"
+      ],
+      "type": "string"
+    },
+    "trace": {
+      "items": {
+        "$ref": "#/$defs/WorldTraceEvent"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    },
+    "world_version": {
+      "enum": [
+        "refund-world/1",
+        "group-journey/1",
+        "service-relay/1"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "world_version",
+    "adapter_id",
+    "adapter_version",
+    "actor_id",
+    "status",
+    "trace",
+    "final_state",
+    "checks"
+  ],
+  "title": "WorldRunResult",
+  "type": "object"
+}

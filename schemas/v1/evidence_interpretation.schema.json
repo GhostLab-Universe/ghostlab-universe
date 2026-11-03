@@ -1,0 +1,146 @@
+{
+  "$defs": {
+    "EvidenceClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "cited": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "invariant": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{1,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "statement": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "statement",
+        "invariant",
+        "cited"
+      ],
+      "title": "EvidenceClaim",
+      "type": "object"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Typed pointer to evidence; a digest pins content when it is known.",
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "artifact",
+            "run",
+            "event",
+            "finding",
+            "capsule",
+            "task",
+            "memory",
+            "approval",
+            "context_bundle",
+            "envelope"
+          ],
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "sha256"
+      ],
+      "title": "Ref",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:evidence_interpretation:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``interpret-evidence`` output. ``hypothesis_assessment`` is commentary, not a verdict.",
+  "properties": {
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/EvidenceClaim"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    },
+    "hypothesis_assessment": {
+      "enum": [
+        "supported",
+        "not_supported",
+        "inconclusive"
+      ],
+      "type": "string"
+    },
+    "open_questions": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 8,
+      "type": "array"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "summary": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "world_version": {
+      "enum": [
+        "refund-world/1",
+        "group-journey/1",
+        "service-relay/1"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "world_version",
+    "run_id",
+    "summary",
+    "claims",
+    "hypothesis_assessment",
+    "open_questions"
+  ],
+  "title": "EvidenceInterpretation",
+  "type": "object"
+}

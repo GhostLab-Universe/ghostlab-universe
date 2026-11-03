@@ -1,0 +1,9 @@
+# Generated contract artifacts and locks stay byte-stable across platforms so
+# schema digests and drift checks agree on Windows, Linux and macOS.
+schemas/** text eol=lf
+examples/contracts/** text eol=lf
+uv.lock text eol=lf
+web/package.json text eol=lf
+web/package-lock.json text eol=lf
+src/ghostlab/api/openapi.v1.json text eol=lf
+web/src/api/openapi.v1.json text eol=lf

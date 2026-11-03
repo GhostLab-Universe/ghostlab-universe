@@ -1,0 +1,25 @@
+{
+  "continuation": null,
+  "error": {
+    "code": "rate_limited",
+    "message": "Fixture: provider returned 429",
+    "ref": null,
+    "retryable": true,
+    "side_effect": "none"
+  },
+  "model": "fixture-model",
+  "provider": "baseten_chat_completions",
+  "received_at": "2026-10-29T10:00:05Z",
+  "request_id": "request-3",
+  "schema_version": 1,
+  "status": "failed",
+  "structured_output": null,
+  "text": null,
+  "tool_calls": [],
+  "usage": {
+    "cost_currency": null,
+    "cost_minor": null,
+    "input_tokens": null,
+    "output_tokens": null
+  }
+}

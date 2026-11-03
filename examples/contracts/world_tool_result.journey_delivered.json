@@ -1,0 +1,12 @@
+{
+  "error": null,
+  "event_id": 12,
+  "invocation_id": "invocation-j1",
+  "output": {
+    "message_id": "msg-3",
+    "status": "delivered"
+  },
+  "provider_call_id": null,
+  "schema_version": 1,
+  "status": "ok"
+}

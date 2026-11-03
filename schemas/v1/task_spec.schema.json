@@ -1,0 +1,149 @@
+{
+  "$defs": {
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Typed pointer to evidence; a digest pins content when it is known.",
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "artifact",
+            "run",
+            "event",
+            "finding",
+            "capsule",
+            "task",
+            "memory",
+            "approval",
+            "context_bundle",
+            "envelope"
+          ],
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "sha256"
+      ],
+      "title": "Ref",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:task_spec:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "attempt": {
+      "maximum": 100,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "campaign_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "depends_on": {
+      "items": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+        "type": "string"
+      },
+      "maxItems": 32,
+      "type": "array"
+    },
+    "exit_condition": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "propose_world",
+        "propose_experiment",
+        "validate_proposal",
+        "execute_run",
+        "verify_run",
+        "analyze_evidence",
+        "record_memory",
+        "await_approval"
+      ],
+      "type": "string"
+    },
+    "max_attempts": {
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "output_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Ref"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "role": {
+      "enum": [
+        "supervisor",
+        "worldsmith",
+        "explorer",
+        "analyst",
+        "target",
+        "verifier"
+      ],
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "ready",
+        "running",
+        "awaiting_approval",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "skipped"
+      ],
+      "type": "string"
+    },
+    "task_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "task_id",
+    "campaign_id",
+    "kind",
+    "role",
+    "depends_on",
+    "status",
+    "attempt",
+    "max_attempts",
+    "exit_condition",
+    "output_ref"
+  ],
+  "title": "TaskSpec",
+  "type": "object"
+}

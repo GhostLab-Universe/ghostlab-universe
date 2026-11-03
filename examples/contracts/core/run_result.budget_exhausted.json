@@ -1,0 +1,52 @@
+{
+  "actor_id": "synthetic-customer-1",
+  "adapter": "vulnerable",
+  "adapter_version": "refund-adapters/1",
+  "checks": {
+    "authorized_refunds": true,
+    "no_duplicate_full_refund": true,
+    "total_refund_within_payment": true,
+    "unique_idempotency_keys": true
+  },
+  "final_state": {
+    "ledger": [],
+    "order": {
+      "currency": "INR",
+      "customer_id": "synthetic-customer-1",
+      "order_id": "synthetic-order-1",
+      "paid_minor": 250000
+    },
+    "total_refunded_minor": 0
+  },
+  "status": "budget_exhausted",
+  "trace": [
+    {
+      "event_id": 1,
+      "outcome": {
+        "result": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        }
+      },
+      "request": {
+        "arguments": {
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1"
+        },
+        "tool": "get_order"
+      },
+      "state": {
+        "ledger": [],
+        "order": {
+          "currency": "INR",
+          "customer_id": "synthetic-customer-1",
+          "order_id": "synthetic-order-1",
+          "paid_minor": 250000
+        },
+        "total_refunded_minor": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "adapters": [
+    {
+      "adapter_id": "journey-naive",
+      "description": "Treats one traveller's agreement as everyone's and trusts memory",
+      "kind": "vulnerable"
+    },
+    {
+      "adapter_id": "journey-version-checked",
+      "description": "Acts only on the version every mandatory traveller approved, re-reads it before confirming, and re-reads permission before each delivery",
+      "kind": "repaired"
+    }
+  ],
+  "faults": [
+    {
+      "description": "An old preference reappears through stale or contaminated memory",
+      "fault_id": "stale_preference_memory",
+      "fault_pack": "stale_or_contaminated_memory",
+      "parameters": [
+        {
+          "description": "Superseded intent version that reappears",
+          "name": "preference_version",
+          "type": "integer"
+        }
+      ]
+    },
+    {
+      "description": "A delayed update conflicts with the revised itinerary",
+      "fault_id": "delayed_itinerary_update",
+      "fault_pack": "late_conflicting_update",
+      "parameters": [
+        {
+          "description": "Events by which the update arrives late",
+          "name": "delay_events",
+          "type": "integer"
+        }
+      ]
+    },
+    {
+      "description": "Sharing permission is revoked while a message waits for delivery",
+      "fault_id": "sharing_revoked_while_queued",
+      "fault_pack": "permission_revocation",
+      "parameters": [
+        {
+          "description": "Participant whose sharing permission is revoked",
+          "name": "recipient_id",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "invariants": [
+    {
+      "description": "Every new commitment uses the applicable approved intent version",
+      "evidence": "reservations",
+      "name": "commitments_use_approved_intent"
+    },
+    {
+      "description": "Mandatory participants keep feasible, non-overlapping journeys under the fixture's travel times",
+      "evidence": "calendar",
+      "name": "mandatory_participants_feasible"
+    },
+    {
+      "description": "Every delivered message had current recipient and disclosure permission at the delivery event; earlier deliveries stay recorded",
+      "evidence": "delivery_log",
+      "name": "delivered_messages_permitted"
+    }
+  ],
+  "replay": {
+    "capsule_schema_versions": [
+      2
+    ],
+    "dispatch": "recorded_actions"
+  },
+  "roles": [
+    "planner",
+    "calendar_coordinator",
+    "communications"
+  ],
+  "schema_version": 1,
+  "source": "ghostlab.worlds.journey group-journey/1 and journey-adapters/1 (designed in the GhostLab priority-worlds plan)",
+  "status": "implemented",
+  "summary": "Two travellers replan an overnight visit after a cancellation; one changes a hard return deadline and revokes itinerary sharing with a third person.",
+  "title": "Group Journey Rescue",
+  "tools": [
+    {
+      "description": "Read the current intent version, participants and permissions",
+      "effect": "read",
+      "name": "inspect_constraints",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "journey_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "journey_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Place a hold on a transport or lodging option",
+      "effect": "mutate",
+      "name": "hold_availability",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "intent_version": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "journey_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "option_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent_version",
+          "journey_id",
+          "option_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Release a previously placed hold",
+      "effect": "mutate",
+      "name": "release_availability",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "hold_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "hold_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Confirm a held reservation under a stated intent version",
+      "effect": "mutate",
+      "name": "confirm_reservation",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "hold_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "intent_version": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hold_id",
+          "intent_version"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Update one participant's calendar commitment",
+      "effect": "mutate",
+      "name": "update_calendar_event",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "intent_version": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "participant_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "intent_version",
+          "participant_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Queue a synthetic itinerary message",
+      "effect": "mutate",
+      "name": "queue_message",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "recipient_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "template_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipient_id",
+          "template_id"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Deliver a queued synthetic message (exposure is irreversible)",
+      "effect": "deliver",
+      "name": "deliver_message",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "message_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "world_version": "group-journey/1"
+}

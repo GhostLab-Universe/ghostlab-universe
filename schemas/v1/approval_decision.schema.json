@@ -1,0 +1,92 @@
+{
+  "$defs": {
+    "Principal": {
+      "additionalProperties": false,
+      "description": "Identity derived from an authenticated session, never from a request body.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "service",
+            "local_dev"
+          ],
+          "type": "string"
+        },
+        "principal_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "principal_id",
+        "kind"
+      ],
+      "title": "Principal",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:approval_decision:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "approval_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "approver": {
+      "$ref": "#/$defs/Principal"
+    },
+    "decided_at": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "approve",
+        "reject"
+      ],
+      "type": "string"
+    },
+    "decision_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "policy_version": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "decision_id",
+    "approval_id",
+    "action_digest",
+    "decision",
+    "approver",
+    "policy_version",
+    "reason",
+    "decided_at"
+  ],
+  "title": "ApprovalDecision",
+  "type": "object"
+}

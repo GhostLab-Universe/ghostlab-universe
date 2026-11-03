@@ -1,0 +1,1 @@
+{"cases": [{"case_id": "SYNTH-PASS-1", "spec": "SYNTH-PASS-1.json"}, {"case_id": "SYNTH-UNKNOWN-1", "spec": "SYNTH-UNKNOWN-1.json"}, {"case_id": "SYNTH-VIOLATION-1", "spec": "SYNTH-VIOLATION-1.json"}], "manifest_version": "ghostlab-heldout-manifest/1", "namespace": "synthetic-selftest"}

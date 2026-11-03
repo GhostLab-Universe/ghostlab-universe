@@ -1,0 +1,23 @@
+{
+  "allowed_tools": [],
+  "output_schema": {
+    "name": "experiment_proposal",
+    "version": 1
+  },
+  "preconditions": [
+    "A baseline run exists"
+  ],
+  "prompt_version": "explorer-prompt-1",
+  "purpose": "Propose a bounded refund-world scenario likely to violate an invariant",
+  "schema_version": 1,
+  "skill_id": "propose-refund-scenario",
+  "steps": [
+    "Read prior findings",
+    "Choose one fault",
+    "Return an experiment proposal"
+  ],
+  "stop_conditions": [
+    "One proposal returned"
+  ],
+  "version": 1
+}

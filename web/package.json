@@ -1,0 +1,32 @@
+{
+  "name": "ghostlab-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.22.1 <25"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.app.json",
+    "test": "node tests/run.mjs",
+    "test:browser": "playwright test --config tests/browser/playwright.config.ts",
+    "contracts:generate": "node ../schemas/typescript/generate.mjs",
+    "contracts:verify": "node ../schemas/typescript/generate.mjs --check",
+    "contracts:typecheck": "tsc --ignoreConfig --noEmit --strict --exactOptionalPropertyTypes --noUncheckedIndexedAccess --target es2022 --module esnext --moduleResolution bundler --skipLibCheck ../schemas/typescript/contracts.ts ../schemas/typescript/examples.check.ts"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "json-schema-to-typescript": "16.0.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  }
+}

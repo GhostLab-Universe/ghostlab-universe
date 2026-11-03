@@ -1,0 +1,24 @@
+{
+  "adapter_id": "journey-naive",
+  "expected_signal": "delivered_messages_permitted fails",
+  "hypothesis": "A message queued before revocation is still delivered afterwards",
+  "scenario": {
+    "faults": [
+      {
+        "after_event": null,
+        "fault_id": "sharing_revoked_while_queued",
+        "parameters": [
+          {
+            "name": "recipient_id",
+            "value": "participant-c"
+          }
+        ]
+      }
+    ],
+    "max_tool_calls": 40,
+    "schema_version": 1,
+    "world_version": "group-journey/1"
+  },
+  "schema_version": 1,
+  "world_version": "group-journey/1"
+}

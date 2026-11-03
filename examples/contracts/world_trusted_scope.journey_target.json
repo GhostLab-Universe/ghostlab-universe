@@ -1,0 +1,17 @@
+{
+  "allowed_tools": [
+    "inspect_constraints",
+    "queue_message",
+    "deliver_message"
+  ],
+  "delegated_by": "supervisor",
+  "issued_by": "controller",
+  "policy_version": "policy-1",
+  "principal": {
+    "kind": "local_dev",
+    "principal_id": "local-dev-user"
+  },
+  "project_id": "project-local",
+  "role": "target",
+  "world_version": "group-journey/1"
+}

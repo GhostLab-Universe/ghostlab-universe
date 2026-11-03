@@ -1,0 +1,18 @@
+{
+  "error": null,
+  "event_id": 3,
+  "invocation_id": "invocation-2",
+  "output": {
+    "refund": {
+      "amount_minor": 250000,
+      "customer_id": "synthetic-customer-1",
+      "idempotency_key": "refund-intent-1",
+      "order_id": "synthetic-order-1",
+      "transaction_id": "refund-1"
+    },
+    "status": "committed"
+  },
+  "provider_call_id": "call-fixture-1",
+  "schema_version": 1,
+  "status": "ok"
+}

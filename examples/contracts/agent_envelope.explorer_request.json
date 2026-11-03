@@ -1,0 +1,40 @@
+{
+  "campaign_id": "campaign-1",
+  "correlation_id": "campaign-1",
+  "created_at": "2026-10-29T10:00:00Z",
+  "envelope_id": "envelope-1",
+  "errors": [],
+  "evidence": [],
+  "expected_output": {
+    "name": "experiment_proposal",
+    "version": 1
+  },
+  "input_refs": [
+    {
+      "id": "run-faulted-1",
+      "kind": "run",
+      "sha256": null
+    }
+  ],
+  "objective": "Propose one experiment that could expose a duplicate refund",
+  "parent_envelope_id": null,
+  "recipient_role": "explorer",
+  "schema_version": 1,
+  "scope": {
+    "allowed_tools": [],
+    "delegated_by": "supervisor",
+    "issued_by": "controller",
+    "policy_version": "policy-1",
+    "principal": {
+      "kind": "local_dev",
+      "principal_id": "local-dev-user"
+    },
+    "project_id": "project-local",
+    "role": "explorer"
+  },
+  "sender_role": "supervisor",
+  "span_id": "00f067aa0ba902b7",
+  "status": "pending",
+  "task_id": "task-explore-1",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+}

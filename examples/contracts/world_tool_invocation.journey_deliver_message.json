@@ -1,0 +1,11 @@
+{
+  "arguments": {
+    "message_id": "msg-3"
+  },
+  "invocation_id": "invocation-j1",
+  "provider_call_id": null,
+  "run_id": "journey-run-1",
+  "schema_version": 1,
+  "tool": "deliver_message",
+  "world_version": "group-journey/1"
+}

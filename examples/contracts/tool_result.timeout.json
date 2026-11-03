@@ -1,0 +1,19 @@
+{
+  "error": {
+    "code": "tool_timeout",
+    "message": "Payment committed; response timed out",
+    "ref": {
+      "id": "run-faulted-1:2",
+      "kind": "event",
+      "sha256": null
+    },
+    "retryable": false,
+    "side_effect": "committed"
+  },
+  "event_id": 2,
+  "invocation_id": "invocation-1",
+  "output": null,
+  "provider_call_id": null,
+  "schema_version": 1,
+  "status": "error"
+}

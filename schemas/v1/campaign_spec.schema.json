@@ -1,0 +1,115 @@
+{
+  "$defs": {
+    "BudgetLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_cost_minor": {
+          "anyOf": [
+            {
+              "maximum": 1000000000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_input_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_model_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_parallel_runs": {
+          "maximum": 64,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_tool_calls": {
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_wall_clock_ms": {
+          "maximum": 1000000000000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_model_calls",
+        "max_tool_calls",
+        "max_input_tokens",
+        "max_output_tokens",
+        "max_cost_minor",
+        "cost_currency",
+        "max_wall_clock_ms",
+        "max_parallel_runs"
+      ],
+      "title": "BudgetLimits",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:campaign_spec:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What a client asks for. Project and principal come from the session, not here.",
+  "properties": {
+    "budget": {
+      "$ref": "#/$defs/BudgetLimits"
+    },
+    "objective": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "success_criteria": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "type": "array"
+    },
+    "world_version": {
+      "const": "refund-world/1",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "objective",
+    "success_criteria",
+    "world_version",
+    "budget"
+  ],
+  "title": "CampaignSpec",
+  "type": "object"
+}

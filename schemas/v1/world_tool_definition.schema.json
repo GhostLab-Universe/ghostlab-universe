@@ -1,0 +1,42 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "urn:ghostlab:contract:world_tool_definition:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A tool offered to a target, exactly as the reviewed pack declares it.",
+  "properties": {
+    "description": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "name": {
+      "pattern": "^[a-z][a-z0-9_]{1,63}$",
+      "type": "string"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "world_version": {
+      "enum": [
+        "refund-world/1",
+        "group-journey/1",
+        "service-relay/1"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "world_version",
+    "name",
+    "description",
+    "parameters"
+  ],
+  "title": "WorldToolDefinition",
+  "type": "object"
+}

@@ -1,0 +1,25 @@
+{
+  "budget_reservation_id": "reservation-1",
+  "campaign_id": "campaign-1",
+  "context_bundle": {
+    "id": "bundle-1",
+    "kind": "context_bundle",
+    "sha256": null
+  },
+  "continuation": null,
+  "max_output_tokens": 2000,
+  "model": "fixture-model",
+  "output_schema": {
+    "name": "experiment_proposal",
+    "version": 1
+  },
+  "provider": "meta_responses",
+  "request_id": "request-1",
+  "role": "explorer",
+  "schema_version": 1,
+  "stream": false,
+  "task_id": "task-explore-1",
+  "timeout_ms": 60000,
+  "tool_results": [],
+  "tools": []
+}

@@ -1,0 +1,246 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Typed pointer to evidence; a digest pins content when it is known.",
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "artifact",
+            "run",
+            "event",
+            "finding",
+            "capsule",
+            "task",
+            "memory",
+            "approval",
+            "context_bundle",
+            "envelope"
+          ],
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "sha256"
+      ],
+      "title": "Ref",
+      "type": "object"
+    },
+    "SchemaRef": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "type": "string"
+        },
+        "version": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "SchemaRef",
+      "type": "object"
+    },
+    "ToolDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "name": {
+          "enum": [
+            "get_order",
+            "issue_refund",
+            "get_refund_status"
+          ],
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "world_version": {
+          "const": "refund-world/1",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "world_version",
+        "description",
+        "parameters"
+      ],
+      "title": "ToolDefinition",
+      "type": "object"
+    },
+    "ToolResultForModel": {
+      "additionalProperties": false,
+      "properties": {
+        "is_error": {
+          "type": "boolean"
+        },
+        "output_json": {
+          "maxLength": 65536,
+          "type": "string"
+        },
+        "provider_call_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider_call_id",
+        "output_json",
+        "is_error"
+      ],
+      "title": "ToolResultForModel",
+      "type": "object"
+    }
+  },
+  "$id": "urn:ghostlab:contract:model_request:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "budget_reservation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "campaign_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "context_bundle": {
+      "$ref": "#/$defs/Ref"
+    },
+    "continuation": {
+      "anyOf": [
+        {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "max_output_tokens": {
+      "maximum": 200000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "model": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$",
+      "type": "string"
+    },
+    "output_schema": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SchemaRef"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "provider": {
+      "enum": [
+        "meta_responses",
+        "baseten_chat_completions"
+      ],
+      "type": "string"
+    },
+    "request_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "role": {
+      "enum": [
+        "worldsmith",
+        "explorer",
+        "analyst",
+        "target"
+      ],
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "stream": {
+      "const": false,
+      "type": "boolean"
+    },
+    "task_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "timeout_ms": {
+      "maximum": 600000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "tool_results": {
+      "items": {
+        "$ref": "#/$defs/ToolResultForModel"
+      },
+      "maxItems": 16,
+      "type": "array"
+    },
+    "tools": {
+      "items": {
+        "$ref": "#/$defs/ToolDefinition"
+      },
+      "maxItems": 16,
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "request_id",
+    "campaign_id",
+    "task_id",
+    "role",
+    "provider",
+    "model",
+    "context_bundle",
+    "tools",
+    "tool_results",
+    "output_schema",
+    "continuation",
+    "max_output_tokens",
+    "timeout_ms",
+    "budget_reservation_id",
+    "stream"
+  ],
+  "title": "ModelRequest",
+  "type": "object"
+}

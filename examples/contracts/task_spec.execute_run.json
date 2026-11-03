@@ -1,0 +1,15 @@
+{
+  "attempt": 0,
+  "campaign_id": "campaign-1",
+  "depends_on": [
+    "task-validate-1"
+  ],
+  "exit_condition": "Run completes or the tool budget is exhausted",
+  "kind": "execute_run",
+  "max_attempts": 1,
+  "output_ref": null,
+  "role": "target",
+  "schema_version": 1,
+  "status": "pending",
+  "task_id": "task-run-1"
+}

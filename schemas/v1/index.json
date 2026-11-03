@@ -124,7 +124,7 @@
       "name": "experiment_proposal",
       "producer": "M01",
       "schema": "v1/experiment_proposal.schema.json",
-      "sha256": "de89a8c6341cf50bdbd9b3ae7a140bcef91dfd008cbb70498c624c6aa2b2cd0a",
+      "sha256": "7fc105d5a2c8b4a0bde7dcfd9f686b0c60db55e153e8e96f485180ae028f01d0",
       "type": "ExperimentProposal",
       "version": 1
     },

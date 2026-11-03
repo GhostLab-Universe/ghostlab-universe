@@ -26,7 +26,7 @@ import json
 import re
 import subprocess
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any
 
@@ -329,6 +329,10 @@ def _validate_spec(payload, *, namespace, case_id):
         except (TypeError, ValueError) as error:
             raise HeldoutSpecError(f"case {case_id!r}: invalid fixture: "
                                    f"{error}") from None
+        if set(fixture) != {field.name for field in fields(Fixture)}:
+            raise HeldoutSpecError(
+                f"case {case_id!r}: fixture must carry exactly the Fixture "
+                "fields (order_id, customer_id, paid_minor, currency)")
         fixture = dict(fixture)
     scenario = payload.get("scenario")
     if not isinstance(scenario, Mapping):

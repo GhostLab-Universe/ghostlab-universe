@@ -9,7 +9,7 @@ direct core run (tested). Standard library only.
 
 from collections.abc import Mapping
 from copy import deepcopy
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from typing import Any
 
 from ghostlab.core import (WORLD_VERSION, BudgetExceeded, Fixture, RefundWorld, Scenario,
@@ -102,6 +102,8 @@ class RefundEnvironment:
               actor_id: str) -> Observation:
         if not isinstance(fixture, Mapping) or not isinstance(scenario, Mapping):
             raise ValueError("Invalid fixture or scenario")
+        if set(fixture) != {field.name for field in fields(Fixture)}:
+            raise ValueError("Invalid fixture or scenario: fixture must carry exactly the Fixture fields")
         try:
             parsed_fixture = Fixture(**dict(fixture))
             parsed_scenario = Scenario(**dict(scenario))

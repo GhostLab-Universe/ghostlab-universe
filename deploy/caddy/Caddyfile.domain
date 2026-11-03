@@ -1,0 +1,43 @@
+# Domain mode: public HTTPS with automatic Let's Encrypt TLS, same-origin UI
+# plus API. Installs to /etc/caddy/Caddyfile when DOMAIN_NAME is set (see
+# deploy/scripts/install-host.sh). {$DOMAIN_NAME} and {$ACME_EMAIL} are
+# substituted with the host.conf values at install time (the installed
+# /etc/caddy/Caddyfile carries literal values, no placeholders).
+#
+# Security posture:
+# - port 80 exists for the ACME http-01 challenge only; every other HTTP
+#   request is redirected to HTTPS by Caddy automatically.
+# - /v1/* proxies to the API on loopback. The API itself binds 127.0.0.1 only,
+#   so even a proxy misconfiguration cannot expose it past the host.
+# - everything else serves the static production web build. No directory
+#   listing, no dotfiles.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN_NAME} {
+	# API: same origin, loopback-only upstream.
+	handle /v1/* {
+		reverse_proxy 127.0.0.1:8787
+	}
+
+	# UI: static production build (web/dist from `npm run build`).
+	handle {
+		root * /srv/ghostlab/web/dist
+		@dotfiles {
+			path */.*
+		}
+		respond @dotfiles 404
+		try_files {path} /index.html
+		file_server {
+			disable_canonical_uris
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+	}
+}

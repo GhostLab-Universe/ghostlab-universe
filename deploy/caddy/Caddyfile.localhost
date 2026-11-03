@@ -1,0 +1,30 @@
+# IP-only mode (no domain_name): localhost-only HTTP, no public listener at
+# all. There is no hostname to issue a certificate for, so this box MUST NOT
+# serve the eval publicly until a domain is set and Caddyfile.domain is
+# installed. Reach it over fenced SSH port-forwarding:
+#
+#   ssh -L 8080:127.0.0.1:8080 ubuntu@<elastic-ip>
+#
+# then open http://127.0.0.1:8080 on the operator workstation. Same-origin
+# layout matches domain mode: /v1/* proxies to the loopback API, everything
+# else serves the static production web build.
+
+:8080 {
+	bind 127.0.0.1
+
+	handle /v1/* {
+		reverse_proxy 127.0.0.1:8787
+	}
+
+	handle {
+		root * /srv/ghostlab/web/dist
+		@dotfiles {
+			path */.*
+		}
+		respond @dotfiles 404
+		try_files {path} /index.html
+		file_server {
+			disable_canonical_uris
+		}
+	}
+}

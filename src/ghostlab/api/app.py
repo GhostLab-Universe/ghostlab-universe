@@ -6,6 +6,7 @@ hosted deployment or a non-loopback bind, because no production authentication e
 """
 
 import logging
+import sqlite3
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 
@@ -89,6 +90,10 @@ def seed_builtin_registrations(operators: OperatorRegistry) -> None:
                 operators.get(description.world_version)
             except LookupError:
                 raise
+        except sqlite3.OperationalError as error:
+            raise RuntimeError(
+                "operator registry is not writable; fix the storage root "
+                "permissions or point the server at a writable root") from error
 
 
 def create_app(config: ApiConfig | None = None) -> FastAPI:

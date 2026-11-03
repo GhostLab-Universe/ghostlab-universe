@@ -355,6 +355,16 @@ class StrictnessTests(unittest.TestCase):
                              handshake=frozen_handshake(
                                  _config(HELDOUT_NAMESPACE)))
 
+    def test_partial_fixture_refused_until_explicit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            partial = _probe_spec(extra={"fixture": {"paid_minor": 100}})
+            scenario = _write_set(Path(tmp) / "g", HELDOUT_NAMESPACE,
+                                  [("probe-1", partial)])
+            with self.assertRaises(HeldoutSpecError):
+                run_selftest(fixture_dir=scenario, freeze_proof=dict(_FREEZE),
+                             handshake=frozen_handshake(
+                                 _config(HELDOUT_NAMESPACE)))
+
     def test_case_count_beyond_frozen_bound_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             scenario = _write_set(

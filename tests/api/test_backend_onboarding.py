@@ -2,6 +2,8 @@
 
 from ghostlab.extensions.operator_registry import STATUS_NOT_QUALIFIED, OperatorRegistry
 
+import pytest
+
 REFUND = "refund-world/1"
 RESERVATION = "reservation-world/1"
 
@@ -45,6 +47,28 @@ def test_fresh_root_seeded_with_builtins(stack):
         t["name"] for t in operators.get(RESERVATION)["declared_tools"]}
     assert reservation_tools == {
         "check_availability", "reserve", "cancel", "get_status"}, reservation_tools
+
+
+def test_unseeded_readonly_registry_fails_with_named_error(stack, tmp_path):
+    import os
+
+    from ghostlab.api.app import seed_builtin_registrations
+
+    path = tmp_path / "operator_registry.sqlite"
+    seed_builtin_registrations(OperatorRegistry(path))  # creates the file
+    import sqlite3
+
+    connection = sqlite3.connect(str(path))
+    connection.execute("DELETE FROM registrations")
+    connection.commit()
+    connection.close()
+    os.chmod(path, 0o444)
+    try:
+        operators = OperatorRegistry(path)
+        with pytest.raises(RuntimeError, match="not writable"):
+            seed_builtin_registrations(operators)
+    finally:
+        os.chmod(path, 0o644)
 
 
 def test_second_startup_idempotent(stack):

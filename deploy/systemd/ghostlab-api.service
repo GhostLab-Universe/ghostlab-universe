@@ -1,0 +1,35 @@
+# Ghostlab eval API. Loopback-only behind Caddy; Caddy is the only public
+# listener on the host. Installed to /etc/systemd/system/ by
+# deploy/scripts/install-host.sh.
+#
+# Auth posture: this unit consumes the auth seam owned by PR #22 (still OPEN)
+# read-only. Hosted auth cutover waits for that merge: GHOSTLAB_AUTH_MODE is
+# delivered by the operator-owned /etc/ghostlab/env/api.env (mode 0600, never
+# in Git), and local_dev is refused off-loopback by local_dev.py, so there is
+# no local-dev-behind-proxy mode. Until PR #22 merges, the API answers only
+# over the SSH-forwarded loopback path documented in docs/deployment-mumbai.md.
+[Unit]
+Description=Ghostlab eval API (loopback-only, behind Caddy)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ghostlab
+Group=ghostlab
+WorkingDirectory=/srv/ghostlab/app
+# Operator-owned, mode 0600, never in Git. Missing file = service fails closed.
+EnvironmentFile=-/etc/ghostlab/host.conf
+EnvironmentFile=/etc/ghostlab/env/api.env
+ExecStart=/srv/ghostlab/app/bin/run-api.sh
+Restart=on-failure
+RestartSec=5
+# Private backend: no new privileges, no public ports of its own.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ghostlab /var/backups/ghostlab
+
+[Install]
+WantedBy=multi-user.target

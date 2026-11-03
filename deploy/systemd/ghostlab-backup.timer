@@ -1,0 +1,11 @@
+[Unit]
+Description=Ghostlab hourly backup timer
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=300
+Unit=ghostlab-backup.service
+
+[Install]
+WantedBy=timers.target

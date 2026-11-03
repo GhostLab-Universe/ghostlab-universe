@@ -1,0 +1,52 @@
+{
+  "schema": "ghostlab-mumbai-deploy/1",
+  "note": "EXAMPLE ONLY. No secrets: keys and live flags live in the operator-owned /etc/ghostlab/env/api.env (mode 0600, never in Git). Copy, fill in, keep off Git.",
+
+  "region": "ap-south-1",
+  "instance_type": "t3.medium",
+  "root_volume_gb": 30,
+  "vpc_cidr": "10.20.0.0/16",
+  "subnet_cidr": "10.20.1.0/24",
+
+  "domain_name": "",
+  "domain_note": "Empty means IP-only mode: no Route53 records, proxy binds localhost-only. Set a real domain for the public eval.",
+  "route53_zone_id": "",
+  "acme_email": "",
+
+  "admin_cidr": "",
+  "admin_note": "Empty means NO ssh ingress rule (deny by default). Set exactly one operator CIDR such as 203.0.113.7/32.",
+  "key_name": "",
+
+  "storage_root": "/var/lib/ghostlab",
+  "storage_note": "StoragePaths layout: ghostlab.sqlite, graph-checkpoints.sqlite, artifacts/ (src/ghostlab/storage/database.py).",
+
+  "api": {
+    "bind_host": "127.0.0.1",
+    "bind_note": "Loopback ONLY, hardcoded in run-api.sh. Caddy is the only public listener.",
+    "port": 8787,
+    "project": "mumbai-eval"
+  },
+
+  "auth": {
+    "mode": "PR-22-pending",
+    "note": "Hosted auth cutover waits for PR #22 (OPEN). local_dev is refused off-loopback by local_dev.py, so there is no local-dev-behind-proxy mode."
+  },
+
+  "live": {
+    "model": "muse-spark-1.3",
+    "model_note": "FIXED: live.py qualifies exactly this id via the existing --live gate. Never invent another.",
+    "enabled": false,
+    "max_calls": null,
+    "compat_report": null,
+    "confirm_paid_calls": false,
+    "allow_server_retention": false
+  },
+
+  "backup": {
+    "schedule": "hourly",
+    "retention_days": 30,
+    "bucket_prefix": "ghostlab-mumbai-backup",
+    "bucket": "",
+    "bucket_note": "Filled in after apply, from the backup_bucket output. Never commit a bucket name holding real backups into a public repo."
+  }
+}

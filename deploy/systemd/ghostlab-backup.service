@@ -1,0 +1,14 @@
+[Unit]
+Description=Ghostlab hourly SQLite backup to S3
+
+[Service]
+Type=oneshot
+User=ghostlab
+Group=ghostlab
+EnvironmentFile=-/etc/ghostlab/host.conf
+ExecStart=/srv/ghostlab/app/bin/ghostlab-backup.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ghostlab /var/backups/ghostlab

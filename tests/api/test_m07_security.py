@@ -36,6 +36,10 @@ def operations():
     document = json.loads(OPENAPI_PATH.read_text(encoding="utf-8"))
     for path, item in document["paths"].items():
         for method in item:
+            # Login initiation/callback and provider availability must work before
+            # sign-in. Their exact-path boundary is covered in test_dashboard_auth.
+            if method == "get" and path in {"/v1/auth/status", "/v1/auth/{provider}/start", "/v1/auth/{provider}/callback"}:
+                continue
             filled = path
             for name, value in (("campaign_id", "c-1"), ("experiment_id", "e-1"),
                                 ("artifact_id", "a-1"), ("approval_id", "a-1"),

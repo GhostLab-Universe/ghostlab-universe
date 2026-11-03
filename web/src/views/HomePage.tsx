@@ -59,16 +59,16 @@ export function HomePage({
   return (
     <>
       <header className="campaign-head">
-        <h1>Experiments on synthetic worlds</h1>
+        <h1>Find the failure. Prove the fix.</h1>
         <p className="lead">
-          Compare a baseline with a faulted fork, inspect the evidence, replay the failure and decide on the repair.
-          Verdicts come from the verifier. Worlds and money here are synthetic.
+          Test an agent under pressure. Compare what changed, follow the evidence, and verify a repair in a repeatable test environment.
         </p>
       </header>
       {harness === null ? null : <ScenarioList harness={harness} />}
-      <OpenCampaign />
+      <div className="home-workspace"><div className="home-primary"><a className="connect-project" href="#/extensions"><strong>Connect a project</strong><span>Inspect a GitHub repository or choose a test environment.</span><span aria-hidden="true">＋</span></a>
       {source.kind === "api" && session !== null ? <GuidedDemo source={source} session={session} /> : null}
       {source.kind === "api" && session !== null ? <StartCampaign source={source} session={session} /> : null}
+      </div><aside><OpenCampaign /><div className="workflow-note"><h2>How a test works</h2><ol><li>Choose an environment and agent.</li><li>Introduce a controlled fault.</li><li>Compare execution evidence.</li><li>Review and verify the repair.</li></ol><p>Built-in environments use synthetic data. Findings come from executed checks.</p></div></aside></div>
     </>
   );
 }
@@ -103,7 +103,7 @@ function OpenCampaign() {
   const [recents, setRecents] = useState(readRecents);
   return (
     <Section title="Open a campaign">
-      <p className="muted">The service has no campaign list, so a campaign is opened by its id.</p>
+      <p className="muted">Continue a previous run using its campaign ID.</p>
       <form
         className="inline-form"
         onSubmit={(event) => {
@@ -168,8 +168,7 @@ export function GuidedDemo({ source, session }: { source: DataSource; session: S
     <Section title="Guided demo run">
       <div className="guided-demo" data-testid="guided-demo">
         <p>
-          One click starts the scripted refund-world scenario and walks it to a verdict: progress, Reality Diff, then
-          the approval decision. <span data-testid="guided-demo-synthetic">Synthetic world: no real people or money.</span>
+          Run the refund example, inspect its evidence, and review the repair decision. <span data-testid="guided-demo-synthetic">Synthetic world: no real people or money.</span>
         </p>
         <ol className="steps" data-testid="guided-demo-steps">
           {GUIDED_DEMO_STEPS.map((step) => (

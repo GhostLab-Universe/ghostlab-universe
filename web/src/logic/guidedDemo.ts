@@ -38,7 +38,7 @@ export function guidedDemoAvailable(runnableWorlds: readonly string[]): boolean 
 }
 
 export const GUIDED_DEMO_STEPS: readonly string[] = [
-  "Start the scripted refund-world scenario on synthetic data",
+  "Start a refund experiment on synthetic data",
   "Watch campaign progress while the baseline and fork run",
   "Read the Reality Diff: first divergence, violation evidence and ledger",
   "Decide the repair in Approval and read the recorded verdict",
@@ -49,5 +49,5 @@ export function guidedDemoInferenceNote(inference: SessionInfo["inference"]): st
   if (inference === "fixture" || inference === "scripted") return "Proposals scripted: checked-in replies, not a model";
   if (inference === "disabled") return "Inference is disabled on this service";
   if (inference === "unrecorded") return "Inference not recorded for this service";
-  return `inference ${inference}`;
+  return "Model connected";
 }

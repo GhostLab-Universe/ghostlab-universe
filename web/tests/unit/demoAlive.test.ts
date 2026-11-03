@@ -111,7 +111,7 @@ test("the guided demo names the service inference honestly", () => {
   assert.match(guidedDemoInferenceNote("fixture"), /not a model/);
   assert.match(guidedDemoInferenceNote("disabled"), /disabled/);
   assert.match(guidedDemoInferenceNote("unrecorded"), /not recorded/);
-  assert.equal(guidedDemoInferenceNote("live"), "inference live");
+  assert.equal(guidedDemoInferenceNote("live"), "Model connected");
 });
 
 const refund = scenario("fx-refund").stage.experiment!;

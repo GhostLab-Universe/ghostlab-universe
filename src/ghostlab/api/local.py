@@ -26,7 +26,8 @@ from ghostlab.worlds.journey import JourneyFixture
 
 from .plane import ApiConfig
 from .scripted import scripted_adapter, scripted_runtime
-from .sessions import LocalDevSessions
+from .sessions import ApiSession, LocalDevSessions
+from .oauth import OAuthSessions
 
 
 def _utc_now() -> datetime:
@@ -37,23 +38,27 @@ def _inference_disabled(runtime):
     raise LiveInferenceRefused("this server has no provider configured")
 
 
-def local_config(root: Path, sessions: LocalDevSessions, *, bind_host: str,
+def local_config(root: Path, sessions: LocalDevSessions | OAuthSessions, *, bind_host: str,
                  scripted: bool = False, environ: dict | None = None) -> ApiConfig:
     """The trusted host's wiring: the local principal, bound to the synthetic actors."""
     paths = StoragePaths(root)
     app_db = open_database(paths.app_db)
-    project, principal = sessions.project_id, sessions.principal
+    assignments = (list(sessions.members.values()) if isinstance(sessions, OAuthSessions)
+                   else [ApiSession(sessions.principal, sessions.project_id, "local_dev")])
+    allowed = {}
+    for assignment in assignments:
+        allowed.setdefault(assignment.project_id, set()).add(assignment.principal.principal_id)
     approval_store = SqliteApprovalStore(app_db)
-    approvers = ProjectApproverAllowlist({project: {principal.principal_id}})
+    approvers = ProjectApproverAllowlist(allowed)
     services = Services(
         memory_store=SqliteMemoryStore(app_db), approval_store=approval_store,
         approvals=ApprovalService(approval_store, approvers=approvers, local_dev_mode=True),
         ledger=SqliteBudgetLedger(app_db), artifacts=FileArtifactStore(app_db, paths.artifacts),
         skills=SkillRegistry.load(),
-        binding=StaticPrincipalBinding({(project, principal.principal_id):
-                                        Fixture().customer_id}),
-        world_binding=StaticWorldBinding({(project, principal.principal_id, JOURNEY_WORLD):
-                                          JourneyFixture().organizer}),
+        binding=StaticPrincipalBinding({(s.project_id, s.principal.principal_id):
+                                        Fixture().customer_id for s in assignments}),
+        world_binding=StaticWorldBinding({(s.project_id, s.principal.principal_id, JOURNEY_WORLD):
+                                          JourneyFixture().organizer for s in assignments}),
         adapter_factory=scripted_adapter if scripted else _inference_disabled,
         runtime=scripted_runtime() if scripted else Runtime(), clock=_utc_now)
     return ApiConfig(services=services, sessions=sessions, approvers=approvers,

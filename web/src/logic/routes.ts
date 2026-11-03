@@ -13,6 +13,7 @@ export const VIEWS: ReadonlyArray<{ name: ViewName; label: string }> = [
 export type Route =
   | { page: "home" }
   | { page: "extensions" }
+  | { page: "account" }
   | {
       page: "campaign";
       campaignId: string;
@@ -28,6 +29,7 @@ const RUN_NAMES = new Set<string>(["baseline", "fork", "repaired"]);
 export function parseRoute(hash: string): Route {
   const [path = "", search = ""] = hash.replace(/^#\/?/, "").split("?");
   const [section, rawId, rawView] = path.split("/");
+  if (section === "account") return { page: "account" };
   if (section === "extensions") return { page: "extensions" };
   if (section !== "campaign" || rawId === undefined || rawId === "") return { page: "home" };
   let campaignId: string;

@@ -6,6 +6,7 @@ import type { LiveState } from "../logic/live.ts";
 import { looksExpired } from "../logic/approval.ts";
 import { campaignHref, VIEWS, type Route } from "../logic/routes.ts";
 import { campaignStatus, inferenceLabel } from "../logic/status.ts";
+import { AccountPage } from "../views/AccountPage.tsx";
 import { HomePage } from "../views/HomePage.tsx";
 import { ExtensionsPage } from "../views/ExtensionsPage.tsx";
 import { ApprovalPage } from "../views/ApprovalPage.tsx";
@@ -22,6 +23,7 @@ export function App({ source, harness }: { source: DataSource; harness: FixtureH
   const main = useRef<HTMLElement | null>(null);
   const sessionInfo = session.status === "ready" ? session.data : null;
 
+  const signInRequired = session.status === "failed" && session.failure.kind === "service" && session.failure.status === 401;
   return (
     <>
       <a
@@ -40,23 +42,23 @@ export function App({ source, harness }: { source: DataSource; harness: FixtureH
           GhostLab<span> Universe</span>
         </a>
         <nav className="topnav" aria-label="Sections">
-          <a href="#/" {...(route.page === "extensions" ? {} : { "aria-current": "page" as const })}>
+          <a href="#/" {...(route.page === "home" || route.page === "campaign" ? { "aria-current": "page" as const } : {})}>
             Campaigns
           </a>{" "}
           <a href="#/extensions" {...(route.page === "extensions" ? { "aria-current": "page" as const } : {})}>
-            Extensions
+            Environments
           </a>
         </nav>
         <SessionFacts session={sessionInfo} />
       </header>
       {sessionInfo !== null && source.kind === "api" ? <ServiceModeNotice session={sessionInfo} /> : null}
-      {session.status === "failed" ? (
+      {session.status === "failed" && !signInRequired ? (
         <div className="page">
           <FailureNotice failure={session.failure} />
         </div>
       ) : null}
       <main id="main" ref={main} tabIndex={-1} className="page">
-        {route.page === "extensions" ? (
+        {signInRequired || route.page === "account" ? <AccountPage /> : route.page === "extensions" ? (
           <ExtensionsPage source={source} />
         ) : route.page === "home" ? (
           <HomePage source={source} harness={harness} session={sessionInfo} />
@@ -80,13 +82,15 @@ export function TestDataBanner() {
 export function SessionFacts({ session }: { session: SessionInfo | null }) {
   if (session === null) return null;
   return (
-    <p className="session">
-      <Mono>{session.principal.principal_id}</Mono> in <Mono>{session.project_id}</Mono>{" "}
-      <span className="muted">
-        <Mono>auth_mode</Mono> {session.auth_mode}, <Mono>production_authenticated</Mono>{" "}
-        {String(session.production_authenticated)}, <Mono>inference</Mono> {session.inference}
-      </span>
-    </p>
+    <details className="account-menu">
+      <summary><span className="avatar">G</span> Workspace</summary>
+      <div className="account-popover">
+        <strong>{session.auth_mode === "local_dev" ? "Local workspace" : session.principal.principal_id}</strong>
+        <p>{session.auth_mode === "local_dev" ? "Sign-in is not enabled for this workspace." : "Your access is managed by the workspace owner."}</p>
+        <a href="#/account">Account &amp; sign-in</a>
+        <details><summary>Connection details</summary><p>Project: {session.project_id}</p><p>Authentication: {session.auth_mode}</p><p>Hosted access: {session.production_authenticated ? "Enabled" : "Not enabled"}</p><p>Model connection: {session.inference}</p></details>
+      </div>
+    </details>
   );
 }
 

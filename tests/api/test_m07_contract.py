@@ -14,6 +14,11 @@ from m05_journey_harness import journey_reply
 SCHEMAS = Path(__file__).resolve().parents[2] / "schemas" / "v1"
 
 ENDPOINTS = {
+    ("get", "/v1/auth/status"),
+    ("get", "/v1/auth/{provider}/start"),
+    ("get", "/v1/auth/{provider}/callback"),
+    ("post", "/v1/auth/logout"),
+    ("post", "/v1/sources/github/inspect"),
     ("get", "/v1/session"),
     ("post", "/v1/campaigns"),
     ("get", "/v1/campaigns/{campaign_id}"),

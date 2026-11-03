@@ -10,7 +10,8 @@ from collections.abc import Iterable, Mapping
 
 REDACTED = "[REDACTED]"
 
-SECRET_ENV_NAMES: tuple[str, ...] = ("MODEL_API_KEY", "BASETEN_API_KEY", "LANGSMITH_API_KEY")
+SECRET_ENV_NAMES: tuple[str, ...] = ("MODEL_API_KEY", "BASETEN_API_KEY", "LANGSMITH_API_KEY",
+    "GHOSTLAB_GITHUB_CLIENT_SECRET", "GHOSTLAB_GOOGLE_CLIENT_SECRET")
 
 # Whole key names (or a trailing _segment), so usage fields like input_tokens survive.
 _SECRET_KEY = re.compile(r"(?i)(^|[_-])(api[_-]?key|secret[_-]?key|authorization|token|secret|"

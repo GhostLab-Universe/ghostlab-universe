@@ -17,7 +17,7 @@
     "Divergence": "bdab87853f7014f2f6c3a12cc5b0cc082790b76faba6ba56d45760f9f1e4b3a4",
     "ErrorInfo": "3c368823c25d87790fe9cea52e114ae8e62380746e7b6af3d0ecb5208843aaf2",
     "ExperimentEvent": "0c451fa1f24ee981dccf18b23a8e676619453b299eb09f40ec93bec1f9deec13",
-    "ExperimentProposal": "a7194c8c031c3db1ca1ae5159ce8592480698cb95d770e05cfc06a3c3b7fffa7",
+    "ExperimentProposal": "94ef275192a020221c98d699a3693399ea8959a4124c94abe7095e799c2fc33a",
     "ExperimentResult": "a5138e00e6e99748d837f1a718c7ec62b09d180a3532711c30d35e0528d560ed",
     "FixtureV1": "6f27d77a7a96e4322a36f22e85c7e44fd402dc282cb9d2ed41521b5a1977b8da",
     "GetOrderArgs": "afa179c585b3deb53070532a654410a327973a4560cbb683499a3913490b6f37",
@@ -133,7 +133,7 @@
       "version": 1
     },
     "experiment_proposal": {
-      "sha256": "de89a8c6341cf50bdbd9b3ae7a140bcef91dfd008cbb70498c624c6aa2b2cd0a",
+      "sha256": "7fc105d5a2c8b4a0bde7dcfd9f686b0c60db55e153e8e96f485180ae028f01d0",
       "type": "ExperimentProposal",
       "version": 1
     },

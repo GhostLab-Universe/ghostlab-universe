@@ -77,6 +77,8 @@ the full contract stays authoritative.
    world observations during its run; the fault schedule and expectations are
    never handed over (tested: a snooping candidate recovers no scenario
    marker).
+   `TargetTask.task_id` is pinned to the case id (author-supplied values that
+   differ are refused), so it carries no extra channel.
 2. Namespaces are structural: `run_heldout` refuses synthetic manifests,
    `run_selftest` refuses held-out manifests, and a frozen config cannot
    drive a manifest from the other namespace -- tuning against the synthetic

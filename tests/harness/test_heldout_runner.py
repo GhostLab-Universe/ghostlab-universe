@@ -337,6 +337,24 @@ class StrictnessTests(unittest.TestCase):
                              handshake=frozen_handshake(
                                  _config(HELDOUT_NAMESPACE)))
 
+    def test_actor_bound_matches_env_and_task_id_pinned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            long_actor = _probe_spec(extra={"actor_id": "a" * 101})
+            scenario = _write_set(Path(tmp) / "e", HELDOUT_NAMESPACE,
+                                  [("probe-1", long_actor)])
+            with self.assertRaises(HeldoutSpecError):
+                run_selftest(fixture_dir=scenario, freeze_proof=dict(_FREEZE),
+                             handshake=frozen_handshake(
+                                 _config(HELDOUT_NAMESPACE)))
+        with tempfile.TemporaryDirectory() as tmp:
+            foreign_task = _probe_spec(extra={"task_id": "smuggled"})
+            scenario = _write_set(Path(tmp) / "f", HELDOUT_NAMESPACE,
+                                  [("probe-1", foreign_task)])
+            with self.assertRaises(HeldoutSpecError):
+                run_selftest(fixture_dir=scenario, freeze_proof=dict(_FREEZE),
+                             handshake=frozen_handshake(
+                                 _config(HELDOUT_NAMESPACE)))
+
     def test_case_count_beyond_frozen_bound_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             scenario = _write_set(

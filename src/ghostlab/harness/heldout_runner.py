@@ -338,17 +338,20 @@ def _validate_spec(payload, *, namespace, case_id):
     except (TypeError, ValueError) as error:
         raise HeldoutSpecError(f"case {case_id!r}: invalid scenario: "
                                f"{error}") from None
-    for key in ("actor_id", "task_id"):
+    for key, bound in (("actor_id", 100), ("task_id", 200)):
         value = payload.get(key)
         if value is not None and (type(value) is not str or not value
-                                  or len(value) > 200):
+                                  or len(value) > bound):
             raise HeldoutSpecError(f"case {case_id!r}: invalid {key}")
+    if payload.get("task_id") is not None and payload["task_id"] != case_id:
+        raise HeldoutSpecError(
+            f"case {case_id!r}: task_id must equal the case id")
     script = None
     if _SCRIPT_KEY in payload:
         script = _validate_script(payload[_SCRIPT_KEY], case_id)
     return _CaseSpec(world=REFUND_WORLD_ID, fixture=fixture,
                      scenario=dict(scenario), actor_id=payload.get("actor_id"),
-                     task_id=payload.get("task_id") or case_id, script=script)
+                     task_id=case_id, script=script)
 
 
 def load_manifest(scenario_dir, manifest_name="manifest.json"):

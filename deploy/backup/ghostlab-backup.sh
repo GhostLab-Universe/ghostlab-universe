@@ -39,7 +39,7 @@ fi
 log "writing manifest"
 (
   cd "$STAGE"
-  find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum >MANIFEST.sha256
+  find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 -r sha256sum >MANIFEST.sha256
 )
 
 log "uploading to s3://$BACKUP_BUCKET/$STAMP/"

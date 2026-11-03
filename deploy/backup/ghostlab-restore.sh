@@ -24,7 +24,7 @@ trap 'rm -rf "$WORK"' EXIT
 log() { echo "[restore] $*"; }
 
 if [ "$STAMP" = "latest" ]; then
-  STAMP="$(aws s3 ls "s3://$BACKUP_BUCKET/" --region "$AWS_REGION" | awk '{print $2}' | grep -E '^[0-9]{8}T[0-9]{6}Z/$' | sort | tail -n 1 | tr -d '/')"
+  STAMP="$(aws s3 ls "s3://$BACKUP_BUCKET/" --region "$AWS_REGION" | awk '{print $2}' | grep -E '^[0-9]{8}T[0-9]{6}Z/$' | sort | tail -n 1 | tr -d '/' || true)"
   [ -n "$STAMP" ] || {
     echo "no backups in s3://$BACKUP_BUCKET/" >&2
     exit 1
@@ -44,7 +44,11 @@ RESTORED="$WORK/restored"
 mkdir -p "$RESTORED"
 cp -a "$WORK/ghostlab.sqlite" "$RESTORED/ghostlab.sqlite" 2>/dev/null || true
 cp -a "$WORK/graph-checkpoints.sqlite" "$RESTORED/graph-checkpoints.sqlite" 2>/dev/null || true
-[ -d "$WORK/artifacts" ] && cp -a "$WORK/artifacts" "$RESTORED/artifacts" || mkdir -p "$RESTORED/artifacts"
+if [ -d "$WORK/artifacts" ]; then
+  cp -a "$WORK/artifacts" "$RESTORED/artifacts"
+else
+  mkdir -p "$RESTORED/artifacts"
+fi
 
 log "integrity_check on restored databases"
 for name in ghostlab.sqlite graph-checkpoints.sqlite; do

@@ -24,7 +24,8 @@
     "bind_host": "127.0.0.1",
     "bind_note": "Loopback ONLY, hardcoded in run-api.sh. Caddy is the only public listener.",
     "port": 8787,
-    "project": "mumbai-eval"
+    "project": "project-local",
+    "project_note": "Server default (sessions.DEFAULT_PROJECT): run-api.sh passes no --project flag. The Terraform project var is only a resource tag prefix."
   },
 
   "auth": {

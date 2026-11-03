@@ -19,9 +19,14 @@ Until then:
 - The API unit (`deploy/systemd/ghostlab-api.service`) takes
   `GHOSTLAB_AUTH_MODE` from the operator-owned `/etc/ghostlab/env/api.env`
   and consumes whatever PR #22 lands, unchanged.
-- Pre-merge, the eval path is the SSH-forwarded loopback route documented
-  under "IP-only mode" below. Do not open the eval to anyone who is not an
-  operator until PR #22's auth mode is configured.
+- Pre-merge, NOTHING behind Caddy runs the eval: the pinned
+  `GHOSTLAB_DEPLOYMENT=hosted` example fails closed because the sole
+  pre-merge session path is `require_local_dev` over loopback. The only
+  operator step before PR #22 is a TEMPORARY loopback run over an SSH
+  forward (`GHOSTLAB_DEPLOYMENT` unset, `GHOSTLAB_AUTH_MODE=local_dev`,
+  API on 127.0.0.1, Caddy stopped or never routing to it), torn down
+  afterwards. Do not open the eval to anyone who is not an operator
+  until PR #22's auth mode is configured.
 
 ## 1. Architecture
 
@@ -130,6 +135,11 @@ Live mode is the existing `--live` gate: set `GHOSTLAB_LIVE=1`,
 wrapper passes the model through; `live.py` refuses anything but the
 qualified id. No other model id or endpoint is valid; do not invent one.
 
+Placement: the unit runs under `ProtectSystem=strict`/`ProtectHome`, so
+`GHOSTLAB_LIVE_COMPAT_REPORT` must live under `/srv/ghostlab/app` or
+`/var/lib/ghostlab` -- never under `/home` or `/root`, which the unit
+cannot read.
+
 ## 4. IP-only mode
 
 With `domain_name` empty, Caddy binds `127.0.0.1:8080` only and the security
@@ -191,7 +201,7 @@ change:
 ```bash
 aws ec2 create-snapshot --volume-id <root-volume-id> \
   --description "pre-<new-commit-or-change>-$(date -u +%Y%m%dT%H%MZ)" --region ap-south-1
-aws s3 sync s3://<backup_bucket>/ s3://<backup_bucket>-pinned/pre-<change>/ --region ap-south-1
+aws s3 sync s3://<backup_bucket>/ s3://<backup_bucket>/pinned/pre-<change>/ --region ap-south-1
 ```
 
 Keep the previous AMI id (from `terraform show` / the `data.aws_ami` pin in

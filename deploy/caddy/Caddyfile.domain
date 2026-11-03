@@ -1,7 +1,8 @@
 # Domain mode: public HTTPS with automatic Let's Encrypt TLS, same-origin UI
 # plus API. Installs to /etc/caddy/Caddyfile when DOMAIN_NAME is set (see
-# deploy/scripts/install-host.sh). {$DOMAIN_NAME} and {$ACME_EMAIL} are Caddy
-# environment placeholders, read from /etc/ghostlab/host.conf at reload time.
+# deploy/scripts/install-host.sh). {$DOMAIN_NAME} and {$ACME_EMAIL} are
+# substituted with the host.conf values at install time (the installed
+# /etc/caddy/Caddyfile carries literal values, no placeholders).
 #
 # Security posture:
 # - port 80 exists for the ACME http-01 challenge only; every other HTTP

@@ -3,7 +3,10 @@
 # user-data has finished machine prep:
 #
 #   cd /srv/ghostlab/app && git fetch && git checkout <pinned-commit>
-#   sudo DOMAIN_NAME="$DOMAIN_NAME" ACME_EMAIL="$ACME_EMAIL" deploy/scripts/install-host.sh
+#   sudo deploy/scripts/install-host.sh
+#
+# Domain values come from /etc/ghostlab/host.conf (written by user-data from
+# the Terraform domain_name/acme_email vars), never from the caller env.
 #
 # What it does: builds the app venv (uv, python 3.13), builds the production
 # web bundle, installs the Caddyfile for domain or localhost mode, installs
@@ -42,7 +45,7 @@ log() { echo "[install-host] $*"; }
 log "app venv (python 3.13, locked deps)"
 cd "$REPO"
 "$UV_BIN" python pin 3.13 2>/dev/null || true
-"$UV_BIN" sync --frozen --group dev 2>/dev/null || "$UV_BIN" sync --group dev
+"$UV_BIN" sync --frozen 2>/dev/null || "$UV_BIN" sync
 chown -R ghostlab:ghostlab "$REPO/.venv"
 
 log "production web build (same-origin bundle, no dev server)"
@@ -65,8 +68,14 @@ if [ -n "$DOMAIN" ]; then
     exit 2
   }
   cp "$REPO/deploy/caddy/Caddyfile.domain" /etc/caddy/Caddyfile
-  printf 'DOMAIN_NAME="%s"\nACME_EMAIL="%s"\n' "$DOMAIN" "$ACME" >/etc/caddy/ghostlab.env
-  chmod 0644 /etc/caddy/ghostlab.env
+  # Caddy {$VAR} placeholders adapt from the process environment, and the
+  # distro caddy unit sources no ghostlab env file, so substitute the values
+  # into the installed Caddyfile: validate and the daemon then agree.
+  sed -i "s|{\\$DOMAIN_NAME}|$DOMAIN|g; s|{\\$ACME_EMAIL}|$ACME|g" /etc/caddy/Caddyfile
+  grep -q "{\\$" /etc/caddy/Caddyfile && {
+    echo "unsubstituted placeholder left in /etc/caddy/Caddyfile" >&2
+    exit 1
+  } || true
   log "domain mode for $DOMAIN"
 else
   cp "$REPO/deploy/caddy/Caddyfile.localhost" /etc/caddy/Caddyfile

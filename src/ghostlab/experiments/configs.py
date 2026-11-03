@@ -174,7 +174,7 @@ def validate_policy(obj) -> dict:
             "allowed_agents": list(agents), "allowed_hooks": list(hooks)}
 
 
-def _validate_fixture(obj) -> dict:
+def _validate_refund_fixture(obj) -> dict:
     if type(obj) is not dict or set(obj) != _FIXTURE_KEYS:
         raise ConfigError("fixture must carry exactly order, customer,"
                           " paid_minor and currency")
@@ -187,6 +187,26 @@ def _validate_fixture(obj) -> dict:
         raise ConfigError("invalid fixture.paid_minor")
     return {"order_id": order_id, "customer_id": customer_id,
             "paid_minor": paid, "currency": currency}
+
+
+def _validate_fixture(obj, env_id: str) -> dict:
+    from . import drivers as _drivers
+    from . import drivers_refund as _refund_driver  # noqa: F401
+    driver = _drivers.get_driver(env_id)
+    validate = getattr(driver, "validate_fixture", None) \
+        if driver is not None else None
+    if not callable(validate):
+        return _validate_refund_fixture(obj)
+    try:
+        validated = driver.validate_fixture(obj)
+    except ConfigError:
+        raise
+    except (ValueError, TypeError, KeyError) as error:
+        raise ConfigError(f"invalid fixture for env {env_id!r}:"
+                          f" {error}") from error
+    if type(validated) is not dict:
+        raise ConfigError(f"invalid fixture for env {env_id!r}")
+    return validated
 
 
 def _validate_trigger(obj, path: str) -> dict:
@@ -242,12 +262,18 @@ def _validate_faults(obj, allowed_hooks: list) -> list:
     return faults
 
 
-def _validate_rules(obj) -> list:
-    if (type(obj) is not list or not 1 <= len(obj) <= len(INVARIANTS)
-            or any(r not in INVARIANTS for r in obj)
+def _validate_rules(obj, env_id: str) -> list:
+    from . import drivers as _drivers
+    from . import drivers_refund as _refund_driver  # noqa: F401
+    driver = _drivers.get_driver(env_id)
+    allowed = list(driver.declared_checks()) if driver is not None \
+        else list(INVARIANTS)
+    if (type(obj) is not list or not 1 <= len(obj) <= len(allowed)
+            or any(r not in allowed for r in obj)
             or len(set(obj)) != len(obj)):
-        raise ConfigError("rules must list 1-4 unique known invariants:"
-                          f" {', '.join(INVARIANTS)}")
+        raise ConfigError("rules must list 1-"
+                          f"{len(allowed)} unique known invariants:"
+                          f" {', '.join(allowed)}")
     return list(obj)
 
 
@@ -316,9 +342,9 @@ def validate_requested(obj, policy_obj) -> dict:
         raise ConfigError(f"unsupported agent {agent!r}")
     if agent not in policy["allowed_agents"]:
         raise ConfigError(f"agent {agent!r} is not allowed by policy")
-    fixture = _validate_fixture(obj["fixture"])
+    fixture = _validate_fixture(obj["fixture"], env_id)
     faults = _validate_faults(obj["faults"], policy["allowed_hooks"])
-    rules = _validate_rules(obj["rules"])
+    rules = _validate_rules(obj["rules"], env_id)
     limits = _validate_limits(obj["limits"], policy)
     repetitions = _validate_repetitions(obj["repetitions"], policy)
     if limits["max_tool_calls"] > limits["max_total_tool_calls"]:
@@ -344,14 +370,14 @@ def validate_requested(obj, policy_obj) -> dict:
 
 @dataclass(frozen=True)
 class FixtureSpec:
-    order_id: str
-    customer_id: str
-    paid_minor: int
-    currency: str
+    # Sorted ((key, value), ...) pairs from driver-validated fixture fields.
+    # The shape is env-specific (refund keys, booking keys, ...); validation
+    # happens in _validate_fixture before construction. to_dict round-trips
+    # the validated mapping exactly, so digests are unchanged for refunds.
+    values: tuple
 
     def to_dict(self) -> dict:
-        return {"order_id": self.order_id, "customer_id": self.customer_id,
-                "paid_minor": self.paid_minor, "currency": self.currency}
+        return dict(self.values)
 
 
 @dataclass(frozen=True)
@@ -446,7 +472,7 @@ class RequestedConfig:
     @classmethod
     def from_obj(cls, obj, policy_obj) -> "RequestedConfig":
         body = validate_requested(obj, policy_obj)
-        fixture = FixtureSpec(**body["fixture"])
+        fixture = FixtureSpec(values=tuple(sorted(body["fixture"].items())))
         faults = tuple(
             FaultSpec(f["hook"], f["required"],
                       TriggerSpec(**f["trigger"])
@@ -596,7 +622,9 @@ def resolve_requested(requested: RequestedConfig, *, project_id: str,
     instantiates the adapter and calls ``describe()`` only. It never resets,
     invokes tools, arms faults or otherwise mutates the target environment,
     and never calls a model. Declaration mismatches, undiscovered fault hooks
-    and missing required tools are rejected as impossible combinations.
+    and missing required tools are rejected as impossible combinations, and
+    rules outside the env driver's declared checks are rejected as
+    unsupported (envs without a registered driver skip that check).
     """
     check_project_id(project_id)
     if type(requested_id) is not str or not requested_id:
@@ -628,9 +656,28 @@ def resolve_requested(requested: RequestedConfig, *, project_id: str,
             raise ConfigError(
                 f"impossible combination: fault hook {fault.hook!r} is not"
                 f" implemented by env {requested.env_id!r}")
+    from . import drivers as _drivers
+    from . import drivers_refund as _refund_driver  # noqa: F401
+    driver = _drivers.get_driver(requested.env_id)
+    if driver is not None:
+        declared = list(driver.declared_checks())
+        for rule in requested.rules:
+            if rule not in declared:
+                raise ConfigError(
+                    f"unsupported check {rule!r} for env"
+                    f" {requested.env_id!r}: the env declares"
+                    f" {', '.join(declared)}")
+    if driver is not None:
+        if requested.agent not in driver.agents():
+            raise ConfigError(
+                f"unsupported agent {requested.agent!r} for env"
+                f" {requested.env_id!r}: the env driver implements"
+                f" {', '.join(driver.agents())}")
+        required = list(driver.required_tools(requested.agent))
+    else:
+        required = list(_required_tools(requested.agent))
     discovered_names = {t["name"] for t in found["discovered_tools"]}
-    missing = [t for t in _required_tools(requested.agent)
-               if t not in discovered_names]
+    missing = [t for t in required if t not in discovered_names]
     if missing:
         raise ConfigError("impossible combination: agent"
                           f" {requested.agent!r} needs tool(s)"

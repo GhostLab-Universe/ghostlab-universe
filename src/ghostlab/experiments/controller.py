@@ -1,10 +1,12 @@
 """Controller plumbing: execute resolved configs through shared interfaces.
 
 Execution drives the registered environment through the shared adapter
-interface (``set_fault``/``reset``/``invoke``/``evidence``) and runs the shared
-refund agent procedures with identical tool sequences and idempotency keys to
-``ghostlab.core``. The controller owns ordering, budgets, evidence and
-verdicts; it makes no inference calls (every run records ``model_calls: 0``).
+interface (``set_fault``/``reset``/``invoke``/``evidence``) and dispatches
+the agent procedure, evidence shape, fault reading and rule verification to
+the resolved environment's driver (refunds keep identical tool sequences and
+idempotency keys to ``ghostlab.core``). The controller owns ordering,
+budgets, evidence and verdicts; it makes no inference calls (every run
+records ``model_calls: 0``).
 
 Budgets survive retries and recovery: tool consumption is appended to the
 project-scoped ledger keyed by resolved config, and every attempt — first try
@@ -28,12 +30,13 @@ that never fired fails the run as untested, never passes it.
 
 import time
 
-from ..core import (BudgetExceeded, Fixture, PaymentTimeout, ToolError,
-                    verify)
+from ..core import BudgetExceeded, PaymentTimeout, ToolError
 from ..envs import STATUS_QUALIFIED
-from ..envs.adapters import (EnvCancelled, adapter_code_digest,
-                             resolve_adapter_ref)
+from ..envs.adapters import (EnvCancelled, RefundEnvAdapter,
+                             adapter_code_digest, resolve_adapter_ref)
 from ..envs.registry import utcnow
+from . import drivers as _drivers
+from . import drivers_refund as _refund_driver
 from .configs import EXPERIMENTS_SCHEMA_VERSION, ConfigError
 
 RUN_STATUSES = ("completed", "budget_exhausted", "cancelled", "error")
@@ -48,47 +51,19 @@ class BudgetExhaustedError(Exception):
 def fault_fired(hook: str, trace) -> bool:
     """Whether recorded evidence shows a fault hook fired.
 
-    ``timeout_after_commit`` commits then reports a timeout, so it fired if
-    and only if the trace carries a ``PaymentTimeout`` outcome. Unknown hooks
-    never count as fired: they cannot reach execution (resolution rejects
-    undiscovered hooks), so treating them as fired would hide a gap.
+    Thin refund delegate over the refund driver; kept for existing tests.
+    Execution dispatches to the resolved environment's driver instead.
     """
-    if type(trace) is not list:
-        return False
-    if hook == "timeout_after_commit":
-        for event in trace:
-            if not isinstance(event, dict):
-                continue
-            outcome = event.get("outcome")
-            if isinstance(outcome, dict) \
-                    and outcome.get("error") == "PaymentTimeout":
-                return True
-        return False
-    return False
+    return _refund_driver.fault_fired(hook, trace)
 
 
 def evidence_complete(evidence, dispatches: int) -> bool:
-    """Check controller-owned evidence is ordered, owned and consistent."""
-    if type(evidence) is not dict or set(evidence) != {"snapshot", "trace"}:
-        return False
-    trace = evidence["trace"]
-    snapshot = evidence["snapshot"]
-    if type(trace) is not list or len(trace) != dispatches:
-        return False
-    if [e.get("event_id") for e in trace
-            if isinstance(e, dict)] != list(range(1, len(trace) + 1)):
-        return False
-    if type(snapshot) is not dict or set(snapshot) != {
-            "order", "ledger", "total_refunded_minor"}:
-        return False
-    ledger = snapshot["ledger"]
-    if type(ledger) is not list:
-        return False
-    try:
-        total = sum(row["amount_minor"] for row in ledger)
-    except (KeyError, TypeError):
-        return False
-    return snapshot["total_refunded_minor"] == total
+    """Check controller-owned evidence is ordered, owned and consistent.
+
+    Thin refund delegate over the refund driver; kept for existing tests.
+    Execution dispatches to the resolved environment's driver instead.
+    """
+    return _refund_driver.evidence_complete(evidence, dispatches)
 
 
 def evaluate_verdict(*, status: str, evidence_ok: bool, checks: dict,
@@ -115,25 +90,16 @@ def evaluate_verdict(*, status: str, evidence_ok: bool, checks: dict,
 def drive_agent(*, agent: str, invoke, identity: dict, paid_minor: int) -> None:
     """Shared refund agent procedure; identical sequence to ``core.run_agent``.
 
+    Thin refund delegate over the refund driver; kept for existing tests.
     ``invoke`` is any ``(tool, arguments) -> result`` dispatcher, so the same
     procedure drives a world or an environment adapter without divergence.
     """
     if agent not in ("vulnerable", "repaired"):
         raise ConfigError(f"unsupported agent {agent!r}")
-    order = invoke("get_order", dict(identity))
-    request = {**identity, "amount_minor": order["paid_minor"],
-               "idempotency_key": "refund-intent-1"}
-    try:
-        invoke("issue_refund", request)
-    except PaymentTimeout:
-        if agent == "vulnerable":
-            invoke("issue_refund", {**request,
-                                    "idempotency_key": "refund-retry-2"})
-        else:
-            status = invoke("get_refund_status", {
-                **identity, "idempotency_key": request["idempotency_key"]})
-            if status["status"] != "committed":
-                invoke("issue_refund", request)
+    fixture = {"order_id": identity["order_id"],
+               "customer_id": identity["customer_id"],
+               "paid_minor": paid_minor, "currency": "INR"}
+    _refund_driver.drive(agent, invoke, fixture)
 
 
 def _new_adapter(registry, registration):
@@ -207,6 +173,19 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
             "supports_cancellation", False))
     except Exception as error:
         raise ConfigError(f"env describe() failed: {error}") from error
+    env_id = resolved["pins"]["env_id"]
+    driver = _drivers.get_driver(env_id)
+    if driver is None and isinstance(adapter, RefundEnvAdapter):
+        # Backward compatibility: refund adapters registered under any
+        # env id run the refund driver (explicit registration wins).
+        driver = _refund_driver
+    if driver is None:
+        raise ConfigError(
+            f"no driver registered for env {env_id!r}; register the"
+            " environment's driver before starting runs")
+    if effective["agent"] not in driver.agents():
+        raise ConfigError(f"unsupported agent {effective['agent']!r}"
+                          f" for env {env_id!r}")
     untriggered = [f for f in effective["faults"] if "trigger" not in f]
     pending = [{"spec": f, "armed": False, "armed_occurrence": None}
                for f in effective["faults"] if "trigger" in f]
@@ -287,6 +266,13 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
             # budget, so they count exactly like successes.
             dispatches += 1
             raise
+        except Exception:
+            # Non-core environment errors (e.g. an example world's own
+            # timeout type, which the driver handles): counted exactly
+            # like core ToolError outcomes. Core BudgetExceeded and
+            # cancellation are handled above and never reach here.
+            dispatches += 1
+            raise
         else:
             dispatches += 1
             return result
@@ -310,12 +296,9 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
     if cancelled():
         status = "cancelled"
     else:
-        identity = {"order_id": effective["fixture"]["order_id"],
-                    "customer_id": effective["fixture"]["customer_id"]}
         try:
-            drive_agent(agent=effective["agent"], invoke=invoke,
-                        identity=identity,
-                        paid_minor=effective["fixture"]["paid_minor"])
+            driver.drive(effective["agent"], invoke,
+                         dict(effective["fixture"]))
         except EnvCancelled:
             status = "cancelled"
         except BudgetExceeded:
@@ -324,6 +307,11 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
             status = "error"
             error_text = f"{type(error).__name__}: {error}"
         except ToolError as error:
+            status = "error"
+            error_text = f"{type(error).__name__}: {error}"
+        except Exception as error:
+            # A non-core environment error the driver did not handle:
+            # recorded as an error run, like an unhandled core ToolError.
             status = "error"
             error_text = f"{type(error).__name__}: {error}"
     completed_at = utcnow()
@@ -336,12 +324,12 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
         if status == "completed":
             status = "error"
             error_text = f"evidence unavailable: {type(error).__name__}"
-    ok = evidence_complete(evidence, dispatches)
+    ok = driver.evidence_complete(evidence, dispatches)
     checks: dict = {}
     if isinstance(evidence.get("snapshot"), dict):
         try:
-            checks = verify(Fixture(**effective["fixture"]),
-                            evidence["snapshot"])
+            checks = driver.verify_checks(dict(effective["fixture"]),
+                                          evidence["snapshot"])
         except (ValueError, KeyError, TypeError):
             checks = {}
             ok = False
@@ -352,7 +340,8 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
     faults = []
     for f in effective["faults"]:
         entry = {"hook": f["hook"], "required": f["required"],
-                 "fired": fault_fired(f["hook"], evidence.get("trace"))}
+                 "fired": driver.fault_fired(f["hook"],
+                                             evidence.get("trace"))}
         if "trigger" in f:
             armed_occurrence = armed_by_hook.get(f["hook"])
             entry["fired_occurrence"] = armed_occurrence \

@@ -166,12 +166,12 @@ export function GuidedDemo({ source, session }: { source: DataSource; session: S
 
   return (
     <Section title="Guided demo run">
-      <div data-testid="guided-demo">
+      <div className="guided-demo" data-testid="guided-demo">
         <p>
           One click starts the scripted refund-world scenario and walks it to a verdict: progress, Reality Diff, then
           the approval decision. <span data-testid="guided-demo-synthetic">Synthetic world: no real people or money.</span>
         </p>
-        <ol className="steps">
+        <ol className="steps" data-testid="guided-demo-steps">
           {GUIDED_DEMO_STEPS.map((step) => (
             <li key={step}>{step}</li>
           ))}
@@ -193,7 +193,7 @@ export function GuidedDemo({ source, session }: { source: DataSource; session: S
           </Notice>
         ) : null}
         <div className="actions">
-          <button type="button" disabled={busy || disabled} onClick={() => void start()}>
+          <button type="button" disabled={busy || disabled} aria-busy={busy} onClick={() => void start()}>
             {busy ? "Starting" : "Start guided demo run"}
           </button>
         </div>

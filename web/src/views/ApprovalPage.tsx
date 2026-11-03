@@ -294,7 +294,7 @@ export function DecisionPanel({
             onChange={(event) => setReason(event.currentTarget.value)}
             aria-describedby="decision-reason-count"
           />
-          <p className="char-count" id="decision-reason-count">
+          <p className="char-count" id="decision-reason-count" data-near-limit={2000 - reason.length < 200 ? "true" : "false"}>
             {2000 - reason.length} characters left
           </p>
           <div className="actions">

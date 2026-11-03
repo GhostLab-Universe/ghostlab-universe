@@ -365,6 +365,17 @@ function ToolEvent({
   );
 }
 
+/** The recorded instant in machine form when it parses; otherwise the stored text, as-is. */
+function EventStamp({ value }: { value: string }) {
+  const label = formatTimestamp(value);
+  if (Number.isNaN(Date.parse(value))) return <span className="muted">{label}</span>;
+  return (
+    <time className="muted" dateTime={value}>
+      {label}
+    </time>
+  );
+}
+
 export function ApplicationEvents({
   events,
   origins,
@@ -393,6 +404,9 @@ export function ApplicationEvents({
               { value: "newest", label: "Newest first" },
             ]}
           />
+          <p className="muted event-count" data-testid="event-count">
+            {events.length} campaign event{events.length === 1 ? "" : "s"} recorded
+          </p>
           <ol className="event-timeline" data-testid="event-timeline">
             {ordered.map((event) => {
             const info = describeEventKind(event.kind);
@@ -401,7 +415,7 @@ export function ApplicationEvents({
                 <div className="event-timeline-head">
                   <span className="event-id">{event.sequence}</span>
                   <Tag tone={info.tone}>{info.label}</Tag>
-                  <span className="muted">{formatTimestamp(event.occurred_at)}</span>
+                  <EventStamp value={event.occurred_at} />
                 </div>
                 <p>{event.summary}</p>
                 {event.task_id === null && event.run_id === null ? null : (

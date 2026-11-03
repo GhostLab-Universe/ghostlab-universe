@@ -21,6 +21,9 @@
   --neutral-soft: #eaebe8;
   --hazard: #f4c430;
   --hazard-ink: #1c1600;
+  --accent-hover: #154a96;
+  --on-accent: #ffffff;
+  --radius: 8px;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
 }
@@ -46,6 +49,8 @@
     --active-soft: #1b2b45;
     --neutral: #c5cad2;
     --neutral-soft: #2a2f37;
+    --accent-hover: #a9c8f7;
+    --on-accent: #0e1a2e;
   }
 }
 
@@ -63,6 +68,7 @@ body {
   color: var(--ink);
   font: 16px/1.55 var(--sans);
   overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
@@ -83,8 +89,8 @@ h1:focus {
 }
 
 h2 {
-  font-size: 1.05rem;
-  letter-spacing: -0.005em;
+  font-size: 1.12rem;
+  letter-spacing: -0.008em;
 }
 
 h3 {
@@ -169,8 +175,8 @@ pre {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 4px 16px;
-  padding: 12px 16px;
+  gap: 6px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
@@ -187,6 +193,17 @@ pre {
   color: var(--muted);
 }
 
+/* A plain accent chip marks the product; no logotype, no gradient. */
+.brand::before {
+  content: "";
+  display: inline-block;
+  width: 0.72em;
+  height: 0.72em;
+  margin-right: 0.45em;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
 .topnav {
   display: flex;
   gap: 4px;
@@ -194,11 +211,12 @@ pre {
 }
 
 .topnav a {
-  padding: 4px 10px;
-  border-radius: 4px;
+  padding: 5px 12px;
+  border-radius: 999px;
   color: var(--ink);
   text-decoration: none;
   white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .topnav a:hover {
@@ -206,7 +224,8 @@ pre {
 }
 
 .topnav a[aria-current="page"] {
-  background: var(--neutral-soft);
+  background: var(--active-soft);
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -222,12 +241,18 @@ pre {
 }
 
 .campaign-head {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+}
+
+.campaign-head h1 {
+  margin-top: 2px;
 }
 
 .eyebrow {
   color: var(--muted);
   font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .lead {
@@ -246,10 +271,11 @@ pre {
 
 .tag {
   display: inline-block;
-  padding: 1px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
   font-weight: 600;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   background: var(--neutral-soft);
   color: var(--neutral);
@@ -307,11 +333,17 @@ pre {
   text-decoration: none;
   white-space: nowrap;
   border-bottom: 3px solid transparent;
+  transition: color 0.15s ease;
+}
+
+.view-nav a:hover {
+  color: var(--accent);
 }
 
 .view-nav a[aria-current="page"] {
   border-bottom-color: var(--accent);
-  font-weight: 600;
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .nav-flag {
@@ -323,15 +355,23 @@ pre {
   display: block;
   padding: 6px 12px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--ink);
   text-decoration: none;
   background: var(--panel);
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.sub-nav a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .sub-nav a[aria-current="page"] {
-  border-color: var(--ink);
-  font-weight: 600;
+  border-color: var(--accent);
+  background: var(--active-soft);
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* Filter and order controls above long lists. Buttons, not links: they change
@@ -351,7 +391,7 @@ pre {
 }
 
 .chip {
-  padding: 4px 11px;
+  padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--panel);
@@ -361,17 +401,19 @@ pre {
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
 }
 
-.chip:hover {
-  border-color: var(--muted);
+.chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .chip[aria-pressed="true"] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--paper);
-  font-weight: 600;
+  border-color: var(--accent);
+  background: var(--active-soft);
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .chip:disabled {
@@ -388,9 +430,13 @@ pre {
 .section {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 16px;
-  margin-bottom: 16px;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+
+.section > :last-child {
+  margin-bottom: 0;
 }
 
 .section-head {
@@ -399,7 +445,7 @@ pre {
   align-items: baseline;
   justify-content: space-between;
   gap: 4px 16px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .origin {
@@ -409,6 +455,10 @@ pre {
 
 .origin summary {
   cursor: pointer;
+}
+
+.origin summary:hover {
+  color: var(--accent);
 }
 
 .origin ul {
@@ -475,15 +525,24 @@ pre {
 .recorded dd {
   margin: 0;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
+/* Verdicts are the one bold element: tone wash, tone edge, headline scale.
+   The tone always encodes a recorded meaning, never decorates. */
 .notice,
 .verdict {
   border-left: 4px solid var(--neutral);
   background: var(--neutral-soft);
-  border-radius: 4px;
-  padding: 10px 14px;
+  border-radius: 6px;
+  padding: 12px 16px;
   margin-bottom: 16px;
+}
+
+.notice > strong,
+.verdict > strong {
+  font-size: 1.02rem;
+  letter-spacing: -0.005em;
 }
 
 .notice-body {
@@ -518,7 +577,7 @@ pre {
   overflow-x: auto;
   max-width: 100%;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--panel);
 }
 
@@ -551,9 +610,11 @@ td {
 }
 
 thead th {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
   color: var(--muted);
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
 tbody th {
@@ -578,8 +639,8 @@ th[data-side="fork"] {
 .callout {
   border: 1px solid var(--line);
   border-left: 4px solid var(--active);
-  border-radius: 4px;
-  padding: 10px 14px;
+  border-radius: 6px;
+  padding: 12px 16px;
 }
 
 .callout[data-tone="fail"] {
@@ -591,15 +652,16 @@ th[data-side="fork"] {
 }
 
 .callout-value {
-  font-size: 1.3rem;
+  font-size: 1.35rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .side {
   border: 1px solid var(--line);
   border-top: 3px solid var(--line);
-  border-radius: 4px;
-  padding: 10px 14px;
+  border-radius: 6px;
+  padding: 12px 16px;
   min-width: 0;
 }
 
@@ -639,8 +701,15 @@ th[data-side="fork"] {
 .findings > li,
 .events > li {
   border-left: 3px solid var(--line);
-  padding: 8px 12px;
-  margin-bottom: 8px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+
+/* Long traces skip off-screen rendering; the browser still scrolls to a
+   focused event, so deep links keep working. */
+.events > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 80px;
 }
 
 .findings > li[data-tone="fail"] {
@@ -766,6 +835,10 @@ details.json summary {
   color: var(--muted);
 }
 
+details.json summary:hover {
+  color: var(--accent);
+}
+
 pre {
   overflow: auto;
   max-height: 340px;
@@ -773,7 +846,7 @@ pre {
   padding: 10px 12px;
   background: var(--well);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 0.82rem;
   overflow-wrap: normal;
 }
@@ -810,10 +883,16 @@ textarea {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--muted);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--panel);
   color: var(--ink);
   font: inherit;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--accent);
 }
 
 textarea {
@@ -841,19 +920,33 @@ textarea {
 
 button {
   padding: 8px 14px;
-  border: 1px solid var(--ink);
-  border-radius: 4px;
-  background: var(--ink);
-  color: var(--paper);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 button.quiet,
 .test-controls button {
   background: transparent;
+  border-color: var(--line);
   color: var(--ink);
+}
+
+button.quiet:hover:not(:disabled),
+.test-controls button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: transparent;
+  color: var(--accent);
 }
 
 button:disabled {
@@ -927,11 +1020,11 @@ button:disabled {
 
 .progress-bar {
   display: flex;
-  height: 10px;
-  border-radius: 4px;
+  height: 12px;
+  border-radius: 999px;
   overflow: hidden;
   background: var(--neutral-soft);
-  margin: 8px 0 4px;
+  margin: 10px 0 6px;
 }
 
 .progress-bar span {
@@ -974,6 +1067,12 @@ button:disabled {
   font-size: 0.82rem;
   color: var(--muted);
   margin: 2px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count[data-near-limit="true"] {
+  color: var(--warn);
+  font-weight: 700;
 }
 
 /* Loading notices breathe gently; motion stays off when asked. */
@@ -996,13 +1095,21 @@ button:disabled {
     transition: none;
   }
 
+  button,
+  .chip,
+  .topnav a,
+  .view-nav a,
+  .sub-nav a {
+    transition: none;
+  }
+
   [data-testid="state-loading"] {
     animation: none;
   }
 }
 
 .progress-bar span[data-seg="done"] {
-  background: var(--neutral);
+  background: var(--ok);
 }
 
 .progress-bar span[data-seg="active"] {
@@ -1029,9 +1136,11 @@ button:disabled {
 
 .event-timeline > li {
   position: relative;
-  padding: 0 0 14px 28px;
+  padding: 0 0 16px 28px;
   border-left: 2px solid var(--line);
   margin-left: 8px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 90px;
 }
 
 .event-timeline > li:last-child {
@@ -1042,12 +1151,13 @@ button:disabled {
 .event-timeline > li::before {
   content: "";
   position: absolute;
-  left: -6px;
-  top: 5px;
-  width: 10px;
-  height: 10px;
+  left: -7px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--neutral);
+  border: 2px solid var(--panel);
 }
 
 .event-timeline > li[data-tone="active"]::before {
@@ -1062,16 +1172,77 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
+  gap: 6px 10px;
 }
 
+.event-timeline-head time,
+.event-timeline-head .muted {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.event-timeline p {
+  margin: 0.3rem 0;
+}
+
+.event-count {
+  margin: 0 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The guided demo really is a sequence, so it earns numbered markers: each
+   step is one stop on the walk from start to verdict. */
 .steps {
-  margin: 8px 0;
-  padding-left: 22px;
+  list-style: none;
+  counter-reset: demo-step;
+  margin: 12px 0;
+  padding: 0;
 }
 
 .steps li {
-  margin: 4px 0;
+  counter-increment: demo-step;
+  position: relative;
+  margin: 0;
+  padding: 2px 0 12px 40px;
+}
+
+.steps li:last-child {
+  padding-bottom: 2px;
+}
+
+.steps li::before {
+  content: counter(demo-step);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--active-soft);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 26px;
+  text-align: center;
+}
+
+.steps li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 29px;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+
+.guided-demo .actions {
+  margin-top: 10px;
+}
+
+.guided-demo .actions button {
+  font-size: 1rem;
+  padding: 10px 18px;
 }
 
 table.aligned tr[data-diff="different"] > th {

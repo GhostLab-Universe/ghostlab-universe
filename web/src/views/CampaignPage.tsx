@@ -93,6 +93,15 @@ export function CampaignPanel({
   );
 }
 
+/** Plain words for each progress segment. The bar stays decorative: the sentence below it is the accessible record. */
+const SEGMENT_LABEL: Record<string, string> = {
+  done: "succeeded",
+  active: "in progress",
+  waiting: "waiting",
+  failed: "failed",
+  stopped: "stopped",
+};
+
 /** Live progress as recorded: status, task counts, events shown and refresh state. */
 export function ProgressPanel({
   view,
@@ -160,7 +169,12 @@ export function ProgressPanel({
               {segments
                 .filter((item) => item.count > 0)
                 .map((item) => (
-                  <span key={item.seg} data-seg={item.seg} style={{ width: `${(item.count / tasks.total) * 100}%` }} />
+                  <span
+                    key={item.seg}
+                    data-seg={item.seg}
+                    title={`${item.count} ${SEGMENT_LABEL[item.seg] ?? item.seg}`}
+                    style={{ width: `${(item.count / tasks.total) * 100}%` }}
+                  />
                 ))}
             </div>
             <p>

@@ -1,0 +1,307 @@
+{
+ "payload": {
+  "kind": "ghostlab-exploration/1",
+  "variants": [
+   "vulnerable",
+   "repaired"
+  ],
+  "limits": {
+   "max_experiments": 12,
+   "max_tokens": 200000,
+   "max_usd": 1.0
+  },
+  "adversary_model": "muse-spark-1.3",
+  "adversary_turns": [
+   {
+    "input_digest": "90dba70c621c772c66260ba17f882bffefd9139425a2277c055982b6a63cd024",
+    "turn": {
+     "status": "tool_calls",
+     "text": "Hunting your refund failure \u2014 probing where timeouts bite hardest.",
+     "tool_calls": [
+      {
+       "id": "call_8f7a6869-e15e-42a1-9509-6b0ea6bf2acc",
+       "name": "list_fault_catalog",
+       "arguments": {},
+       "raw": "{}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1083,
+      "output_tokens": 68,
+      "reasoning_tokens": 7,
+      "cached_tokens": 0,
+      "usd": 0.00164275
+     },
+     "request_id": "resp_6aeb67e534a6f3e7b85b482d",
+     "latency_ms": 1737,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "a4ef1a2d4dce841cd282358f5b6743af7c0bdd07fec29d9573260601847c4a68",
+    "turn": {
+     "status": "tool_calls",
+     "text": "Catalog shows commit-time timeouts on refunds \u2014 I'll provoke the vulnerable agent to expose a break.",
+     "tool_calls": [
+      {
+       "id": "call_816dca8c-c5ac-4837-97da-b81827749d7c",
+       "name": "run_experiment",
+       "arguments": {
+        "agent_variant": "vulnerable",
+        "fault_schedule": [
+         {
+          "hook": "timeout_after_commit",
+          "occurrence": 1,
+          "trigger_tool": "issue_refund"
+         }
+        ]
+       },
+       "raw": "{\"agent_variant\":\"vulnerable\",\"fault_schedule\":[{\"hook\":\"timeout_after_commit\",\"occurrence\":1,\"trigger_tool\":\"issue_refund\"}]}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1242,
+      "output_tokens": 300,
+      "reasoning_tokens": 183,
+      "cached_tokens": 0,
+      "usd": 0.0028275
+     },
+     "request_id": "resp_6aeb67eaf5064982c4d34352",
+     "latency_ms": 7798,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   }
+  ],
+  "agent_turns": [],
+  "diagnosis_turns": [
+   {
+    "input_digest": "d8e51b9cac9f6ad411a49de957697a8cf701a38309bc1051ca18689b7afd87d6",
+    "turn": {
+     "status": "completed",
+     "text": "{\"root_cause\": \"The first issue_refund committed server-side but returned PaymentTimeout, and the agent retried with a new idempotency_key 'refund-retry-2' instead of reusing 'refund-intent-1'. This bypassed deduplication, creating a second full refund of 250000 for a total of 500000.\", \"proposed_patch\": \"On timeout from issue_refund, never generate a new key: reuse the original key and/or verify state first. Pseudo-code: try: return issue_refund(..., idempotency_key='refund-intent-1') except PaymentTimeout: existing = get_order(order_id); if existing.refunded_minor >= 250000: return existing.refund; else: return issue_refund(..., idempotency_key='refund-intent-1')  # same key, with bounded retries\"}",
+     "tool_calls": [],
+     "usage": {
+      "input_tokens": 482,
+      "output_tokens": 641,
+      "reasoning_tokens": 454,
+      "cached_tokens": 0,
+      "usd": 0.014748
+     },
+     "request_id": "resp_6aeb67f20be23da1669e4bd3",
+     "latency_ms": 6002,
+     "provider": "meta-dev",
+     "model": "muse-wonder-1.0",
+     "error": null
+    }
+   }
+  ],
+  "summary": {
+   "stop_status": "found_failure",
+   "error": null,
+   "rounds": 1,
+   "experiments": [
+    {
+     "run_id": "run-000001",
+     "outcome": "executed",
+     "reason": null,
+     "status": "completed",
+     "verdict": "fail",
+     "rules_failed": [
+      "total_refund_within_payment",
+      "no_duplicate_full_refund"
+     ],
+     "agent_variant": "vulnerable",
+     "faults_fired": [
+      true
+     ],
+     "tool_calls": 3,
+     "model_calls": 0,
+     "reality_diff": {
+      "first_divergence": {
+       "event_id": 2,
+       "baseline": {
+        "tool": "issue_refund",
+        "outcome": {
+         "result": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "refund-intent-1",
+          "order_id": "synthetic-order-1",
+          "transaction_id": "refund-1"
+         }
+        }
+       },
+       "faulted": {
+        "tool": "issue_refund",
+        "outcome": {
+         "error": "PaymentTimeout",
+         "message": "Payment committed; response timed out"
+        }
+       }
+      },
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "violated_invariants": [
+       "no_duplicate_full_refund",
+       "total_refund_within_payment"
+      ]
+     },
+     "unit_index": 0,
+     "agent": "vulnerable",
+     "faults": [
+      {
+       "hook": "timeout_after_commit",
+       "params": {},
+       "required": true,
+       "trigger": {
+        "type": "occurrence",
+        "tool": "issue_refund",
+        "occurrence": 1
+       }
+      }
+     ]
+    }
+   ],
+   "local_rejections": [],
+   "ops_rejections": 0,
+   "failure": {
+    "run_id": "run-000001",
+    "outcome": "executed",
+    "reason": null,
+    "status": "completed",
+    "verdict": "fail",
+    "rules_failed": [
+     "total_refund_within_payment",
+     "no_duplicate_full_refund"
+    ],
+    "agent_variant": "vulnerable",
+    "faults_fired": [
+     true
+    ],
+    "tool_calls": 3,
+    "model_calls": 0,
+    "reality_diff": {
+     "first_divergence": {
+      "event_id": 2,
+      "baseline": {
+       "tool": "issue_refund",
+       "outcome": {
+        "result": {
+         "amount_minor": 250000,
+         "customer_id": "synthetic-customer-1",
+         "idempotency_key": "refund-intent-1",
+         "order_id": "synthetic-order-1",
+         "transaction_id": "refund-1"
+        }
+       }
+      },
+      "faulted": {
+       "tool": "issue_refund",
+       "outcome": {
+        "error": "PaymentTimeout",
+        "message": "Payment committed; response timed out"
+       }
+      }
+     },
+     "baseline_refunded_minor": 250000,
+     "faulted_refunded_minor": 500000,
+     "violated_invariants": [
+      "no_duplicate_full_refund",
+      "total_refund_within_payment"
+     ]
+    },
+    "unit_index": 0,
+    "minimized": {
+     "run_id": "run-000001",
+     "required_prefix": [
+      "get_order",
+      "issue_refund",
+      "issue_refund"
+     ],
+     "dropped": 0,
+     "stable": true,
+     "actions": [
+      {
+       "tool": "get_order",
+       "arguments": {
+        "customer_id": "synthetic-customer-1",
+        "order_id": "synthetic-order-1"
+       }
+      },
+      {
+       "tool": "issue_refund",
+       "arguments": {
+        "amount_minor": 250000,
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "refund-intent-1",
+        "order_id": "synthetic-order-1"
+       }
+      },
+      {
+       "tool": "issue_refund",
+       "arguments": {
+        "amount_minor": 250000,
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "refund-retry-2",
+        "order_id": "synthetic-order-1"
+       }
+      }
+     ]
+    }
+   },
+   "final_text": null,
+   "budget": {
+    "usd_spent": 0.00447025,
+    "usd_cap": 1.0,
+    "tokens": 2693,
+    "max_tokens": 200000,
+    "experiments": 1,
+    "max_experiments": 12
+   },
+   "model_calls": [
+    {
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "request_id": "resp_6aeb67e534a6f3e7b85b482d",
+     "latency_ms": 1737,
+     "input_tokens": 1083,
+     "output_tokens": 68,
+     "reasoning_tokens": 7,
+     "usd": 0.00164275,
+     "status": "tool_calls"
+    },
+    {
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "request_id": "resp_6aeb67eaf5064982c4d34352",
+     "latency_ms": 7798,
+     "input_tokens": 1242,
+     "output_tokens": 300,
+     "reasoning_tokens": 183,
+     "usd": 0.0028275,
+     "status": "tool_calls"
+    }
+   ]
+  },
+  "diagnosis": {
+   "label": "explanation, not evidence",
+   "model": "muse-wonder-1.0",
+   "status": "completed",
+   "error": null,
+   "root_cause": "The first issue_refund committed server-side but returned PaymentTimeout, and the agent retried with a new idempotency_key 'refund-retry-2' instead of reusing 'refund-intent-1'. This bypassed deduplication, creating a second full refund of 250000 for a total of 500000.",
+   "proposed_patch": "On timeout from issue_refund, never generate a new key: reuse the original key and/or verify state first. Pseudo-code: try: return issue_refund(..., idempotency_key='refund-intent-1') except PaymentTimeout: existing = get_order(order_id); if existing.refunded_minor >= 250000: return existing.refund; else: return issue_refund(..., idempotency_key='refund-intent-1')  # same key, with bounded retries",
+   "rerun": {
+    "agent": "repaired",
+    "run_id": "run-000003",
+    "verdict": "pass",
+    "rules_failed": [],
+    "evidence": "controller verdict"
+   }
+  }
+ },
+ "sha256": "a91b20c591467d90ce961906807f5d8fe688fee6e838e7c1e49768d8d473f3ec"
+}

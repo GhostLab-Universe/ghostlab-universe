@@ -6,19 +6,42 @@ Updated at the end of every session and read at the start of every session. Newe
 
 ## Current state
 
-**Updated:** 2026-11-04 (~23:45 IST)
+**Updated:** 2026-11-05 (~01:30 IST)
 **Branch:** `hackathon/final`
-**Agents active:** Claude Code session 2A on `hackathon/final` (UI). A second Claude Code session is on worktree `../ghostlab-eval`, branch `eval/fairness`
-(benchmark fairness, calibration, recordings).
-**Status:** The demo UI runs on the live-model routes, and step 6 tells the whole story keyless in replay mode.
+**Agents active:** Claude Code session 2D (presentation). Session 2B (eval/fairness) was merged in at 01:30.
+**Status:** `/lab` is the staged demo (8 scenes, keyless replay), `/` redirects to it, and the developer console stays at `/guide`.
 - Tests: 817 pass. The only failures are the 2 Linux-only ones. tsc is clean and the build is green.
-- Screens are in `var/screens/` (git-ignored).
 
-**Next:** Record the video from `/guide/6-run` at 1920×1080. After that, the README rewrite and the public deploy.
+**Next:** Record the video from `/lab` at 1920×1080 (→ next, ← back, R restart). After that, the README rewrite and the public deploy.
 
 ---
 
 ## Sessions
+
+### 2026-11-05 — Phase 2D: /lab staged demo — *Claude Code (session 2D)*
+
+**Done**
+- `web/src/lab/` is a new presentation layer with 8 scenes: Hero, Hunt, Verdict, Fork, Diagnosis, Fix, Capsule and Evidence. Each scene is one 1920×1080 frame.
+  Navigation is by dots and the keys ← → R, and a Replay|Live toggle sits in the corner (live is disabled with the reason shown when there's no key).
+- Every number comes from the API:
+  - The hunt is a real `POST /v1/explorations` (replay of `adversary-exploration-llm.json`).
+  - The sequence diagram steps through the failing run's world trace.
+  - Fix replays `hardened-spark-pass.json`.
+  - Capsule replays `naive-spark-duplicate.json` each time the scene opens.
+  - Evidence reads `/v1/evidence`.
+- API:
+  - Traces carry `ledger_total_after` and `ledger_rows_after`.
+  - Capsule replay returns the recorded trace, but only when the replayed evidence matched it.
+  - Evidence lists every benchmark strategy that has `stats`, so renamed or opaque strategies show up without code changes.
+- `/guide` step 6: the infra panel is one closed `<details>` "Execution backend details".
+
+**Decided**
+- The Capsule scene uses `naive-spark-duplicate.json`, the same failure class as the hunt (`llm-naive-noread`). It is the file the CLI command replays.
+- The external study stat (Li, arXiv 2609.29095) is shown verbatim as the user supplied it. It was not verified in this session.
+
+**Hit**
+- Lab class names collided with `styles.css` (`.chip`, `.badge`, `.witness`, `.fork`), so they were renamed with an `l` prefix.
+
 
 ### 2026-11-04 — Phase 2A: demo UI on the live-model routes — *Claude Code (session 2A)*
 

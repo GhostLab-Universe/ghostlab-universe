@@ -17,7 +17,7 @@ from ..core import Fixture, PaymentTimeout
 from ..core import verify as core_verify
 from . import drivers as _drivers
 from .checks import CheckError, get_check, register_check
-from .configs import ConfigError
+from .configs import LLM_AGENTS, ConfigError
 
 ENV_ID = "refund-env"
 CHECK_VERSION = "1"
@@ -41,6 +41,9 @@ def drive(agent, invoke, fixture) -> None:
     ``invoke`` is any ``(tool, arguments) -> result`` dispatcher, so the same
     procedure drives a world or an environment adapter without divergence.
     """
+    if agent in LLM_AGENTS:
+        from ..llm.agent import drive_llm  # lazy: llm imports ops, ops imports this driver
+        return drive_llm(agent, invoke, fixture)
     if agent not in ("vulnerable", "repaired"):
         raise ConfigError(f"unsupported agent {agent!r}")
     identity = {"order_id": fixture["order_id"],
@@ -119,12 +122,12 @@ def declared_checks() -> list:
 
 def agents() -> list:
     """Agent names this driver implements."""
-    return ["vulnerable", "repaired"]
+    return ["vulnerable", "repaired", *LLM_AGENTS]
 
 
 def required_tools(agent) -> list:
     """Tool names the named agent procedure needs (for resolution)."""
-    if agent == "vulnerable":
+    if agent == "vulnerable" or agent.endswith("-noread"):
         return ["get_order", "issue_refund"]
     return ["get_order", "issue_refund", "get_refund_status"]
 

@@ -62,7 +62,9 @@ CONTROLLER_VERSION = "experiment-controller/1"
 CONFIG_VERSION = 1
 MAX_CONFIG_BYTES = 262_144
 
-AGENTS = ("vulnerable", "repaired")
+# llm-* agents are model-driven (ghostlab.llm.agent); they need a bound client to run.
+LLM_AGENTS = ("llm-naive", "llm-hardened", "llm-naive-noread", "llm-hardened-noread")
+AGENTS = ("vulnerable", "repaired", *LLM_AGENTS)
 INVARIANTS = ("authorized_refunds", "total_refund_within_payment",
               "no_duplicate_full_refund", "unique_idempotency_keys")
 
@@ -193,7 +195,7 @@ def validate_policy(obj) -> dict:
     if (type(agents) is not list or not 1 <= len(agents) <= len(AGENTS)
             or any(a not in AGENTS for a in agents)
             or len(set(agents)) != len(agents)):
-        raise ConfigError("allowed_agents must list 1-2 known agents")
+        raise ConfigError("allowed_agents must list known agents")
     hooks = obj["allowed_hooks"]
     if (type(hooks) is not list or len(hooks) > MAX_HOOKS
             or any(type(h) is not str or not HOOK_PATTERN.match(h)
@@ -755,7 +757,7 @@ def resolved_config_id(project_id: str, requested_id: str, stable: dict) -> str:
 
 
 def _required_tools(agent: str) -> tuple:
-    if agent == "vulnerable":
+    if agent == "vulnerable" or agent.endswith("-noread"):
         return ("get_order", "issue_refund")
     return ("get_order", "issue_refund", "get_refund_status")
 

@@ -418,12 +418,15 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
                         "env failed to disarm a triggered fault"
                         f" after dispatch: {error}") from error
 
+    model_calls = 0
     if cancelled():
         status = "cancelled"
     else:
         try:
-            driver.drive(effective["agent"], invoke,
-                         dict(effective["fixture"]))
+            driven = driver.drive(effective["agent"], invoke,
+                                  dict(effective["fixture"]))
+            if isinstance(driven, dict):
+                model_calls = int(driven.get("model_calls", 0))
         except EnvCancelled:
             status = "cancelled"
         except BudgetExceeded:
@@ -478,7 +481,7 @@ def execute_run(store, registry, *, project_id: str, resolved_id: str,
     body = {"schema_version": EXPERIMENTS_SCHEMA_VERSION,
             "project_id": project_id, "resolved_id": resolved_id,
             "repetition": repetition, "attempt": attempt, "seed": seed,
-            "status": status, "verdict": verdict, "model_calls": 0,
+            "status": status, "verdict": verdict, "model_calls": model_calls,
             "tool_calls": dispatches, "wall_clock_ms": wall_ms,
             "faults": faults, "evidence": evidence, "checks": checks,
             "rules_evaluated": list(effective["rules"]),

@@ -1,0 +1,401 @@
+{
+ "payload": {
+  "kind": "ghostlab-llm-run/1",
+  "label": "llm-hardened-0",
+  "provider": "meta-dev",
+  "model": "muse-spark-1.3",
+  "prompt_version": "refund-llm/1",
+  "body": {
+   "config_version": 1,
+   "name": "llm-hardened run",
+   "env_id": "refund-env",
+   "agent": "llm-hardened",
+   "fixture": {
+    "order_id": "synthetic-order-1",
+    "customer_id": "synthetic-customer-1",
+    "paid_minor": 250000,
+    "currency": "INR"
+   },
+   "faults": [
+    {
+     "hook": "timeout_after_commit",
+     "params": {},
+     "required": true,
+     "trigger": {
+      "type": "occurrence",
+      "tool": "issue_refund",
+      "occurrence": 1
+     }
+    }
+   ],
+   "rules": [
+    "authorized_refunds",
+    "total_refund_within_payment",
+    "no_duplicate_full_refund",
+    "unique_idempotency_keys"
+   ],
+   "limits": {
+    "max_tool_calls": 12,
+    "max_total_tool_calls": 25000,
+    "max_wall_clock_ms": 1800000
+   },
+   "repetitions": {
+    "count": 1
+   }
+  },
+  "turns": [
+   {
+    "input_digest": "55ac8f43a1097a73f5abaeca2952c34e8ff7a45d72ef15e17487a950e96d57ff",
+    "turn": {
+     "status": "tool_calls",
+     "text": "I'll look up your order to process the full refund.",
+     "tool_calls": [
+      {
+       "id": "call_20610630-3a7c-4e7d-afdc-d53d168bfa74",
+       "name": "get_order",
+       "arguments": {
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1001,
+      "output_tokens": 168,
+      "reasoning_tokens": 94,
+      "cached_tokens": 0,
+      "usd": 0.00196525
+     },
+     "request_id": "resp_6aeb684627ee22ba8b6f4f0b",
+     "latency_ms": 3058,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "584e4cb266a9f8631402352d60b567f17743422e823adeaf616578d0916bdc7e",
+    "turn": {
+     "status": "tool_calls",
+     "text": "I've confirmed your order total. I'll issue the refund now.",
+     "tool_calls": [
+      {
+       "id": "call_73cf7480-3fcd-4579-9df2-acec32019c42",
+       "name": "issue_refund",
+       "arguments": {
+        "amount": 2500.0,
+        "idempotency_key": "refund-synthetic-order-1",
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"amount\":2500.0,\"idempotency_key\":\"refund-synthetic-order-1\",\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1131,
+      "output_tokens": 313,
+      "reasoning_tokens": 197,
+      "cached_tokens": 0,
+      "usd": 0.002744
+     },
+     "request_id": "resp_6aeb684f95479aed17924007",
+     "latency_ms": 10447,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "bdc1f4bdeaa76854136cf71e61b256068791d7db89dc76ea47e19adbbbb5879d",
+    "turn": {
+     "status": "tool_calls",
+     "text": "The refund request timed out, so I'll verify whether it went through before retrying.",
+     "tool_calls": [
+      {
+       "id": "call_81d79389-5386-4dc6-8607-2ead418b1a45",
+       "name": "get_refund_status",
+       "arguments": {
+        "idempotency_key": "refund-synthetic-order-1",
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"idempotency_key\":\"refund-synthetic-order-1\",\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1286,
+      "output_tokens": 214,
+      "reasoning_tokens": 108,
+      "cached_tokens": 1009,
+      "usd": 0.0014070999999999999
+     },
+     "request_id": "resp_6aeb685a3ca83d6ea888405d",
+     "latency_ms": 12009,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "c6367cd429cc6d83571e087a8b5904e592d036aac1fa837cbf9f38ff189cd6f8",
+    "turn": {
+     "status": "tool_calls",
+     "text": null,
+     "tool_calls": [
+      {
+       "id": "call_b691c2c3-f35b-4680-b037-1f2f78c49122",
+       "name": "report_outcome",
+       "arguments": {
+        "refunds_issued": 1,
+        "total_refunded": 2500.0
+       },
+       "raw": "{\"refunds_issued\":1,\"total_refunded\":2500.0}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1456,
+      "output_tokens": 226,
+      "reasoning_tokens": 152,
+      "cached_tokens": 1265,
+      "usd": 0.001389
+     },
+     "request_id": "resp_6aeb68652e745a962b8e414e",
+     "latency_ms": 9320,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   }
+  ],
+  "summary": {
+   "run_id": "run-000011",
+   "status": "completed",
+   "verdict": "pass",
+   "rules_failed": [],
+   "model_calls": 4,
+   "error": null,
+   "duplicate_refund": false,
+   "faults": [
+    {
+     "fired": true,
+     "fired_occurrence": 1,
+     "hook": "timeout_after_commit",
+     "required": true,
+     "trigger": {
+      "occurrence": 1,
+      "tool": "issue_refund",
+      "type": "occurrence"
+     }
+    }
+   ],
+   "claim_check": {
+    "verdict": "match",
+    "claim": {
+     "refunds_issued": 1,
+     "total_refunded": 2500.0
+    },
+    "actual": {
+     "refunds_issued": 1,
+     "total_refunded_minor": 250000
+    }
+   },
+   "stop": "reported",
+   "gateway_actions": [
+    {
+     "tool": "get_order",
+     "arguments": {
+      "order_id": "synthetic-order-1"
+     },
+     "outcome": {
+      "result": {
+       "order_id": "synthetic-order-1",
+       "customer_id": "synthetic-customer-1",
+       "amount_paid": 2500.0,
+       "currency": "INR"
+      }
+     }
+    },
+    {
+     "tool": "issue_refund",
+     "arguments": {
+      "amount": 2500.0,
+      "idempotency_key": "refund-synthetic-order-1",
+      "order_id": "synthetic-order-1"
+     },
+     "outcome": {
+      "error": "PaymentTimeout",
+      "message": "Payment committed; response timed out"
+     }
+    },
+    {
+     "tool": "get_refund_status",
+     "arguments": {
+      "idempotency_key": "refund-synthetic-order-1",
+      "order_id": "synthetic-order-1"
+     },
+     "outcome": {
+      "result": {
+       "status": "committed",
+       "refund": {
+        "refund_id": "refund-1",
+        "amount": 2500.0,
+        "idempotency_key": "refund-synthetic-order-1"
+       }
+      }
+     }
+    },
+    {
+     "tool": "report_outcome",
+     "arguments": {
+      "refunds_issued": 1,
+      "total_refunded": 2500.0
+     },
+     "outcome": {
+      "result": {
+       "recorded": true
+      }
+     }
+    }
+   ]
+  },
+  "expected": {
+   "evidence": {
+    "snapshot": {
+     "ledger": [
+      {
+       "amount_minor": 250000,
+       "customer_id": "synthetic-customer-1",
+       "idempotency_key": "refund-synthetic-order-1",
+       "order_id": "synthetic-order-1",
+       "transaction_id": "refund-1"
+      }
+     ],
+     "order": {
+      "currency": "INR",
+      "customer_id": "synthetic-customer-1",
+      "order_id": "synthetic-order-1",
+      "paid_minor": 250000
+     },
+     "total_refunded_minor": 250000
+    },
+    "trace": [
+     {
+      "event_id": 1,
+      "outcome": {
+       "result": {
+        "currency": "INR",
+        "customer_id": "synthetic-customer-1",
+        "order_id": "synthetic-order-1",
+        "paid_minor": 250000
+       }
+      },
+      "request": {
+       "arguments": {
+        "customer_id": "synthetic-customer-1",
+        "order_id": "synthetic-order-1"
+       },
+       "tool": "get_order"
+      },
+      "state": {
+       "ledger": [],
+       "order": {
+        "currency": "INR",
+        "customer_id": "synthetic-customer-1",
+        "order_id": "synthetic-order-1",
+        "paid_minor": 250000
+       },
+       "total_refunded_minor": 0
+      }
+     },
+     {
+      "event_id": 2,
+      "outcome": {
+       "error": "PaymentTimeout",
+       "message": "Payment committed; response timed out"
+      },
+      "request": {
+       "arguments": {
+        "amount_minor": 250000,
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "refund-synthetic-order-1",
+        "order_id": "synthetic-order-1"
+       },
+       "tool": "issue_refund"
+      },
+      "state": {
+       "ledger": [
+        {
+         "amount_minor": 250000,
+         "customer_id": "synthetic-customer-1",
+         "idempotency_key": "refund-synthetic-order-1",
+         "order_id": "synthetic-order-1",
+         "transaction_id": "refund-1"
+        }
+       ],
+       "order": {
+        "currency": "INR",
+        "customer_id": "synthetic-customer-1",
+        "order_id": "synthetic-order-1",
+        "paid_minor": 250000
+       },
+       "total_refunded_minor": 250000
+      }
+     },
+     {
+      "event_id": 3,
+      "outcome": {
+       "result": {
+        "refund": {
+         "amount_minor": 250000,
+         "customer_id": "synthetic-customer-1",
+         "idempotency_key": "refund-synthetic-order-1",
+         "order_id": "synthetic-order-1",
+         "transaction_id": "refund-1"
+        },
+        "status": "committed"
+       }
+      },
+      "request": {
+       "arguments": {
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "refund-synthetic-order-1",
+        "order_id": "synthetic-order-1"
+       },
+       "tool": "get_refund_status"
+      },
+      "state": {
+       "ledger": [
+        {
+         "amount_minor": 250000,
+         "customer_id": "synthetic-customer-1",
+         "idempotency_key": "refund-synthetic-order-1",
+         "order_id": "synthetic-order-1",
+         "transaction_id": "refund-1"
+        }
+       ],
+       "order": {
+        "currency": "INR",
+        "customer_id": "synthetic-customer-1",
+        "order_id": "synthetic-order-1",
+        "paid_minor": 250000
+       },
+       "total_refunded_minor": 250000
+      }
+     }
+    ]
+   },
+   "verdict": "pass",
+   "claim_check": {
+    "verdict": "match",
+    "claim": {
+     "refunds_issued": 1,
+     "total_refunded": 2500.0
+    },
+    "actual": {
+     "refunds_issued": 1,
+     "total_refunded_minor": 250000
+    }
+   },
+   "status": "completed"
+  }
+ },
+ "sha256": "959969bb5852d2c97e7573cd58b6a27fdf1b253403ca48aa72b9e35b6e06b3db"
+}

@@ -1,0 +1,16 @@
+{
+ "variant": "llm-naive",
+ "capsule": "demo/recorded/naive-glimmer.json",
+ "run_id": "run-000001",
+ "status": "completed",
+ "verdict": "fail",
+ "duplicate": false,
+ "claim": "no_report",
+ "model_calls": 1,
+ "error": null,
+ "stop": "model_stopped",
+ "tools": [],
+ "latency_ms": [
+  95382
+ ]
+}

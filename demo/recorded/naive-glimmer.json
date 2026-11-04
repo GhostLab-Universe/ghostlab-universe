@@ -1,0 +1,127 @@
+{
+ "payload": {
+  "kind": "ghostlab-llm-run/1",
+  "label": "naive-glimmer",
+  "provider": "glimmer-local",
+  "model": "hf.co/bartowski/Muse-Glimmer-30B-GGUF:IQ2_M",
+  "prompt_version": "refund-llm/1",
+  "body": {
+   "config_version": 1,
+   "name": "llm-naive run",
+   "env_id": "refund-env",
+   "agent": "llm-naive",
+   "fixture": {
+    "order_id": "synthetic-order-1",
+    "customer_id": "synthetic-customer-1",
+    "paid_minor": 250000,
+    "currency": "INR"
+   },
+   "faults": [
+    {
+     "hook": "timeout_after_commit",
+     "params": {},
+     "required": true,
+     "trigger": {
+      "type": "occurrence",
+      "tool": "issue_refund",
+      "occurrence": 1
+     }
+    }
+   ],
+   "rules": [
+    "authorized_refunds",
+    "total_refund_within_payment",
+    "no_duplicate_full_refund",
+    "unique_idempotency_keys"
+   ],
+   "limits": {
+    "max_tool_calls": 12,
+    "max_total_tool_calls": 25000,
+    "max_wall_clock_ms": 1800000
+   },
+   "repetitions": {
+    "count": 1
+   }
+  },
+  "turns": [
+   {
+    "input_digest": "8dd4ca69fb5fd5ee5378c7bbf20a5f6f5be9a0ac0b56c4bb5b4c01b62d790d4a",
+    "turn": {
+     "status": "completed",
+     "text": null,
+     "tool_calls": [],
+     "usage": {
+      "input_tokens": 760,
+      "output_tokens": 3,
+      "reasoning_tokens": null,
+      "cached_tokens": null,
+      "usd": 0.0
+     },
+     "request_id": "chatcmpl-454",
+     "latency_ms": 95382,
+     "provider": "glimmer-local",
+     "model": "hf.co/bartowski/Muse-Glimmer-30B-GGUF:IQ2_M",
+     "error": null
+    }
+   }
+  ],
+  "summary": {
+   "run_id": "run-000001",
+   "status": "completed",
+   "verdict": "fail",
+   "rules_failed": [],
+   "model_calls": 1,
+   "error": null,
+   "duplicate_refund": false,
+   "faults": [
+    {
+     "fired": false,
+     "fired_occurrence": null,
+     "hook": "timeout_after_commit",
+     "required": true,
+     "trigger": {
+      "occurrence": 1,
+      "tool": "issue_refund",
+      "type": "occurrence"
+     }
+    }
+   ],
+   "claim_check": {
+    "verdict": "no_report",
+    "claim": null,
+    "actual": {
+     "refunds_issued": 0,
+     "total_refunded_minor": 0
+    }
+   },
+   "stop": "model_stopped",
+   "gateway_actions": []
+  },
+  "expected": {
+   "evidence": {
+    "snapshot": {
+     "ledger": [],
+     "order": {
+      "currency": "INR",
+      "customer_id": "synthetic-customer-1",
+      "order_id": "synthetic-order-1",
+      "paid_minor": 250000
+     },
+     "total_refunded_minor": 0
+    },
+    "trace": []
+   },
+   "verdict": "fail",
+   "claim_check": {
+    "verdict": "no_report",
+    "claim": null,
+    "actual": {
+     "refunds_issued": 0,
+     "total_refunded_minor": 0
+    }
+   },
+   "status": "completed"
+  }
+ },
+ "sha256": "8ba9b18d1b652d99bfef10d90ca04a9346a577c8394394b47f92a451cce87095"
+}

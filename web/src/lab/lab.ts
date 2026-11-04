@@ -114,17 +114,17 @@ function stepsFrom(trace: readonly TraceRow[], claim: Claim | null): Step[] {
 }
 
 const LANE = { agent: 150, boundary: 500, pay: 850 };
-const ROW = 96;
+const ROW = 140;
 const TOP = 96;
 
-function arrow(x1: number, x2: number, y: number, cls: string, label: string | null, key: string, delay: number): ReactNode {
+function arrow(x1: number, x2: number, y: number, cls: string, label: string | null, key: string, delay: number, labelAt?: [number, "start" | "middle"]): ReactNode {
   const dir = x2 > x1 ? 1 : -1;
   return h(
     "g",
     { key, className: `seq-msg ${cls}`, style: { animationDelay: `${String(delay)}ms` } },
     h("line", { x1, y1: y, x2: x2 - dir * 10, y2: y }),
     h("path", { d: `M${String(x2)} ${String(y)} l${String(-dir * 12)} -6 v12 z`, className: "seq-head" }),
-    label === null ? null : h("text", { x: (LANE.agent + LANE.boundary) / 2, y: y - 10, textAnchor: "middle" }, label),
+    label === null ? null : h("text", { x: labelAt?.[0] ?? (Math.max(x1, x2) <= LANE.boundary ? (x1 + x2) / 2 : (LANE.agent + LANE.boundary) / 2), y: y - 10, textAnchor: labelAt?.[1] ?? "middle" }, label),
   );
 }
 
@@ -133,8 +133,8 @@ function stepGraphic(step: Step, i: number): ReactNode {
   const back = y + 40;
   const parts: ReactNode[] = [];
   if (step.kind === "report") {
-    parts.push(arrow(LANE.agent, LANE.boundary, y + 20, "msg-muse", `report_outcome ${step.claim ?? ""}`, "r", 0));
-    parts.push(h("text", { key: "n", x: LANE.boundary + 18, y: y + 26, className: "seq-note" }, "kept by GhostLab — never reaches payments"));
+    parts.push(arrow(LANE.agent, LANE.boundary, y + 20, "msg-muse", `report_outcome ${step.claim ?? ""}`, "r", 0, [LANE.agent, "start"]));
+    parts.push(h("text", { key: "n", x: LANE.agent, y: y + 50, className: "seq-note" }, "kept by GhostLab — never reaches payments"));
     return h("g", { key: `s${String(i)}` }, ...parts);
   }
   parts.push(arrow(LANE.agent, LANE.pay, y, "msg-req", step.tool, "q", 0));
@@ -236,6 +236,9 @@ function Hero(props: { onRun: () => void; busy: boolean }): ReactNode {
       s("limbo-src", "LIMBO, Sep 2026 · n=25,930"))));
 }
 
+/** Display names only; the API and capsules keep the real variant ids. */
+const AGENT_LABEL: Record<string, string> = { "llm-naive": "naive agent", "llm-naive-noread": "naive agent · no status check", "llm-hardened": "hardened agent", "llm-hardened-noread": "hardened agent · no status check" };
+
 function Hunt(props: { data: Data; sceneKey: string }): ReactNode {
   const { exp, detail } = props.data;
   const ready = exp !== null && exp.status === "stopped" && detail !== null;
@@ -266,15 +269,15 @@ function Hunt(props: { data: Data; sceneKey: string }): ReactNode {
           if (!ready || t < lchipAt(i)) return null;
           const resolved = t > lchipAt(i) + 420;
           const v = e.outcome !== "executed" ? "untested" : (e.verdict ?? "untested");
-          return h("div", { key: e.run_id ?? i, className: `lchip ${resolved ? `lchip-${v}` : "lchip-pending"}`, "data-testid": "exp-chip" },
-            s("mono", e.agent), s("lchip-fault", e.faults.map(faultText).join(", ")),
+          return h("div", { key: e.run_id ?? i, className: `lchip ${resolved ? `lchip-${v}` : "lchip-pending"}`, "data-testid": "exp-chip", title: e.agent },
+            s("lchip-agent", AGENT_LABEL[e.agent] ?? e.agent), s("lchip-fault", e.faults.map(faultText).join(", ")),
             s("lchip-verdict", resolved ? v.toUpperCase() : "running…"));
         }),
       ),
       b === undefined ? null : d(
         "budget",
         d("budget-row",
-          s("budget-k", exp?.mode === "replay" ? "USD (recorded live run)" : "USD spent"),
+          s("budget-k", "spend"),
           s("budget-v", `$${usdNow.toFixed(4)} / $${usdCap.toFixed(2)}`),
           s("budget-k", "experiments"),
           s("budget-v", `${String(b.experiments)} / ${String(b.max_experiments)}`)),

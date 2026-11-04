@@ -282,3 +282,16 @@
 .limbo-k2 { color: var(--lab-ink); font-weight: 600; font-size: 1.15rem; }
 .limbo-src { color: var(--lab-muted); font-family: var(--lab-mono); font-size: 0.85rem; margin-top: 0.4rem; }
 @media (max-width: 1100px) { .scene-hero-wrap { flex-direction: column; align-items: stretch; } .hero-side { flex-basis: auto; } }
+/* hunt scale: diagram card ~70% of the frame, diagram text >= 18px at 1920 */
+.scene-hunt .muse, .scene-fix .fix-left { flex-basis: 26%; }
+.stage { padding: 1.25rem 1.5rem; }
+.seq-msg text, .seq-key { font-size: 21px; }
+.lane-title { font-size: 26px; }
+.lane-sub, .seq-note { font-size: 19px; }
+.cut text { font-size: 20px; }
+.commit text { font-size: 19px; }
+.lchip-agent { font-weight: 600; white-space: nowrap; }
+.lchip-fault { grid-column: 1 / -1; grid-row: 2; white-space: nowrap; }
+.ledger-rows li, .lchip { white-space: nowrap; }
+.muse-name, .muse-model { white-space: nowrap; }
+@media (max-width: 1400px) { .muse-model { display: none; } }

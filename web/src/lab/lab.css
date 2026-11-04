@@ -262,3 +262,13 @@
   .caret, .lspin { animation-duration: 3s; }
   .ba-after, .fix-claim, .cta, .dot, .budget-fill { transition: none; }
 }
+
+/* session A fixes */
+.mode-badge { margin-left: auto; font-family: var(--lab-mono); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; color: var(--lab-muted); border: 1px solid var(--lab-rule); border-radius: 999px; padding: 0.3rem 0.8rem; }
+.mode-badge.is-live { color: var(--lab-muse); border-color: var(--lab-muse); }
+.seq-key { font-family: var(--lab-mono); font-size: 17px; fill: var(--lab-ink-2); }
+.seq-key.is-nokey { fill: var(--lab-amber); font-weight: 600; }
+.seq-key-sub { fill: var(--lab-muted); font-weight: 400; }
+.lwit-sub { color: var(--lab-muted); opacity: 0.8; }
+.diag-gloss { color: var(--lab-muted); font-family: var(--lab-mono); font-size: 1rem; margin: -0.75rem 0 1.5rem; }
+.scene-diag { margin: 0 auto; align-self: center; }

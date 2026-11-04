@@ -86,7 +86,14 @@ function useTween(target: number): number {
 
 // ---- sequence diagram ---------------------------------------------------------
 
-interface Step { kind: "call" | "report"; tool: string; error: string | null; total: number; rows: number; added: number; over: boolean; claim?: string }
+interface Step { kind: "call" | "report"; tool: string; error: string | null; total: number; rows: number; added: number; over: boolean; claim?: string; key?: string }
+
+/** GhostLab's facade (llm/agent.py _Facade.call) assigns `auto-N` when the agent sends no idempotency key. */
+const ASSIGNED = /^auto-\d+$/;
+function keyLabel(key: unknown): string | null {
+  if (typeof key !== "string") return null;
+  return ASSIGNED.test(key) ? `no key (assigned ${key})` : `key ${key}`;
+}
 
 function stepsFrom(trace: readonly TraceRow[], claim: Claim | null): Step[] {
   const paid = Number(trace[0]?.outcome.result?.["paid_minor"] ?? NaN);
@@ -95,6 +102,8 @@ function stepsFrom(trace: readonly TraceRow[], claim: Claim | null): Step[] {
     const nextTotal = e.ledger_total_after ?? total;
     const nextRows = e.ledger_rows_after ?? rows;
     const step: Step = { kind: "call", tool: e.tool, error: e.outcome.error ?? null, total: nextTotal, rows: nextRows, added: nextRows > rows ? nextTotal - total : 0, over: Number.isFinite(paid) && nextTotal > paid };
+    const key = e.tool === "issue_refund" ? keyLabel(e.arguments["idempotency_key"]) : null;
+    if (key !== null) step.key = key;
     total = nextTotal; rows = nextRows;
     return step;
   });
@@ -129,6 +138,10 @@ function stepGraphic(step: Step, i: number): ReactNode {
     return h("g", { key: `s${String(i)}` }, ...parts);
   }
   parts.push(arrow(LANE.agent, LANE.pay, y, "msg-req", step.tool, "q", 0));
+  if (step.key !== undefined) {
+    const [main, sub] = step.key.startsWith("no key") ? ["no key", step.key.slice(7)] : [step.key, ""];
+    parts.push(h("text", { key: "k", x: LANE.boundary + 18, y: y - 10, className: `seq-key ${sub ? "is-nokey" : ""}` }, main, sub ? h("tspan", { className: "seq-key-sub" }, ` ${sub}`) : null));
+  }
   if (step.added > 0) {
     parts.push(h("g", { key: "c", className: `seq-msg commit ${step.over ? "commit-bad" : "commit-ok"}`, style: { animationDelay: "280ms" } },
       h("circle", { cx: LANE.pay, cy: y + 20, r: 7 }),
@@ -314,8 +327,14 @@ function Fork(props: { data: Data }): ReactNode {
     ),
     d("lwit",
       s("lwit-k", `Minimized witness · ${plural(lwit.length, "step")}`),
-      ...lwit.map((a, i) => h("span", { key: i, className: "lwit-step" }, s("lwit-n", String(i + 1)), s("mono", a.tool), typeof a.arguments["idempotency_key"] === "string" ? s("lwit-arg", `key ${String(a.arguments["idempotency_key"])}`) : null))),
+      ...lwit.map((a, i) => h("span", { key: i, className: "lwit-step" }, s("lwit-n", String(i + 1)), s("mono", a.tool), a.tool === "issue_refund" ? witKey(a.arguments["idempotency_key"]) : null))),
   );
+}
+
+function witKey(key: unknown): ReactNode {
+  const label = keyLabel(key);
+  if (label === null) return s("lwit-arg", "no key");
+  return label.startsWith("no key") ? s("lwit-arg", "no key ", s("lwit-sub", label.slice(7))) : s("lwit-arg", label);
 }
 
 function Diagnosis(props: { data: Data }): ReactNode {
@@ -330,6 +349,7 @@ function Diagnosis(props: { data: Data }): ReactNode {
       d("diag-head", s("diag-who", dg.model ?? "muse-wonder"), s("diag-tag", "Explanation, not evidence")),
       h("h2", { className: "diag-title" }, "Why the agent paid twice"),
       h("p", { className: "diag-cause" }, dg.root_cause ?? "No parsable root cause returned."),
+      h("p", { className: "diag-gloss" }, "amounts in paise · 250000 = ₹2,500 · 500000 = ₹5,000"),
       d("diff",
         d("diff-head", "proposed patch"),
         h("p", { className: "diff-prose" }, prose.trim()),
@@ -397,9 +417,6 @@ function Evidence(props: { data: Data }): ReactNode {
   const omitted = keys["omitted"];
   const supplied = keys["supplied"];
   const envs = Object.entries(ev.benchmark?.envs ?? {});
-  const caveatLines = (ev.benchmark_caveats ?? "").split("\n");
-  const caveat = caveatLines.find((l) => l.startsWith("- ")) ?? "";
-  const because = caveatLines.find((l) => /measured advantage/.test(l)) ?? "";
   return d(
     "scene scene-evidence",
     h("h2", { className: "scene-title" }, "Evidence, with its n"),
@@ -407,15 +424,15 @@ function Evidence(props: { data: Data }): ReactNode {
       omitted === undefined ? null : d("ev-stat bad ev-wide",
         d("ev-pair", s("ev-v", `${String(omitted.duplicates)}/${String(omitted.n)}`), s("ev-k", "runs that sent no idempotency key on the first refund call duplicated it")),
         d("ev-pair", s("ev-v", `${String(omitted.false_success)}/${String(omitted.duplicates)}`), s("ev-k", "of those duplicates reported success anyway")),
-        s("ev-who", `${ev.calibration?.model ?? ""} · timeout after commit · ${String(omitted.n + (supplied?.n ?? 0))} runs across both calibration batches`)),
+        s("ev-who", `${String(omitted.n + (supplied?.n ?? 0))} recorded runs · ${String(omitted.n)} sent no key on the first refund`)),
       supplied === undefined ? null : d("ev-stat good", s("ev-v", `${String(supplied.duplicates)}/${String(supplied.n)}`), s("ev-k", "runs that supplied a key duplicated"))),
     envs.length === 0 ? null : d("bench",
       s("bench-k", `Benchmark · ${String(ev.benchmark?.budget ?? "?")} experiments per trial · opaque agent ids`),
       ...envs.map(([env, e]) => d("bench-row",
         s("bench-env", `${env.replace(/-env$/, "")} · ${String(e.space_cells ?? "?")} cells, ${String(e.failing_cells)} fail`),
         ...Object.entries(e.strategies).map(([k, st]) => s("bench-item", s("mono", STRAT_LABEL[k] ?? k), ` ${String(st.discovered)}/${String(st.trials)}`)))),
-      h("p", { className: "bench-caveat" }, `Caveat: ${strip(caveat.slice(2))} ${strip(because.replace(/^\s*-\s*/, ""))}`)),
-    h("p", { className: "ev-external" }, "In a Sep 2026 study of 25,930 agent episodes, frontier agents duplicated side effects in 56–74% of in-flight retries and reported success in 90% of those (Li, arXiv 2609.29095)."),
+      h("p", { className: "bench-caveat" }, "Caveat: a one-line rule (fault the first write) ties Muse here — its edge is reading tool names, not deeper search.")),
+    h("p", { className: "ev-external" }, "LIMBO (Li, Sep 2026, n=25,930): when a request was still in flight or delivered twice, frontier models duplicated it in 56% / 74% of episodes and reported success in 90% of duplicates. Remaining duplicates came from a first attempt without a key."),
     d("ev-links", h("a", { href: REPO }, "GitHub repo →"), h("a", { href: "/guide/1-environment" }, "Developer console →")),
   );
 }
@@ -491,6 +508,7 @@ export function Lab(): ReactNode {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "ArrowRight") goRef.current(sceneRef.current + 1);
       else if (e.key === "ArrowLeft") goRef.current(sceneRef.current - 1);
+      else if ((e.key === "l" || e.key === "L") && liveRef.current === null) setMode((m) => (m === "live" ? "replay" : "live"));
       else if (e.key === "r" || e.key === "R") {
         setData((prev) => ({ ...prev, exp: null, detail: null, fix: null, cap: null }));
         setScene(0);
@@ -500,6 +518,8 @@ export function Lab(): ReactNode {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  const liveRef = useRef(liveReason);
+  liveRef.current = liveReason;
   const sceneRef = useRef(scene);
   sceneRef.current = scene;
 
@@ -520,10 +540,8 @@ export function Lab(): ReactNode {
     { className: "lab", "data-scene": name },
     d("lab-top",
       h("a", { className: "lab-brand", href: "/lab", onClick: (e: { preventDefault: () => void }) => { e.preventDefault(); go(0); } }, "GhostLab"),
-      d("toggle",
-        h("button", { type: "button", className: mode === "replay" ? "is-on" : "", onClick: () => setMode("replay"), "data-testid": "toggle-replay" }, "Replay"),
-        h("button", { type: "button", className: mode === "live" ? "is-on" : "", onClick: () => setMode("live"), disabled: liveReason !== null, title: liveReason ?? "Runs a real hunt on the Meta Model API", "data-testid": "toggle-live" }, "Live")),
-      liveReason === null ? null : s("toggle-why", `live off: ${liveReason}`)),
+      h("span", { className: `mode-badge ${mode === "live" ? "is-live" : ""}`, "data-testid": "mode-badge", title: liveReason === null ? "L switches replay / live" : `live unavailable: ${liveReason}` },
+        mode === "live" ? "● LIVE · muse-spark-1.3" : "REPLAY · recorded run")),
     h("main", { className: "lab-stage", key }, body),
     data.error === null ? null : h("div", { className: "lab-error", role: "alert" }, data.error),
     h("nav", { className: "dots", "aria-label": "Scenes" },

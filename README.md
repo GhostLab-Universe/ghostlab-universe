@@ -99,7 +99,7 @@ The caveat matters more than the table. Muse's edge comes from reading the tool 
 
 ## Why it matters
 
-LIMBO ([Li, arXiv 2609.29095](https://arxiv.org/abs/2609.29095), Sep 2026) ran 25,930 agent episodes and found that frontier agents duplicated side effects in 56% of in-flight retries and 74% of redeliveries, and reported success in 90% of those duplicates. The refund above is the small, reproducible version of that result.
+LIMBO ([Li, arXiv 2609.29095](https://arxiv.org/abs/2609.29095), Sep 2026, n=25,930): when a request was still in flight or delivered twice, frontier models duplicated it in 56% / 74% of episodes and reported success in 90% of duplicates. Remaining duplicates came from a first attempt without a key. The refund above is the small, reproducible version of that result.
 
 ## Related work
 

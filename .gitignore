@@ -18,3 +18,5 @@ artifacts/local/
 .DS_Store
 Thumbs.db
 *.egg-info/
+.code-review-graph/
+var/

@@ -369,3 +369,90 @@ def summary(state) -> dict:
                        "experiments": len(state["experiments"]),
                        "max_experiments": state["limits"]["max_experiments"]},
             "model_calls": list(client.calls)}
+
+
+DIAGNOSIS_SYSTEM = """You diagnose failures found by GhostLab. You get a Reality Diff (baseline vs
+faulted run of the same agent) and the minimized action trace that still violates an
+invariant. Reply with only a JSON object: {"root_cause": "<2-3 sentences>",
+"proposed_patch": "<concrete change to the agent's retry logic, pseudo-code allowed>"}."""
+
+
+def diagnose(client, state) -> dict:
+    """One model call per confirmed failure. Output is explanation, never evidence.
+
+    The evidence is the rerun: the same fault schedule against the repaired agent
+    through the controller, whose deterministic verdict is reported alongside.
+    """
+    failure = state["failure"]
+    explorer = state["explorer"]
+    body = explorer.bodies[failure["run_id"]]
+    conv = client.open(DIAGNOSIS_SYSTEM, [])
+    turn = conv.send(user=json.dumps({"agent": body["agent"], "faults": body["faults"],
+                                      "rules_failed": failure["rules_failed"],
+                                      "reality_diff": failure["reality_diff"],
+                                      "minimized_trace": failure["minimized"]["actions"]}))
+    text = turn.text or ""
+    try:
+        parsed = json.loads(text[text.index("{"):text.rindex("}") + 1])
+    except ValueError:
+        parsed = {"root_cause": None, "proposed_patch": None, "unparsed": text[:2000]}
+    out = {"label": DIAGNOSIS_LABEL, "model": turn.model, "status": turn.status,
+           "error": turn.error, **{k: parsed.get(k) for k in ("root_cause", "proposed_patch")}}
+    if "unparsed" in parsed:
+        out["unparsed"] = parsed["unparsed"]
+    fixed_agent = "repaired" if body["agent"] in DETERMINISTIC else None
+    if fixed_agent:
+        rerun_body = llm_agent.requested(fixed_agent, body["faults"], name="diagnosis-rerun")
+        result = plan.execute_plan(explorer.store, explorer.registry, plan.build_plan(
+            "refund-env", llm_agent.FIXTURE, fixed_agent, "rerun", llm_agent.RULES, None,
+            rerun_body["limits"], 1, "fixed", [0], requested_configs=[rerun_body],
+            policy=llm_agent.policy()), explorer.project_id)
+        row = result["per_run"][0]
+        out["rerun"] = {"agent": fixed_agent, "run_id": row["run_id"], "verdict": row["verdict"],
+                        "rules_failed": row["rules_failed"], "evidence": "controller verdict"}
+    else:
+        out["rerun"] = {"agent": "llm-hardened",
+                        "capsule": "demo/recorded/hardened-spark-pass.json",
+                        "evidence": "recorded capsule; replay it keylessly"}
+    return out
+
+
+EXPLORATION_KIND = "ghostlab-exploration/1"
+
+
+def record_payload(state, adversary_records, agent_records, diagnosis=None,
+                   diagnosis_records=None) -> dict:
+    explorer = state["explorer"]
+    payload = {"kind": EXPLORATION_KIND, "variants": list(explorer.variants),
+               "limits": state["limits"], "adversary_model": explorer.client.model,
+               "adversary_turns": adversary_records, "agent_turns": agent_records,
+               "diagnosis_turns": diagnosis_records or [], "summary": summary(state),
+               "diagnosis": diagnosis}
+    from ..capsule import _digest
+    return {"payload": payload, "sha256": _digest(payload)}
+
+
+def replay_exploration(payload, directory) -> dict:
+    """Re-run a recorded exploration with ReplayClients: zero network, zero keys."""
+    from . import capsules
+    from .client import ReplayClient
+    registry, store = capsules.fresh_env(directory)
+    adversary = ReplayClient(payload["adversary_turns"], model=payload["adversary_model"])
+    agent_client = ReplayClient(payload["agent_turns"]) if payload["agent_turns"] else None
+    explorer = ModelExplorer(adversary, store=store, registry=registry, project_id="replay",
+                             max_experiments=payload["limits"]["max_experiments"],
+                             variants=payload["variants"], llm_client=agent_client)
+    state = explore(new_state(explorer, max_tokens=payload["limits"]["max_tokens"],
+                              max_usd=float("inf")))
+    diagnosis = None
+    if payload.get("diagnosis_turns") and state["failure"]:
+        diagnosis = diagnose(ReplayClient(payload["diagnosis_turns"]), state)
+    got = summary(state)
+    want = payload["summary"]
+    keys = ("verdict", "rules_failed", "outcome", "agent")
+    matches = {"stop_status": got["stop_status"] == want["stop_status"],
+               "experiments": [{k: e.get(k) for k in keys} for e in got["experiments"]]
+               == [{k: e.get(k) for k in keys} for e in want["experiments"]],
+               "adversary_turns_used": adversary.exhausted}
+    return {"reproduced": all(matches.values()), "matches": matches, "summary": got,
+            "diagnosis": diagnosis, "model_calls_live": 0, "state": state}

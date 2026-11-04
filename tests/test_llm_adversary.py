@@ -125,5 +125,26 @@ class AdversaryTests(unittest.TestCase):
         self.assertEqual(state["stop_status"], "found_failure")
 
 
+    def test_exploration_record_replay_and_diagnosis(self):
+        from ghostlab.llm.client import RecordingClient
+        rec = RecordingClient(Script([CATALOG, [("run_experiment", {
+            "fault_schedule": sched(), "agent_variant": "vulnerable"})]]))
+        with Env() as env:
+            explorer = ADV.ModelExplorer(rec, store=env.store, registry=env.registry,
+                                         project_id="p")
+            explorer.client.model = "fake"
+            state = ADV.explore(ADV.new_state(explorer))
+            diag_model = RecordingClient(Script([None]))
+            diagnosis = ADV.diagnose(diag_model, state)
+            capsule = ADV.record_payload(state, rec.records, [], diagnosis,
+                                         diag_model.records)
+        self.assertEqual(diagnosis["label"], "explanation, not evidence")
+        self.assertEqual(diagnosis["rerun"]["verdict"], "pass")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = ADV.replay_exploration(capsule["payload"], tmp)
+        self.assertTrue(out["reproduced"], out["matches"])
+        self.assertEqual(out["diagnosis"]["rerun"]["verdict"], "pass")
+
+
 if __name__ == "__main__":
     unittest.main()

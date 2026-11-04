@@ -141,6 +141,7 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                        final_text=s["final_text"])
             if state.get("error") and not out["error"]:
                 out["error"] = state["error"]
+        out["recorded_budget"] = entry.get("recorded_budget")
         out["diagnosis"] = entry.get("diagnosis")
         out["reproduced"] = entry.get("reproduced")
         return out
@@ -208,6 +209,8 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                     raise service_error(404, "not_found", f"no recorded exploration {name!r}")
                 entry["recording"] = name
                 entry["turns"] = recorded["payload"].get("adversary_turns")
+                # what the recorded live run spent; the replay itself spends 0
+                entry["recorded_budget"] = (recorded["payload"].get("summary") or {}).get("budget")
                 target, args = run_replay, (entry, recorded["payload"])
             else:
                 try:

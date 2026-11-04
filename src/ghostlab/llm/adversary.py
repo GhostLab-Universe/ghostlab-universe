@@ -443,7 +443,7 @@ def replay_exploration(payload, directory) -> dict:
                              max_experiments=payload["limits"]["max_experiments"],
                              variants=payload["variants"], llm_client=agent_client)
     state = explore(new_state(explorer, max_tokens=payload["limits"]["max_tokens"],
-                              max_usd=float("inf")))
+                              max_usd=payload["limits"]["max_usd"]))
     diagnosis = None
     if payload.get("diagnosis_turns") and state["failure"]:
         diagnosis = diagnose(ReplayClient(payload["diagnosis_turns"]), state)

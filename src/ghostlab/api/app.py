@@ -855,4 +855,8 @@ def create_app(registry_path=None, store_path=None,
         except Exception as error:
             return _map_failure(error)
 
+    from . import llm_routes
+    llm_routes.register(app, error=_error, service_error=_ServiceError,
+                        read_json=_read_json, strict_keys=_strict_keys,
+                        map_failure=_map_failure)
     return app

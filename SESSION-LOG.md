@@ -6,17 +6,56 @@ Updated at the end of every session and read at the start of every session. Newe
 
 ## Current state
 
-**Updated:** 2026-11-04 (~22:45 IST)
-**Branch:** `hackathon/final` (from `origin/feature/isolated-backend` f73f919 + ported providers)
-**Agents active:** Claude Code (solo owner Abhiram-0910). The previous co-author is gone and cannot push.
-**Status:** The deterministic product works end to end: tests 785 pass with 2 Linux-only failures, tsc is clean,
-the build works, and the proofs pass. No live model is wired into the planner yet.
-**Next:** Phase 1. Wire a live Meta model into `model_guided` planning (see TODO Now). Feature freeze is 02:00 IST,
-and submission closes 07:30 IST on Nov 5.
+**Updated:** 2026-11-04 (~23:05 IST)
+**Branch:** `hackathon/final`
+**Agents active:** Claude Code (solo owner Abhiram-0910).
+**Status:** Live Meta models are wired in.
+- A Muse-driven refund agent runs under test through the controller and gateway.
+- A Muse adversary runs as the `model_guided` explorer.
+- Wonder diagnosis, a spend ledger, keyless replay of every recording, and API routes are all in place.
+- Tests: 813–815 pass. Failures are pre-existing and also seen at c1c5040: the 2 Linux-only ones, the api_e4 body-cap race, and the timing-flaky api_e4 budget_409. tsc and the build are clean.
+- Spend is USD 0.2209 on dev, 0 on public.
+
+**Next:** UI for the new routes (step 6 explorer), README rewrite, and the public deploy. Feature freeze is 02:00 IST.
 
 ---
 
 ## Sessions
+
+### 2026-11-04 — Phase 1: live Meta models — *Claude Code*
+
+**Done**
+- `src/ghostlab/llm/` contains:
+  - `spend`: ledger plus caps.
+  - `client`: the Responses and Chat clients on `providers/http`, plus Replay and Recording clients.
+  - `agent`: the `llm-*` refund agents plus the claimed-vs-actual check.
+  - `capsules`: keyless replay.
+  - `adversary`: the ModelExplorer bridge, explore loop and diagnosis.
+- `glimmer_local` is the only provider allowed to use http, and only on loopback or the WSL gateway.
+- The refund driver, configs and controller now know the `llm-*` agents, and `model_calls` is recorded from the driver.
+- API routes are in `api/llm_routes.py`, documented in `docs/api.md`.
+- Live results:
+  - Calibration on Spark (`docs/calibration.md`): naive-noread duplicated 2/5 and claimed success both times. The other cells had 0 duplicates. Cost USD 0.14.
+  - Adversary vs deterministic agents: found_failure in 1 experiment. The Wonder diagnosis was followed by a repaired rerun that passed.
+  - Adversary vs live LLM agents: found_failure at experiment 2 (`llm-naive-noread`).
+  - Benchmark: `docs/benchmark.md`, with caveats.
+- All recordings are in `demo/recorded/`, and all 25 replay with 0 live calls.
+
+**Decided**
+- The LLM agent is a controller agent, not a separate runner. The client is reused from `providers/http`, not the openai SDK.
+- The agent sees a realistic timeout message. See ARCHITECTURE Decisions.
+
+**Hit**
+- Glimmer IQ2_M via Ollama returns empty chat replies (3 tokens), both with and without tools. Raw `/api/generate` works at about 1.5 tok/s, so this is
+  a chat-template issue. It is reported as unusable as served, and nothing was substituted.
+- `tests/test_api_e4.py::test_body_cap_json_and_no_registration` fails on WSL even at c1c5040, because of a broken-pipe race.
+- The smoke-run capsule `calibration/llm-naive-0.json`, which was a duplicate, was overwritten by the calibration run with the same name. Its spend is still in the ledger.
+
+**Incomplete**
+- The web UI does not call the new routes yet.
+- The benchmark space is tiny and the variant names leak the answer, so a fair comparison needs opaque names and more hooks.
+
+---
 
 ### 2026-11-04 — Phase 0: inventory, branch, docs — *Claude Code*
 

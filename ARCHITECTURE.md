@@ -93,6 +93,20 @@ every one before execution. Invalid proposals are recorded as rejected and never
   holds the handover work. PRs #49/#24/#22/#1 sit on a line that diverged at `10c3a3b`, have 2–11 conflicts
   each and duplicate api/experiments/web. Only the new-path `providers/` and `security/` were taken. Rejected: a blind merge,
   and #49's sign-in/GitHub inspection, which is tied to that line's API and views.
+- **Phase 1 live models: one execution path.** The LLM refund agent (`llm-*`) is a refund-driver agent run by
+  the controller through `ops`, and its model client is bound per run (`llm.agent.bind`). Calibration, the adversary and keyless
+  replay all use this one path, and every model tool call goes through `ControlledGateway.dispatch`. Rejected: a separate
+  LLM runner outside the controller, which would have been a second execution engine.
+- **Models (2026-11-04).**
+  - The agent under test and the adversary use `muse-spark-1.3`. It is cheap (USD 1.25/4.25 per 1M tokens) and qualified by the Nov 1 probe.
+  - The adversary uses reasoning effort medium.
+  - Diagnosis uses `muse-wonder-1.0`, one call per failure, and its output is labelled explanation, not evidence.
+  - Meta uses Responses with `previous_response_id`, so reasoning carries across tool turns. Glimmer uses Chat Completions over the shared
+    `providers/http.post_json` transport.
+  - Rejected: the openai SDK. It is a new dependency and would bypass the existing redaction, outbound guard and attempt gate.
+- **Spend is enforced in code.** `var/spend.json` records every call. The worst-case cost of each HTTP attempt is checked against
+  the key cap (dev 120 and public 50 USD) and an optional per-session cap before the attempt is sent.
+- **The timeout the agent sees is realistic.** The facade shows `timeout` and never "committed". The world trace keeps the truth.
 
 ## Why each feature exists
 
@@ -112,6 +126,8 @@ every one before execution. Invalid proposals are recorded as rejected and never
 - [ ] `drive_agent` is refund-shaped. Booking and proxy runs bypass the generic run endpoint.
 - [ ] Run-group handles and effective configs live in process memory and are lost on restart.
 - [ ] Two local-backend tests fail on Linux (see TODO Bugs).
+- [ ] Exploration state (`/v1/explorations`) is process memory and is lost on restart.
+- [ ] Glimmer through Ollama's Chat Completions returns empty replies (a chat-template issue), so the Glimmer path is untested live.
 - [ ] There is no head-to-head comparison with LangSmith, Maxim, tau-bench or AgentDojo. Overlap exists, and superiority is not claimed.
 
 ---

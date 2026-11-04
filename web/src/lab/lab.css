@@ -272,3 +272,13 @@
 .lwit-sub { color: var(--lab-muted); opacity: 0.8; }
 .diag-gloss { color: var(--lab-muted); font-family: var(--lab-mono); font-size: 1rem; margin: -0.75rem 0 1.5rem; }
 .scene-diag { margin: 0 auto; align-self: center; }
+.scene-hero-wrap { flex-direction: row; align-items: center; gap: 4rem; }
+.scene-hero-wrap .scene-hero { flex: 1 1 60%; min-width: 0; display: flex; flex-direction: column; }
+.hero-side { flex: 0 0 26rem; display: flex; flex-direction: column; gap: 1.5rem; }
+.hero-side .ledger { border-left: 0; padding: 1.5rem 1.75rem; background: var(--lab-bg-2); border: 1px solid var(--lab-rule); border-radius: 16px; min-height: 17rem; justify-content: flex-start; }
+.limbo { display: flex; flex-direction: column; gap: 0.35rem; padding: 1.5rem 1.75rem; border-radius: 16px; background: var(--lab-bg-2); border: 1px solid var(--lab-rule); }
+.limbo-v { font-family: var(--lab-display); font-weight: 800; font-size: 3.25rem; line-height: 1; color: var(--lab-bad); letter-spacing: -0.02em; }
+.limbo-k { color: var(--lab-ink-2); font-size: 1.05rem; }
+.limbo-k2 { color: var(--lab-ink); font-weight: 600; font-size: 1.15rem; }
+.limbo-src { color: var(--lab-muted); font-family: var(--lab-mono); font-size: 0.85rem; margin-top: 0.4rem; }
+@media (max-width: 1100px) { .scene-hero-wrap { flex-direction: column; align-items: stretch; } .hero-side { flex-basis: auto; } }

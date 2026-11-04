@@ -207,14 +207,33 @@ function wait(label: string): ReactNode {
   return d("wait", s("lspin", ""), s("", label));
 }
 
+/** Hero ledger: the recorded duplicate (CAPSULE), its refund rows revealed 600 ms apart. */
+function HeroLedger(): ReactNode {
+  const [steps, setSteps] = useState<Step[] | null>(null);
+  useEffect(() => {
+    call<ReplayOut>("/v1/capsules/replay", { name: CAPSULE })
+      .then((out) => setSteps(stepsFrom(out.trace ?? [], null).filter((st) => st.added > 0)))
+      .catch(() => setSteps([]));
+  }, []);
+  const t = useClock(steps === null ? "wait" : "go", steps !== null);
+  if (steps === null || steps.length === 0) return null;
+  const shown = Math.max(0, Math.min(steps.length, Math.floor((t - 400) / 600) + 1));
+  return createElement(Ledger, { steps, shown });
+}
+
 function Hero(props: { onRun: () => void; busy: boolean }): ReactNode {
-  return d(
-    "scene scene-hero",
+  return d("scene scene-hero-wrap", d(
+    "scene-hero",
     h("h1", { className: "hero-title" }, "Your agent says it refunded once. ", h("span", { className: "hl-bad" }, "The ledger says twice.")),
     h("p", { className: "hero-sub" }, "GhostLab crash-tests AI agents that take real actions: it injects the faults production will throw at them and proves what actually happened."),
     h("button", { type: "button", className: "cta", onClick: props.onRun, disabled: props.busy, "data-testid": "run-crash-test" }, props.busy ? "Starting the hunt…" : "Run the crash test"),
-    h("p", { className: "hero-credits" }, "Muse Spark 1.3 · Muse Wonder 1.0 · Meta Model API"),
-  );
+  ), d("hero-side",
+    createElement(HeroLedger, {}),
+    d("limbo",
+      s("limbo-v", "56% · 74%"),
+      s("limbo-k", "frontier models duplicated a write still in flight / delivered twice"),
+      s("limbo-k2", "90% reported success"),
+      s("limbo-src", "LIMBO, Sep 2026 · n=25,930"))));
 }
 
 function Hunt(props: { data: Data; sceneKey: string }): ReactNode {

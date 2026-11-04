@@ -51,10 +51,12 @@ def build(result, records, *, provider, model, label) -> dict:
     return {"payload": payload, "sha256": _digest(payload)}
 
 
-def write(path, capsule):
+def write(path, capsule, *, overwrite=True):
+    """``overwrite=False`` refuses an existing file (a batch must never clobber evidence)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(capsule, indent=1) + "\n", encoding="utf-8")
+    with open(path, "w" if overwrite else "x", encoding="utf-8") as handle:
+        handle.write(json.dumps(capsule, indent=1) + "\n")
 
 
 def load(path) -> dict:

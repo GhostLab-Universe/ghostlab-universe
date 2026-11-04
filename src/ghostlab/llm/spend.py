@@ -25,6 +25,15 @@ PRICES = {
 # Confirmed by the owner 2026-11-04 (AGENTS.md). Glimmer is local and free.
 CAPS = {"dev": 120.0, "public": 50.0, "glimmer": None}
 
+
+def _env_cap(default: float) -> float:
+    """GHOSTLAB_DEV_CAP_USD can only lower the dev cap (per-session limits), never raise it."""
+    raw = os.environ.get("GHOSTLAB_DEV_CAP_USD", "").strip()
+    return min(default, float(raw)) if raw else default
+
+
+CAPS["dev"] = _env_cap(CAPS["dev"])
+
 DEFAULT_PATH = Path(__file__).resolve().parents[3] / "var" / "spend.json"
 
 

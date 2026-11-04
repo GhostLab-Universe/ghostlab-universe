@@ -19,8 +19,11 @@ import { Step4 } from "./screens/step4";
 import { Step5 } from "./screens/step5";
 import { Step6 } from "./screens/step6";
 import { Step7 } from "./screens/step7";
+import { Lab } from "./lab/lab";
+import "./lab/lab.css";
 import type { ExperimentEvidence } from "./types";
 import {
+  h,
   banner,
   div,
   footer,
@@ -141,9 +144,10 @@ export function App(): ReactNode {
   }, []);
 
   useEffect(() => {
-    if (route === "/") {
-      window.history.replaceState({}, "", STEPS[0].path);
-      setRoute(STEPS[0].path);
+    if (route === "/" || route === "/guide") {
+      const to = route === "/" ? "/lab" : STEPS[0].path;
+      window.history.replaceState({}, "", to + window.location.search);
+      setRoute(to);
     }
   }, [route]);
 
@@ -217,7 +221,7 @@ export function App(): ReactNode {
   const latestGroupId = latestArm === null ? null : latestArm.groupId;
   const backendPanel =
     route === runStepPath && api !== null
-      ? createElement(BackendStatusPanel, { api, groupId: latestGroupId })
+      ? h("details", { className: "infra" }, h("summary", null, "Execution backend details"), createElement(BackendStatusPanel, { api, groupId: latestGroupId }))
       : null;
 
   const serviceInfo =
@@ -262,6 +266,12 @@ export function App(): ReactNode {
             "DEV-ONLY fixture mode (?fixture=1 under vite dev): approved/illustrative fixtures, never evidence. Production builds cannot reach this path.",
           );
 
+  if (route === "/lab") {
+    document.body.classList.add("is-lab");
+    return createElement(Lab, {});
+  }
+  document.body.classList.remove("is-lab");
+
   return div(
     { className: "app" },
     header(
@@ -270,7 +280,7 @@ export function App(): ReactNode {
         { className: "brand-row" },
         h1(null, "GhostLab"),
         p({ className: "tagline" }, "Finds and proves the failures your agent hides behind timeouts and retries."),
-        route === runStepPath ? null : navLink(navigate, runStepPath, "▶ Demo: hunt a refund bug"),
+        navLink(navigate, "/lab", "▶ Watch the crash test"),
       ),
       modeBanner,
       stepper(STEPS.map((s) => ({ path: s.path, title: s.title })), route, navigate),

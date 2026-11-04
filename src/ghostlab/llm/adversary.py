@@ -46,6 +46,19 @@ Start with list_fault_catalog. Think about where a timeout hurts most: after a w
 but before the caller learns it did. When a run violates an invariant, minimize it and then
 reply with a short summary instead of calling more tools."""
 
+# Benchmark prompt: names no fault, invariant or timing and gives no strategy hint.
+NEUTRAL_SYSTEM = """You are a test-exploration agent. Agents under test act in an environment;
+deterministic checks over the environment's state decide whether a run passes or fails.
+Your job is to find an experiment whose run fails those checks. You never judge outcomes
+yourself.
+Tools:
+- list_fault_catalog: the fault hooks, trigger tools, occurrences and agent ids you may use.
+- run_experiment: run one agent under a fault schedule. Each call spends one experiment.
+- fork: rerun an earlier experiment with a different fault schedule. Spends one experiment.
+- minimize: shrink a failing run to its shortest failing action prefix. Free.
+When a run fails, minimize it and then reply with a short summary instead of calling more
+tools."""
+
 _SCHEDULE = {"type": "array", "minItems": 1, "maxItems": MAX_FAULTS,
              "items": {"type": "object", "additionalProperties": False,
                        "required": ["hook", "trigger_tool", "occurrence"],
@@ -73,18 +86,27 @@ TOOLS = [
 ]
 
 
-def catalog(registry, variants) -> dict:
-    found = discover(registry, "refund-env")
-    return {"env_id": "refund-env", "hooks": sorted(found["fault_hooks"]),
+def refund_profile() -> dict:
+    """What the explorer needs to know about an env. Booking builds its own (examples/)."""
+    return {"env_id": "refund-env", "fixture": llm_agent.FIXTURE, "rules": llm_agent.RULES,
+            "requested": llm_agent.requested, "policy": llm_agent.policy,
+            "adapter": RefundEnvAdapter, "violated": refund_rules_violated,
+            "diff": compact_diff, "plan_agent": "vulnerable"}
+
+
+def catalog(registry, variants, env_id="refund-env", max_faults=MAX_FAULTS) -> dict:
+    found = discover(registry, env_id)
+    return {"env_id": env_id, "hooks": sorted(found["fault_hooks"]),
             "trigger_tools": ["*"] + sorted(t["name"] for t in found["discovered_tools"]),
             "occurrences": list(range(1, MAX_OCCURRENCE + 1)),
-            "agent_variants": list(variants), "max_faults_per_schedule": MAX_FAULTS}
+            "agent_variants": list(variants), "max_faults_per_schedule": max_faults}
 
 
 def validate_schedule(schedule, cat) -> list:
     """Return config faults for a valid schedule; raise ValueError otherwise."""
-    if type(schedule) is not list or not 1 <= len(schedule) <= MAX_FAULTS:
-        raise ValueError(f"fault_schedule must list 1-{MAX_FAULTS} faults")
+    most = cat.get("max_faults_per_schedule", MAX_FAULTS)
+    if type(schedule) is not list or not 1 <= len(schedule) <= most:
+        raise ValueError(f"fault_schedule must list 1-{most} faults")
     faults = []
     for item in schedule:
         if type(item) is not dict or set(item) != {"hook", "trigger_tool", "occurrence"}:
@@ -131,13 +153,18 @@ def compact_diff(baseline_run, faulted_run) -> dict:
 
 class ModelExplorer:
     def __init__(self, client, *, store, registry, project_id, max_experiments=12,
-                 variants=DETERMINISTIC, llm_client=None):
+                 variants=DETERMINISTIC, llm_client=None, system=SYSTEM, aliases=None,
+                 env=None, max_faults=MAX_FAULTS):
         self.client, self.store, self.registry = client, store, registry
         self.project_id = project_id
         self.max_experiments = max_experiments
-        self.variants = tuple(variants)
+        # aliases: opaque id shown to the model -> real variant (never shown).
+        self.aliases = dict(aliases or {})
+        self.variants = tuple(self.aliases) if aliases else tuple(variants)
         self.llm_client = llm_client  # bound for llm-* experiments (live or replay)
-        self.catalog = catalog(registry, self.variants)
+        self.system = system
+        self.env = env or refund_profile()
+        self.catalog = catalog(registry, self.variants, self.env["env_id"], max_faults)
         self.conv = None
         self.outbox = None       # tool results to send on the next turn (kept across errors)
         self.awaiting = []       # [(call_id, proposal_index)]
@@ -162,9 +189,9 @@ class ModelExplorer:
             self.awaiting = []
         for _ in range(6):  # local-only turns (catalog/minimize/rejections) per round
             if self.conv is None:
-                self.conv = self.client.open(SYSTEM, TOOLS)
+                self.conv = self.client.open(self.system, TOOLS)
                 turn = self.conv.send(user=(
-                    f"Target environment refund-env. Experiment budget:"
+                    f"Target environment {self.env['env_id']}. Experiment budget:"
                     f" {self.max_experiments}. Find a failure."))
             else:
                 turn = self.conv.send(tool_results=self.outbox)
@@ -212,7 +239,8 @@ class ModelExplorer:
         if self.proposed >= self.max_experiments:
             return {"rejected": "experiment budget exhausted"}
         self.proposed += 1
-        body = llm_agent.requested(variant, faults, name=f"adversary-{self.proposed}")
+        variant = self.aliases.get(variant, variant)
+        body = self.env["requested"](variant, faults, name=f"adversary-{self.proposed}")
         self.awaiting.append((call["id"], len(proposals)))
         proposals.append(body)
         return None
@@ -229,14 +257,21 @@ class ModelExplorer:
         actions = [{"tool": e["request"]["tool"], "arguments": e["request"]["arguments"]}
                    for e in trace]
         try:
-            result = minimize_prefix(RefundEnvAdapter, dict(llm_agent.FIXTURE), actions,
-                                     refund_rules_violated)
+            result = minimize_prefix(self.env["adapter"], dict(self.env["fixture"]), actions,
+                                     self.env["violated"])
         except ValueError as error:
             return {"run_id": run_id, "error": str(error)}
         return {"run_id": run_id, "required_prefix": [a["tool"] for a in
                                                       result["required_prefix"]],
                 "dropped": result["dropped"], "stable": result["stable"],
                 "actions": result["required_prefix"]}
+
+    def public(self, variant):
+        """The name the model may see for a real variant."""
+        for opaque, real in self.aliases.items():
+            if real == variant:
+                return opaque
+        return variant
 
     def _run(self, run_id):
         try:
@@ -249,14 +284,15 @@ def _baseline(state, explorer, agent_name):
     """No-fault run of the same agent, executed once per agent and cached."""
     cache = state.setdefault("baselines", {})
     if agent_name not in cache:
-        body = llm_agent.requested(agent_name, [], name=f"baseline-{agent_name}")
+        env = explorer.env
+        body = env["requested"](agent_name, [], name=f"baseline-{agent_name}")
         bound = llm_agent.bind(explorer.llm_client) if explorer.llm_client is not None \
             else contextlib.nullcontext()
         with bound:
             result = plan.execute_plan(explorer.store, explorer.registry, plan.build_plan(
-                "refund-env", llm_agent.FIXTURE, agent_name, "baseline", llm_agent.RULES, None,
+                env["env_id"], env["fixture"], agent_name, "baseline", env["rules"], None,
                 body["limits"], 1, "fixed", [0], requested_configs=[body],
-                policy=llm_agent.policy()), explorer.project_id)
+                policy=env["policy"]()), explorer.project_id)
         run_id = result["per_run"][0]["run_id"]
         cache[agent_name] = explorer._run(run_id)["run"]
     return cache[agent_name]
@@ -265,14 +301,16 @@ def _baseline(state, explorer, agent_name):
 def _finding(state, explorer, row, body):
     finding = {"run_id": row["run_id"], "outcome": row["outcome"], "reason": row["reason"],
                "status": row["status"], "verdict": row["verdict"],
-               "rules_failed": row["rules_failed"], "agent_variant": body["agent"]}
+               "rules_failed": row["rules_failed"],
+               "agent_variant": explorer.public(body["agent"])}
     if row["outcome"] == "executed":
         run = explorer._run(row["run_id"])["run"]
         explorer.bodies[row["run_id"]] = body
         finding["faults_fired"] = [f["fired"] for f in run["faults"]]
         finding["tool_calls"] = run["tool_calls"]
         finding["model_calls"] = run["model_calls"]
-        finding["reality_diff"] = compact_diff(_baseline(state, explorer, body["agent"]), run)
+        finding["reality_diff"] = explorer.env["diff"](
+            _baseline(state, explorer, body["agent"]), run)
     return finding
 
 
@@ -301,10 +339,11 @@ def explore(state) -> dict:
                 or getattr(client, "session_usd", 0) >= state["limits"]["max_usd"]):
             state["stop_status"] = "budget_exhausted"
             break
+        env = explorer.env
         the_plan = plan.build_plan(
-            "refund-env", llm_agent.FIXTURE, "vulnerable", "adversary exploration",
-            llm_agent.RULES, None, llm_agent.requested("vulnerable", [])["limits"], 1,
-            "model_guided", [0], explorer=explorer, policy=llm_agent.policy())
+            env["env_id"], env["fixture"], env["plan_agent"], "adversary exploration",
+            env["rules"], None, env["requested"](env["plan_agent"], [])["limits"], 1,
+            "model_guided", [0], explorer=explorer, policy=env["policy"]())
         try:
             if explorer.llm_client is not None:
                 with llm_agent.bind(explorer.llm_client):

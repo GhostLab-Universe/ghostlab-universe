@@ -84,7 +84,14 @@ def _check_name(value, path: str, limit: int = 100) -> str:
     return value
 
 
-def _check_fixture(fixture) -> dict:
+def _check_fixture(fixture, env_id="refund-env") -> dict:
+    if env_id != "refund-env":
+        # Non-refund envs validate through their registered driver, as configs does.
+        from .configs import ConfigError, _validate_fixture
+        try:
+            return deepcopy(_validate_fixture(fixture, env_id))
+        except ConfigError as error:
+            raise PlanError(str(error)) from error
     if type(fixture) is not dict or set(fixture) != _FIXTURE_KEYS:
         raise PlanError("fixture must carry exactly order, customer,"
                         " paid_minor and currency")
@@ -176,7 +183,7 @@ def build_plan(env_id, fixture, agent, task, checks, fault_space, limits,
     """
     if type(env_id) is not str or not _ENV_ID_PATTERN.match(env_id):
         raise PlanError("invalid env_id")
-    checked_fixture = _check_fixture(fixture)
+    checked_fixture = _check_fixture(fixture, env_id)
     _check_name(agent, "agent")
     if type(task) is not str or not task or len(task) > 2000:
         raise PlanError("task must be a non-empty string up to 2000 chars")

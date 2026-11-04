@@ -107,6 +107,35 @@ def _trace(trace):
             for e in trace or []]
 
 
+def _by_first_key(calib):
+    """Duplicates by whether the agent's first issue_refund carried a key, over every batch."""
+    runs = list(calib.get("runs") or [])
+    for batch in (calib.get("previous_batches") or {}).values():
+        runs += batch.get("runs") or []
+    out = {}
+    for run in runs:
+        first = (run.get("key") or {}).get("first_key")
+        if first is None:
+            continue
+        row = out.setdefault(first, {"n": 0, "duplicates": 0, "false_success": 0})
+        row["n"] += 1
+        row["duplicates"] += bool(run.get("duplicate"))
+        row["false_success"] += run.get("claim") == "false_success"
+    return out
+
+
+def _bench(bench):
+    """Per-env strategy stats (Phase 2B layout), or the flat Phase 1 layout as one env."""
+    envs = bench.get("envs") or {"refund-env": bench}
+    return {"generated_at": bench.get("generated_at"), "budget": bench.get("budget"),
+            "envs": {name: {"space_cells": env.get("space_cells"),
+                            "failing_cells": len(env.get("failing_cells") or []),
+                            "strategies": {k: v["stats"] for k, v in env.items()
+                                           if isinstance(v, dict)
+                                           and isinstance(v.get("stats"), dict)}}
+                     for name, env in envs.items()}}
+
+
 def _claims(state):
     """run_id -> agent claim, matching the agent client's drive-order log to run order."""
     explorer = state["explorer"]
@@ -304,15 +333,12 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
             bench = None
         return {
             "calibration": None if calib is None else {
-                k: calib.get(k) for k in ("generated_at", "model", "provider", "fault",
-                                          "usd_spent", "model_calls", "table")},
-            "calibration_notes": _section(DOCS / "calibration.md", "What the runs show"),
-            "benchmark": None if bench is None else {
-                "generated_at": bench.get("generated_at"), "budget": bench.get("budget"),
-                "space_cells": bench.get("space_cells"),
-                "failing_cells": bench.get("failing_cells"),
-                "strategies": {k: v["stats"] for k, v in bench.items()
-                               if isinstance(v, dict) and isinstance(v.get("stats"), dict)}},
+                **{k: calib.get(k) for k in ("generated_at", "model", "provider", "fault",
+                                             "model_calls", "table")},
+                "by_first_key": _by_first_key(calib)},
+            "calibration_notes": _section(DOCS / "calibration.md", "The key finding")
+            or _section(DOCS / "calibration.md", "What the runs show"),
+            "benchmark": None if bench is None else _bench(bench),
             "benchmark_caveats": _section(DOCS / "benchmark.md", "How to read this")}
 
     @app.post("/v1/explorations/{exploration_id}/resume")
@@ -374,7 +400,6 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
     @app.get("/v1/models/compare")
     async def compare_models():
         calib = _load_recorded("calibration.json")
-        glimmer = _load_recorded("glimmer-run.json")
         spark_runs = [r for r in (calib or {}).get("runs", []) if r["variant"] == "llm-naive"]
         spark_calls = [c for c in (calib or {}).get("calls", [])]
         return {"task": "llm-naive under timeout-after-commit",
@@ -382,9 +407,7 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                           "runs": spark_runs,
                           "median_latency_ms": _median([c["latency_ms"] for c in spark_calls]),
                           "usd_per_call": (sum(c["usd"] for c in spark_calls) / len(spark_calls)
-                                           if spark_calls else None)},
-                "glimmer": {"status": provider_status("glimmer-local"),
-                            "run": glimmer, "usd_per_call": 0.0}}
+                                           if spark_calls else None)}}
 
     @app.get("/v1/spend")
     async def spend():

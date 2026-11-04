@@ -72,8 +72,15 @@ class LlmRoutesTests(unittest.TestCase):
         out = self.client.get("/v1/evidence").json()
         if out["calibration"] is not None:
             self.assertTrue(all("runs" in row for row in out["calibration"]["table"]))
+        if out["calibration"] is not None and out["calibration"]["by_first_key"]:
+            omitted = out["calibration"]["by_first_key"].get("omitted")
+            if omitted:
+                self.assertLessEqual(omitted["duplicates"], omitted["n"])
         if out["benchmark"] is not None:
-            self.assertTrue(all("trials" in v for v in out["benchmark"]["strategies"].values()))
+            envs = out["benchmark"]["envs"]
+            self.assertTrue(envs)
+            for env in envs.values():
+                self.assertTrue(all("trials" in v for v in env["strategies"].values()))
             self.assertTrue(out["benchmark_caveats"])
 
     def test_replay_names_are_allowlisted(self):

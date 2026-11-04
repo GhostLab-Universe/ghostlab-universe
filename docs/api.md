@@ -125,11 +125,11 @@ The request body is `{"name": "<listed name>"}`. Replay is keyless and makes zer
   "model_calls_live": 0}`.
 
 ## `GET /v1/models/compare`
-Compares Glimmer and Spark on the same task (`llm-naive` under timeout-after-commit).
+Spark's recorded latency and cost on the calibration task (`llm-naive` under timeout-after-commit).
 ```json
-{"task": "…", "spark": {"model": "muse-spark-1.3", "provider": "meta-dev", "runs": [], "median_latency_ms": 5000, "usd_per_call": 0.002},
- "glimmer": {"status": {"provider": "glimmer-local", "status": "available"}, "run": {"verdict": "…", "latency_ms": [95382]}, "usd_per_call": 0.0}}
+{"task": "…", "spark": {"model": "muse-spark-1.3", "provider": "meta-dev", "runs": [], "median_latency_ms": 5000, "usd_per_call": 0.002}}
 ```
+There is no Glimmer comparison. The open-weights attempt was cut, and its recordings are in `docs/open-weights-attempt/`.
 
 ## `GET /v1/spend`
 `{"totals": {"dev": {"calls", "usd", "input_tokens", "output_tokens", "cap_usd"}}, "caps_usd": {"dev": 120, "public": 50, "glimmer": null},

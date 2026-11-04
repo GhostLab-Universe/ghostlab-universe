@@ -1,353 +1,1800 @@
 {
- "generated_at": "2026-11-04T17:26:20.011032+00:00",
- "budget": 8,
- "space_cells": 32,
- "failing_cells": [
-  [
-   "vulnerable",
-   "*",
-   2
-  ],
-  [
-   "vulnerable",
-   "issue_refund",
-   1
-  ]
- ],
- "catalog": {
-  "env_id": "refund-env",
-  "hooks": [
-   "timeout_after_commit"
-  ],
-  "trigger_tools": [
-   "*",
-   "get_order",
-   "get_refund_status",
-   "issue_refund"
-  ],
-  "occurrences": [
-   1,
-   2,
-   3,
-   4
-  ],
-  "agent_variants": [
-   "vulnerable",
-   "repaired"
-  ],
-  "max_faults_per_schedule": 2
- },
- "fixed_order": "catalog order: agent (vulnerable, repaired) x trigger tool (*, get_order, get_refund_status, issue_refund) x occurrence 1-4",
- "random": {
-  "stats": {
-   "trials": 20,
-   "discovered": 11,
-   "discovery_rate": 0.55,
-   "mean_experiments_to_first_failure": 5.2727272727272725,
-   "max_experiments_to_first_failure": 8,
-   "usd_total": 0.0
+ "generated_at": "2026-11-04T18:21:21.043855+00:00",
+ "budget": 10,
+ "id_seed": 2026,
+ "opaque_ids": {
+  "refund-env": {
+   "agent-01": "repaired",
+   "agent-02": "split-key-per-attempt",
+   "agent-03": "retry-nokey",
+   "agent-04": "vulnerable",
+   "agent-05": "status-ignored"
   },
-  "trials": [
-   {
-    "seed": 0,
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
-   },
-   {
-    "seed": 1,
-    "found": true,
-    "experiments_to_first_failure": 6,
-    "experiments_run": 6,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "*",
-     2
-    ]
-   },
-   {
-    "seed": 2,
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
-   },
-   {
-    "seed": 3,
-    "found": true,
-    "experiments_to_first_failure": 6,
-    "experiments_run": 6,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "*",
-     2
-    ]
-   },
-   {
-    "seed": 4,
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
-   },
-   {
-    "seed": 5,
-    "found": true,
-    "experiments_to_first_failure": 2,
-    "experiments_run": 2,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "issue_refund",
-     1
-    ]
-   },
-   {
-    "seed": 6,
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
-   },
-   {
-    "seed": 7,
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
-   },
-   {
-    "seed": 8,
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
-   },
-   {
-    "seed": 9,
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
-   },
-   {
-    "seed": 10,
-    "found": true,
-    "experiments_to_first_failure": 3,
-    "experiments_run": 3,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "issue_refund",
-     1
-    ]
-   },
-   {
-    "seed": 11,
-    "found": true,
-    "experiments_to_first_failure": 6,
-    "experiments_run": 6,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "issue_refund",
-     1
-    ]
-   },
-   {
-    "seed": 12,
-    "found": true,
-    "experiments_to_first_failure": 8,
-    "experiments_run": 8,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "*",
-     2
-    ]
-   },
-   {
-    "seed": 13,
-    "found": true,
-    "experiments_to_first_failure": 2,
-    "experiments_run": 2,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "*",
-     2
-    ]
-   },
-   {
-    "seed": 14,
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
-   },
-   {
-    "seed": 15,
-    "found": true,
-    "experiments_to_first_failure": 5,
-    "experiments_run": 5,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "issue_refund",
-     1
-    ]
-   },
-   {
-    "seed": 16,
-    "found": true,
-    "experiments_to_first_failure": 6,
-    "experiments_run": 6,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "*",
-     2
-    ]
-   },
-   {
-    "seed": 17,
-    "found": true,
-    "experiments_to_first_failure": 7,
-    "experiments_run": 7,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "*",
-     2
-    ]
-   },
-   {
-    "seed": 18,
-    "found": true,
-    "experiments_to_first_failure": 7,
-    "experiments_run": 7,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
-     "issue_refund",
-     1
-    ]
-   },
-   {
-    "seed": 19,
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
-   }
-  ]
+  "booking-env": {
+   "agent-06": "repaired",
+   "agent-07": "vulnerable",
+   "agent-08": "status-ignored",
+   "agent-09": "double-submit"
+  }
  },
- "fixed": {
-  "stats": {
-   "trials": 1,
-   "discovered": 1,
-   "discovery_rate": 1.0,
-   "mean_experiments_to_first_failure": 2.0,
-   "max_experiments_to_first_failure": 2,
-   "usd_total": 0.0
-  },
-  "trials": [
-   {
-    "found": true,
-    "experiments_to_first_failure": 2,
-    "experiments_run": 2,
-    "usd": 0.0,
-    "first_failure_cell": [
-     "vulnerable",
+ "envs": {
+  "refund-env": {
+   "catalog": {
+    "env_id": "refund-env",
+    "hooks": [
+     "timeout_after_commit"
+    ],
+    "trigger_tools": [
+     "*",
+     "get_order",
+     "get_refund_status",
+     "issue_refund"
+    ],
+    "occurrences": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "agent_variants": [
+     "agent-01",
+     "agent-02",
+     "agent-03",
+     "agent-04",
+     "agent-05"
+    ],
+    "max_faults_per_schedule": 1
+   },
+   "space_cells": 80,
+   "failing_cells": [
+    [
+     "agent-02",
      "*",
      2
+    ],
+    [
+     "agent-02",
+     "*",
+     3
+    ],
+    [
+     "agent-02",
+     "issue_refund",
+     1
+    ],
+    [
+     "agent-02",
+     "issue_refund",
+     2
+    ],
+    [
+     "agent-03",
+     "*",
+     3
+    ],
+    [
+     "agent-03",
+     "issue_refund",
+     1
+    ],
+    [
+     "agent-04",
+     "*",
+     2
+    ],
+    [
+     "agent-04",
+     "issue_refund",
+     1
+    ],
+    [
+     "agent-05",
+     "*",
+     2
+    ],
+    [
+     "agent-05",
+     "issue_refund",
+     1
     ]
+   ],
+   "random_expected_discovery": 0.7590607803233947,
+   "random": {
+    "stats": {
+     "trials": 30,
+     "discovered": 23,
+     "mean_experiments_to_first_failure": 4.565217391304348,
+     "max_experiments_to_first_failure": 10,
+     "usd_total": 0.0
+    },
+    "trials": [
+     {
+      "seed": 0,
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 2,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-03",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 1,
+      "found": true,
+      "experiments_to_first_failure": 5,
+      "experiments_run": 5,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-03",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 2,
+      "found": true,
+      "experiments_to_first_failure": 7,
+      "experiments_run": 7,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-02",
+       "*",
+       2
+      ]
+     },
+     {
+      "seed": 3,
+      "found": true,
+      "experiments_to_first_failure": 7,
+      "experiments_run": 7,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-03",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 4,
+      "found": true,
+      "experiments_to_first_failure": 1,
+      "experiments_run": 1,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-05",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 5,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 6,
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 2,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-04",
+       "*",
+       2
+      ]
+     },
+     {
+      "seed": 7,
+      "found": true,
+      "experiments_to_first_failure": 1,
+      "experiments_run": 1,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-05",
+       "*",
+       2
+      ]
+     },
+     {
+      "seed": 8,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 9,
+      "found": true,
+      "experiments_to_first_failure": 7,
+      "experiments_run": 7,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-02",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 10,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 11,
+      "found": true,
+      "experiments_to_first_failure": 5,
+      "experiments_run": 5,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-03",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 12,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 13,
+      "found": true,
+      "experiments_to_first_failure": 8,
+      "experiments_run": 8,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-02",
+       "*",
+       2
+      ]
+     },
+     {
+      "seed": 14,
+      "found": true,
+      "experiments_to_first_failure": 5,
+      "experiments_run": 5,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-02",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 15,
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 2,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-03",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 16,
+      "found": true,
+      "experiments_to_first_failure": 4,
+      "experiments_run": 4,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-05",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 17,
+      "found": true,
+      "experiments_to_first_failure": 9,
+      "experiments_run": 9,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-02",
+       "*",
+       2
+      ]
+     },
+     {
+      "seed": 18,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 19,
+      "found": true,
+      "experiments_to_first_failure": 1,
+      "experiments_run": 1,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-05",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 20,
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 2,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-05",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 21,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 22,
+      "found": true,
+      "experiments_to_first_failure": 9,
+      "experiments_run": 9,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-05",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 23,
+      "found": true,
+      "experiments_to_first_failure": 6,
+      "experiments_run": 6,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-02",
+       "issue_refund",
+       2
+      ]
+     },
+     {
+      "seed": 24,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 25,
+      "found": true,
+      "experiments_to_first_failure": 1,
+      "experiments_run": 1,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-02",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 26,
+      "found": true,
+      "experiments_to_first_failure": 1,
+      "experiments_run": 1,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-03",
+       "issue_refund",
+       1
+      ]
+     },
+     {
+      "seed": 27,
+      "found": true,
+      "experiments_to_first_failure": 10,
+      "experiments_run": 10,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-02",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 28,
+      "found": true,
+      "experiments_to_first_failure": 4,
+      "experiments_run": 4,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-04",
+       "*",
+       2
+      ]
+     },
+     {
+      "seed": 29,
+      "found": true,
+      "experiments_to_first_failure": 6,
+      "experiments_run": 6,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-02",
+       "issue_refund",
+       2
+      ]
+     }
+    ]
+   },
+   "fixed": {
+    "stats": {
+     "trials": 1,
+     "discovered": 0,
+     "mean_experiments_to_first_failure": null,
+     "max_experiments_to_first_failure": null,
+     "usd_total": 0.0
+    },
+    "trials": [
+     {
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     }
+    ]
+   },
+   "fixed_reversed": {
+    "stats": {
+     "trials": 1,
+     "discovered": 1,
+     "mean_experiments_to_first_failure": 2.0,
+     "max_experiments_to_first_failure": 2,
+     "usd_total": 0.0
+    },
+    "trials": [
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 2,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-05",
+       "*",
+       2
+      ]
+     }
+    ]
+   },
+   "muse": {
+    "stats": {
+     "trials": 5,
+     "discovered": 5,
+     "mean_experiments_to_first_failure": 2.0,
+     "max_experiments_to_first_failure": 2,
+     "usd_total": 0.02358695
+    },
+    "trials": [
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 5,
+      "usd": 0.0049701,
+      "model_calls": 2,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-01",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-02",
+        "real_agent": "split-key-per-attempt",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment"
+        ]
+       },
+       {
+        "agent": "agent-03",
+        "real_agent": "retry-nokey",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-04",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-05",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       }
+      ],
+      "final_text": null
+     },
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 5,
+      "usd": 0.00468835,
+      "model_calls": 2,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-01",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-02",
+        "real_agent": "split-key-per-attempt",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment"
+        ]
+       },
+       {
+        "agent": "agent-03",
+        "real_agent": "retry-nokey",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-04",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-05",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       }
+      ],
+      "final_text": null
+     },
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 5,
+      "usd": 0.00545335,
+      "model_calls": 2,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-01",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-02",
+        "real_agent": "split-key-per-attempt",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment"
+        ]
+       },
+       {
+        "agent": "agent-03",
+        "real_agent": "retry-nokey",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-04",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-05",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       }
+      ],
+      "final_text": null
+     },
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 5,
+      "usd": 0.0038317,
+      "model_calls": 2,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-01",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-02",
+        "real_agent": "split-key-per-attempt",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment"
+        ]
+       },
+       {
+        "agent": "agent-03",
+        "real_agent": "retry-nokey",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-04",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-05",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       }
+      ],
+      "final_text": null
+     },
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 5,
+      "usd": 0.00464345,
+      "model_calls": 2,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-01",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-02",
+        "real_agent": "split-key-per-attempt",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment"
+        ]
+       },
+       {
+        "agent": "agent-03",
+        "real_agent": "retry-nokey",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-04",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       },
+       {
+        "agent": "agent-05",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "issue_refund",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "total_refund_within_payment",
+         "no_duplicate_full_refund"
+        ]
+       }
+      ],
+      "final_text": null
+     }
+    ],
+    "model": "muse-spark-1.3",
+    "reasoning_effort": "medium",
+    "system_prompt": "NEUTRAL_SYSTEM"
    }
-  ]
- },
- "fixed_reversed": {
-  "stats": {
-   "trials": 1,
-   "discovered": 0,
-   "discovery_rate": 0.0,
-   "mean_experiments_to_first_failure": null,
-   "max_experiments_to_first_failure": null,
-   "usd_total": 0.0
   },
-  "trials": [
-   {
-    "found": false,
-    "experiments_to_first_failure": null,
-    "experiments_run": 8,
-    "usd": 0.0
+  "booking-env": {
+   "catalog": {
+    "env_id": "booking-env",
+    "hooks": [
+     "timeout_after_commit"
+    ],
+    "trigger_tools": [
+     "*",
+     "book_equipment",
+     "get_booking_status",
+     "get_equipment"
+    ],
+    "occurrences": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "agent_variants": [
+     "agent-06",
+     "agent-07",
+     "agent-08",
+     "agent-09"
+    ],
+    "max_faults_per_schedule": 1
+   },
+   "space_cells": 64,
+   "failing_cells": [
+    [
+     "agent-07",
+     "*",
+     2
+    ],
+    [
+     "agent-07",
+     "book_equipment",
+     1
+    ],
+    [
+     "agent-08",
+     "*",
+     2
+    ],
+    [
+     "agent-08",
+     "book_equipment",
+     1
+    ],
+    [
+     "agent-09",
+     "*",
+     3
+    ],
+    [
+     "agent-09",
+     "book_equipment",
+     1
+    ]
+   ],
+   "random_expected_discovery": 0.6555200705393075,
+   "random": {
+    "stats": {
+     "trials": 30,
+     "discovered": 24,
+     "mean_experiments_to_first_failure": 3.9166666666666665,
+     "max_experiments_to_first_failure": 9,
+     "usd_total": 0.0
+    },
+    "trials": [
+     {
+      "seed": 0,
+      "found": true,
+      "experiments_to_first_failure": 4,
+      "experiments_run": 4,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-08",
+       "*",
+       2
+      ]
+     },
+     {
+      "seed": 1,
+      "found": true,
+      "experiments_to_first_failure": 3,
+      "experiments_run": 3,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 2,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 3,
+      "found": true,
+      "experiments_to_first_failure": 5,
+      "experiments_run": 5,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-07",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 4,
+      "found": true,
+      "experiments_to_first_failure": 9,
+      "experiments_run": 9,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 5,
+      "found": true,
+      "experiments_to_first_failure": 5,
+      "experiments_run": 5,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-07",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 6,
+      "found": true,
+      "experiments_to_first_failure": 3,
+      "experiments_run": 3,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 7,
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 2,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-07",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 8,
+      "found": true,
+      "experiments_to_first_failure": 4,
+      "experiments_run": 4,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-07",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 9,
+      "found": true,
+      "experiments_to_first_failure": 4,
+      "experiments_run": 4,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-08",
+       "*",
+       2
+      ]
+     },
+     {
+      "seed": 10,
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 2,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 11,
+      "found": true,
+      "experiments_to_first_failure": 3,
+      "experiments_run": 3,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-07",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 12,
+      "found": true,
+      "experiments_to_first_failure": 3,
+      "experiments_run": 3,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-07",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 13,
+      "found": true,
+      "experiments_to_first_failure": 9,
+      "experiments_run": 9,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 14,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 15,
+      "found": true,
+      "experiments_to_first_failure": 1,
+      "experiments_run": 1,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 16,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 17,
+      "found": true,
+      "experiments_to_first_failure": 4,
+      "experiments_run": 4,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 18,
+      "found": true,
+      "experiments_to_first_failure": 3,
+      "experiments_run": 3,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 19,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 20,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 21,
+      "found": true,
+      "experiments_to_first_failure": 4,
+      "experiments_run": 4,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-08",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 22,
+      "found": true,
+      "experiments_to_first_failure": 6,
+      "experiments_run": 6,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 23,
+      "found": true,
+      "experiments_to_first_failure": 5,
+      "experiments_run": 5,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-08",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 24,
+      "found": true,
+      "experiments_to_first_failure": 3,
+      "experiments_run": 3,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-08",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 25,
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     },
+     {
+      "seed": 26,
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 2,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 27,
+      "found": true,
+      "experiments_to_first_failure": 4,
+      "experiments_run": 4,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "*",
+       3
+      ]
+     },
+     {
+      "seed": 28,
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 2,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-08",
+       "book_equipment",
+       1
+      ]
+     },
+     {
+      "seed": 29,
+      "found": true,
+      "experiments_to_first_failure": 4,
+      "experiments_run": 4,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-07",
+       "*",
+       2
+      ]
+     }
+    ]
+   },
+   "fixed": {
+    "stats": {
+     "trials": 1,
+     "discovered": 0,
+     "mean_experiments_to_first_failure": null,
+     "max_experiments_to_first_failure": null,
+     "usd_total": 0.0
+    },
+    "trials": [
+     {
+      "found": false,
+      "experiments_to_first_failure": null,
+      "experiments_run": 10,
+      "usd": 0.0
+     }
+    ]
+   },
+   "fixed_reversed": {
+    "stats": {
+     "trials": 1,
+     "discovered": 1,
+     "mean_experiments_to_first_failure": 3.0,
+     "max_experiments_to_first_failure": 3,
+     "usd_total": 0.0
+    },
+    "trials": [
+     {
+      "found": true,
+      "experiments_to_first_failure": 3,
+      "experiments_run": 3,
+      "usd": 0.0,
+      "first_failure_cell": [
+       "agent-09",
+       "*",
+       3
+      ]
+     }
+    ]
+   },
+   "muse": {
+    "stats": {
+     "trials": 5,
+     "discovered": 5,
+     "mean_experiments_to_first_failure": 2.8,
+     "max_experiments_to_first_failure": 6,
+     "usd_total": 0.024650599999999998
+    },
+    "trials": [
+     {
+      "found": true,
+      "experiments_to_first_failure": 6,
+      "experiments_run": 8,
+      "usd": 0.008882899999999999,
+      "model_calls": 3,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-06",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "*",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-07",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "*",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-08",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "*",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-09",
+        "real_agent": "double-submit",
+        "triggers": [
+         [
+          "*",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-06",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-09",
+        "real_agent": "double-submit",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-07",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-08",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       }
+      ],
+      "final_text": null
+     },
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 4,
+      "usd": 0.0035462,
+      "model_calls": 2,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-06",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-07",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-08",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-09",
+        "real_agent": "double-submit",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       }
+      ],
+      "final_text": null
+     },
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 4,
+      "usd": 0.00469435,
+      "model_calls": 2,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-06",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-07",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-08",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-09",
+        "real_agent": "double-submit",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       }
+      ],
+      "final_text": null
+     },
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 4,
+      "usd": 0.0035559499999999996,
+      "model_calls": 2,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-06",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-07",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-08",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-09",
+        "real_agent": "double-submit",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       }
+      ],
+      "final_text": null
+     },
+     {
+      "found": true,
+      "experiments_to_first_failure": 2,
+      "experiments_run": 4,
+      "usd": 0.0039712,
+      "model_calls": 2,
+      "stop_status": "found_failure",
+      "local_rejections": [],
+      "error": null,
+      "cells": [
+       {
+        "agent": "agent-06",
+        "real_agent": "repaired",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "pass",
+        "rules_failed": []
+       },
+       {
+        "agent": "agent-07",
+        "real_agent": "vulnerable",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-08",
+        "real_agent": "status-ignored",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       },
+       {
+        "agent": "agent-09",
+        "real_agent": "double-submit",
+        "triggers": [
+         [
+          "book_equipment",
+          1
+         ]
+        ],
+        "outcome": "executed",
+        "verdict": "fail",
+        "rules_failed": [
+         "no_duplicate_booking"
+        ]
+       }
+      ],
+      "final_text": null
+     }
+    ],
+    "model": "muse-spark-1.3",
+    "reasoning_effort": "medium",
+    "system_prompt": "NEUTRAL_SYSTEM"
    }
-  ]
- },
- "muse": {
-  "stats": {
-   "trials": 5,
-   "discovered": 5,
-   "discovery_rate": 1.0,
-   "mean_experiments_to_first_failure": 1.0,
-   "max_experiments_to_first_failure": 1,
-   "usd_total": 0.01362105
-  },
-  "trials": [
-   {
-    "found": true,
-    "experiments_to_first_failure": 1,
-    "experiments_run": 1,
-    "usd": 0.00441825,
-    "model_calls": 2,
-    "stop_status": "found_failure",
-    "local_rejections": 0,
-    "error": null
-   },
-   {
-    "found": true,
-    "experiments_to_first_failure": 1,
-    "experiments_run": 1,
-    "usd": 0.0024022,
-    "model_calls": 2,
-    "stop_status": "found_failure",
-    "local_rejections": 0,
-    "error": null
-   },
-   {
-    "found": true,
-    "experiments_to_first_failure": 1,
-    "experiments_run": 1,
-    "usd": 0.00224745,
-    "model_calls": 2,
-    "stop_status": "found_failure",
-    "local_rejections": 0,
-    "error": null
-   },
-   {
-    "found": true,
-    "experiments_to_first_failure": 1,
-    "experiments_run": 1,
-    "usd": 0.0025297,
-    "model_calls": 2,
-    "stop_status": "found_failure",
-    "local_rejections": 0,
-    "error": null
-   },
-   {
-    "found": true,
-    "experiments_to_first_failure": 1,
-    "experiments_run": 1,
-    "usd": 0.00202345,
-    "model_calls": 2,
-    "stop_status": "found_failure",
-    "local_rejections": 0,
-    "error": null
-   }
-  ],
-  "model": "muse-spark-1.3",
-  "reasoning_effort": "medium"
+  }
  }
 }

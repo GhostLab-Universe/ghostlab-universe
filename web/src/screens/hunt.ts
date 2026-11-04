@@ -155,9 +155,11 @@ interface EvidenceOut {
   benchmark: {
     generated_at: string;
     budget: number;
-    space_cells: number;
-    failing_cells: unknown[];
-    strategies: Record<string, { trials: number; discovered: number; mean_experiments_to_first_failure: number | null; max_experiments_to_first_failure: number | null; usd_total: number } | null>;
+    envs: Record<string, {
+      space_cells: number | null;
+      failing_cells: number;
+      strategies: Record<string, { trials: number; discovered: number; mean_experiments_to_first_failure: number | null; max_experiments_to_first_failure: number | null; usd_total: number } | null>;
+    }>;
   } | null;
   benchmark_caveats: string | null;
 }
@@ -744,7 +746,7 @@ function EvidenceView(props: { base: string }): ReactNode {
   if (data === null) return spinner("Loading calibration and benchmark from the service…");
   const cal = data.calibration;
   const bench = data.benchmark;
-  const STRAT: Record<string, string> = { random: "random (seeded shuffle)", fixed: "fixed (vulnerable first)", fixed_reversed: "fixed (repaired first)", muse: "Muse-guided (muse-spark-1.3)" };
+  const STRAT: Record<string, string> = { random: "random (seeded shuffle)", fixed: "fixed (catalog order)", fixed_reversed: "fixed (reversed)", muse: "Muse-guided (muse-spark-1.3)" };
   return section(
     { className: "view evidence", "data-testid": "view-evidence" },
     h2(null, "Calibration: the LLM agent under timeout-after-commit"),
@@ -782,24 +784,27 @@ function EvidenceView(props: { base: string }): ReactNode {
       ? p({ className: "empty" }, "No benchmark recorded.")
       : div(
           null,
-          p({ className: "muted" }, `${String(bench.budget)} experiments per trial · ${String(bench.space_cells)} cells · ${String(bench.failing_cells.length)} failing · ${bench.generated_at.slice(0, 10)}`),
+          p({ className: "muted" }, `${String(bench.budget)} experiments per trial · opaque agent ids · ${bench.generated_at.slice(0, 10)}`),
           table(
             { "data-testid": "benchmark-table" },
-            thead(null, tr(null, th(null, "Strategy"), th(null, "n (trials)"), th(null, "Found a failure"), th(null, "Mean experiments to first failure"), th(null, "Max"), th(null, "USD total"))),
+            thead(null, tr(null, th(null, "Env"), th(null, "Strategy"), th(null, "n (trials)"), th(null, "Found a failure"), th(null, "Mean experiments to first failure"), th(null, "Max"), th(null, "USD total"))),
             tbody(
               null,
-              ...Object.entries(bench.strategies).map(([k, s]) =>
-                s === null
-                  ? null
-                  : tr(
-                      { key: k },
-                      td(null, STRAT[k] ?? k),
-                      td(null, String(s.trials)),
-                      td(null, `${String(s.discovered)}/${String(s.trials)}`),
-                      td(null, s.mean_experiments_to_first_failure === null ? "—" : s.mean_experiments_to_first_failure.toFixed(2)),
-                      td(null, s.max_experiments_to_first_failure === null ? "—" : String(s.max_experiments_to_first_failure)),
-                      td(null, usd(s.usd_total, 6)),
-                    ),
+              ...Object.entries(bench.envs).flatMap(([env, e]) =>
+                Object.entries(e.strategies).map(([k, s]) =>
+                  s === null
+                    ? null
+                    : tr(
+                        { key: `${env}-${k}` },
+                        td(null, `${env} (${String(e.space_cells ?? "?")} cells, ${String(e.failing_cells)} fail)`),
+                        td(null, STRAT[k] ?? k),
+                        td(null, String(s.trials)),
+                        td(null, `${String(s.discovered)}/${String(s.trials)}`),
+                        td(null, s.mean_experiments_to_first_failure === null ? "—" : s.mean_experiments_to_first_failure.toFixed(2)),
+                        td(null, s.max_experiments_to_first_failure === null ? "—" : String(s.max_experiments_to_first_failure)),
+                        td(null, usd(s.usd_total, 6)),
+                      ),
+                ),
               ),
             ),
           ),

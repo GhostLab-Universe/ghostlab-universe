@@ -225,6 +225,7 @@
 .bench-k { color: var(--lab-muted); font-size: 1rem; }
 .bench-row { display: flex; flex-wrap: wrap; gap: 0.5rem 1.75rem; margin: 0.6rem 0; font-size: 1.15rem; }
 .bench-item .mono { color: var(--lab-muse); }
+.bench-env { color: var(--lab-ink-2); min-width: 15rem; }
 .bench-caveat { color: var(--lab-amber); margin: 0.25rem 0 0; max-width: 110ch; font-size: 1.05rem; }
 .ev-external { margin: 1.75rem 0 0; font-size: 1.25rem; color: var(--lab-ink); max-width: 95ch; border-left: 3px solid var(--lab-muse); padding-left: 1rem; }
 .ev-links { display: flex; gap: 2rem; margin-top: 1.5rem; }

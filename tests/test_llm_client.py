@@ -40,6 +40,15 @@ def meta_client(tmp, handler, **opts):
 
 
 class SpendTests(unittest.TestCase):
+    def test_env_cap_only_lowers(self):
+        from ghostlab.llm.spend import _env_cap
+        with mock.patch.dict(os.environ, {"GHOSTLAB_DEV_CAP_USD": "8.25"}):
+            self.assertEqual(_env_cap(120.0), 8.25)
+        with mock.patch.dict(os.environ, {"GHOSTLAB_DEV_CAP_USD": "500"}):
+            self.assertEqual(_env_cap(120.0), 120.0)
+        with mock.patch.dict(os.environ, {"GHOSTLAB_DEV_CAP_USD": ""}):
+            self.assertEqual(_env_cap(120.0), 120.0)
+
     def test_price_and_cap(self):
         self.assertAlmostEqual(usd("muse-spark-1.3", 1_000_000, 1_000_000), 5.5)
         self.assertEqual(usd("some-local-model", 10**6, 10**6), 0.0)

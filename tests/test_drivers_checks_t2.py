@@ -209,8 +209,10 @@ class DriverRegistryTests(unittest.TestCase):
         self.assertEqual(booking.declared_checks(), list(BOOKING_IDS))
         self.assertEqual(refund.agents(), ["vulnerable", "repaired", "llm-naive",
                                           "llm-hardened", "llm-naive-noread",
-                                          "llm-hardened-noread"])
-        self.assertEqual(booking.agents(), ["vulnerable", "repaired"])
+                                          "llm-hardened-noread", "status-ignored",
+                                          "retry-nokey", "split-key-per-attempt"])
+        self.assertEqual(booking.agents(), ["vulnerable", "repaired",
+                                           "status-ignored", "double-submit"])
 
     def test_driver_registration_rejects_bad_surface(self):
         with self.assertRaises(ValueError):

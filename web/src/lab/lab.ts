@@ -24,9 +24,10 @@ interface Branch { ledger: Array<{ amount_minor: number }>; total_refunded_minor
 interface RunDetail { agent: string; faults: Fault[]; baseline: Branch | null; faulted: Branch; first_divergence_event_id: number | null; violated_invariants: string[]; claim_check: Claim | null }
 interface ReplayOut { name: string; reproduced: boolean; verdict?: string; claim_check?: Claim; model_calls_live: number; model_calls_replayed?: number; trace?: TraceRow[]; agent?: string; error?: string }
 interface Stats { trials: number; discovered: number; mean_experiments_to_first_failure: number | null }
+interface KeyRow { n: number; duplicates: number; false_success: number }
 interface EvidenceOut {
-  calibration: { model: string; table: Array<Record<string, string | number>> } | null;
-  benchmark: { budget: number; space_cells: number; strategies: Record<string, Stats> } | null;
+  calibration: { model: string; table: Array<Record<string, string | number>>; by_first_key?: Record<string, KeyRow> } | null;
+  benchmark: { budget: number; envs: Record<string, { space_cells: number | null; failing_cells: number; strategies: Record<string, Stats> }> } | null;
   benchmark_caveats: string | null;
 }
 
@@ -384,32 +385,36 @@ function Capsule(props: { data: Data }): ReactNode {
 }
 
 function strip(md: string): string {
-  return md.replace(/\*\*/g, "").replace(/`/g, "");
+  return md.replace(/\*/g, "").replace(/`/g, "");
 }
+
+const STRAT_LABEL: Record<string, string> = { muse: "Muse", random: "random", fixed: "fixed", fixed_reversed: "fixed (reversed)" };
 
 function Evidence(props: { data: Data }): ReactNode {
   const ev = props.data.evidence;
   if (ev === null) return d("scene", wait("Loading calibration and benchmark…"));
-  const table = ev.calibration?.table ?? [];
-  const worst = [...table].sort((a, b) => Number(b["duplicates"]) - Number(a["duplicates"]))[0];
-  const hardened = table.filter((r) => String(r["prompt"]) === "hardened");
-  const hardDup = hardened.reduce((n, r) => n + Number(r["duplicates"]), 0);
-  const hardRuns = hardened.reduce((n, r) => n + Number(r["runs"]), 0);
-  const strategies = Object.entries(ev.benchmark?.strategies ?? {});
-  const caveat = (ev.benchmark_caveats ?? "").split("\n").find((l) => l.startsWith("- ")) ?? "";
+  const keys = ev.calibration?.by_first_key ?? {};
+  const omitted = keys["omitted"];
+  const supplied = keys["supplied"];
+  const envs = Object.entries(ev.benchmark?.envs ?? {});
+  const caveatLines = (ev.benchmark_caveats ?? "").split("\n");
+  const caveat = caveatLines.find((l) => l.startsWith("- ")) ?? "";
+  const because = caveatLines.find((l) => /measured advantage/.test(l)) ?? "";
   return d(
     "scene scene-evidence",
     h("h2", { className: "scene-title" }, "Evidence, with its n"),
     d("ev-grid",
-      worst === undefined ? null : d("ev-stat bad ev-wide",
-        d("ev-pair", s("ev-v", `${String(worst["duplicates"])}/${String(worst["runs"])}`), s("ev-k", "duplicated the refund")),
-        d("ev-pair", s("ev-v", `${String(worst["false_success"])}/${String(worst["runs"])}`), s("ev-k", "reported success while the ledger disagreed")),
-        s("ev-who", `${String(worst["variant"])} · ${ev.calibration?.model ?? ""} under timeout-after-commit`)),
-      hardRuns === 0 ? null : d("ev-stat good", s("ev-v", `${String(hardDup)}/${String(hardRuns)}`), s("ev-k", "hardened-prompt runs duplicated"))),
-    strategies.length === 0 ? null : d("bench",
-      s("bench-k", `Benchmark · ${String(ev.benchmark?.budget ?? "?")} experiments per trial · ${String(ev.benchmark?.space_cells ?? "?")} cells`),
-      d("bench-row", ...strategies.map(([k, st]) => s("bench-item", s("mono", k), ` found ${String(st.discovered)}/${String(st.trials)}`, st.mean_experiments_to_first_failure === null ? "" : ` · ${st.mean_experiments_to_first_failure.toFixed(1)} exp`))),
-      h("p", { className: "bench-caveat" }, `Caveat: ${strip(caveat.slice(2))}`)),
+      omitted === undefined ? null : d("ev-stat bad ev-wide",
+        d("ev-pair", s("ev-v", `${String(omitted.duplicates)}/${String(omitted.n)}`), s("ev-k", "runs that sent no idempotency key on the first refund call duplicated it")),
+        d("ev-pair", s("ev-v", `${String(omitted.false_success)}/${String(omitted.duplicates)}`), s("ev-k", "of those duplicates reported success anyway")),
+        s("ev-who", `${ev.calibration?.model ?? ""} · timeout after commit · ${String(omitted.n + (supplied?.n ?? 0))} runs across both calibration batches`)),
+      supplied === undefined ? null : d("ev-stat good", s("ev-v", `${String(supplied.duplicates)}/${String(supplied.n)}`), s("ev-k", "runs that supplied a key duplicated"))),
+    envs.length === 0 ? null : d("bench",
+      s("bench-k", `Benchmark · ${String(ev.benchmark?.budget ?? "?")} experiments per trial · opaque agent ids`),
+      ...envs.map(([env, e]) => d("bench-row",
+        s("bench-env", `${env.replace(/-env$/, "")} · ${String(e.space_cells ?? "?")} cells, ${String(e.failing_cells)} fail`),
+        ...Object.entries(e.strategies).map(([k, st]) => s("bench-item", s("mono", STRAT_LABEL[k] ?? k), ` ${String(st.discovered)}/${String(st.trials)}`)))),
+      h("p", { className: "bench-caveat" }, `Caveat: ${strip(caveat.slice(2))} ${strip(because.replace(/^\s*-\s*/, ""))}`)),
     h("p", { className: "ev-external" }, "In a Sep 2026 study of 25,930 agent episodes, frontier agents duplicated side effects in 56–74% of in-flight retries and reported success in 90% of those (Li, arXiv 2609.29095)."),
     d("ev-links", h("a", { href: REPO }, "GitHub repo →"), h("a", { href: "/guide/1-environment" }, "Developer console →")),
   );

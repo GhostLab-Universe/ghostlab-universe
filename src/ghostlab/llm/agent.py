@@ -17,7 +17,7 @@ import json
 from ..core import BudgetExceeded, PaymentTimeout, ToolError
 from ..envs.adapters import EnvCancelled
 from ..experiments import ops
-from ..experiments.configs import ConfigError
+from ..experiments.configs import SEEDED_AGENTS, ConfigError
 from ..targets.gateway import ControlledGateway, GatewayError
 from ..targets.registry import AgentManifest, TargetRegistry
 from .client import ModelCallFailed
@@ -261,7 +261,7 @@ def policy() -> dict:
     return {"policy_version": "policy/1", "ceiling_tool_calls": 50,
             "ceiling_total_tool_calls": 25000, "ceiling_repetitions": 25,
             "ceiling_wall_clock_ms": 3_600_000,
-            "allowed_agents": ["vulnerable", "repaired", *VARIANTS],
+            "allowed_agents": ["vulnerable", "repaired", *VARIANTS, *SEEDED_AGENTS],
             "allowed_hooks": ["timeout_after_commit"]}
 
 

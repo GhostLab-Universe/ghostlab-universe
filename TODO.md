@@ -10,9 +10,8 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
 - [ ] Record the 3-minute video from `/lab` at 1920×1080 (replay mode, keyless; → next, ← back, R restart).
 - [ ] Verify the external stat on the Evidence scene (Li, arXiv 2609.29095) before submission, or cut it.
 - [ ] Rerun `node web/tests/acceptance.mjs --service=...` after the step 6 restructure.
-- [ ] Glimmer-vs-Spark (`/v1/models/compare`) is not shown in the UI yet. Add it to the Evidence view if time allows.
-- [ ] Glimmer: try a Modelfile with an explicit chat template so Chat Completions returns content, then record one naive run.
-- [ ] Fairer benchmark: opaque agent variant names, booking env plus refund env, and record each trial's chosen cell.
+- [ ] The new seeded-bug agents (`status-ignored`, `retry-nokey`, `split-key-per-attempt`, `double-submit`) are in
+      `configs.AGENTS`, so the `/guide` agent picker lists them. Check that step 3 reads well.
 
 ## Next
 
@@ -45,6 +44,8 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
 - Baseten, Modal and Fireworks. There are no credits, and they need a card. The Baseten adapter stays in code, unused.
 - Postgres. SQLite serial MVP is enough for a single-coordinator demo. Hosted multiworker is not needed.
 - Hosted runner (outbound-authenticated developer-side runner). Out of scope for the deadline, and it requires infra we can't pay for.
+- Glimmer (open weights). 0.77 tok/s on RTX 4050 6 GB at IQ2_M, and the chat template returns the reasoning header instead of an
+  answer (`docs/calibration.md`). Provider code and tests are kept, and it is never shown in the UI comparison.
 - Merging PR #49/#24/#22/#1. They are on a diverged line with conflicting designs (see ARCHITECTURE decisions). Their optional sign-in
   and GitHub inspection went with them.
 
@@ -54,6 +55,8 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
 
 - [x] Phase 2A: demo UI on the live-model routes. Step 6 has Hunt, Failure (Fork Reality), Diagnosis, Fix & retest, Capsule replay and Evidence, all keyless in
       replay (2026-11-04, Claude Code session 2A).
+- [x] Phase 2B: fair benchmark (opaque ids, neutral prompt, refund+booking, 4 new seeded-bug agents), calibration at
+      n=20/20/10 with key behaviour per run, Glimmer cut, ledger-enforced session cap (2026-11-04, Claude Code).
 
 - [x] Phase 1: live Meta models. This covers the spend ledger, clients, the LLM agent, claimed-vs-actual, calibration, the adversary, diagnosis, keyless replay,
       API, and benchmark (2026-11-04, Claude Code).

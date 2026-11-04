@@ -7,6 +7,7 @@ worst-case cost of that attempt is checked against the key's cap; a call that
 could cross it is refused before anything is sent.
 """
 
+import fcntl
 import json
 import os
 import threading
@@ -78,11 +79,13 @@ class SpendLedger:
                "output_tokens": output_tokens, "reasoning_tokens": reasoning_tokens,
                "cached_tokens": cached_tokens, "latency_ms": latency_ms, "purpose": purpose,
                "usd": usd(model, input_tokens or 0, output_tokens or 0, cached_tokens or 0)}
-        with self._lock:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        # flock: several processes (calibration, Glimmer, the service) share one ledger.
+        with self._lock, open(self.path.with_suffix(".lock"), "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
             data = self._load()
             data["calls"].append(row)
             data["totals"] = _totals(data["calls"])
-            self.path.parent.mkdir(parents=True, exist_ok=True)
             tmp = self.path.with_suffix(".tmp")
             tmp.write_text(json.dumps(data, indent=1), encoding="utf-8")
             os.replace(tmp, self.path)

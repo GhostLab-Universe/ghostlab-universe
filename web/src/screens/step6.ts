@@ -1,6 +1,8 @@
-/* Step 6: run the guided config and inspect the recorded evidence. */
+/* Step 6: the Muse hunt story (HuntFlow, live-model routes) above the guided
+ * single run of the step 5 config and its recorded evidence. */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { createElement, useMemo, useState, type ReactNode } from "react";
+import { HuntFlow } from "./hunt";
 import { validateEffectiveConfig } from "../config";
 import { isServiceGuide } from "../serviceClient";
 import type { ArmReference } from "../types";
@@ -72,10 +74,13 @@ export function Step6(props: { ctx: StepContext }): ReactNode {
       .finally(() => setCancelling(false));
   };
 
+  const hunt = createElement(HuntFlow, { base: ctx.service?.baseUrl ?? "" });
   if (!validation.ok) {
     return div(
       null,
-      h1(null, "Step 6: Run & inspect evidence"),
+      h1(null, "Step 6: Hunt, prove & fix"),
+      hunt,
+      h2({ className: "guided-head" }, "Guided config run (step 5 config)"),
       errorList(validation.errors),
       p(null, "Fix the config in ", navLink(ctx.navigate, "/guide/4-configure", "step 4"), " before running."),
     );
@@ -193,7 +198,9 @@ export function Step6(props: { ctx: StepContext }): ReactNode {
 
   return div(
     null,
-    h1(null, "Step 6: Run & inspect evidence"),
+    h1(null, "Step 6: Hunt, prove & fix"),
+    hunt,
+    h2({ className: "guided-head" }, "Guided config run (step 5 config)"),
     div(
       { className: "row" },
       button({ onClick: run, label: running ? "Running…" : evidence === null ? "Run guided experiment" : "Run again", disabled: running, testid: "run-button" }),

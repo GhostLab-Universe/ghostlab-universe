@@ -40,7 +40,7 @@ const STEPS = [
   { path: "/guide/3-agent", title: "Select agent", component: Step3 },
   { path: "/guide/4-configure", title: "Configure fixtures, faults, checks & limits", component: Step4 },
   { path: "/guide/5-review", title: "Review effective config", component: Step5 },
-  { path: "/guide/6-run", title: "Run & inspect evidence", component: Step6 },
+  { path: "/guide/6-run", title: "Hunt, prove & fix", component: Step6 },
   { path: "/guide/7-export", title: "Export, compare & retest", component: Step7 },
 ] as const;
 
@@ -254,9 +254,8 @@ export function App(): ReactNode {
       : isServiceGuide(api)
         ? p(
             { className: "mode", "data-testid": "mode-banner" },
-            `Service mode: results execute on ${serviceInfo?.baseUrl === "" ? "the same-origin service" : serviceInfo?.baseUrl} ` +
-              `(project ${serviceInfo?.projectId ?? "?"}${serviceInfo?.projectObserved === true ? "" : ", client default — confirmed on first call"}). ` +
-              "Connection errors never show fixtures. No credentials in the browser.",
+            `Service mode: ${serviceInfo?.baseUrl === "" ? "same origin" : serviceInfo?.baseUrl} · project ${serviceInfo?.projectId ?? "?"}` +
+              `${serviceInfo?.projectObserved === true ? "" : " (client default)"} · no credentials in the browser · connection errors never show fixtures`,
           )
         : p(
             { className: "mode", "data-testid": "mode-banner" },
@@ -267,7 +266,12 @@ export function App(): ReactNode {
     { className: "app" },
     header(
       { className: "app-header" },
-      h1(null, "GhostLab guided run"),
+      div(
+        { className: "brand-row" },
+        h1(null, "GhostLab"),
+        p({ className: "tagline" }, "Finds and proves the failures your agent hides behind timeouts and retries."),
+        route === runStepPath ? null : navLink(navigate, runStepPath, "▶ Demo: hunt a refund bug"),
+      ),
       modeBanner,
       stepper(STEPS.map((s) => ({ path: s.path, title: s.title })), route, navigate),
     ),
@@ -281,21 +285,18 @@ export function App(): ReactNode {
           )
         : null,
       ...(fixtureRefused ? [p({ "data-testid": "fixture-refused" }, "fixture-refused")] : []),
-      backendPanel,
       ...notices.map((notice) => banner("ok", notice, undefined)),
       step === undefined
         ? createElement(NotFound, { navigate })
         : api === null
           ? p(null, "Starting…")
           : createElement(step.component, { ctx }),
+      backendPanel,
     ),
     footer(
       { className: "app-footer" },
-      small(
-        null,
-        "Fixtures are dev aids, never final evidence. Financial verdicts come from executed evidence. ",
-        "Guide: docs/modules/M08.md.",
-      ),
+      p({ className: "credits", "data-testid": "credits" }, "Muse Spark 1.3 (agent + adversary) · Muse Wonder 1.0 (diagnosis) · Meta Model API · built Oct 26 – Nov 4, 2026"),
+      small(null, "Verdicts come only from deterministic ledger checks over executed runs. Fixtures are dev aids, never evidence."),
     ),
   );
 }

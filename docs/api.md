@@ -74,6 +74,28 @@ Poll this until `status` is `stopped`.
 - `reproduced` is set only for replays.
 - `replayed: true` marks a model call served from a recording, which costs 0 USD.
 
+Each experiment also carries `hypothesis`, which is the adversary's text from the turn that proposed it, and `proposed_by`, which is that turn's
+`model`, `provider`, `request_id`, `latency_ms`, tokens, `usd` and `replayed` flag. A replay reports its recorded latency and cost, and it is not billed.
+In replay, `recorded_budget` is the budget of the original live run.
+
+## `GET /v1/explorations/{id}/runs/{run_id}`
+Fork Reality detail for one experiment. This returns 409 `not_ready` while the exploration is running, and 404 for an unknown run.
+```json
+{"run_id": "run-000002", "agent": "llm-naive-noread", "faults": [{"hook": "timeout_after_commit", "trigger": {}}],
+ "baseline": {"run_id": "…", "verdict": "pass", "ledger": [], "order": {}, "total_refunded_minor": 250000, "trace": [{"event_id": 1, "tool": "get_order", "arguments": {}, "outcome": {}}]},
+ "faulted": {"…": "same shape"}, "first_divergence_event_id": 2,
+ "violated_invariants": ["no_duplicate_full_refund"],
+ "claim_check": {"verdict": "false_success", "claim": {"refunds_issued": 1, "total_refunded": 2500}, "actual": {"refunds_issued": 2, "total_refunded_minor": 500000}}}
+```
+`baseline` is the no-fault run of the same agent on the same fixture. `claim_check` applies only to the `llm-*` agents and is null for the seeded agents.
+It is also null when the agent's run log cannot be matched to the run order, because a missing claim is better than a wrong one.
+
+## `GET /v1/evidence`
+Read-only. It returns `{"calibration": {…, "table"}, "calibration_notes": "<markdown>", "benchmark": {"budget", "space_cells", "failing_cells",
+"strategies": {"random": {"trials", "discovered", …}}}, "benchmark_caveats": "<markdown>"}`.
+The data is read at request time from `demo/recorded/calibration.json` and `docs/benchmark.json`. The notes are quoted verbatim from
+`docs/calibration.md` and `docs/benchmark.md`.
+
 ## `POST /v1/explorations/{id}/resume`
 Resumes a stopped exploration whose `stop_status` is `paused_on_error`. Otherwise it returns 409 `not_resumable`.
 Response: `{"exploration_id", "status": "running"}`.

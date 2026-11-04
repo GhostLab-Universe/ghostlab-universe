@@ -7,8 +7,9 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
 
 ## Now
 
-- [ ] Web UI: step 6 shows `/v1/explorations` (live or replay), the budget meter, the model-call log, Reality Diff, diagnosis labelled
-      "explanation, not evidence", calibration table and Glimmer-vs-Spark (`docs/api.md`).
+- [ ] Record the 3-minute video from `/guide/6-run` at 1920×1080 (replay mode, keyless).
+- [ ] Rerun `node web/tests/acceptance.mjs --service=...` after the step 6 restructure.
+- [ ] Glimmer-vs-Spark (`/v1/models/compare`) is not shown in the UI yet. Add it to the Evidence view if time allows.
 - [ ] Glimmer: try a Modelfile with an explicit chat template so Chat Completions returns content, then record one naive run.
 - [ ] Fairer benchmark: opaque agent variant names, booking env plus refund env, and record each trial's chosen cell.
 
@@ -47,6 +48,9 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
   and GitHub inspection went with them.
 
 ## Done
+
+- [x] Phase 2A: demo UI on the live-model routes. Step 6 has Hunt, Failure (Fork Reality), Diagnosis, Fix & retest, Capsule replay and Evidence, all keyless in
+      replay (2026-11-04, Claude Code session 2A).
 
 - [x] Phase 1: live Meta models. This covers the spend ledger, clients, the LLM agent, claimed-vs-actual, calibration, the adversary, diagnosis, keyless replay,
       API, and benchmark (2026-11-04, Claude Code).

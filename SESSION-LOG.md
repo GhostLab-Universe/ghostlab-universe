@@ -6,21 +6,55 @@ Updated at the end of every session and read at the start of every session. Newe
 
 ## Current state
 
-**Updated:** 2026-11-04 (~23:05 IST)
+**Updated:** 2026-11-04 (~23:45 IST)
 **Branch:** `hackathon/final`
-**Agents active:** Claude Code (solo owner Abhiram-0910).
-**Status:** Live Meta models are wired in.
-- A Muse-driven refund agent runs under test through the controller and gateway.
-- A Muse adversary runs as the `model_guided` explorer.
-- Wonder diagnosis, a spend ledger, keyless replay of every recording, and API routes are all in place.
-- Tests: 813–815 pass. Failures are pre-existing and also seen at c1c5040: the 2 Linux-only ones, the api_e4 body-cap race, and the timing-flaky api_e4 budget_409. tsc and the build are clean.
-- Spend is USD 0.2209 on dev, 0 on public.
+**Agents active:** Claude Code session 2A on `hackathon/final` (UI). A second Claude Code session is on worktree `../ghostlab-eval`, branch `eval/fairness`
+(benchmark fairness, calibration, recordings).
+**Status:** The demo UI runs on the live-model routes, and step 6 tells the whole story keyless in replay mode.
+- Tests: 817 pass. The only failures are the 2 Linux-only ones. tsc is clean and the build is green.
+- Screens are in `var/screens/` (git-ignored).
 
-**Next:** UI for the new routes (step 6 explorer), README rewrite, and the public deploy. Feature freeze is 02:00 IST.
+**Next:** Record the video from `/guide/6-run` at 1920×1080. After that, the README rewrite and the public deploy.
 
 ---
 
 ## Sessions
+
+### 2026-11-04 — Phase 2A: demo UI on the live-model routes — *Claude Code (session 2A)*
+
+**Done**
+- API (`api/llm_routes.py`):
+  - Experiments carry `hypothesis` and `proposed_by`. In live mode the adversary is wrapped in `RecordingClient` to supply them.
+  - New `GET /v1/explorations/{id}/runs/{run_id}`: baseline vs faulted ledger and trace, first divergence, and claimed-vs-actual.
+  - New `GET /v1/evidence`: calibration and benchmark tables, plus caveats quoted verbatim from the docs.
+  - Replay reports `recorded_budget`.
+- `llm/agent.py`: the drive loop appends `{agent, claim, tools}` to `client.run_log`. The API maps that log onto run order and
+  refuses the mapping when the agents don't line up.
+- Web step 6 is `screens/hunt.ts`, with six views:
+  - Hunt: mode (live is disabled with the reason shown when there's no key), target, budget meter, stop chip and resume, and experiment cards with a model-call strip.
+  - Failure: claim banner, then a Fork Reality split with the divergence and the extra ledger row highlighted, then the minimized witness.
+  - Diagnosis: labelled "Explanation, not evidence".
+  - Fix & retest: replays the `hardened-spark-pass.json` capsule.
+  - Capsule replay.
+  - Evidence.
+- The old guided run stays below the views, with its testids unchanged.
+- Dark OKLCH tokens, IBM Plex type, and a persistent credits footer. Vite now proxies `/v1` → 8917.
+- Tests: `tests/test_api_llm.py` gained 2 tests (fork detail plus `false_success`, and the evidence route).
+
+**Decided**
+- The story recording is `adversary-exploration-llm.json` (Muse agent target). In it, `llm-naive` passes and `llm-naive-noread` duplicates.
+- In replay, Fix & retest replays the recorded hardened run. It is not live, and the UI says so.
+- Per-experiment target-agent USD is not separable from baselines, so cards show the call count and the header shows the totals.
+- When one adversary turn proposed two experiments, the second card says so instead of repeating the call.
+
+**Hit**
+- `playwright-cli` is not on PATH in WSL. I drove the flow with the global Playwright library instead (the script is in this session's scratchpad).
+- The failure summary has `agent_variant` and no body, so the Fix view now reads the matching experiment card.
+
+**Incomplete**
+- The hallmark audit was a self-audit against the anti-pattern list, not the full 58-gate run.
+- The acceptance suite (`web/tests/acceptance.mjs`) was not rerun. Its step 6 testids are unchanged.
+
 
 ### 2026-11-04 — Phase 1: live Meta models — *Claude Code*
 

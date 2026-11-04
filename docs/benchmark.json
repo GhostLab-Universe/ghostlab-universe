@@ -1,0 +1,353 @@
+{
+ "generated_at": "2026-11-04T17:26:20.011032+00:00",
+ "budget": 8,
+ "space_cells": 32,
+ "failing_cells": [
+  [
+   "vulnerable",
+   "*",
+   2
+  ],
+  [
+   "vulnerable",
+   "issue_refund",
+   1
+  ]
+ ],
+ "catalog": {
+  "env_id": "refund-env",
+  "hooks": [
+   "timeout_after_commit"
+  ],
+  "trigger_tools": [
+   "*",
+   "get_order",
+   "get_refund_status",
+   "issue_refund"
+  ],
+  "occurrences": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "agent_variants": [
+   "vulnerable",
+   "repaired"
+  ],
+  "max_faults_per_schedule": 2
+ },
+ "fixed_order": "catalog order: agent (vulnerable, repaired) x trigger tool (*, get_order, get_refund_status, issue_refund) x occurrence 1-4",
+ "random": {
+  "stats": {
+   "trials": 20,
+   "discovered": 11,
+   "discovery_rate": 0.55,
+   "mean_experiments_to_first_failure": 5.2727272727272725,
+   "max_experiments_to_first_failure": 8,
+   "usd_total": 0.0
+  },
+  "trials": [
+   {
+    "seed": 0,
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   },
+   {
+    "seed": 1,
+    "found": true,
+    "experiments_to_first_failure": 6,
+    "experiments_run": 6,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "*",
+     2
+    ]
+   },
+   {
+    "seed": 2,
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   },
+   {
+    "seed": 3,
+    "found": true,
+    "experiments_to_first_failure": 6,
+    "experiments_run": 6,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "*",
+     2
+    ]
+   },
+   {
+    "seed": 4,
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   },
+   {
+    "seed": 5,
+    "found": true,
+    "experiments_to_first_failure": 2,
+    "experiments_run": 2,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "issue_refund",
+     1
+    ]
+   },
+   {
+    "seed": 6,
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   },
+   {
+    "seed": 7,
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   },
+   {
+    "seed": 8,
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   },
+   {
+    "seed": 9,
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   },
+   {
+    "seed": 10,
+    "found": true,
+    "experiments_to_first_failure": 3,
+    "experiments_run": 3,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "issue_refund",
+     1
+    ]
+   },
+   {
+    "seed": 11,
+    "found": true,
+    "experiments_to_first_failure": 6,
+    "experiments_run": 6,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "issue_refund",
+     1
+    ]
+   },
+   {
+    "seed": 12,
+    "found": true,
+    "experiments_to_first_failure": 8,
+    "experiments_run": 8,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "*",
+     2
+    ]
+   },
+   {
+    "seed": 13,
+    "found": true,
+    "experiments_to_first_failure": 2,
+    "experiments_run": 2,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "*",
+     2
+    ]
+   },
+   {
+    "seed": 14,
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   },
+   {
+    "seed": 15,
+    "found": true,
+    "experiments_to_first_failure": 5,
+    "experiments_run": 5,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "issue_refund",
+     1
+    ]
+   },
+   {
+    "seed": 16,
+    "found": true,
+    "experiments_to_first_failure": 6,
+    "experiments_run": 6,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "*",
+     2
+    ]
+   },
+   {
+    "seed": 17,
+    "found": true,
+    "experiments_to_first_failure": 7,
+    "experiments_run": 7,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "*",
+     2
+    ]
+   },
+   {
+    "seed": 18,
+    "found": true,
+    "experiments_to_first_failure": 7,
+    "experiments_run": 7,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "issue_refund",
+     1
+    ]
+   },
+   {
+    "seed": 19,
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   }
+  ]
+ },
+ "fixed": {
+  "stats": {
+   "trials": 1,
+   "discovered": 1,
+   "discovery_rate": 1.0,
+   "mean_experiments_to_first_failure": 2.0,
+   "max_experiments_to_first_failure": 2,
+   "usd_total": 0.0
+  },
+  "trials": [
+   {
+    "found": true,
+    "experiments_to_first_failure": 2,
+    "experiments_run": 2,
+    "usd": 0.0,
+    "first_failure_cell": [
+     "vulnerable",
+     "*",
+     2
+    ]
+   }
+  ]
+ },
+ "fixed_reversed": {
+  "stats": {
+   "trials": 1,
+   "discovered": 0,
+   "discovery_rate": 0.0,
+   "mean_experiments_to_first_failure": null,
+   "max_experiments_to_first_failure": null,
+   "usd_total": 0.0
+  },
+  "trials": [
+   {
+    "found": false,
+    "experiments_to_first_failure": null,
+    "experiments_run": 8,
+    "usd": 0.0
+   }
+  ]
+ },
+ "muse": {
+  "stats": {
+   "trials": 5,
+   "discovered": 5,
+   "discovery_rate": 1.0,
+   "mean_experiments_to_first_failure": 1.0,
+   "max_experiments_to_first_failure": 1,
+   "usd_total": 0.01362105
+  },
+  "trials": [
+   {
+    "found": true,
+    "experiments_to_first_failure": 1,
+    "experiments_run": 1,
+    "usd": 0.00441825,
+    "model_calls": 2,
+    "stop_status": "found_failure",
+    "local_rejections": 0,
+    "error": null
+   },
+   {
+    "found": true,
+    "experiments_to_first_failure": 1,
+    "experiments_run": 1,
+    "usd": 0.0024022,
+    "model_calls": 2,
+    "stop_status": "found_failure",
+    "local_rejections": 0,
+    "error": null
+   },
+   {
+    "found": true,
+    "experiments_to_first_failure": 1,
+    "experiments_run": 1,
+    "usd": 0.00224745,
+    "model_calls": 2,
+    "stop_status": "found_failure",
+    "local_rejections": 0,
+    "error": null
+   },
+   {
+    "found": true,
+    "experiments_to_first_failure": 1,
+    "experiments_run": 1,
+    "usd": 0.0025297,
+    "model_calls": 2,
+    "stop_status": "found_failure",
+    "local_rejections": 0,
+    "error": null
+   },
+   {
+    "found": true,
+    "experiments_to_first_failure": 1,
+    "experiments_run": 1,
+    "usd": 0.00202345,
+    "model_calls": 2,
+    "stop_status": "found_failure",
+    "local_rejections": 0,
+    "error": null
+   }
+  ],
+  "model": "muse-spark-1.3",
+  "reasoning_effort": "medium"
+ }
+}

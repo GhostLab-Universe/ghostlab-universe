@@ -338,8 +338,11 @@ function Fork(props: { data: Data }): ReactNode {
       h("text", { x: 150, y: 290, textAnchor: "middle", className: "lfork-sub" }, `paid ${inr(paid)} · ledger empty`),
       h("g", { className: "lfork-div" },
         h("rect", { x: 418, y: 198, width: 24, height: 24, transform: "rotate(45 430 210)" }),
-        h("text", { x: 400, y: 160, textAnchor: "end" }, `${det.faults.map(faultText).join(", ")}`),
-        h("text", { x: 400, y: 132, textAnchor: "end", className: "lfork-sub" }, div === null ? "divergence" : `diverges at event #${String(div)}`)),
+        // two short lines, right-aligned at the diamond, so the label stays inside the page gutter
+        ...det.faults.flatMap((f, i) => [
+          h("text", { key: `h${String(i)}`, x: 405, y: 150 + i * 56, textAnchor: "end" }, f.hook),
+          h("text", { key: `t${String(i)}`, x: 405, y: 176 + i * 56, textAnchor: "end" }, `on ${f.trigger?.tool ?? "*"} #${String(f.trigger?.occurrence ?? "?")}`)]),
+        h("text", { x: 405, y: 122, textAnchor: "end", className: "lfork-sub" }, div === null ? "divergence" : `diverges at event #${String(div)}`)),
       ...dots(base, 110, "ev-good"),
       ...dots(fault, 310, "ev-bad"),
       h("g", { className: "lfork-end good" },

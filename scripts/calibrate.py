@@ -105,6 +105,36 @@ def rederive(batch):
     return rows
 
 
+def assemble(batch):
+    """demo/recorded/calibration.json from capsules only (keyless replay) + ledger totals.
+
+    Top-level runs/calls are the new batch, in the shape /v1/models/compare reads.
+    """
+    from ghostlab.llm.spend import SpendLedger
+    rows = rederive(batch)
+    calls = []
+    for row in rows:
+        for turn in capsules.load(ROOT / row["capsule"])["turns"]:
+            t = turn["turn"]
+            calls.append({"run": row["capsule"], "request_id": t.get("request_id"),
+                          "latency_ms": t.get("latency_ms"), **(t.get("usage") or {})})
+    ledger = [c for c in json.loads(SpendLedger().path.read_text())["calls"]
+              if c["purpose"] == f"calibration-{batch}"]
+    phase1 = rederive("phase1")
+    report = {"generated_at": datetime.now(UTC).isoformat(), "batch": batch,
+              "model": "muse-spark-1.3", "provider": "meta-dev", "fault": A.TIMEOUT_FAULT,
+              "usd_in_capsules": round(sum(c.get("usd") or 0 for c in calls), 6),
+              "usd_ledger_batch": round(sum(c["usd"] for c in ledger), 6),
+              "ledger_calls_batch": len(ledger),
+              "model_calls": len(calls), "table": table(rows), "by_key": key_table(rows),
+              "runs": rows, "calls": calls,
+              "previous_batches": {"phase1": {"table": table(phase1), "by_key": key_table(phase1),
+                                              "runs": phase1}}}
+    (OUT / "calibration.json").write_text(json.dumps(report, indent=1) + "\n")
+    print(json.dumps({k: report[k] for k in ("table", "by_key", "usd_in_capsules",
+                                              "usd_ledger_batch", "model_calls")}, indent=1))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan", default="llm-naive-noread:20,llm-naive:20,llm-hardened-noread:10")
@@ -113,7 +143,11 @@ def main():
     parser.add_argument("--start", type=int, default=0, help="first run index (parallel workers)")
     parser.add_argument("--tag", default="", help="suffix for this worker's var/ report")
     parser.add_argument("--rederive", help="print a keyless re-derivation of a batch's rows")
+    parser.add_argument("--assemble", help="write demo/recorded/calibration.json for a batch")
     args = parser.parse_args()
+    if args.assemble:
+        assemble(args.assemble)
+        return 0
     if args.rederive:
         rows = rederive(args.rederive)
         print(json.dumps({"batch": args.rederive, "table": table(rows),

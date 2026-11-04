@@ -95,9 +95,16 @@ def _branch(run):
             "rules_failed": run.get("rules_failed"), "checks": run.get("checks"),
             "ledger": snapshot.get("ledger") or [], "order": snapshot.get("order"),
             "total_refunded_minor": snapshot.get("total_refunded_minor"),
-            "trace": [{"event_id": e["event_id"], "tool": e["request"]["tool"],
-                       "arguments": e["request"]["arguments"], "outcome": e["outcome"]}
-                      for e in evidence.get("trace") or []]}
+            "trace": _trace(evidence.get("trace"))}
+
+
+def _trace(trace):
+    """World events with the ledger total after each one (the stage animates this)."""
+    return [{"event_id": e["event_id"], "tool": e["request"]["tool"],
+             "arguments": e["request"]["arguments"], "outcome": e["outcome"],
+             "ledger_total_after": (e.get("state") or {}).get("total_refunded_minor"),
+             "ledger_rows_after": len((e.get("state") or {}).get("ledger") or [])}
+            for e in trace or []]
 
 
 def _claims(state):
@@ -295,7 +302,6 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
             bench = json.loads((DOCS / "benchmark.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             bench = None
-        strategies = ("random", "fixed", "fixed_reversed", "muse")
         return {
             "calibration": None if calib is None else {
                 k: calib.get(k) for k in ("generated_at", "model", "provider", "fault",
@@ -305,8 +311,8 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                 "generated_at": bench.get("generated_at"), "budget": bench.get("budget"),
                 "space_cells": bench.get("space_cells"),
                 "failing_cells": bench.get("failing_cells"),
-                "strategies": {k: (bench.get(k) or {}).get("stats") for k in strategies
-                               if k in bench}},
+                "strategies": {k: v["stats"] for k, v in bench.items()
+                               if isinstance(v, dict) and isinstance(v.get("stats"), dict)}},
             "benchmark_caveats": _section(DOCS / "benchmark.md", "How to read this")}
 
     @app.post("/v1/explorations/{exploration_id}/resume")
@@ -349,6 +355,11 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
             kind = recorded.get("payload", {}).get("kind")
             if kind == capsules.CAPSULE_KIND:
                 out = capsules.replay(RECORDED / name)
+                # replayed evidence matched the recording, so the recorded trace is the replay's
+                if (out.get("matches") or {}).get("evidence"):
+                    expected = recorded["payload"].get("expected") or {}
+                    out["trace"] = _trace((expected.get("evidence") or {}).get("trace"))
+                    out["agent"] = recorded["payload"]["body"]["agent"]
             elif kind == ADV.EXPLORATION_KIND:
                 with tempfile.TemporaryDirectory() as tmp:
                     out = ADV.replay_exploration(recorded["payload"], tmp)

@@ -110,6 +110,8 @@ def main():
     parser.add_argument("--plan", default="llm-naive-noread:20,llm-naive:20,llm-hardened-noread:10")
     parser.add_argument("--batch", default="2b")
     parser.add_argument("--max-usd", type=float, default=2.0)
+    parser.add_argument("--start", type=int, default=0, help="first run index (parallel workers)")
+    parser.add_argument("--tag", default="", help="suffix for this worker's var/ report")
     parser.add_argument("--rederive", help="print a keyless re-derivation of a batch's rows")
     args = parser.parse_args()
     if args.rederive:
@@ -123,7 +125,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         registry, store = capsules.fresh_env(tmp)
         for variant, runs in plan:
-            for n in range(runs):
+            for n in range(args.start, args.start + runs):
                 label = f"{variant}-{n:02d}"
                 path = OUT / f"calibration-{args.batch}" / f"{label}.json"
                 recorder = RecordingClient(live)
@@ -142,7 +144,7 @@ def main():
               "model": "muse-spark-1.3", "provider": "meta-dev", "fault": A.TIMEOUT_FAULT,
               "usd_spent": live.session_usd, "model_calls": len(live.calls),
               "table": table(rows), "by_key": key_table(rows), "runs": rows, "calls": live.calls}
-    out = ROOT / "var" / f"calibration-{args.batch}.json"
+    out = ROOT / "var" / f"calibration-{args.batch}{args.tag}.json"
     out.write_text(json.dumps(report, indent=1) + "\n")
     print(json.dumps({"table": report["table"], "by_key": report["by_key"]}, indent=1))
     print(f"usd_spent={live.session_usd:.4f} -> {out}")

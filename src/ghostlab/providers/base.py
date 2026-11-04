@@ -19,7 +19,9 @@ from ghostlab.contracts import ContextBundle, ModelReply, ModelRequest
 
 PROVIDER_INTERFACE_VERSION = "ghostlab-providers/1"
 
-ProviderName = Literal["meta_responses", "baseten_chat_completions"]
+ProviderName = Literal["meta_responses", "baseten_chat_completions", "glimmer_local"]
+# Local Ollama (Muse Glimmer). Not in ENV: it has no key and no probe; see ProviderConfig.
+GLIMMER_PROVIDER = "glimmer_local"
 
 # Documented base URLs (docs/modules/M01.md cites the sources). Models are never defaulted.
 META_DEFAULT_BASE_URL = "https://api.meta.ai/v1"
@@ -110,12 +112,18 @@ class ProviderConfig:
     accepted_response_models: frozenset[str] = frozenset()
 
     def __post_init__(self):
-        if self.provider not in ENV:
+        if self.provider not in ENV and self.provider != GLIMMER_PROVIDER:
             raise ProviderConfigError("Unknown provider")
         if not isinstance(self.model, str) or not self.model:
             raise ProviderConfigError("An exact model identifier is required")
         parts = urlsplit(self.base_url)
-        if parts.scheme != "https" or not parts.netloc or parts.query or parts.fragment:
+        if not parts.netloc or parts.query or parts.fragment:
+            raise ProviderConfigError("base_url must be an https URL without query or fragment")
+        if parts.scheme == "https":
+            return
+        # The one http exception: local Ollama on loopback or the WSL host gateway.
+        if not (self.provider == GLIMMER_PROVIDER and parts.scheme == "http"
+                and parts.hostname in local_hosts()):
             raise ProviderConfigError("base_url must be an https URL without query or fragment")
 
     @classmethod
@@ -129,6 +137,28 @@ class ProviderConfig:
 
     def response_model_ok(self, model) -> bool:
         return model is None or model == self.model or model in self.accepted_response_models
+
+
+def default_gateway_ip() -> str | None:
+    """IPv4 default gateway from /proc/net/route (the Windows host under WSL), or None."""
+    try:
+        with open("/proc/net/route", encoding="ascii") as handle:
+            for line in handle.readlines()[1:]:
+                fields = line.split()
+                if len(fields) > 2 and fields[1] == "00000000":
+                    raw = bytes.fromhex(fields[2])[::-1]
+                    return ".".join(str(b) for b in raw)
+    except (OSError, ValueError):
+        return None
+    return None
+
+
+def local_hosts() -> set:
+    hosts = {"127.0.0.1", "localhost", "::1"}
+    gateway = default_gateway_ip()
+    if gateway:
+        hosts.add(gateway)
+    return hosts
 
 
 @runtime_checkable

@@ -25,11 +25,10 @@ React, Vite and TypeScript interface; FastAPI/Pydantic service boundary; LangGra
 
 ## Documentation
 
-- [Architecture](architecture.md)
+- [Architecture](ARCHITECTURE.md)
 - [Architecture decisions and verified sources](docs/architecture-decisions.md)
 - [MVP plan](mvp-plan.md)
-- [Working together](CONTRIBUTING.md)
-- [Setup status](setup-status.md)
+- [Handover](docs/handover/HANDOVER.md)
 
 ## Team
 

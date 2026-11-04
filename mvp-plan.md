@@ -1,6 +1,6 @@
 # MVP delivery plan
 
-The baseline is React/Vite/TypeScript, FastAPI/Pydantic, LangGraph with custom Meta provider nodes and local SQLite. The detailed decisions and citations are in [architecture.md](architecture.md). The first executable slice is a real stateful simulation with synthetic data and deterministic adapters; live Meta, graph, service and interface follow their acceptance gates.
+The baseline is React/Vite/TypeScript, FastAPI/Pydantic, LangGraph with custom Meta provider nodes and local SQLite. The detailed decisions and citations are in [ARCHITECTURE.md](ARCHITECTURE.md). The first executable slice is a real stateful simulation with synthetic data and deterministic adapters; live Meta, graph, service and interface follow their acceptance gates.
 
 | Stage | Deliverable | Acceptance evidence |
 | --- | --- | --- |

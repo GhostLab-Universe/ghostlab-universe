@@ -13,7 +13,7 @@ Start from architecture-and-refund-core, which is the branch of open PR #1. Do n
 
 Use the latest approved integration commit containing your prerequisites and record its actual head. architecture-and-refund-core is the current initial integration base. If prerequisites are not integrated, stop implementation and report the missing interfaces rather than inventing them.
 
-Read AGENTS.md, README.md, architecture.md, docs/handoffs/versions.md, then your assigned module prompt. Follow the exclusive path ownership below. Propose shared-schema or dependency changes to M00; do not edit another module's files to make your implementation fit.
+Read AGENTS.md, README.md, ARCHITECTURE.md, docs/handoffs/versions.md, then your assigned module prompt. Follow the exclusive path ownership below. Propose shared-schema or dependency changes to M00; do not edit another module's files to make your implementation fit.
 
 Existing code implements a trusted synthetic refund world, baseline/fault/repair runs, deterministic checks, Reality Diff and capsule replay. Fourteen core tests passed previously on Python 3.13.2. Run them on your checkout before changes. Build on this code; do not rebuild it from scratch. Live providers, LangGraph, persistence, API, UI and production authentication remain planned.
 

@@ -363,12 +363,16 @@ def summary(state) -> dict:
             "local_rejections": deepcopy(explorer.rejected),
             "ops_rejections": state["ops_rejected"], "failure": state["failure"],
             "final_text": explorer.final_text,
-            "budget": {"usd_spent": getattr(client, "session_usd", 0.0),
+            "budget": {"usd_spent": getattr(client, "session_usd", 0.0)
+                       + getattr(explorer.llm_client, "session_usd", 0.0),
+                       "usd_adversary": getattr(client, "session_usd", 0.0),
+                       "usd_target_agent": getattr(explorer.llm_client, "session_usd", 0.0),
                        "usd_cap": state["limits"]["max_usd"], "tokens": _tokens(client),
                        "max_tokens": state["limits"]["max_tokens"],
                        "experiments": len(state["experiments"]),
                        "max_experiments": state["limits"]["max_experiments"]},
-            "model_calls": list(client.calls)}
+            "model_calls": list(client.calls)
+            + [dict(c, role="target") for c in getattr(explorer.llm_client, "calls", [])]}
 
 
 DIAGNOSIS_SYSTEM = """You diagnose failures found by GhostLab. You get a Reality Diff (baseline vs

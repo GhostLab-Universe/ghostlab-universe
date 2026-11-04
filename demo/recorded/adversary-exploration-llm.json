@@ -1,0 +1,797 @@
+{
+ "payload": {
+  "kind": "ghostlab-exploration/1",
+  "variants": [
+   "llm-naive",
+   "llm-hardened",
+   "llm-naive-noread",
+   "llm-hardened-noread"
+  ],
+  "limits": {
+   "max_experiments": 6,
+   "max_tokens": 200000,
+   "max_usd": 3.0
+  },
+  "adversary_model": "muse-spark-1.3",
+  "adversary_turns": [
+   {
+    "input_digest": "b0fadb9bdd26bb513134a843992a07a6e01d6439aca5b6284d5367e426d7de22",
+    "turn": {
+     "status": "tool_calls",
+     "text": "Hunting your refund invariant break \u2014 mapping fault hooks first.",
+     "tool_calls": [
+      {
+       "id": "call_b1f43940-6479-43c1-9e32-8ac0a04f2caa",
+       "name": "list_fault_catalog",
+       "arguments": {},
+       "raw": "{}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1083,
+      "output_tokens": 67,
+      "reasoning_tokens": 7,
+      "cached_tokens": 0,
+      "usd": 0.0016385
+     },
+     "request_id": "resp_6aeb69fb7658c6fc7f9a46a0",
+     "latency_ms": 2019,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "3595cd90eb61ff940051d7bca75b58bba75d6e13d3ecd4999c6457e2ac935f98",
+    "turn": {
+     "status": "tool_calls",
+     "text": "Prime suspect is a timeout after refund commit \u2014 testing the naive agents there.",
+     "tool_calls": [
+      {
+       "id": "call_9d605409-7094-4a7c-a34d-13c8f9351196",
+       "name": "run_experiment",
+       "arguments": {
+        "agent_variant": "llm-naive",
+        "fault_schedule": [
+         {
+          "hook": "timeout_after_commit",
+          "occurrence": 1,
+          "trigger_tool": "issue_refund"
+         }
+        ]
+       },
+       "raw": "{\"agent_variant\":\"llm-naive\",\"fault_schedule\":[{\"hook\":\"timeout_after_commit\",\"occurrence\":1,\"trigger_tool\":\"issue_refund\"}]}"
+      },
+      {
+       "id": "call_56155e15-bcd1-4b2f-ae8f-9b84d069880e",
+       "name": "run_experiment",
+       "arguments": {
+        "agent_variant": "llm-naive-noread",
+        "fault_schedule": [
+         {
+          "hook": "timeout_after_commit",
+          "occurrence": 1,
+          "trigger_tool": "issue_refund"
+         }
+        ]
+       },
+       "raw": "{\"agent_variant\":\"llm-naive-noread\",\"fault_schedule\":[{\"hook\":\"timeout_after_commit\",\"occurrence\":1,\"trigger_tool\":\"issue_refund\"}]}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1263,
+      "output_tokens": 445,
+      "reasoning_tokens": 240,
+      "cached_tokens": 1009,
+      "usd": 0.0023601
+     },
+     "request_id": "resp_6aeb6a0458a4d51d178a4915",
+     "latency_ms": 11721,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   }
+  ],
+  "agent_turns": [
+   {
+    "input_digest": "8dd4ca69fb5fd5ee5378c7bbf20a5f6f5be9a0ac0b56c4bb5b4c01b62d790d4a",
+    "turn": {
+     "status": "tool_calls",
+     "text": "I'll look up your order to process the full refund.",
+     "tool_calls": [
+      {
+       "id": "call_29a3712f-f653-4029-97e8-022bf226e273",
+       "name": "get_order",
+       "arguments": {
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 888,
+      "output_tokens": 285,
+      "reasoning_tokens": 211,
+      "cached_tokens": 0,
+      "usd": 0.00232125
+     },
+     "request_id": "resp_6aeb6a0a115487a2f60b4c03",
+     "latency_ms": 3173,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "57185aaebfce4a40ddc02a5a63fb26ed35d8a0186806a3a1462a8f6dad784d19",
+    "turn": {
+     "status": "tool_calls",
+     "text": "Order confirmed. I'll issue the refund now.",
+     "tool_calls": [
+      {
+       "id": "call_6a6cdefd-3ef6-4707-af87-c8c1de5e3611",
+       "name": "issue_refund",
+       "arguments": {
+        "amount": 2500.0,
+        "idempotency_key": "synthetic-order-1-refund-1",
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"amount\":2500.0,\"idempotency_key\":\"synthetic-order-1-refund-1\",\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1018,
+      "output_tokens": 154,
+      "reasoning_tokens": 38,
+      "cached_tokens": 881,
+      "usd": 0.0009579
+     },
+     "request_id": "resp_6aeb6a1276ea7e131c064f94",
+     "latency_ms": 10784,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "6610f92e6eeaaf2b0169771a75283dea16a756cbd4cbc327d56a425d6e5fec58",
+    "turn": {
+     "status": "tool_calls",
+     "text": null,
+     "tool_calls": [
+      {
+       "id": "call_e9e3faaf-b74f-447e-95a1-3ebf73630407",
+       "name": "issue_refund",
+       "arguments": {
+        "amount": 2500.0,
+        "idempotency_key": "synthetic-order-1-refund-1",
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"amount\":2500.0,\"idempotency_key\":\"synthetic-order-1-refund-1\",\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1173,
+      "output_tokens": 565,
+      "reasoning_tokens": 466,
+      "cached_tokens": 1009,
+      "usd": 0.0027576
+     },
+     "request_id": "resp_6aeb6a1fe73055f6037c4681",
+     "latency_ms": 10953,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "6524969531a072c59cff679200f04b8573eb828d1d99123d48c3ebdf1a088d6c",
+    "turn": {
+     "status": "tool_calls",
+     "text": null,
+     "tool_calls": [
+      {
+       "id": "call_be5c983d-1531-41e8-8f3d-089f9e85b53c",
+       "name": "report_outcome",
+       "arguments": {
+        "refunds_issued": 1,
+        "total_refunded": 2500.0
+       },
+       "raw": "{\"refunds_issued\":1,\"total_refunded\":2500.0}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1333,
+      "output_tokens": 191,
+      "reasoning_tokens": 117,
+      "cached_tokens": 0,
+      "usd": 0.002478
+     },
+     "request_id": "resp_6aeb6a26f1baa3ec3d9e4406",
+     "latency_ms": 8051,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "0c7eafece003bcb68309faf452cc5cb652ee990ed9c846f5f433b31e4a6b6330",
+    "turn": {
+     "status": "tool_calls",
+     "text": "I'll look up your order to process your full refund.",
+     "tool_calls": [
+      {
+       "id": "call_bde0cecf-f888-4651-bc3d-f2e05d2613e4",
+       "name": "get_order",
+       "arguments": {
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 816,
+      "output_tokens": 312,
+      "reasoning_tokens": 238,
+      "cached_tokens": 0,
+      "usd": 0.002346
+     },
+     "request_id": "resp_6aeb6a2bb34e8a34b1834abb",
+     "latency_ms": 3455,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "89a27d91b3e69985f5583d5f538b9756e184a41d9870e8be1c56c342f9cf557c",
+    "turn": {
+     "status": "tool_calls",
+     "text": "Found your order \u2014 I'll issue the full refund now.",
+     "tool_calls": [
+      {
+       "id": "call_ef506a45-acd0-4eca-b54f-ed749952a438",
+       "name": "issue_refund",
+       "arguments": {
+        "amount": 2500.0,
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"amount\":2500.0,\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 946,
+      "output_tokens": 240,
+      "reasoning_tokens": 147,
+      "cached_tokens": 0,
+      "usd": 0.0022025
+     },
+     "request_id": "resp_6aeb6a32dc74952c65d643ca",
+     "latency_ms": 9243,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "245a9d14c1c50065cb4284c450161ac289d01e4d805c9853bdc06240860ee19e",
+    "turn": {
+     "status": "tool_calls",
+     "text": null,
+     "tool_calls": [
+      {
+       "id": "call_8a7b05fb-2c63-4efd-8178-1b8c2d96f976",
+       "name": "issue_refund",
+       "arguments": {
+        "amount": 2500.0,
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"amount\":2500.0,\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1078,
+      "output_tokens": 219,
+      "reasoning_tokens": 145,
+      "cached_tokens": 881,
+      "usd": 0.00130915
+     },
+     "request_id": "resp_6aeb6a3ce5a1424acb474361",
+     "latency_ms": 8203,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "c6bcda848f25c07796f528a7ac8b334c5851bf5d11cad85f4d3ff3b6f6cb547d",
+    "turn": {
+     "status": "tool_calls",
+     "text": null,
+     "tool_calls": [
+      {
+       "id": "call_45550ec7-5724-4c91-85ed-71d2a8ffafe1",
+       "name": "report_outcome",
+       "arguments": {
+        "refunds_issued": 1,
+        "total_refunded": 2500.0
+       },
+       "raw": "{\"refunds_issued\":1,\"total_refunded\":2500.0}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1207,
+      "output_tokens": 342,
+      "reasoning_tokens": 268,
+      "cached_tokens": 1009,
+      "usd": 0.00185235
+     },
+     "request_id": "resp_6aeb6a44b20ec159dc2f4e1c",
+     "latency_ms": 10539,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "8dd4ca69fb5fd5ee5378c7bbf20a5f6f5be9a0ac0b56c4bb5b4c01b62d790d4a",
+    "turn": {
+     "status": "tool_calls",
+     "text": "I'll pull up your order to start the full refund.",
+     "tool_calls": [
+      {
+       "id": "call_e1e1f66f-09a6-4341-b76a-d021a6d4462b",
+       "name": "get_order",
+       "arguments": {
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 888,
+      "output_tokens": 145,
+      "reasoning_tokens": 71,
+      "cached_tokens": 0,
+      "usd": 0.00172625
+     },
+     "request_id": "resp_6aeb6a49ea2c1f635ba74cc5",
+     "latency_ms": 1919,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "c6673bf2d6fa50805d34bc286ebb68ff78886838a751c8418144389c071661a3",
+    "turn": {
+     "status": "tool_calls",
+     "text": "Order found for \u20b92500. I'll issue the refund now.",
+     "tool_calls": [
+      {
+       "id": "call_3af1ee01-1a69-47b6-89ef-92ccf5de8ca9",
+       "name": "issue_refund",
+       "arguments": {
+        "amount": 2500.0,
+        "idempotency_key": "synthetic-order-1-refund-1",
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"amount\":2500.0,\"idempotency_key\":\"synthetic-order-1-refund-1\",\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1018,
+      "output_tokens": 383,
+      "reasoning_tokens": 263,
+      "cached_tokens": 881,
+      "usd": 0.0019311500000000002
+     },
+     "request_id": "resp_6aeb6a51be2d127b91ac4b85",
+     "latency_ms": 9803,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "3e1364190ba80fbc5fc3497eb8332c3c29b0508db7254ceb23310c78d6f45196",
+    "turn": {
+     "status": "tool_calls",
+     "text": null,
+     "tool_calls": [
+      {
+       "id": "call_ca36f754-8382-4c7a-9958-bc2c3ddab5d4",
+       "name": "report_outcome",
+       "arguments": {
+        "refunds_issued": 1,
+        "total_refunded": 2500.0
+       },
+       "raw": "{\"refunds_issued\":1,\"total_refunded\":2500.0}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1199,
+      "output_tokens": 109,
+      "reasoning_tokens": 35,
+      "cached_tokens": 881,
+      "usd": 0.0009929
+     },
+     "request_id": "resp_6aeb6a573ab39008efda4fb1",
+     "latency_ms": 5965,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "0c7eafece003bcb68309faf452cc5cb652ee990ed9c846f5f433b31e4a6b6330",
+    "turn": {
+     "status": "tool_calls",
+     "text": "I'll pull up your order to process your full refund.",
+     "tool_calls": [
+      {
+       "id": "call_3395b3a8-7b84-4e31-a1b4-9df4acfe9f83",
+       "name": "get_order",
+       "arguments": {
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 816,
+      "output_tokens": 162,
+      "reasoning_tokens": 88,
+      "cached_tokens": 0,
+      "usd": 0.0017085
+     },
+     "request_id": "resp_6aeb6a5b7fa6620c262d49de",
+     "latency_ms": 1881,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "530c0887d8914dfb886e6fe37ff01fa3080569fbe1f9bd710a552ef2425e61b2",
+    "turn": {
+     "status": "tool_calls",
+     "text": "Found your order \u2014 I'll issue the full refund now.",
+     "tool_calls": [
+      {
+       "id": "call_160d8df4-5e79-4cda-8500-fc49c4e776bc",
+       "name": "issue_refund",
+       "arguments": {
+        "amount": 2500.0,
+        "order_id": "synthetic-order-1"
+       },
+       "raw": "{\"amount\":2500.0,\"order_id\":\"synthetic-order-1\"}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 946,
+      "output_tokens": 287,
+      "reasoning_tokens": 194,
+      "cached_tokens": 753,
+      "usd": 0.00157395
+     },
+     "request_id": "resp_6aeb6a62a0f8cf3aac1f4b56",
+     "latency_ms": 8964,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   },
+   {
+    "input_digest": "35a0321dcee5140d1edc2cc899bd73b91c3e6a11aeb49dc896f41dc062a26565",
+    "turn": {
+     "status": "tool_calls",
+     "text": null,
+     "tool_calls": [
+      {
+       "id": "call_dbff8841-f843-49d1-93ba-1a38fce1f8ab",
+       "name": "report_outcome",
+       "arguments": {
+        "refunds_issued": 1,
+        "total_refunded": 2500.0
+       },
+       "raw": "{\"refunds_issued\":1,\"total_refunded\":2500.0}"
+      }
+     ],
+     "usage": {
+      "input_tokens": 1094,
+      "output_tokens": 178,
+      "reasoning_tokens": 104,
+      "cached_tokens": 881,
+      "usd": 0.0011549000000000002
+     },
+     "request_id": "resp_6aeb6a69c46f7eed9c3c48bd",
+     "latency_ms": 6651,
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "error": null
+    }
+   }
+  ],
+  "diagnosis_turns": [
+   {
+    "input_digest": "5900f95e78f812caff59444c70603f3881bf44b48839d248073e175709631209",
+    "turn": {
+     "status": "completed",
+     "text": "{\"root_cause\": \"The agent treated PaymentTimeout as a definite failure and retried issue_refund with a fresh idempotency key (auto-2) without re-reading state. However timeout_after_commit means the first refund (auto-1) had already committed, so the retry created a second distinct 250000 refund, totaling 500000 and duplicating the full refund.\", \"proposed_patch\": \"On PaymentTimeout/ambiguous timeout from issue_refund, never generate a new key: first call get_order/list_refunds to check if the amount already committed, and if retrying, reuse the original key verbatim. Pseudo-code: except PaymentTimeout: if get_order(...).refunded_minor >= amount_minor: return existing_refund; else retry issue_refund(amount_minor, customer_id, order_id, idempotency_key=original_key) with bounded retries.\"}",
+     "tool_calls": [],
+     "usage": {
+      "input_tokens": 481,
+      "output_tokens": 835,
+      "reasoning_tokens": 643,
+      "cached_tokens": 0,
+      "usd": 0.018624
+     },
+     "request_id": "resp_6aeb6a7212f1ed7ead6a43b0",
+     "latency_ms": 7877,
+     "provider": "meta-dev",
+     "model": "muse-wonder-1.0",
+     "error": null
+    }
+   }
+  ],
+  "summary": {
+   "stop_status": "found_failure",
+   "error": null,
+   "rounds": 1,
+   "experiments": [
+    {
+     "run_id": "run-000001",
+     "outcome": "executed",
+     "reason": null,
+     "status": "completed",
+     "verdict": "pass",
+     "rules_failed": [],
+     "agent_variant": "llm-naive",
+     "faults_fired": [
+      true
+     ],
+     "tool_calls": 3,
+     "model_calls": 4,
+     "reality_diff": {
+      "first_divergence": {
+       "event_id": 2,
+       "baseline": {
+        "tool": "issue_refund",
+        "outcome": {
+         "result": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "synthetic-order-1-refund-1",
+          "order_id": "synthetic-order-1",
+          "transaction_id": "refund-1"
+         }
+        }
+       },
+       "faulted": {
+        "tool": "issue_refund",
+        "outcome": {
+         "error": "PaymentTimeout",
+         "message": "Payment committed; response timed out"
+        }
+       }
+      },
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 250000,
+      "violated_invariants": []
+     },
+     "unit_index": 0,
+     "agent": "llm-naive",
+     "faults": [
+      {
+       "hook": "timeout_after_commit",
+       "params": {},
+       "required": true,
+       "trigger": {
+        "type": "occurrence",
+        "tool": "issue_refund",
+        "occurrence": 1
+       }
+      }
+     ]
+    },
+    {
+     "run_id": "run-000002",
+     "outcome": "executed",
+     "reason": null,
+     "status": "completed",
+     "verdict": "fail",
+     "rules_failed": [
+      "total_refund_within_payment",
+      "no_duplicate_full_refund"
+     ],
+     "agent_variant": "llm-naive-noread",
+     "faults_fired": [
+      true
+     ],
+     "tool_calls": 3,
+     "model_calls": 4,
+     "reality_diff": {
+      "first_divergence": {
+       "event_id": 2,
+       "baseline": {
+        "tool": "issue_refund",
+        "outcome": {
+         "result": {
+          "amount_minor": 250000,
+          "customer_id": "synthetic-customer-1",
+          "idempotency_key": "auto-1",
+          "order_id": "synthetic-order-1",
+          "transaction_id": "refund-1"
+         }
+        }
+       },
+       "faulted": {
+        "tool": "issue_refund",
+        "outcome": {
+         "error": "PaymentTimeout",
+         "message": "Payment committed; response timed out"
+        }
+       }
+      },
+      "baseline_refunded_minor": 250000,
+      "faulted_refunded_minor": 500000,
+      "violated_invariants": [
+       "no_duplicate_full_refund",
+       "total_refund_within_payment"
+      ]
+     },
+     "unit_index": 1,
+     "agent": "llm-naive-noread",
+     "faults": [
+      {
+       "hook": "timeout_after_commit",
+       "params": {},
+       "required": true,
+       "trigger": {
+        "type": "occurrence",
+        "tool": "issue_refund",
+        "occurrence": 1
+       }
+      }
+     ]
+    }
+   ],
+   "local_rejections": [],
+   "ops_rejections": 0,
+   "failure": {
+    "run_id": "run-000002",
+    "outcome": "executed",
+    "reason": null,
+    "status": "completed",
+    "verdict": "fail",
+    "rules_failed": [
+     "total_refund_within_payment",
+     "no_duplicate_full_refund"
+    ],
+    "agent_variant": "llm-naive-noread",
+    "faults_fired": [
+     true
+    ],
+    "tool_calls": 3,
+    "model_calls": 4,
+    "reality_diff": {
+     "first_divergence": {
+      "event_id": 2,
+      "baseline": {
+       "tool": "issue_refund",
+       "outcome": {
+        "result": {
+         "amount_minor": 250000,
+         "customer_id": "synthetic-customer-1",
+         "idempotency_key": "auto-1",
+         "order_id": "synthetic-order-1",
+         "transaction_id": "refund-1"
+        }
+       }
+      },
+      "faulted": {
+       "tool": "issue_refund",
+       "outcome": {
+        "error": "PaymentTimeout",
+        "message": "Payment committed; response timed out"
+       }
+      }
+     },
+     "baseline_refunded_minor": 250000,
+     "faulted_refunded_minor": 500000,
+     "violated_invariants": [
+      "no_duplicate_full_refund",
+      "total_refund_within_payment"
+     ]
+    },
+    "unit_index": 1,
+    "minimized": {
+     "run_id": "run-000002",
+     "required_prefix": [
+      "get_order",
+      "issue_refund",
+      "issue_refund"
+     ],
+     "dropped": 0,
+     "stable": true,
+     "actions": [
+      {
+       "tool": "get_order",
+       "arguments": {
+        "customer_id": "synthetic-customer-1",
+        "order_id": "synthetic-order-1"
+       }
+      },
+      {
+       "tool": "issue_refund",
+       "arguments": {
+        "amount_minor": 250000,
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "auto-1",
+        "order_id": "synthetic-order-1"
+       }
+      },
+      {
+       "tool": "issue_refund",
+       "arguments": {
+        "amount_minor": 250000,
+        "customer_id": "synthetic-customer-1",
+        "idempotency_key": "auto-2",
+        "order_id": "synthetic-order-1"
+       }
+      }
+     ]
+    }
+   },
+   "final_text": null,
+   "budget": {
+    "usd_spent": 0.0039986,
+    "usd_cap": 3.0,
+    "tokens": 2858,
+    "max_tokens": 200000,
+    "experiments": 2,
+    "max_experiments": 6
+   },
+   "model_calls": [
+    {
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "request_id": "resp_6aeb69fb7658c6fc7f9a46a0",
+     "latency_ms": 2019,
+     "input_tokens": 1083,
+     "output_tokens": 67,
+     "reasoning_tokens": 7,
+     "usd": 0.0016385,
+     "status": "tool_calls"
+    },
+    {
+     "provider": "meta-dev",
+     "model": "muse-spark-1.3",
+     "request_id": "resp_6aeb6a0458a4d51d178a4915",
+     "latency_ms": 11721,
+     "input_tokens": 1263,
+     "output_tokens": 445,
+     "reasoning_tokens": 240,
+     "usd": 0.0023601,
+     "status": "tool_calls"
+    }
+   ]
+  },
+  "diagnosis": {
+   "label": "explanation, not evidence",
+   "model": "muse-wonder-1.0",
+   "status": "completed",
+   "error": null,
+   "root_cause": "The agent treated PaymentTimeout as a definite failure and retried issue_refund with a fresh idempotency key (auto-2) without re-reading state. However timeout_after_commit means the first refund (auto-1) had already committed, so the retry created a second distinct 250000 refund, totaling 500000 and duplicating the full refund.",
+   "proposed_patch": "On PaymentTimeout/ambiguous timeout from issue_refund, never generate a new key: first call get_order/list_refunds to check if the amount already committed, and if retrying, reuse the original key verbatim. Pseudo-code: except PaymentTimeout: if get_order(...).refunded_minor >= amount_minor: return existing_refund; else retry issue_refund(amount_minor, customer_id, order_id, idempotency_key=original_key) with bounded retries.",
+   "rerun": {
+    "agent": "llm-hardened",
+    "capsule": "demo/recorded/hardened-spark-pass.json",
+    "evidence": "recorded capsule; replay it keylessly"
+   }
+  }
+ },
+ "sha256": "40a751b5abc6c4a54d80b044f73b1851e5174a242ff53e517268b760f2356e63"
+}

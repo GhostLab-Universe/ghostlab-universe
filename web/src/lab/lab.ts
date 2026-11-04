@@ -137,7 +137,9 @@ function stepGraphic(step: Step, i: number): ReactNode {
     parts.push(h("text", { key: "n", x: LANE.agent, y: y + 50, className: "seq-note" }, "kept by GhostLab — never reaches payments"));
     return h("g", { key: `s${String(i)}` }, ...parts);
   }
-  parts.push(arrow(LANE.agent, LANE.pay, y, "msg-req", step.tool, "q", 0));
+  const checks = step.tool === "get_refund_status";
+  parts.push(arrow(LANE.agent, LANE.pay, y, checks ? "msg-muse" : "msg-req", step.tool, "q", 0));
+  if (checks) parts.push(h("text", { key: "ck", x: LANE.boundary + 18, y: y - 10, className: "seq-check" }, "checks before retrying"));
   if (step.key !== undefined) {
     const [main, sub] = step.key.startsWith("no key") ? ["no key", step.key.slice(7)] : [step.key, ""];
     parts.push(h("text", { key: "k", x: LANE.boundary + 18, y: y - 10, className: `seq-key ${sub ? "is-nokey" : ""}` }, main, sub ? h("tspan", { className: "seq-key-sub" }, ` ${sub}`) : null));

@@ -37,17 +37,31 @@ def drive(agent, invoke, fixture) -> None:
     (``booking-retry-2``); ``repaired`` re-checks status with the STABLE key
     before retrying.
     """
-    if agent not in ("vulnerable", "repaired"):
+    if agent not in AGENTS:
         raise ValueError(f"unsupported agent {agent!r} for {ENV_ID}")
     identity = {"equipment_id": fixture["equipment_id"],
                 "user_id": fixture["user_id"]}
     invoke("get_equipment", dict(identity))
     request = {**identity, "slot": fixture["slot"],
                "idempotency_key": "booking-intent-1"}
+    if agent == "double-submit":
+        # Seeded bug: double availability check, then on a slow (timed-out)
+        # response it resubmits at once with a new key.
+        invoke("get_booking_status", {**identity,
+                                      "idempotency_key": "booking-intent-1"})
     try:
         invoke("book_equipment", dict(request))
     except BookingTimeout:
-        if agent == "vulnerable":
+        if agent == "status-ignored":
+            # Seeded bug: reads the status, ignores it, rebooks with a new key.
+            invoke("get_booking_status", {
+                **identity, "idempotency_key": request["idempotency_key"]})
+            invoke("book_equipment", {
+                **request, "idempotency_key": "booking-retry-2"})
+        elif agent == "double-submit":
+            invoke("book_equipment", {
+                **request, "idempotency_key": "booking-resubmit-2"})
+        elif agent == "vulnerable":
             invoke("book_equipment", {
                 **request, "idempotency_key": "booking-retry-2"})
         else:
@@ -108,9 +122,12 @@ def declared_checks() -> list:
     return list(CHECK_IDS)
 
 
+AGENTS = ("vulnerable", "repaired", "status-ignored", "double-submit")
+
+
 def agents() -> list:
     """Agent names this driver implements."""
-    return ["vulnerable", "repaired"]
+    return list(AGENTS)
 
 
 _BOOKING_FIXTURE_KEYS = {"equipment_id", "user_id", "slot"}

@@ -44,6 +44,8 @@ def drive(agent, invoke, fixture) -> None:
     if agent in LLM_AGENTS:
         from ..llm.agent import drive_llm  # lazy: llm imports ops, ops imports this driver
         return drive_llm(agent, invoke, fixture)
+    if agent in SEEDED:
+        return _drive_seeded(agent, invoke, fixture)
     if agent not in ("vulnerable", "repaired"):
         raise ConfigError(f"unsupported agent {agent!r}")
     identity = {"order_id": fixture["order_id"],
@@ -62,6 +64,46 @@ def drive(agent, invoke, fixture) -> None:
                 **identity, "idempotency_key": request["idempotency_key"]})
             if status["status"] != "committed":
                 invoke("issue_refund", request)
+
+
+SEEDED = ("status-ignored", "retry-nokey", "split-key-per-attempt")
+
+
+def _drive_seeded(agent, invoke, fixture) -> None:
+    """Deterministic agents with one seeded bug each (benchmark targets).
+
+    status-ignored: reads the refund status after a timeout, then ignores it and
+        retries with a fresh key.
+    retry-nokey: pre-checks status, then retries a timed-out refund without a key,
+        so the payment client generates a new one (like a key-less API).
+    split-key-per-attempt: refunds in two halves and regenerates the key on every
+        attempt, so a timed-out half is refunded twice (over-refund).
+    """
+    identity = {"order_id": fixture["order_id"], "customer_id": fixture["customer_id"]}
+    order = invoke("get_order", dict(identity))
+    if agent == "split-key-per-attempt":
+        half = order["paid_minor"] // 2
+        for part, amount in ((1, half), (2, order["paid_minor"] - half)):
+            for attempt in (1, 2):
+                try:
+                    invoke("issue_refund", {**identity, "amount_minor": amount,
+                                            "idempotency_key": f"part{part}-try{attempt}"})
+                    break
+                except PaymentTimeout:
+                    continue
+        return
+    request = {**identity, "amount_minor": order["paid_minor"],
+               "idempotency_key": "refund-intent-1"}
+    if agent == "retry-nokey":
+        invoke("get_refund_status", {**identity, "idempotency_key": "refund-intent-1"})
+    try:
+        invoke("issue_refund", request)
+    except PaymentTimeout:
+        if agent == "status-ignored":
+            invoke("get_refund_status", {**identity, "idempotency_key": "refund-intent-1"})
+            invoke("issue_refund", {**request, "idempotency_key": "refund-retry-2"})
+        else:
+            invoke("issue_refund", {**request, "idempotency_key": "auto-2"})
 
 
 def evidence_complete(evidence, dispatches: int) -> bool:
@@ -122,12 +164,12 @@ def declared_checks() -> list:
 
 def agents() -> list:
     """Agent names this driver implements."""
-    return ["vulnerable", "repaired", *LLM_AGENTS]
+    return ["vulnerable", "repaired", *LLM_AGENTS, *SEEDED]
 
 
 def required_tools(agent) -> list:
     """Tool names the named agent procedure needs (for resolution)."""
-    if agent == "vulnerable" or agent.endswith("-noread"):
+    if agent in ("vulnerable", "split-key-per-attempt") or agent.endswith("-noread"):
         return ["get_order", "issue_refund"]
     return ["get_order", "issue_refund", "get_refund_status"]
 

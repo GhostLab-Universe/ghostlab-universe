@@ -22,6 +22,43 @@ Updated at the end of every session and read at the start of every session. Newe
 
 ## Sessions
 
+### 2026-11-04 — Phase 2B: honest evidence (eval/fairness worktree) — *Claude Code, session 2B*
+
+**Done**
+- **Ledger-enforced session cap.** `GHOSTLAB_DEV_CAP_USD` can only lower the dev cap. It was set to start + 8 USD. The session spent USD 0.37: calibration 0.32 and benchmark 0.048.
+- **Four new seeded-bug deterministic agents:** `status-ignored` (refund + booking), `retry-nokey`, `split-key-per-attempt` and `double-submit`.
+  - Each agent's failing cells were verified exhaustively.
+  - `plan` now validates non-refund fixtures through the env driver, so booking runs go through `execute_plan`.
+- **Adversary.**
+  - New `NEUTRAL_SYSTEM` prompt.
+  - Opaque `agent-NN` aliases; real names are rejected and never echoed.
+  - Env profiles, so booking can be explored.
+  - `max_faults`.
+  - The defaults are unchanged, so the old explorations still replay.
+- **Fair benchmark** (`docs/benchmark.md`): budget 10, refund has 80 cells (10 fail) and booking has 64 (6 fail).
+  - Muse found a failure in 5/5 trials per env at mean experiment 2.0 (refund) and 2.8 (booking).
+  - Random found one in 23/30 and 24/30 trials.
+  - Fixed found nothing in catalog order and found one when reversed.
+  - Caveat: the "mutating tool, occurrence 1" heuristic ties Muse.
+- **Calibration 2B** (n=20/20/10, `docs/calibration.md`).
+  - Duplicates: naive/no-read 2/20, naive/read 1/20, hardened/no-read 0/10.
+  - Pooled with Phase 1: a key omitted on the first call led to a duplicate in 5/5 runs. A supplied key led to a duplicate in 0/65.
+  - All 75 capsules and both explorations replay keylessly.
+- **Glimmer cut.** Its recordings moved to `docs/open-weights-attempt/`. `/v1/models/compare` still returns 200 with `run: null`.
+
+**Decided**
+- The benchmark uses 1 fault per schedule, because both worlds fire the hook at most once per run. It is run per env.
+- No edits under `api/` or `web/`. Dropping the compare route's `glimmer` key is a merge step (TODO).
+
+**Hit**
+- Sequential calibration was about 1 run/min. It was split into parallel workers writing into one batch dir with exclusive create. One stopped worker's in-flight run spent tokens without a capsule: the ledger has 206 calibration calls against 201 in the capsules.
+- `test_drivers_checks_t2` hard-codes the driver agent lists. It was updated.
+
+**Incomplete**
+- The UI does not show the new benchmark or calibration tables. That belongs to the UI session on hackathon/final.
+
+---
+
 ### 2026-11-04 — Phase 1: live Meta models — *Claude Code*
 
 **Done**

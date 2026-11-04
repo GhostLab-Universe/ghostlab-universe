@@ -9,8 +9,11 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
 
 - [ ] Web UI: step 6 shows `/v1/explorations` (live or replay), the budget meter, the model-call log, Reality Diff, diagnosis labelled
       "explanation, not evidence", calibration table and Glimmer-vs-Spark (`docs/api.md`).
-- [ ] Glimmer: try a Modelfile with an explicit chat template so Chat Completions returns content, then record one naive run.
-- [ ] Fairer benchmark: opaque agent variant names, booking env plus refund env, and record each trial's chosen cell.
+- [ ] Merge step (hackathon/final): drop the `glimmer` key from `/v1/models/compare` in `src/ghostlab/api/llm_routes.py`.
+      It returns 200 today with `run: null` (Glimmer recordings moved to `docs/open-weights-attempt/`). The UI must not
+      show a Glimmer comparison. `calibration.json` keeps top-level `runs[].variant` and `calls[].latency_ms/usd` for that route.
+- [ ] Merge step: the new seeded-bug agents (`status-ignored`, `retry-nokey`, `split-key-per-attempt`, `double-submit`) are in
+      `configs.AGENTS`, so any UI agent picker driven by the driver's `agents()` will list them.
 
 ## Next
 
@@ -43,10 +46,15 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
 - Baseten, Modal and Fireworks. There are no credits, and they need a card. The Baseten adapter stays in code, unused.
 - Postgres. SQLite serial MVP is enough for a single-coordinator demo. Hosted multiworker is not needed.
 - Hosted runner (outbound-authenticated developer-side runner). Out of scope for the deadline, and it requires infra we can't pay for.
+- Glimmer (open weights). 0.77 tok/s on RTX 4050 6 GB at IQ2_M, and the chat template returns the reasoning header instead of an
+  answer (`docs/calibration.md`). Provider code and tests are kept, and it is never shown in the UI comparison.
 - Merging PR #49/#24/#22/#1. They are on a diverged line with conflicting designs (see ARCHITECTURE decisions). Their optional sign-in
   and GitHub inspection went with them.
 
 ## Done
+
+- [x] Phase 2B: fair benchmark (opaque ids, neutral prompt, refund+booking, 4 new seeded-bug agents), calibration at
+      n=20/20/10 with key behaviour per run, Glimmer cut, ledger-enforced session cap (2026-11-04, Claude Code).
 
 - [x] Phase 1: live Meta models. This covers the spend ledger, clients, the LLM agent, claimed-vs-actual, calibration, the adversary, diagnosis, keyless replay,
       API, and benchmark (2026-11-04, Claude Code).

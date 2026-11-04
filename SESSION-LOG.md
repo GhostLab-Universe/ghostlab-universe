@@ -18,6 +18,24 @@ Updated at the end of every session and read at the start of every session. Newe
 
 ## Sessions
 
+### 2026-11-05 — Session A: /lab fixes before freeze — *Claude Code (session A)*
+
+**Done**
+- `/lab` header: the Replay/Live pill and "live off" text are replaced by a badge ("REPLAY · recorded run" / "● LIVE · muse-spark-1.3"). L switches mode when a key exists.
+- Keys: `auto-N` keys are assigned by GhostLab's facade (`llm/agent.py` `_Facade.call`) when the agent omits `idempotency_key`.
+  - In `demo/recorded/naive-spark-duplicate.json`, `payload.turns[1].turn.tool_calls[0].raw` and `payload.turns[2].turn.tool_calls[0].raw` carry no key, while `payload.expected.evidence.trace[1|2].request.arguments.idempotency_key` is `auto-1`/`auto-2`.
+  - The hunt recording's failing run (`adversary-exploration-llm.json` `payload.agent_turns[5]`, `[6]`) also omits it.
+  - The Hunt arrows and the Fork witness now show "no key (assigned auto-N)".
+- Evidence: the run line comes from `by_first_key` (70 runs, 5 with no key). The caveat and the LIMBO wording were replaced; the README LIMBO paragraph matches.
+- Diagnosis: paise gloss added and the card centred.
+- Hero: the ledger replays the recorded duplicate; added a LIMBO stat card; removed the duplicate model line.
+- Hunt: diagram scaled (ROW 140, text ≥ 18px), display agent names, key status on each refund arrow, "spend", chips don't wrap.
+- Fix: the `get_refund_status` arrow is cyan, labelled "checks before retrying". Fork: the divergence label is split into two lines.
+
+**Hit**
+- `playwright-cli` is not installed in WSL, so screenshots were taken with the global Playwright library (1920×1080 and 1366×768).
+
+
 ### 2026-11-05 — Phase 2D: /lab staged demo — *Claude Code (session 2D)*
 
 **Done**

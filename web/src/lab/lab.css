@@ -296,3 +296,4 @@
 .muse-name, .muse-model { white-space: nowrap; }
 @media (max-width: 1400px) { .muse-model { display: none; } }
 .seq-check { fill: var(--lab-muse); font-family: var(--lab-ui); font-weight: 600; font-size: 20px; }
+.msg-timeout text { font-size: 18px; }

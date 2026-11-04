@@ -48,6 +48,34 @@ class LlmRoutesTests(unittest.TestCase):
         self.assertEqual(view["stop_status"], "found_failure")
         self.assertTrue(all(c.get("replayed") for c in view["model_calls"]))
 
+    def test_llm_replay_feeds_fork_reality_and_claim(self):
+        if "adversary-exploration-llm.json" not in llm_routes.recorded_names():
+            self.skipTest("no committed llm exploration recording")
+        start = self.client.post("/v1/explorations", json={"llm_targets": True}).json()
+        for _ in range(200):
+            view = self.client.get(f"/v1/explorations/{start['exploration_id']}").json()
+            if view["status"] == "stopped":
+                break
+            time.sleep(0.05)
+        self.assertEqual(view["stop_status"], "found_failure", view)
+        self.assertTrue(all(e.get("hypothesis") for e in view["experiments"]), view)
+        self.assertTrue(all(e["proposed_by"]["replayed"] for e in view["experiments"]))
+        run = self.client.get(f"/v1/explorations/{start['exploration_id']}"
+                              f"/runs/{view['failure']['run_id']}").json()
+        self.assertEqual(len(run["baseline"]["ledger"]), 1, run)
+        self.assertEqual(len(run["faulted"]["ledger"]), 2, run)
+        self.assertEqual(run["claim_check"]["verdict"], "false_success", run)
+        self.assertEqual(self.client.get(f"/v1/explorations/{start['exploration_id']}"
+                                         "/runs/run-999999").status_code, 404)
+
+    def test_evidence_route_has_tables_and_caveats(self):
+        out = self.client.get("/v1/evidence").json()
+        if out["calibration"] is not None:
+            self.assertTrue(all("runs" in row for row in out["calibration"]["table"]))
+        if out["benchmark"] is not None:
+            self.assertTrue(all("trials" in v for v in out["benchmark"]["strategies"].values()))
+            self.assertTrue(out["benchmark_caveats"])
+
     def test_replay_names_are_allowlisted(self):
         for name in ("../../pyproject.toml", "/etc/passwd", "nope.json"):
             r = self.client.post("/v1/capsules/replay", json={"name": name})

@@ -16,12 +16,15 @@ from pathlib import Path
 from fastapi import Request
 
 from ..llm import adversary as ADV
+from ..llm import agent as llm_agent
 from ..llm import capsules
 from ..llm.client import (PROVIDERS, ProviderUnavailable, RecordingClient, client_for,
                           provider_status)
 from ..llm.spend import CAPS, PRICES, PRICES_FETCHED, SpendLedger
 
-RECORDED = Path(__file__).resolve().parents[3] / "demo" / "recorded"
+ROOT = Path(__file__).resolve().parents[3]
+RECORDED = ROOT / "demo" / "recorded"
+DOCS = ROOT / "docs"
 LLM_VARIANTS = ("llm-naive", "llm-hardened", "llm-naive-noread", "llm-hardened-noread")
 
 
@@ -37,6 +40,85 @@ def _load_recorded(name):
     return json.loads((RECORDED / name).read_text(encoding="utf-8"))
 
 
+def _section(path, heading_prefix):
+    """Verbatim markdown of one ``## `` section (caveats/notes for the evidence page)."""
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    out, inside = [], False
+    for line in lines:
+        if line.startswith("## "):
+            if inside:
+                break
+            inside = line[3:].startswith(heading_prefix)
+            continue
+        if inside:
+            out.append(line)
+    return "\n".join(out).strip() or None
+
+
+def _annotate(experiments, turns, rejections, replayed):
+    """Attach the adversary's stated hypothesis and proposing model call to each experiment.
+
+    Accepted run_experiment/fork calls map, in order, onto executed experiments;
+    calls that were rejected locally (listed in ``rejections``) are skipped.
+    """
+    pending = [(r["tool"], r["arguments"]) for r in rejections]
+    proposals = []
+    for record in turns or []:
+        turn = record.get("turn") or {}
+        for call in turn.get("tool_calls") or []:
+            if call.get("name") not in ("run_experiment", "fork"):
+                continue
+            key = (call.get("name"), call.get("raw"))
+            if key in pending:
+                pending.remove(key)
+                continue
+            usage = turn.get("usage") or {}
+            proposals.append({"hypothesis": turn.get("text"), "proposed_by": {
+                "model": turn.get("model"), "provider": turn.get("provider"),
+                "request_id": turn.get("request_id"), "latency_ms": turn.get("latency_ms"),
+                "input_tokens": usage.get("input_tokens"),
+                "output_tokens": usage.get("output_tokens"),
+                "reasoning_tokens": usage.get("reasoning_tokens"),
+                "usd": usage.get("usd"), "replayed": replayed}})
+    for experiment, extra in zip(experiments, proposals):
+        experiment.update(extra)
+    return experiments
+
+
+def _branch(run):
+    evidence = run.get("evidence") or {}
+    snapshot = evidence.get("snapshot") or {}
+    return {"run_id": run.get("run_id"), "verdict": run.get("verdict"),
+            "rules_failed": run.get("rules_failed"), "checks": run.get("checks"),
+            "ledger": snapshot.get("ledger") or [], "order": snapshot.get("order"),
+            "total_refunded_minor": snapshot.get("total_refunded_minor"),
+            "trace": [{"event_id": e["event_id"], "tool": e["request"]["tool"],
+                       "arguments": e["request"]["arguments"], "outcome": e["outcome"]}
+                      for e in evidence.get("trace") or []]}
+
+
+def _claims(state):
+    """run_id -> agent claim, matching the agent client's drive-order log to run order."""
+    explorer = state["explorer"]
+    log = getattr(explorer.llm_client, "run_log", None) if explorer.llm_client else None
+    if not log:
+        return {}
+    agents = {rid: body["agent"] for rid, body in explorer.bodies.items()}
+    agents.update({run["run_id"]: name for name, run in state.get("baselines", {}).items()})
+    order = sorted(agents, key=lambda rid: int(rid.rsplit("-", 1)[-1]))
+    if len(order) != len(log):
+        return {}
+    out = {}
+    for rid, item in zip(order, log):
+        if item["agent"] != agents[rid]:
+            return {}  # order assumption broken: show no claim rather than a wrong one
+        out[rid] = item["claim"]
+    return out
+
+
 def register(app, *, error, service_error, read_json, strict_keys, map_failure):
     explorations: dict = {}
     lock = threading.Lock()
@@ -50,7 +132,9 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                "created_at": entry["created_at"]}
         if state is not None:
             s = ADV.summary(state)
-            out.update(stop_status=s["stop_status"], experiments=s["experiments"],
+            experiments = _annotate(s["experiments"], entry.get("turns"),
+                                    s["local_rejections"], entry["mode"] == "replay")
+            out.update(stop_status=s["stop_status"], experiments=experiments,
                        budget=s["budget"], model_calls=s["model_calls"],
                        local_rejections=s["local_rejections"],
                        ops_rejections=s["ops_rejections"], failure=s["failure"],
@@ -123,6 +207,7 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                         != ADV.EXPLORATION_KIND:
                     raise service_error(404, "not_found", f"no recorded exploration {name!r}")
                 entry["recording"] = name
+                entry["turns"] = recorded["payload"].get("adversary_turns")
                 target, args = run_replay, (entry, recorded["payload"])
             else:
                 try:
@@ -132,9 +217,10 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                         variants, max_experiments = LLM_VARIANTS, min(max_experiments, 6)
                         agent = client_for(provider, "muse-spark-1.3", usd_limit=max_usd,
                                            purpose="adversary-target")
-                    adversary = client_for(provider, "muse-spark-1.3",
-                                           reasoning_effort="medium", usd_limit=max_usd,
-                                           purpose="adversary")
+                    adversary = RecordingClient(client_for(
+                        provider, "muse-spark-1.3", reasoning_effort="medium",
+                        usd_limit=max_usd, purpose="adversary"))
+                    entry["turns"] = adversary.records  # hypotheses for the UI feed
                 except ProviderUnavailable as exc:
                     raise service_error(503, "provider_unavailable", str(exc)) from None
                 registry, store = capsules.fresh_env(entry["dir"])
@@ -165,6 +251,60 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
             return view(_get(exploration_id))
         except Exception as exc:
             return map_failure(exc)
+
+    @app.get("/v1/explorations/{exploration_id}/runs/{run_id}")
+    async def exploration_run(exploration_id: str, run_id: str):
+        """Fork Reality detail: the no-fault baseline and the faulted branch of one run."""
+        try:
+            entry = _get(exploration_id)
+            state = entry.get("state")
+            if entry["status"] != "stopped" or state is None:
+                raise service_error(409, "not_ready", "exploration is still running")
+            explorer = state["explorer"]
+            body = explorer.bodies.get(run_id)
+            record = explorer._run(run_id) if body is not None else None
+            if record is None:
+                raise service_error(404, "not_found", f"unknown run {run_id!r}")
+            baseline = state.get("baselines", {}).get(body["agent"])
+            faulted = _branch(record["run"])
+            claim_check = None
+            if body["agent"] in LLM_VARIANTS:
+                claims = _claims(state)
+                snapshot = (record["run"].get("evidence") or {}).get("snapshot")
+                if run_id in claims and isinstance(snapshot, dict):
+                    claim_check = llm_agent.claimed_vs_actual(claims[run_id], snapshot)
+            diff = next((e.get("reality_diff") for e in state["experiments"]
+                         if e["run_id"] == run_id), None) or {}
+            first = diff.get("first_divergence") or {}
+            return {"run_id": run_id, "agent": body["agent"], "faults": body["faults"],
+                    "baseline": _branch(baseline) if baseline else None, "faulted": faulted,
+                    "first_divergence_event_id": first.get("event_id"),
+                    "violated_invariants": diff.get("violated_invariants", []),
+                    "claim_check": claim_check}
+        except Exception as exc:
+            return map_failure(exc)
+
+    @app.get("/v1/evidence")
+    async def evidence():
+        """Read-only evidence page: calibration + benchmark tables with their caveats."""
+        calib = _load_recorded("calibration.json")
+        try:
+            bench = json.loads((DOCS / "benchmark.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            bench = None
+        strategies = ("random", "fixed", "fixed_reversed", "muse")
+        return {
+            "calibration": None if calib is None else {
+                k: calib.get(k) for k in ("generated_at", "model", "provider", "fault",
+                                          "usd_spent", "model_calls", "table")},
+            "calibration_notes": _section(DOCS / "calibration.md", "What the runs show"),
+            "benchmark": None if bench is None else {
+                "generated_at": bench.get("generated_at"), "budget": bench.get("budget"),
+                "space_cells": bench.get("space_cells"),
+                "failing_cells": bench.get("failing_cells"),
+                "strategies": {k: (bench.get(k) or {}).get("stats") for k in strategies
+                               if k in bench}},
+            "benchmark_caveats": _section(DOCS / "benchmark.md", "How to read this")}
 
     @app.post("/v1/explorations/{exploration_id}/resume")
     async def resume_exploration(exploration_id: str):

@@ -223,6 +223,11 @@ def drive_llm(agent, invoke, fixture) -> dict:
         entry["gateway_actions"] = [{"tool": r.tool, "arguments": r.arguments,
                                      "outcome": r.outcome}
                                     for r in gateway.records_for_run(run_id)]
+        # Per-client run log (in drive order) so the API can show claimed-vs-actual
+        # for runs started inside explorations, whose bind() log is not kept.
+        client.__dict__.setdefault("run_log", []).append(
+            {"agent": agent, "claim": facade.claim,
+             "tools": [a["tool"] for a in entry["gateway_actions"]]})
     return {"model_calls": entry["model_calls"]}
 
 

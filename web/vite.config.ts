@@ -11,5 +11,8 @@ export default defineConfig({
   server: {
     // Approved M00 fixtures live outside web/ and are inlined at build time.
     fs: { allow: [".."] },
+    // Same-origin /v1 for local recording; the service is uvicorn on 8917.
+    proxy: { "/v1": "http://127.0.0.1:8917" },
   },
+  preview: { proxy: { "/v1": "http://127.0.0.1:8917" } },
 });

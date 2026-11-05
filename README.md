@@ -9,7 +9,6 @@ A support agent is asked to refund a ₹2,500 order. It calls `issue_refund`, an
 
 ## Quickstart (keyless, WSL / Linux)
 
-Live demo: LIVE_URL (free tier — the first load can take about a minute while it wakes)
 
 Replay mode needs no API key. It re-runs recorded Muse sessions through the real controller and checks.
 

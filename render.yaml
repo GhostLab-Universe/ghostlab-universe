@@ -1,0 +1,17 @@
+# Render Blueprint: one free Docker web service. The key value is entered in the
+# Render dashboard (sync: false), never in this file.
+services:
+  - type: web
+    name: ghostlab
+    runtime: docker
+    plan: free
+    branch: hackathon/final
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /v1/health
+    envVars:
+      - key: LIVE_MODE
+        value: "1"
+      - key: PORT
+        value: "7860"
+      - key: META_API_KEY_PUBLIC
+        sync: false

@@ -1,6 +1,6 @@
-# GhostLab on one origin: the built SPA plus the /v1 API, on :7860 (Hugging Face Spaces).
+# GhostLab on one origin: the built SPA plus the /v1 API, on $PORT (default 7860).
 # Replay needs no keys. Live mode needs META_API_KEY_PUBLIC and LIVE_MODE=1 (both set
-# as Space settings, never in the image). Writable state lives in /tmp only.
+# in the host's dashboard, never in the image). Writable state lives in /tmp only.
 
 FROM node:24.22.1-slim AS web
 WORKDIR /app
@@ -35,4 +35,4 @@ COPY . .
 COPY --from=web /app/web/dist ./web/dist
 USER 1000
 EXPOSE 7860
-CMD ["uvicorn", "ghostlab.api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "exec uvicorn ghostlab.api.app:create_app --factory --host 0.0.0.0 --port ${PORT:-7860}"]

@@ -31,6 +31,7 @@ Updated at the end of every session and read at the start of every session. Newe
 - Hero: the ledger replays the recorded duplicate; added a LIMBO stat card; removed the duplicate model line.
 - Hunt: diagram scaled (ROW 140, text ≥ 18px), display agent names, key status on each refund arrow, "spend", chips don't wrap.
 - Fix: the `get_refund_status` arrow is cyan, labelled "checks before retrying". Fork: the divergence label is split into two lines.
+- Fix: the before/after cards and the Agent lane subtitle use display names ("naive agent · no status check", "hardened agent"). A scripted scan of all 8 scenes' text and SVG found no raw `llm-*` id on screen. **UI freeze at 01:36 IST.**
 
 **Hit**
 - `playwright-cli` is not installed in WSL, so screenshots were taken with the global Playwright library (1920×1080 and 1366×768).

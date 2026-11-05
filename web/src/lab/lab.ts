@@ -241,6 +241,10 @@ function Hero(props: { onRun: () => void; busy: boolean }): ReactNode {
 /** Display names only; the API and capsules keep the real variant ids. */
 const AGENT_LABEL: Record<string, string> = { "llm-naive": "naive agent", "llm-naive-noread": "naive agent · no status check", "llm-hardened": "hardened agent", "llm-hardened-noread": "hardened agent · no status check" };
 
+function agentName(id: string | undefined): string {
+  return id === undefined ? "agent" : (AGENT_LABEL[id] ?? id);
+}
+
 function Hunt(props: { data: Data; sceneKey: string }): ReactNode {
   const { exp, detail } = props.data;
   const ready = exp !== null && exp.status === "stopped" && detail !== null;
@@ -398,12 +402,12 @@ function Fix(props: { data: Data; sceneKey: string }): ReactNode {
     d("fix-left",
       h("h2", { className: "scene-title" }, "Same fault. Hardened agent."),
       d("ba",
-        d("ba-card ba-before", s("ba-k", "before"), s("mono", failed?.agent ?? detail?.agent ?? "?"), s("lbadge lbadge-fail", "FAIL"), s("ba-sub", detail === null ? "" : `${plural(detail.faulted.ledger.length, "refund")} · ${inr(detail.faulted.total_refunded_minor)}`)),
-        d(`ba-card ba-after ${done ? "is-in" : ""}`, s("ba-k", "after"), s("mono", fix.agent ?? "?"), s("lbadge lbadge-pass", (fix.verdict ?? "?").toUpperCase()),
+        d("ba-card ba-before", s("ba-k", "before"), s("ba-name", agentName(failed?.agent ?? detail?.agent)), s("lbadge lbadge-fail", "FAIL"), s("ba-sub", detail === null ? "" : `${plural(detail.faulted.ledger.length, "refund")} · ${inr(detail.faulted.total_refunded_minor)}`)),
+        d(`ba-card ba-after ${done ? "is-in" : ""}`, s("ba-k", "after"), s("ba-name", agentName(fix.agent)), s("lbadge lbadge-pass", (fix.verdict ?? "?").toUpperCase()),
           s("ba-sub", fix.claim_check ? `${plural(fix.claim_check.actual.refunds_issued, "refund")} · ${inr(fix.claim_check.actual.total_refunded_minor)}` : ""))),
       h("p", { className: `fix-claim ${done ? "is-in" : ""}`, "data-testid": "fix-claim" }, fix.claim_check?.verdict === "match" ? "claim matches ledger" : (fix.claim_check?.verdict ?? "")),
       h("p", { className: "verdict-note" }, `Recorded run, replayed through the real controller · live model calls: ${String(fix.model_calls_live)}`)),
-    d("stage", createElement(Sequence, { steps, shown, agentLabel: fix.agent ?? "agent" }), createElement(Ledger, { steps, shown })),
+    d("stage", createElement(Sequence, { steps, shown, agentLabel: agentName(fix.agent) }), createElement(Ledger, { steps, shown })),
   );
 }
 

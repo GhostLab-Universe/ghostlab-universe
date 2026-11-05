@@ -475,14 +475,17 @@ def record_payload(state, adversary_records, agent_records, diagnosis=None,
     return {"payload": payload, "sha256": _digest(payload)}
 
 
-def replay_exploration(payload, directory) -> dict:
-    """Re-run a recorded exploration with ReplayClients: zero network, zero keys."""
+def replay_exploration(payload, directory, env=None, project_id="replay") -> dict:
+    """Re-run a recorded exploration with ReplayClients: zero network, zero keys.
+
+    ``env=(registry, store)`` replays into an existing store (run ids continue from it).
+    """
     from . import capsules
     from .client import ReplayClient
-    registry, store = capsules.fresh_env(directory)
+    registry, store = env or capsules.fresh_env(directory)
     adversary = ReplayClient(payload["adversary_turns"], model=payload["adversary_model"])
     agent_client = ReplayClient(payload["agent_turns"]) if payload["agent_turns"] else None
-    explorer = ModelExplorer(adversary, store=store, registry=registry, project_id="replay",
+    explorer = ModelExplorer(adversary, store=store, registry=registry, project_id=project_id,
                              max_experiments=payload["limits"]["max_experiments"],
                              variants=payload["variants"], llm_client=agent_client)
     state = explore(new_state(explorer, max_tokens=payload["limits"]["max_tokens"],

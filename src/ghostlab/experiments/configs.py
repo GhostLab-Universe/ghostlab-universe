@@ -63,7 +63,8 @@ CONFIG_VERSION = 1
 MAX_CONFIG_BYTES = 262_144
 
 # llm-* agents are model-driven (ghostlab.llm.agent); they need a bound client to run.
-LLM_AGENTS = ("llm-naive", "llm-hardened", "llm-naive-noread", "llm-hardened-noread")
+LLM_AGENTS = ("llm-naive", "llm-hardened", "llm-naive-noread", "llm-hardened-noread",
+              "llm-naive-wonder", "llm-naive-wonder-noread")
 # Seeded-bug deterministic variants (benchmark targets; each driver lists its own).
 SEEDED_AGENTS = ("status-ignored", "retry-nokey", "split-key-per-attempt", "double-submit")
 AGENTS = ("vulnerable", "repaired", *LLM_AGENTS, *SEEDED_AGENTS)

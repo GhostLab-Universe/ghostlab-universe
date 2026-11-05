@@ -68,14 +68,15 @@ def load(path) -> dict:
     return capsule["payload"]
 
 
-def replay_payload(payload) -> dict:
+def replay_payload(payload, env=None) -> dict:
+    """``env=(registry, store, project)`` replays into an existing store (a batch, in order)."""
     body = payload["body"]
     client = ReplayClient(payload["turns"], provider=payload["provider"],
                           model=payload["model"])
     with tempfile.TemporaryDirectory(prefix="ghostlab-replay-") as directory:
-        registry, store = fresh_env(directory)
+        registry, store, project = env or (*fresh_env(directory), PROJECT)
         try:
-            result = llm_agent.run_llm(store, registry, PROJECT, client, body["agent"],
+            result = llm_agent.run_llm(store, registry, project, client, body["agent"],
                                        body["faults"], name=body["name"])
         except ReplayDiverged as error:
             return {"reproduced": False, "error": str(error), "model_calls_live": 0}
@@ -95,6 +96,104 @@ def replay_payload(payload) -> dict:
 
 def replay(path) -> dict:
     return replay_payload(load(path))
+
+
+VERIFY_KIND = "ghostlab-wonder-verify/1"
+
+
+def key_behaviour(actions) -> dict:
+    """What the model did with the optional idempotency key (raw model arguments)."""
+    keys = [a["arguments"].get("idempotency_key") for a in actions
+            if a["tool"] == "issue_refund" and isinstance(a.get("arguments"), dict)]
+    retry = None
+    if len(keys) > 1:
+        rest = keys[1:]
+        if any(k is None for k in rest):
+            retry = "omitted"
+        elif keys[0] is not None and all(k == keys[0] for k in rest):
+            retry = "same"
+        else:
+            retry = "different"
+    return {"issue_refund_calls": len(keys),
+            "first_key": None if not keys else ("supplied" if keys[0] else "omitted"),
+            "retried": len(keys) > 1, "retry_key": retry,
+            "read_path_used": any(a["tool"] == "get_refund_status" for a in actions)}
+
+
+def verify_row(payload, summary=None) -> dict:
+    """Deterministic per-run facts for the Wonder-patch verification, from the gateway trace.
+
+    The window is the timed-out issue_refund up to the next issue_refund (or the end).
+    """
+    s = summary or payload["summary"]
+    actions = s["gateway_actions"]
+    timeout = next((i for i, a in enumerate(actions) if a["tool"] == "issue_refund"
+                    and (a.get("outcome") or {}).get("error") == "PaymentTimeout"), None)
+    window = []
+    if timeout is not None:
+        for a in actions[timeout + 1:]:
+            if a["tool"] == "issue_refund":
+                break
+            window.append(a["tool"])
+    agent = payload["body"]["agent"]
+    requested = sorted({c["name"] for t in payload["turns"]
+                        for c in (t["turn"].get("tool_calls") or [])})
+    return {"agent": agent, "label": payload["label"], "run_id": s["run_id"],
+            "verdict": s["verdict"], "error": s["error"], "stop": s["stop"],
+            "duplicate": s["duplicate_refund"], "claim": s["claim_check"]["verdict"],
+            "timed_out": timeout is not None,
+            "status_check_after_timeout": "get_refund_status" in window,
+            "get_order_after_timeout": "get_order" in window,
+            "key": key_behaviour(actions), "tools": [a["tool"] for a in actions],
+            "requested_tools": requested,
+            "requested_not_offered": [t for t in requested
+                                      if t not in llm_agent.tools_for(agent)],
+            "model_calls": s["model_calls"]}
+
+
+def verify_table(rows) -> list:
+    out = []
+    for agent in dict.fromkeys(r["agent"] for r in rows):
+        cell = [r for r in rows if r["agent"] == agent and not r["error"]]
+        out.append({"agent": agent, "runs": len(cell),
+                    "errored_runs": sum(1 for r in rows if r["agent"] == agent and r["error"]),
+                    "timed_out": sum(r["timed_out"] for r in cell),
+                    "status_check_after_timeout": sum(r["status_check_after_timeout"] for r in cell),
+                    "get_order_after_timeout": sum(r["get_order_after_timeout"] for r in cell),
+                    "keyless_first_refund": sum(r["key"]["first_key"] == "omitted" for r in cell),
+                    "retried": sum(r["key"]["retried"] for r in cell),
+                    "retry_same_key": sum(r["key"]["retry_key"] == "same" for r in cell),
+                    "duplicates": sum(r["duplicate"] for r in cell),
+                    "claim_matches_ledger": sum(r["claim"] == "match" for r in cell),
+                    "verdict_pass": sum(r["verdict"] == "pass" for r in cell),
+                    "requested_not_offered": sorted({t for r in cell
+                                                     for t in r["requested_not_offered"]})})
+    return out
+
+
+def replay_verify(payload) -> dict:
+    """Replay every run and the hunt of a Wonder-patch verification. Zero network, zero keys."""
+    from . import adversary
+    rows, failed, hunt = [], [], None
+    # One store, recorded order: the live hunt ran after the arms, so its run ids follow theirs.
+    with tempfile.TemporaryDirectory(prefix="ghostlab-replay-") as directory:
+        registry, store = fresh_env(directory)
+        for run in payload["runs"]:
+            got = replay_payload(run, env=(registry, store, "wonder-verify"))
+            if not got["reproduced"]:
+                failed.append(run["label"])
+                continue
+            rows.append(verify_row(run, got["summary"]))
+        if payload.get("hunt"):
+            out = adversary.replay_exploration(payload["hunt"], directory,
+                                               env=(registry, store), project_id="wonder-hunt")
+            out.pop("state")
+            hunt = {"reproduced": out["reproduced"], "summary": out["summary"]}
+    table = verify_table(rows)
+    reproduced = (not failed and table == payload["table"]
+                  and (hunt is None or hunt["reproduced"]))
+    return {"reproduced": reproduced, "failed_runs": failed, "table": table, "rows": rows,
+            "patch": payload["patch"], "hunt": hunt, "model_calls_live": 0}
 
 
 def main(argv=None) -> int:

@@ -54,6 +54,48 @@ These are observed counts, not population rates. 5 omitted-key runs is a small n
 - `demo/recorded/naive-read-spark-duplicate-2b.json`: 2B, naive **with** read path available, duplicate, key omitted, status never read.
 - `demo/recorded/hardened-spark-pass-2b.json`: 2B, hardened/removed, pass with a reused key.
 
+## Muse Wonder's patch, applied and re-run live (2026-11-05)
+
+**Question.** The hunt found a duplicate refund in `llm-naive-noread`, and `muse-wonder-1.0` diagnosed it and proposed a patch. When that patch text is applied as written, does the agent behave differently under the same fault?
+
+**Patch.** The text is copied verbatim from `demo/recorded/adversary-exploration-llm.json` → `payload.diagnosis.proposed_patch` (capsule sha256 `40a751b5…6e63`, model `muse-wonder-1.0`). `tests/test_recorded_replay.py` checks it against that source. It is applied only as prompt text and never executed:
+
+```text
+On PaymentTimeout/ambiguous timeout from issue_refund, never generate a new key: first call get_order/list_refunds to check if the amount already committed, and if retrying, reuse the original key verbatim. Pseudo-code: except PaymentTimeout: if get_order(...).refunded_minor >= amount_minor: return existing_refund; else retry issue_refund(amount_minor, customer_id, order_id, idempotency_key=original_key) with bounded retries.
+```
+
+**Setup.**
+- **Arms.** Both arms use `llm-naive`'s tools (`get_order`, `issue_refund`, `get_refund_status`, `report_outcome`).
+  - Unpatched: `llm-naive` as is.
+  - Patched: `llm-naive-wonder`, the naive prompt followed by the patch in a `Policy from diagnosis (muse-wonder-1.0, applied verbatim): <<< … >>>` block.
+  - The prompt is the only difference. The patch was written from the no-status-check failure and is applied here to the naive agent, which has a status tool.
+- **Tool names.** No tool was renamed. The patch says `list_refunds`, and no run requested a tool it wasn't offered.
+- **Model and fault.** `muse-spark-1.3` (meta-dev), temperature 0 (the API takes no seed), `timeout_after_commit` on `issue_refund` #1. Same fixture in both arms, and the arms were interleaved run by run.
+- **Data.** `demo/recorded/wonder-patch-verify.json` holds 20 run capsules, the hunt and the table. It replays keylessly with 0 live calls (`scripts/wonder_verify.py --replay …`).
+
+| n = 10 attempted per arm | unpatched `llm-naive` | patched `llm-naive-wonder` |
+| --- | --- | --- |
+| completed runs (errored) | 10 (0) | 9 (1) |
+| `get_refund_status` between the timeout and any retry | **0/10** | **9/10** |
+| `get_order` after the timeout | 0/10 | 3/10 |
+| first refund call without a key | 0/10 | 0/10 |
+| retried `issue_refund` | 10/10 (same key every time) | 0/10 |
+| duplicate refunds | 0/10 | 0/10 |
+| claim matches ledger | 10/10 | 9/10 |
+| ledger verdict pass | 10/10 | 9/10 |
+
+**What this shows and what it doesn't.**
+- **Behaviour changed.** With the patch, all 9 completed runs read the refund status after the timeout, saw the refund had committed, and reported without retrying. Without the patch, 0/10 checked the status, and all 10 retried blind with the same key.
+- **Duplicates did not change in this sample.** It cannot show a duplicate reduction, because every unpatched run supplied a key on its first call and the ledger deduplicated the same-key retry (0/10 duplicates). In earlier batches, duplicates came only from runs that omitted the key on the first call (5/5, table above), and none of these 20 runs did that.
+- **The errored run.** `llm-naive-wonder-05` failed on the provider side: `deadline_exceeded`, no reply within 120 s on turn 2, after `get_order` and before any refund. Its verdict is `incomplete` and its claim is `no_report`. It was not re-run, so n stays as recorded.
+
+**Hunt against the patched agent.** The Muse adversary (`muse-spark-1.3`) ran 6 experiments under a USD 0.10 cap and found **no confirmed failure**.
+- 1 experiment fired the fault (`issue_refund` #1) and passed.
+- 4 proposed a required fault that never fired (`get_refund_status` #1, `get_order` #1, `issue_refund` #2, `*` #1). The controller marks these `fail` as untested, and no ledger rule was violated.
+- 1 was rejected locally (duplicate hook).
+
+**Cost.** USD 0.158 for the 20 runs plus USD 0.048 for the hunt makes **USD 0.206**. These are ledger estimates from published prices, in `var/spend.json` under purposes `wonder-verify*`. A smoke run before the batch (n = 1 per arm plus a 1-experiment hunt, not kept) cost USD 0.037.
+
 ## Open weights: tried, not viable on this hardware
 
 `hf.co/bartowski/Muse-Glimmer-30B-GGUF:IQ2_M` was served through Windows Ollama and reached from WSL.

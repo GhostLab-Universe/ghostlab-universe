@@ -18,6 +18,35 @@ Updated at the end of every session and read at the start of every session. Newe
 
 ## Sessions
 
+### 2026-11-05 — Session D: Muse Wonder's patch, applied and verified live — *Claude Code (session D)*
+
+**Done**
+- `llm-naive-wonder` = the naive prompt + Wonder's `proposed_patch` verbatim in a "Policy from diagnosis" block. It has the same tools as
+  `llm-naive`. The source (`adversary-exploration-llm.json` sha256 `40a751b5…`) is checked by `tests/test_recorded_replay.py`.
+  The patch is prompt text only. `llm-naive-wonder-noread` is registered but was not run (optional arm skipped).
+- Live run, `scripts/wonder_verify.py --live`: n=10 per arm, interleaved, `timeout_after_commit` on issue_refund #1, `muse-spark-1.3`, temperature 0.
+  - Status check after timeout: unpatched 0/10, patched 9/10.
+  - Retried: 10/10 vs 0/10.
+  - Duplicates: 0 vs 0.
+  - Claim matches ledger: 10/10 vs 9/10. One patched run hit a provider `deadline_exceeded` before any refund.
+  - Hunt on the patched agent: 6 experiments, no confirmed failure.
+  - Spend USD 0.206, plus a USD 0.037 smoke run.
+  - Table and caveats are in `docs/calibration.md`.
+- `demo/recorded/wonder-patch-verify.json` (`ghostlab-wonder-verify/1`) replays keylessly. The runs and the hunt replay into one store in recorded
+  order, because the live hunt's run ids follow the arms'. `/v1/capsules/replay` serves it (cached per sha256).
+- `tests/test_recorded_replay.py` replays every file in `demo/recorded/` (79 files).
+
+**Decided**
+- Arms use llm-naive's tools (owner's call). The patch was written from the noread failure and is applied to the naive agent, which has a status tool.
+- Gate (owner): clean needs claim-matches 10/10. The result was 9/10 because of the provider timeout, so it was **not clean**. /lab scene, README sentence and
+  the 8918/4174 serve were skipped pending the owner's decision. The errored run was not re-run.
+
+**Hit**
+- First keyless replay of the hunt diverged: the run ids in the adversary's tool results differed. Fixed by replaying in the live order (`replay_payload(env=…)`,
+  `replay_exploration(env=…, project_id=…)`).
+
+---
+
 ### 2026-11-05 — Session A: /lab fixes before freeze — *Claude Code (session A)*
 
 **Done**

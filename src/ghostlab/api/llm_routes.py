@@ -6,6 +6,7 @@ Shapes are documented in docs/api.md. Exploration state is process memory: a
 service restart drops it (same as run groups).
 """
 
+import functools
 import json
 import os
 import tempfile
@@ -45,6 +46,14 @@ def recorded_names() -> list:
     if not RECORDED.is_dir():
         return []
     return sorted(str(p.relative_to(RECORDED)) for p in RECORDED.rglob("*.json"))
+
+
+@functools.lru_cache(maxsize=4)
+def _replay_verify(name, sha256):
+    """Keyless replay of a Wonder-patch verification (20 runs + a hunt), once per file digest."""
+    out = capsules.replay_verify(_load_recorded(name)["payload"])
+    out.pop("rows")
+    return out
 
 
 def _load_recorded(name):
@@ -350,7 +359,7 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
             baseline = state.get("baselines", {}).get(body["agent"])
             faulted = _branch(record["run"])
             claim_check = None
-            if body["agent"] in LLM_VARIANTS:
+            if body["agent"] in llm_agent.VARIANTS:
                 claims = _claims(state)
                 snapshot = (record["run"].get("evidence") or {}).get("snapshot")
                 if run_id in claims and isinstance(snapshot, dict):
@@ -434,6 +443,8 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                     out = ADV.replay_exploration(recorded["payload"], tmp)
                 state = out.pop("state")
                 out["summary"] = ADV.summary(state)
+            elif kind == capsules.VERIFY_KIND:
+                out = _replay_verify(name, recorded["sha256"])
             else:
                 raise service_error(400, "invalid_request", "not a replayable capsule")
             return {"name": name, "kind": kind, **out}

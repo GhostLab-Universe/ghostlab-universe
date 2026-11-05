@@ -23,31 +23,13 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from ghostlab.llm import agent as A  # noqa: E402
 from ghostlab.llm import capsules  # noqa: E402
+from ghostlab.llm.capsules import key_behaviour  # noqa: E402
 from ghostlab.llm.client import RecordingClient, client_for  # noqa: E402
 
 OUT = ROOT / "demo" / "recorded"
 PROMPT = {"llm-naive": ("naive", "available"), "llm-naive-noread": ("naive", "removed"),
           "llm-hardened": ("hardened", "available"),
           "llm-hardened-noread": ("hardened", "removed")}
-
-
-def key_behaviour(actions) -> dict:
-    """What the model did with the optional idempotency key (raw model arguments)."""
-    keys = [a["arguments"].get("idempotency_key") for a in actions
-            if a["tool"] == "issue_refund" and isinstance(a.get("arguments"), dict)]
-    retry = None
-    if len(keys) > 1:
-        rest = keys[1:]
-        if any(k is None for k in rest):
-            retry = "omitted"
-        elif keys[0] is not None and all(k == keys[0] for k in rest):
-            retry = "same"
-        else:
-            retry = "different"
-    return {"issue_refund_calls": len(keys),
-            "first_key": None if not keys else ("supplied" if keys[0] else "omitted"),
-            "retried": len(keys) > 1, "retry_key": retry,
-            "read_path_used": any(a["tool"] == "get_refund_status" for a in actions)}
 
 
 def row_for(summary, variant, capsule):

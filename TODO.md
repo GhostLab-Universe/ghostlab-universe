@@ -15,6 +15,9 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
 
 ## Next
 
+- [ ] Owner decision: Wonder-patch verification was not clean by the gate (claim matches 9/10, 1 provider timeout). If accepted,
+      add the /lab "Muse's patch, verified" scene, the README sentence and the 8918/4174 serve (session D plan).
+
 - [ ] Rewrite README for judges: what it is, a 3-command run, the proof scripts, and an honest claims list.
 - [ ] Choose a free, no-card public deploy that uses only the PUBLIC key.
 - [ ] Run `demo-ready` browser acceptance (`node web/tests/acceptance.mjs --service=...`) on WSL.
@@ -50,6 +53,8 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
   and GitHub inspection went with them.
 
 ## Done
+
+- [x] Session D: Muse Wonder's patch applied verbatim and re-run live, n=10/arm + hunt, USD 0.206, capsule replays keyless (2026-11-05, Claude Code session D).
 
 - [x] Phase 2D: `/lab` staged demo (8 scenes, data from the API, keyless replay) (2026-11-05, Claude Code session 2D).
 

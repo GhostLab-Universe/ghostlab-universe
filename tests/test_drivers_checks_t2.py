@@ -209,7 +209,8 @@ class DriverRegistryTests(unittest.TestCase):
         self.assertEqual(booking.declared_checks(), list(BOOKING_IDS))
         self.assertEqual(refund.agents(), ["vulnerable", "repaired", "llm-naive",
                                           "llm-hardened", "llm-naive-noread",
-                                          "llm-hardened-noread", "status-ignored",
+                                          "llm-hardened-noread", "llm-naive-wonder",
+                                          "llm-naive-wonder-noread", "status-ignored",
                                           "retry-nokey", "split-key-per-attempt"])
         self.assertEqual(booking.agents(), ["vulnerable", "repaired",
                                            "status-ignored", "double-submit"])

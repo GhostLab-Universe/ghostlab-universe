@@ -298,3 +298,8 @@
 .seq-check { fill: var(--lab-muse); font-family: var(--lab-ui); font-weight: 600; font-size: 20px; }
 .msg-timeout text { font-size: 18px; }
 .ba-name { font-weight: 600; white-space: nowrap; }
+/* labels sit on a panel-coloured box (filter #lbg) so lane lines (the boundary) never strike through them */
+.seq-report text, .seq-note { filter: url(#lbg); }
+.lbg-flood { flood-color: var(--lab-bg-2); }
+/* hero: content on the 48px page gutter, not centred in the stage */
+.scene-hero-wrap { justify-content: space-between; }

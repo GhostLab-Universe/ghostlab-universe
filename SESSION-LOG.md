@@ -32,6 +32,10 @@ Updated at the end of every session and read at the start of every session. Newe
 - Hunt: diagram scaled (ROW 140, text ≥ 18px), display agent names, key status on each refund arrow, "spend", chips don't wrap.
 - Fix: the `get_refund_status` arrow is cyan, labelled "checks before retrying". Fork: the divergence label is split into two lines.
 - Fix: the before/after cards and the Agent lane subtitle use display names ("naive agent · no status check", "hardened agent"). A scripted scan of all 8 scenes' text and SVG found no raw `llm-*` id on screen. **UI freeze at 01:36 IST.**
+- Unfreeze for two checks. Neither fix had been made, so both were done here:
+  - Hunt and Fix: `report_outcome …` and "kept by GhostLab …" sit on a panel-coloured box (SVG flood filter `#lbg`), so the boundary line no longer strikes through them.
+  - Hero: content on the 48px page gutter (it was centred, title at 80px). The hero ledger already ended on ₹5,000 in red about 2 s after load; the old lab-0 shot was taken at 0.8 s, so the shot wait is now 3.5 s.
+  - tsc and vite build pass, the vite preview on 4173 serves the new bundle, and all 8 scenes were re-shot at 1920×1080 and 1366×768 with no console errors or overflow.
 
 **Hit**
 - `playwright-cli` is not installed in WSL, so screenshots were taken with the global Playwright library (1920×1080 and 1366×768).

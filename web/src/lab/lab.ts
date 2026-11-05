@@ -133,7 +133,7 @@ function stepGraphic(step: Step, i: number): ReactNode {
   const back = y + 40;
   const parts: ReactNode[] = [];
   if (step.kind === "report") {
-    parts.push(arrow(LANE.agent, LANE.boundary, y + 20, "msg-muse", `report_outcome ${step.claim ?? ""}`, "r", 0, [LANE.agent, "start"]));
+    parts.push(arrow(LANE.agent, LANE.boundary, y + 20, "msg-muse seq-report", `report_outcome ${step.claim ?? ""}`, "r", 0, [LANE.agent, "start"]));
     parts.push(h("text", { key: "n", x: LANE.agent, y: y + 50, className: "seq-note" }, "kept by GhostLab — never reaches payments"));
     return h("g", { key: `s${String(i)}` }, ...parts);
   }
@@ -172,6 +172,9 @@ function Sequence(props: { steps: Step[]; shown: number; agentLabel: string }): 
   return h(
     "svg",
     { className: "seq", viewBox: `0 0 1000 ${String(height)}`, role: "img", "aria-label": "Sequence of the agent's tool calls through the GhostLab boundary to the payment service" },
+    // label background: a panel-coloured box behind each label, so lane lines never strike through it
+    h("defs", { key: "defs" }, h("filter", { id: "lbg", x: "-0.02", y: "-0.1", width: "1.04", height: "1.1" },
+      h("feFlood", { className: "lbg-flood" }), h("feMerge", {}, h("feMergeNode", {}), h("feMergeNode", { in: "SourceGraphic" })))),
     ...lanes.map(([x, title, sub]) =>
       h("g", { key: title, className: `lane ${title === "GhostLab boundary" ? "lane-boundary" : ""}` },
         h("text", { x, y: 30, textAnchor: "middle", className: "lane-title" }, title),

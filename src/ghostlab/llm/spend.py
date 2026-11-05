@@ -34,7 +34,8 @@ def _env_cap(default: float) -> float:
 
 CAPS["dev"] = _env_cap(CAPS["dev"])
 
-DEFAULT_PATH = Path(__file__).resolve().parents[3] / "var" / "spend.json"
+DEFAULT_PATH = Path(os.environ.get("GHOSTLAB_SPEND_PATH")
+                    or Path(__file__).resolve().parents[3] / "var" / "spend.json")
 
 
 class SpendRefused(Exception):
@@ -103,6 +104,34 @@ class SpendLedger:
     def totals(self) -> dict:
         with self._lock:
             return _totals(self._load()["calls"])
+
+
+class CappedLedger:
+    """One exploration's shared budget on top of the per-key ledger.
+
+    Every client of an exploration (adversary, target agent, diagnosis) gets the
+    same instance, so together they cannot spend more than ``cap`` USD.
+    """
+
+    def __init__(self, inner: SpendLedger, cap: float):
+        self.inner, self.cap, self.spent = inner, cap, 0.0
+        self._lock = threading.Lock()
+
+    def check(self, label: str, est_usd: float) -> None:
+        self.inner.check(label, est_usd)
+        with self._lock:
+            if self.spent + est_usd > self.cap:
+                raise SpendRefused(f"exploration cap {self.cap} USD would be exceeded"
+                                   f" (spent {self.spent:.4f}, worst case {est_usd:.4f})")
+
+    def record(self, **kwargs) -> dict:
+        row = self.inner.record(**kwargs)
+        with self._lock:
+            self.spent += row["usd"]
+        return row
+
+    def totals(self) -> dict:
+        return self.inner.totals()
 
 
 def _totals(calls) -> dict:

@@ -172,7 +172,7 @@ summary { cursor: pointer; font-weight: 600; }
 .seg-label { color: var(--color-muted); font-size: var(--text-sm); padding: 0 var(--space-sm); }
 .seg-btn { font: inherit; background: var(--color-paper-2); color: var(--color-ink-2); border: 0; border-left: 1px solid var(--color-rule); padding: 0.45rem 0.9rem; cursor: pointer; white-space: nowrap; }
 .seg-btn.is-on { background: var(--color-accent); color: var(--color-accent-ink); font-weight: 600; }
-.seg-btn:disabled { color: var(--color-muted); cursor: not-allowed; text-decoration: line-through; }
+.seg-btn:disabled { color: var(--color-muted); cursor: not-allowed; }
 
 .empty { color: var(--color-ink-2); background: var(--color-paper-2); border: 1px dashed var(--color-rule); border-radius: var(--radius); padding: var(--space-lg); }
 

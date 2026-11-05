@@ -333,6 +333,14 @@ def provider_status(name: str, *, timeout_s: float = 2.0) -> dict:
     """``available`` or ``unavailable`` with a reason. Never reveals key values."""
     if name not in PROVIDERS:
         return {"provider": name, "status": "unavailable", "reason": "unknown provider"}
+    # LIVE_MODE: "0" kills live entirely; "1" is the public deploy (PUBLIC key only);
+    # unset keeps local behaviour. client_for routes through here, so this is the gate.
+    live_mode = os.environ.get("LIVE_MODE", "").strip()
+    if live_mode == "0":
+        return {"provider": name, "status": "unavailable", "reason": "live mode is off"}
+    if live_mode == "1" and name != "meta-public":
+        return {"provider": name, "status": "unavailable",
+                "reason": "not enabled on this deployment"}
     key_var, label, _ = PROVIDERS[name]
     if key_var is not None:
         if not os.environ.get(key_var, "").strip():

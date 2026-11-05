@@ -35,7 +35,7 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
   const init: RequestInit = body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
   const res = await fetch(path, init);
   const data = (await res.json().catch(() => null)) as (T & { detail?: string; error?: string }) | null;
-  if (!res.ok || data === null) throw new Error(data?.detail ?? data?.error ?? `HTTP ${String(res.status)} on ${path}`);
+  if (!res.ok || data === null) throw Object.assign(new Error(data?.detail ?? data?.error ?? `HTTP ${String(res.status)} on ${path}`), { status: res.status });
   return data;
 }
 
@@ -486,7 +486,7 @@ export function Lab(): ReactNode {
 
   useEffect(() => {
     call<{ providers: Array<{ provider: string; status: string; reason?: string }> }>("/v1/providers")
-      .then((o) => { const dev = o.providers.find((p) => p.provider === "meta-dev"); setLiveReason(dev?.status === "available" ? null : (dev?.reason ?? "no Meta key on this server")); })
+      .then((o) => { const meta = o.providers.find((p) => p.provider.startsWith("meta-") && p.status === "available"); setLiveReason(meta ? null : "live mode is off on this deployment"); })
       .catch((e: unknown) => setLiveReason(errText(e)));
     call<EvidenceOut>("/v1/evidence").then((evidence) => patch({ evidence })).catch((e: unknown) => patch({ error: errText(e) }));
   }, []);
@@ -494,8 +494,17 @@ export function Lab(): ReactNode {
   const startHunt = (): void => {
     setBusy(true);
     patch({ exp: null, detail: null, fix: null, cap: null, error: null });
-    call<Exploration>("/v1/explorations", { mode, llm_targets: true, max_usd: 3 })
-      .then((exp) => { patch({ exp: { ...exp, status: "running" } }); setScene(1); })
+    const begin = (m: "replay" | "live"): Promise<Exploration> => call<Exploration>("/v1/explorations", { mode: m, llm_targets: true, max_usd: 3 });
+    let notice: string | null = null;
+    begin(mode)
+      .catch((e: unknown) => {
+        // live limit reached (429): fall back to the recorded run with a plain message
+        if (mode !== "live" || (e as { status?: number }).status !== 429) throw e;
+        notice = errText(e);
+        setMode("replay");
+        return begin("replay");
+      })
+      .then((exp) => { patch({ exp: { ...exp, status: "running" }, error: notice }); setScene(1); })
       .catch((e: unknown) => patch({ error: errText(e) }))
       .finally(() => setBusy(false));
   };

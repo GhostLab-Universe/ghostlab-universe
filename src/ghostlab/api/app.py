@@ -61,7 +61,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from ..envs.capabilities import discover
 from ..envs.manifest import import_manifest
@@ -79,6 +79,7 @@ MAX_BODY_BYTES = 1_000_000
 PROJECT_HEADER = "x-ghostlab-project"
 REGISTRY_ENV = "GHOSTLAB_REGISTRY_DB"
 STORE_ENV = "GHOSTLAB_STORE_DB"
+WEB_DIST_ENV = "GHOSTLAB_WEB_DIST"
 
 _TERMINAL_GROUPS = ("completed", "cancelled", "failed")
 
@@ -859,4 +860,23 @@ def create_app(registry_path=None, store_path=None,
     llm_routes.register(app, error=_error, service_error=_ServiceError,
                         read_json=_read_json, strict_keys=_strict_keys,
                         map_failure=_map_failure)
+
+    @app.get("/v1/health")
+    async def health():
+        return {"status": "ok"}
+
+    dist_env = os.environ.get(WEB_DIST_ENV, "").strip()
+    if dist_env:
+        dist = Path(dist_env).resolve()
+
+        # Registered last: the built SPA on the same origin, with history fallback
+        # so /lab and /guide/... deep-link. Unknown /v1 paths stay JSON 404s.
+        @app.get("/{path:path}", include_in_schema=False)
+        async def spa(path: str):
+            if path == "v1" or path.startswith("v1/"):
+                return _error(404, "not_found", "unknown route")
+            target = (dist / path).resolve()
+            if path and target.is_relative_to(dist) and target.is_file():
+                return FileResponse(target)
+            return FileResponse(dist / "index.html")
     return app

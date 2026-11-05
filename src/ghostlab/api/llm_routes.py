@@ -7,6 +7,7 @@ service restart drops it (same as run groups).
 """
 
 import json
+import os
 import tempfile
 from datetime import UTC, datetime
 import threading
@@ -20,12 +21,24 @@ from ..llm import agent as llm_agent
 from ..llm import capsules
 from ..llm.client import (PROVIDERS, ProviderUnavailable, RecordingClient, client_for,
                           provider_status)
-from ..llm.spend import CAPS, PRICES, PRICES_FETCHED, SpendLedger
+from ..llm.spend import CAPS, PRICES, PRICES_FETCHED, CappedLedger, SpendLedger
 
 ROOT = Path(__file__).resolve().parents[3]
 RECORDED = ROOT / "demo" / "recorded"
 DOCS = ROOT / "docs"
 LLM_VARIANTS = ("llm-naive", "llm-hardened", "llm-naive-noread", "llm-hardened-noread")
+# Public-key limits, enforced here whatever the client sends.
+PUBLIC_MAX_USD = 0.10
+PUBLIC_MAX_EXPERIMENTS = 6
+PUBLIC_PER_IP_PER_DAY = 3
+PUBLIC_PER_PROCESS = 60
+
+
+def _client_ip(request) -> str:
+    # ponytail: rightmost X-Forwarded-For is the hop the platform proxy appended. If the
+    # host adds more hops this keys on a proxy IP; the per-process cap is the backstop.
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[-1].strip()
+    return forwarded or (request.client.host if request.client else "unknown")
 
 
 def recorded_names() -> list:
@@ -159,6 +172,10 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
     explorations: dict = {}
     lock = threading.Lock()
     app.state.explorations = explorations
+    # live explorations on the public key: (ip, utc day) -> count, plus a process total.
+    # In memory: a restart resets them (ceiling: PUBLIC_PER_PROCESS x PUBLIC_MAX_USD per process).
+    public_counts: dict = {}
+    public_total = [0]
 
     def view(entry):
         state = entry.get("state")
@@ -188,7 +205,7 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
             state = entry["state"]
             if entry["diagnose"] and state["failure"] and entry.get("diagnosis") is None:
                 wonder = client_for(entry["provider"], "muse-wonder-1.0", usd_limit=0.5,
-                                    purpose="diagnosis")
+                                    ledger=entry.get("ledger"), purpose="diagnosis")
                 entry["diagnosis"] = ADV.diagnose(wonder, state)
         except Exception as exc:  # never leak internals
             entry["error"] = f"internal: {type(exc).__name__}"
@@ -215,7 +232,8 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
             body = await read_json(request, allow_empty=True)
             strict_keys(body, {"mode", "provider", "max_experiments", "max_usd",
                                "llm_targets", "diagnose", "recording"}, "explorations")
-            provider = body.get("provider", "meta-dev")
+            provider = body.get("provider") or (
+                "meta-public" if os.environ.get("LIVE_MODE", "").strip() == "1" else "meta-dev")
             if provider not in ("meta-dev", "meta-public"):
                 raise service_error(400, "invalid_request",
                                     "provider must be meta-dev or meta-public")
@@ -230,6 +248,22 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
             if not isinstance(max_usd, (int, float)) or not 0 < max_usd <= 3:
                 raise service_error(400, "invalid_request", "max_usd must be in (0, 3]")
             llm_targets = body.get("llm_targets", False) is True
+            public = mode == "live" and provider == "meta-public"
+            ledger = None
+            if public:
+                max_usd = min(max_usd, PUBLIC_MAX_USD)
+                max_experiments = min(max_experiments, PUBLIC_MAX_EXPERIMENTS)
+                ledger = CappedLedger(SpendLedger(), PUBLIC_MAX_USD)
+                ip_day = (_client_ip(request), datetime.now(UTC).date().isoformat())
+                with lock:
+                    if public_total[0] >= PUBLIC_PER_PROCESS:
+                        raise service_error(429, "rate_limited",
+                                            "The live demo has reached its limit on this"
+                                            " server. Showing the recorded run instead.")
+                    if public_counts.get(ip_day, 0) >= PUBLIC_PER_IP_PER_DAY:
+                        raise service_error(429, "rate_limited",
+                                            "You have used today's live runs. Showing the"
+                                            " recorded run instead.")
             entry = {"id": "exp-" + uuid.uuid4().hex[:12], "mode": mode,
                      "provider": provider if mode == "live" else "replay",
                      "status": "running", "dir": tempfile.mkdtemp(prefix="ghostlab-exp-"),
@@ -255,10 +289,10 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                     if llm_targets:
                         variants, max_experiments = LLM_VARIANTS, min(max_experiments, 6)
                         agent = client_for(provider, "muse-spark-1.3", usd_limit=max_usd,
-                                           purpose="adversary-target")
+                                           ledger=ledger, purpose="adversary-target")
                     adversary = RecordingClient(client_for(
                         provider, "muse-spark-1.3", reasoning_effort="medium",
-                        usd_limit=max_usd, purpose="adversary"))
+                        usd_limit=max_usd, ledger=ledger, purpose="adversary"))
                     entry["turns"] = adversary.records  # hypotheses for the UI feed
                 except ProviderUnavailable as exc:
                     raise service_error(503, "provider_unavailable", str(exc)) from None
@@ -268,8 +302,17 @@ def register(app, *, error, service_error, read_json, strict_keys, map_failure):
                                              max_experiments=max_experiments,
                                              variants=variants, llm_client=agent)
                 entry["state"] = ADV.new_state(explorer, max_usd=max_usd)
+                entry["ledger"] = ledger
                 target, args = run_live, (entry,)
             with lock:
+                if public:  # counted only once setup succeeded; re-checked under the lock
+                    if public_total[0] >= PUBLIC_PER_PROCESS \
+                            or public_counts.get(ip_day, 0) >= PUBLIC_PER_IP_PER_DAY:
+                        raise service_error(429, "rate_limited",
+                                            "The live demo limit was reached. Showing the"
+                                            " recorded run instead.")
+                    public_total[0] += 1
+                    public_counts[ip_day] = public_counts.get(ip_day, 0) + 1
                 explorations[entry["id"]] = entry
             threading.Thread(target=target, args=args, daemon=True).start()
             return {"exploration_id": entry["id"], "mode": mode, "status": "running",

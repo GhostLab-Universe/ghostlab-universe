@@ -171,7 +171,7 @@ async function call<T>(base: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${base}${path}`, init);
   const data = (await res.json().catch(() => null)) as (T & { error?: string; detail?: string }) | null;
   if (!res.ok || data === null) {
-    throw new Error(data?.detail ?? data?.error ?? `HTTP ${String(res.status)} on ${path}`);
+    throw Object.assign(new Error(data?.detail ?? data?.error ?? `HTTP ${String(res.status)} on ${path}`), { status: res.status });
   }
   return data;
 }
@@ -343,12 +343,13 @@ function HuntView(props: {
   const [llmTargets, setLlmTargets] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     call<{ providers: Array<{ provider: string; status: string; reason?: string }> }>(base, "/v1/providers")
       .then((out) => {
-        const dev = out.providers.find((row) => row.provider === "meta-dev");
-        setLiveReason(dev?.status === "available" ? null : (dev?.reason ?? "no Meta key on this server"));
+        const meta = out.providers.find((row) => row.provider.startsWith("meta-") && row.status === "available");
+        setLiveReason(meta ? null : "off");
       })
       .catch((e: unknown) => setLiveReason(`provider check failed: ${errText(e)}`));
   }, [base]);
@@ -368,7 +369,17 @@ function HuntView(props: {
   const start = (): void => {
     setStarting(true);
     setError(null);
-    call<Exploration>(base, "/v1/explorations", { mode, llm_targets: llmTargets, max_usd: llmTargets ? 3 : 1 })
+    setNotice(null);
+    const begin = (m: "replay" | "live"): Promise<Exploration> =>
+      call<Exploration>(base, "/v1/explorations", { mode: m, llm_targets: llmTargets, max_usd: llmTargets ? 3 : 1 });
+    begin(mode)
+      .catch((e: unknown) => {
+        // live limit reached (429): fall back to the recorded run with a plain message
+        if (mode !== "live" || (e as { status?: number }).status !== 429) throw e;
+        setNotice(errText(e));
+        setMode("replay");
+        return begin("replay");
+      })
       .then((started) => setExp({ ...started, status: "running" }))
       .catch((e: unknown) => setError(errText(e)))
       .finally(() => setStarting(false));
@@ -400,7 +411,8 @@ function HuntView(props: {
       ),
       button({ onClick: start, label: starting ? "Starting…" : exp === null ? "Start hunt" : "Hunt again", disabled: starting || running, testid: "start-hunt", className: "btn-primary" }),
     ),
-    liveReason === null ? null : p({ className: "muted", "data-testid": "live-reason" }, `Live mode unavailable: ${liveReason}. Replay re-runs a recorded Muse session through the real controller with zero model calls.`),
+    liveReason === null ? null : p({ className: "muted", "data-testid": "live-reason" }, "Live mode is off on this deployment — replay runs a recorded Muse session with zero model calls."),
+    notice === null ? null : p({ className: "muted", "data-testid": "live-notice" }, notice),
     error === null ? null : div({ className: "banner banner-error", role: "alert" }, strong(null, "Exploration error: "), error),
     exp === null
       ? p({ className: "empty" }, "No hunt yet. Start one: the Muse adversary proposes fault schedules, the controller runs each one, and deterministic ledger checks give the verdict.")

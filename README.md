@@ -90,6 +90,8 @@ Phase 1 (n = 5 per cell) had 2 duplicates in naive/removed and 0 in the other th
 
 The key finding comes from reading the model's raw `issue_refund` arguments in all 70 capsules (both batches). When the first refund call had no idempotency key, the run duplicated 5 times out of 5. When it carried a key, it duplicated 0 times out of 65, because the agent reused the key on the retry and the ledger deduplicated it. All 5 duplicates reported success (`refunds_issued: 1, total_refunded: 2500`) while the ledger held two refunds totalling ₹5,000. A read path doesn't help an agent that never calls it: the naive agent used `get_refund_status` in 2 of 20 runs. These are observed counts on a small n, not rates.
 
+We applied Muse Wonder's proposed patch verbatim as prompt text to the naive agent (which has a status tool) and re-ran it live under the same fault. The patched agent checked refund status before retrying in 9/9 completed runs, against 0/10 unpatched, and retried the refund 0/9 times against 10/10. Duplicates were 0/10 and 0/9: every unpatched run sent a key this time, so the ledger blocked the retry. One patched run was excluded (Meta API timeout on turn 2, before any refund), and a 6-experiment adversary hunt on the patched agent found no failure. Details: [docs/calibration.md](docs/calibration.md#muse-wonders-patch-applied-and-re-run-live-2026-11-05).
+
 Benchmark of random vs fixed vs Muse-guided exploration, 10 experiments per trial, opaque agent ids (`agent-NN`), neutral adversary prompt. Full table and per-trial JSON: [docs/benchmark.md](docs/benchmark.md).
 
 | Env | random | fixed (catalog order) | fixed (reversed) | Muse-guided |

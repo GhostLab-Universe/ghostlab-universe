@@ -303,3 +303,34 @@
 .lbg-flood { flood-color: var(--lab-bg-2); }
 /* hero: content on the 48px page gutter, not centred in the stage */
 .scene-hero-wrap { justify-content: space-between; }
+
+/* 5 patch verified */
+.scene-patch { max-width: 1760px; }
+.pv-grid { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 3rem; align-items: start; }
+.pv-left .diff-head { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pv-scope { margin: 1.25rem 0 0; font-size: 1.15rem; line-height: 1.5; color: var(--lab-ink); max-width: 60ch; }
+.pv-muted { margin-top: 0.5rem; color: var(--lab-muted); font-family: var(--lab-mono); font-size: 0.95rem; }
+.pv-row { display: grid; grid-template-columns: minmax(0, 1.6fr) 7rem 7rem; gap: 0 1.25rem; align-items: baseline; }
+.pv-head { display: flex; justify-content: flex-end; gap: 0.75rem; color: var(--lab-muted); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 0.5rem; border-bottom: 1px solid var(--lab-rule); }
+.pv-col-after { color: var(--lab-good); }
+.pv-big { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1.1rem 0; border-bottom: 1px solid var(--lab-rule); }
+.pv-k { font-family: var(--lab-display); font-weight: 700; font-size: 1.9rem; letter-spacing: -0.015em; line-height: 1.15; }
+.pv-nums { display: flex; align-items: baseline; gap: 1rem; white-space: nowrap; }
+.pv-v { font-family: var(--lab-display); font-weight: 800; font-size: 4.5rem; line-height: 1; letter-spacing: -0.03em; }
+.pv-before { color: var(--lab-muted); }
+.pv-good { color: var(--lab-good); }
+.pv-calm { color: var(--lab-muse); }
+.pv-arrow { color: var(--lab-muted); font-size: 2.25rem; }
+.pv-rows { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.55rem; }
+.pv-rk { color: var(--lab-ink-2); font-size: 1.15rem; }
+.pv-rv { font-family: var(--lab-mono); font-weight: 600; font-size: 1.15rem; text-align: right; }
+.pv-note { grid-column: 1 / -1; color: var(--lab-muted); font-size: 1rem; margin-top: -0.2rem; }
+.pv-excl { margin: 1.1rem 0 0; color: var(--lab-amber); font-size: 1.05rem; }
+.pv-hunt { margin: 0.75rem 0 0; font-size: 1.2rem; font-weight: 600; color: var(--lab-ink); border-left: 3px solid var(--lab-muse); padding-left: 1rem; }
+
+@media (max-width: 1400px) {
+  .pv-grid { gap: 2rem; }
+  .pv-k { font-size: 1.5rem; }
+  .pv-v { font-size: 3.5rem; }
+}
+@media (max-width: 1100px) { .pv-grid { grid-template-columns: minmax(0, 1fr); } }

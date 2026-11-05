@@ -15,8 +15,9 @@ Read at session start and updated at session end. Deadlines: feature freeze **02
 
 ## Next
 
-- [ ] Owner decision: Wonder-patch verification was not clean by the gate (claim matches 9/10, 1 provider timeout). If accepted,
-      add the /lab "Muse's patch, verified" scene, the README sentence and the 8918/4174 serve (session D plan).
+- [ ] `/guide/3-agent` lists only the vulnerable/repaired adapters (hardcoded radios). The seeded and `llm-*` agents in `configs.AGENTS` don't appear
+      there, so the earlier "picker lists them" note was wrong.
+- [ ] Optional: third Wonder arm `llm-naive-wonder-noread` (registered, not run).
 
 - [ ] Rewrite README for judges: what it is, a 3-command run, the proof scripts, and an honest claims list.
 - [ ] Choose a free, no-card public deploy that uses only the PUBLIC key.

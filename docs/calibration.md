@@ -73,21 +73,21 @@ On PaymentTimeout/ambiguous timeout from issue_refund, never generate a new key:
 - **Model and fault.** `muse-spark-1.3` (meta-dev), temperature 0 (the API takes no seed), `timeout_after_commit` on `issue_refund` #1. Same fixture in both arms, and the arms were interleaved run by run.
 - **Data.** `demo/recorded/wonder-patch-verify.json` holds 20 run capsules, the hunt and the table. It replays keylessly with 0 live calls (`scripts/wonder_verify.py --replay …`).
 
-| n = 10 attempted per arm | unpatched `llm-naive` | patched `llm-naive-wonder` |
+| | unpatched `llm-naive` | patched `llm-naive-wonder` |
 | --- | --- | --- |
-| completed runs (errored) | 10 (0) | 9 (1) |
-| `get_refund_status` between the timeout and any retry | **0/10** | **9/10** |
-| `get_order` after the timeout | 0/10 | 3/10 |
-| first refund call without a key | 0/10 | 0/10 |
-| retried `issue_refund` | 10/10 (same key every time) | 0/10 |
-| duplicate refunds | 0/10 | 0/10 |
-| claim matches ledger | 10/10 | 9/10 |
-| ledger verdict pass | 10/10 | 9/10 |
+| runs | 10 completed | 9 completed · 1 excluded (Meta API timeout on turn 2, before any refund) |
+| checked status (`get_refund_status`) before retrying | **0/10** | **9/9** |
+| retried the refund (`issue_refund` again) | **10/10** (same key every time) | **0/9** |
+| `get_order` after the timeout | 0/10 | 3/9 |
+| first refund call without a key | 0/10 | 0/9 |
+| duplicate refunds | 0/10 | 0/9 |
+| claim matches ledger | 10/10 | 9/9 |
+| ledger verdict pass | 10/10 | 9/9 |
 
 **What this shows and what it doesn't.**
-- **Behaviour changed.** With the patch, all 9 completed runs read the refund status after the timeout, saw the refund had committed, and reported without retrying. Without the patch, 0/10 checked the status, and all 10 retried blind with the same key.
-- **Duplicates did not change in this sample.** It cannot show a duplicate reduction, because every unpatched run supplied a key on its first call and the ledger deduplicated the same-key retry (0/10 duplicates). In earlier batches, duplicates came only from runs that omitted the key on the first call (5/5, table above), and none of these 20 runs did that.
-- **The errored run.** `llm-naive-wonder-05` failed on the provider side: `deadline_exceeded`, no reply within 120 s on turn 2, after `get_order` and before any refund. Its verdict is `incomplete` and its claim is `no_report`. It was not re-run, so n stays as recorded.
+- **Behaviour changed.** With the patch, all 9 completed runs read the refund status after the timeout, got `committed`, and reported 1 refund of INR 2,500 without retrying. Without it, 0/10 checked, and all 10 retried with the same key.
+- **This is not a duplicate fix.** Every unpatched run sent a key this time, so the ledger blocked the retry and there were 0/10 duplicates to remove. In earlier batches, duplicates came only from runs that omitted the key on the first call (5/5, table above), and none of these 20 runs did that.
+- **The excluded run.** `llm-naive-wonder-05` hit a Meta API `deadline_exceeded` (no reply within 120 s) on turn 2, after `get_order` and before any refund or other agent decision. It was excluded as a provider error and not re-run. It stays in the recording with verdict `incomplete` and claim `no_report`.
 
 **Hunt against the patched agent.** The Muse adversary (`muse-spark-1.3`) ran 6 experiments under a USD 0.10 cap and found **no confirmed failure**.
 - 1 experiment fired the fault (`issue_refund` #1) and passed.

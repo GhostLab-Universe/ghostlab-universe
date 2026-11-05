@@ -38,8 +38,17 @@ Updated at the end of every session and read at the start of every session. Newe
 
 **Decided**
 - Arms use llm-naive's tools (owner's call). The patch was written from the noread failure and is applied to the naive agent, which has a status tool.
-- Gate (owner): clean needs claim-matches 10/10. The result was 9/10 because of the provider timeout, so it was **not clean**. /lab scene, README sentence and
-  the 8918/4174 serve were skipped pending the owner's decision. The errored run was not re-run.
+- Gate (owner): clean needs claim-matches 10/10. The first read was 9/10 because of the provider timeout. The owner then ruled `llm-naive-wonder-05`
+  excluded (provider timeout before any agent decision), so the gate is clean on completed runs: "9 completed · 1 excluded (Meta API timeout on turn 2,
+  before any refund)". The run was not re-run.
+- /lab scene 5 "Muse's patch, verified" sits between Diagnosis and Fix, and Fix is kept.
+  - Big contrasts: checked status before retrying 0/10 → 9/9, retried the refund 10/10 → 0/9.
+  - Small rows: duplicates 0/10 · 0/9 with the "sent a key this time" note, claim 10/10 · 9/9, get_order 0/10 · 3/9.
+  - It also shows the hunt line and the scope lines, and it is driven by replay. Shots: `var/screens/lab-wonder-{1920,1366}.png`.
+- README: one sentence under Results. It never says "fixed the duplicates".
+- `/guide/3-agent` renders cleanly (`var/screens/guide-agents-{1920,1366}.png`). Its picker is hardcoded to vulnerable/repaired, so no `llm-*` agent
+  (new or old) appears there.
+- `vite.config.ts` proxy reads `GHOSTLAB_API` (default 8917). This worktree serves on API 8918 (no keys) + preview 4174.
 
 **Hit**
 - First keyless replay of the hunt diverged: the run ids in the adversary's tool results differed. Fixed by replaying in the live order (`replay_payload(env=…)`,

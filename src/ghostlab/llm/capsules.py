@@ -171,6 +171,15 @@ def verify_table(rows) -> list:
     return out
 
 
+def _excluded_reason(row, run) -> str:
+    """Plain words for a run excluded from the table (it errored outside the agent's control)."""
+    turn = next((i + 1 for i, t in enumerate(run["turns"]) if t["turn"]["status"] == "failed"), None)
+    if turn and "deadline_exceeded" in (row["error"] or "") and not row["key"]["issue_refund_calls"]:
+        who = "Meta API" if run["provider"].startswith("meta") else run["provider"]
+        return f"{who} timeout on turn {turn}, before any refund"
+    return row["error"]
+
+
 def replay_verify(payload) -> dict:
     """Replay every run and the hunt of a Wonder-patch verification. Zero network, zero keys."""
     from . import adversary
@@ -190,9 +199,13 @@ def replay_verify(payload) -> dict:
             out.pop("state")
             hunt = {"reproduced": out["reproduced"], "summary": out["summary"]}
     table = verify_table(rows)
+    excluded = [{"label": r["label"], "agent": r["agent"], "error": r["error"],
+                 "reason": _excluded_reason(r, run)}
+                for r, run in zip(rows, payload["runs"]) if r["error"]] if not failed else []
     reproduced = (not failed and table == payload["table"]
                   and (hunt is None or hunt["reproduced"]))
     return {"reproduced": reproduced, "failed_runs": failed, "table": table, "rows": rows,
+            "excluded": excluded, "provider": payload["provider"], "model": payload["model"],
             "patch": payload["patch"], "hunt": hunt, "model_calls_live": 0}
 
 

@@ -23,6 +23,13 @@ interface Claim { verdict: string; claim: { refunds_issued: number; total_refund
 interface Branch { ledger: Array<{ amount_minor: number }>; total_refunded_minor: number; trace: TraceRow[] }
 interface RunDetail { agent: string; faults: Fault[]; baseline: Branch | null; faulted: Branch; first_divergence_event_id: number | null; violated_invariants: string[]; claim_check: Claim | null }
 interface ReplayOut { name: string; reproduced: boolean; verdict?: string; claim_check?: Claim; model_calls_live: number; model_calls_replayed?: number; trace?: TraceRow[]; agent?: string; error?: string }
+interface VerifyRow { agent: string; runs: number; errored_runs: number; status_check_after_timeout: number; get_order_after_timeout: number; retried: number; duplicates: number; claim_matches_ledger: number }
+interface VerifyOut {
+  name: string; reproduced: boolean; model_calls_live: number; model?: string; error?: string;
+  table?: VerifyRow[]; excluded?: Array<{ label: string; reason: string }>;
+  patch?: { text: string; source: { model: string } };
+  hunt?: { reproduced: boolean; summary: { experiments: unknown[]; failure: unknown } } | null;
+}
 interface Stats { trials: number; discovered: number; mean_experiments_to_first_failure: number | null }
 interface KeyRow { n: number; duplicates: number; false_success: number }
 interface EvidenceOut {
@@ -204,6 +211,7 @@ interface Data {
   detail: RunDetail | null;
   fix: ReplayOut | null;
   cap: ReplayOut | null;
+  verify: VerifyOut | null;
   evidence: EvidenceOut | null;
   error: string | null;
 }
@@ -392,6 +400,52 @@ function Diagnosis(props: { data: Data }): ReactNode {
   );
 }
 
+const VERIFY = "wonder-patch-verify.json";
+const frac = (n: number, of: number): string => `${String(n)}/${String(of)}`;
+
+function Patch(props: { data: Data }): ReactNode {
+  const v = props.data.verify;
+  if (v === null) return d("scene", wait("Replaying the patched and unpatched runs…"));
+  const before = v.table?.find((r) => r.agent === "llm-naive");
+  const after = v.table?.find((r) => r.agent === "llm-naive-wonder");
+  if (v.error !== undefined || !v.reproduced || before === undefined || after === undefined || v.patch === undefined) {
+    return d("scene", d("capsule-row bad", `replay failed: ${v.error ?? "recording did not reproduce"}`));
+  }
+  const [prose, code] = v.patch.text.includes("Pseudo-code:") ? v.patch.text.split("Pseudo-code:") as [string, string] : [v.patch.text, ""];
+  const codeLines = code.split(/;\s*/).map((l) => l.trim()).filter((l) => l !== "");
+  const big = (label: string, a: number, b: number, good: "up" | "down"): ReactNode =>
+    d("pv-big", s("pv-k", label),
+      d("pv-nums", s("pv-v pv-before", frac(a, before.runs)), s("pv-arrow", "→"), s(`pv-v ${good === "up" ? "pv-good" : "pv-calm"}`, frac(b, after.runs))));
+  const small = (label: string, a: number, b: number, note?: string): ReactNode =>
+    d("pv-row", s("pv-rk", label), s("pv-rv", frac(a, before.runs)), s("pv-rv", frac(b, after.runs)), note === undefined ? null : s("pv-note", note));
+  const excluded = v.excluded ?? [];
+  const hunt = v.hunt;
+  return d(
+    "scene scene-patch",
+    h("h2", { className: "scene-title" }, "Muse\u2019s patch, verified"),
+    d("pv-grid",
+      d("pv-left",
+        d("diff",
+          d("diff-head", s("diag-who", `from ${v.patch.source.model}`), " · policy block added to the naive prompt, verbatim"),
+          h("p", { className: "diff-prose" }, prose.trim()),
+          ...codeLines.map((l, i) => h("div", { key: i, className: "diff-line" }, s("diff-sign", "+"), s("mono", l)))),
+        h("p", { className: "pv-scope" }, "Patch written by Muse Wonder from the no-status-check failure, applied to the naive agent (which has a status tool)."),
+        h("p", { className: "pv-scope pv-muted" }, `live runs, ${v.model ?? "muse-spark-1.3"}, recorded; replayed here with ${String(v.model_calls_live)} model calls`)),
+      d("pv-right",
+        d("pv-head", s("pv-col", `unpatched · n=${String(before.runs)}`), s("pv-arrow-s", "→"), s("pv-col pv-col-after", `patched · ${String(after.runs)} completed${excluded.length ? ` · ${String(excluded.length)} excluded` : ""}`)),
+        big("Checked status before retrying", before.status_check_after_timeout, after.status_check_after_timeout, "up"),
+        big("Retried the refund", before.retried, after.retried, "down"),
+        d("pv-rows",
+          small("duplicates", before.duplicates, after.duplicates, "every unpatched run sent a key this time, so the ledger blocked the retry"),
+          small("claim matches ledger", before.claim_matches_ledger, after.claim_matches_ledger),
+          small("get_order after timeout", before.get_order_after_timeout, after.get_order_after_timeout)),
+        excluded.length === 0 ? null : h("p", { className: "pv-excl", "data-testid": "pv-excluded" },
+          `${String(after.runs)} completed · ${String(excluded.length)} excluded (${excluded.map((e) => e.reason).join("; ")})`),
+        hunt == null ? null : h("p", { className: "pv-hunt" },
+          `Adversary hunt on the patched agent: ${String(hunt.summary.experiments.length)} experiments, ${hunt.summary.failure ? "failure found." : "no failure found."}`))),
+  );
+}
+
 function Fix(props: { data: Data; sceneKey: string }): ReactNode {
   const { fix, exp, detail } = props.data;
   const t = useClock(props.sceneKey, fix !== null);
@@ -473,7 +527,7 @@ function Evidence(props: { data: Data }): ReactNode {
 
 // ---- shell --------------------------------------------------------------------
 
-const SCENES = ["Hero", "Hunt", "Verdict", "Fork", "Diagnosis", "Fix", "Capsule", "Evidence"] as const;
+const SCENES = ["Hero", "Hunt", "Verdict", "Fork", "Diagnosis", "Patch", "Fix", "Capsule", "Evidence"] as const;
 
 export function Lab(): ReactNode {
   const [scene, setScene] = useState(0);
@@ -481,7 +535,7 @@ export function Lab(): ReactNode {
   const [mode, setMode] = useState<"replay" | "live">("replay");
   const [liveReason, setLiveReason] = useState<string | null>("checking…");
   const [busy, setBusy] = useState(false);
-  const [data, setData] = useState<Data>({ exp: null, detail: null, fix: null, cap: null, evidence: null, error: null });
+  const [data, setData] = useState<Data>({ exp: null, detail: null, fix: null, cap: null, verify: null, evidence: null, error: null });
   const patch = (p: Partial<Data>): void => setData((prev) => ({ ...prev, ...p }));
 
   useEffect(() => {
@@ -538,6 +592,13 @@ export function Lab(): ReactNode {
     call<ReplayOut>("/v1/capsules/replay", { name: CAPSULE }).then((cap) => patch({ cap })).catch((e: unknown) => patch({ cap: { name: CAPSULE, reproduced: false, model_calls_live: 0, error: errText(e) } }));
   }, [scene, token]);
 
+  // the patch scene replays the recorded verification (server caches it per file digest)
+  useEffect(() => {
+    if (SCENES[scene] !== "Patch") return;
+    patch({ verify: null });
+    call<VerifyOut>("/v1/capsules/replay", { name: VERIFY }).then((verify) => patch({ verify })).catch((e: unknown) => patch({ verify: { name: VERIFY, reproduced: false, model_calls_live: 0, error: errText(e) } }));
+  }, [scene, token]);
+
   const go = (n: number): void => {
     const next = Math.max(0, Math.min(SCENES.length - 1, n));
     if (next >= 1 && data.exp === null && !busy) startHunt();
@@ -574,6 +635,7 @@ export function Lab(): ReactNode {
         : name === "Verdict" ? createElement(Verdict, { data })
           : name === "Fork" ? createElement(Fork, { data })
             : name === "Diagnosis" ? createElement(Diagnosis, { data })
+              : name === "Patch" ? createElement(Patch, { data })
               : name === "Fix" ? createElement(Fix, { data, sceneKey: key })
                 : name === "Capsule" ? createElement(Capsule, { data })
                   : createElement(Evidence, { data });

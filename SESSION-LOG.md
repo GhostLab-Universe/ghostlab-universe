@@ -36,6 +36,7 @@ Updated at the end of every session and read at the start of every session. Newe
   - Hunt and Fix: `report_outcome …` and "kept by GhostLab …" sit on a panel-coloured box (SVG flood filter `#lbg`), so the boundary line no longer strikes through them.
   - Hero: content on the 48px page gutter (it was centred, title at 80px). The hero ledger already ended on ₹5,000 in red about 2 s after load; the old lab-0 shot was taken at 0.8 s, so the shot wait is now 3.5 s.
   - tsc and vite build pass, the vite preview on 4173 serves the new bundle, and all 8 scenes were re-shot at 1920×1080 and 1366×768 with no console errors or overflow.
+- main updated: `git merge -s ours origin/main` reported "Already up to date" (the Oct-29 scaffold `5e31e65` was already an ancestor of `hackathon/final`), so no merge commit was needed. `git push origin hackathon/final:main` fast-forwarded main without force. origin/main and origin/hackathon/final point at the same commit. **/lab frozen permanently for the capture session.**
 
 **Hit**
 - `playwright-cli` is not installed in WSL, so screenshots were taken with the global Playwright library (1920×1080 and 1366×768).
